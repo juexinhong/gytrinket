@@ -1,0 +1,18 @@
+﻿{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "$#$",
+    "#@#",
+    "$#$"
+  ],
+  "key": {
+    "#": { "item": "minecraft:copper_ingot" },
+    "$": { "item": "minecraft:copper_block" },
+    "@": { "item": "gytrinket:drone_part" }
+  },
+  "result": {
+    "item": "gytrinket:wing_commander_part",
+    "count": 1
+  }
+}

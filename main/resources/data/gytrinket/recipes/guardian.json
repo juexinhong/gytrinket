@@ -1,0 +1,20 @@
+﻿{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "TCT",
+    " T "
+  ],
+  "key": {
+    "C": {
+      "item": "gytrinket:shield_gy"
+    },
+    "T": {
+      "item": "minecraft:iron_ingot"
+    }
+  },
+  "result": {
+    "item": "gytrinket:guardian",
+    "count": 1
+  }
+}

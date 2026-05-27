@@ -1,0 +1,53 @@
+package com.gy_mod.gy_trinket.core.damage;
+
+import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
+import com.gy_mod.gy_trinket.core.shield.ShieldManager;
+import com.gy_mod.gy_trinket.damage.ModDamageTypes;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.damagesource.DamageType;
+import net.minecraft.world.entity.player.Player;
+
+import java.util.UUID;
+
+/**
+ * 护盾自伤减免处理器
+ * <p>
+ * 功能：
+ * 当玩家受到护盾自伤或协议护盾自伤时，根据护盾自伤减免属性减少伤害。
+ * 使用经过前序处理器处理后的伤害值。
+ * <p>
+ * 优先级：49（在护盾伤害减免之后）
+ */
+public class ShieldSelfDamageReductionHandler implements DamageHandler {
+
+    /** 处理器优先级 */
+    private static final int PRIORITY = 49;
+
+    @Override
+    public void handle(DamageContext context) {
+        Player player = context.getPlayer();
+        UUID playerUUID = player.getUUID();
+
+        double currentShield = ShieldManager.getCurrentShield(playerUUID);
+        if (currentShield <= 0) {
+            return;
+        }
+
+        ResourceKey<DamageType> damageType = context.getSource().typeHolder().unwrapKey().orElse(null);
+        if (damageType != ModDamageTypes.SHIELD_SELF_DAMAGE && damageType != ModDamageTypes.PROTOCOL_SHIELD_SELF_DAMAGE) {
+            return;
+        }
+
+        double damageReduction = AttributeManager.getPlayerAttribute(playerUUID, "shield_self_damage_reduction");
+        damageReduction = Math.max(damageReduction, 0.0);
+
+        float reducedDamage = context.getCurrentDamage();
+        float finalDamage = (float) (reducedDamage * (damageReduction));
+        context.setCurrentDamage(finalDamage);
+    }
+
+    @Override
+    public int getPriority() {
+        return PRIORITY;
+    }
+}

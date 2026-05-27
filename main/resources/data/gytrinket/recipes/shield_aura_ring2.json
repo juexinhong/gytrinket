@@ -1,0 +1,20 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "GGG",
+    "GSG",
+    "GGG"
+  ],
+  "key": {
+    "G": {
+      "item": "minecraft:gold_ingot"
+    },
+    "S": {
+      "item": "gytrinket:shield_aura_ring1"
+    }
+  },
+  "result": {
+    "item": "gytrinket:shield_aura_ring2",
+    "count": 1
+  }
+}

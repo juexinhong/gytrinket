@@ -1,0 +1,52 @@
+package com.gy_mod.gy_trinket.core.damage_last;
+
+import com.gy_mod.gy_trinket.Config;
+import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
+import com.gy_mod.gy_trinket.damage.ModDamageTypes;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.damagesource.DamageType;
+import net.minecraft.world.entity.player.Player;
+
+public class CoatingDamageLastHandler implements LastDamageHandler {
+
+    private static final int PRIORITY = 10;
+
+    @Override
+    public void handle(LastDamageContext context) {
+        if (!(context.getEntity() instanceof Player player)) {
+            return;
+        }
+
+        // 检测伤害源：若是协议伤害、玩家自伤或护盾自伤，跳过处理
+        DamageSource source = context.getSource();
+        ResourceKey<DamageType> damageType = source.typeHolder().unwrapKey().orElse(null);
+        if (damageType == ModDamageTypes.PROTOCOL_PLAYER_SELF_DAMAGE ||
+            damageType == ModDamageTypes.PROTOCOL_SHIELD_SELF_DAMAGE ||
+            damageType == ModDamageTypes.PLAYER_SELF_DAMAGE ||
+            damageType == ModDamageTypes.SHIELD_SELF_DAMAGE) {
+            return;
+        }
+
+        double coating = AttributeManager.getPlayerAttribute(player.getUUID(), "coating");
+        if (coating <= 0) {
+            return;
+        }
+
+        double reductionPerLayer = Config.getCoatingReductionPerLayer();
+        float currentDamage = context.getCurrentDamage();
+        if (currentDamage < reductionPerLayer) {
+            return;
+        }
+
+        double damageReduction = coating * reductionPerLayer;
+        float newDamage = (float) Math.max(currentDamage - damageReduction, reductionPerLayer);
+
+        context.setCurrentDamage(newDamage);
+    }
+
+    @Override
+    public int getPriority() {
+        return PRIORITY;
+    }
+}

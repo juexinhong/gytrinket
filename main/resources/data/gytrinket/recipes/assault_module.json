@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "S": {
+      "item": "minecraft:string"
+    },
+    "F": {
+      "item": "gytrinket:modular_framework"
+    },
+    "T": {
+      "item": "gytrinket:star_spear"
+    },
+    "W": {
+      "item": "minecraft:blue_wool"
+    }
+  },
+  "pattern": [
+    " F ",
+    "STS",
+    " W "
+  ],
+  "result": {
+    "item": "gytrinket:assault_module",
+    "count": 1
+  }
+}

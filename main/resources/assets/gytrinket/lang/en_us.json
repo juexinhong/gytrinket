@@ -1,0 +1,670 @@
+{
+  "creative_tab.gytrinket": "Light Point Trinket",
+  "key.gytrinket.show_attributes": "Show Light Point Core Attributes",
+  "category.gytrinket.gameplay": "Light Point Trinket",
+  "tooltip.gytrinket.drone_module": "Drone Construction Material",
+  "tooltip.gytrinket.drone_module_desc": "Allows building drone constructs\nMax Count: %d  Health: %d  Damage: %.1f  Attack Speed: %.0f/s\nDrone is a Standard Construct",
+  "tooltip.gytrinket.assault_drone_module": "Assault Drone Construction Material",
+  "tooltip.gytrinket.defense_drone_module": "Defense Drone Construction Material",
+  "tooltip.gytrinket.adaptive_armor": "Adaptive Armor Enabled Item",
+  "tooltip.gytrinket.barrier": "Barrier Processor",
+  "tooltip.gytrinket.attr.shield_base": "Shield Value",
+  "tooltip.gytrinket.attr.shield_percent": "Shield Value Percentage",
+  "tooltip.gytrinket.attr.shield_independent": "Shield Value Independent Multiplier",
+  "tooltip.gytrinket.attr.shield_cooldown_reduction_percent": "Shield Cooldown Reduction Percentage",
+  "tooltip.gytrinket.attr.shield_cooldown_reduction_independent": "Shield Cooldown Reduction Independent Multiplier",
+  "tooltip.gytrinket.attr.shield_cooldown_time": "Shield Cooldown Time",
+  "tooltip.gytrinket.attr.shield_hit_cooldown_extend": "Shield Hit Cooldown Extend",
+  "tooltip.gytrinket.attr.shield_hit_cooldown_extend_multiplier": "Hit Cooldown Extend Multiplier",
+  "tooltip.gytrinket.attr.shield_hit_cooldown_extend_final_multiplier": "Hit Cooldown Extend Final Multiplier",
+  "tooltip.gytrinket.attr.shield_effect_percent": "Shield Effect Percentage",
+  "tooltip.gytrinket.attr.shield_effect_independent": "Shield Effect Independent Multiplier",
+  "tooltip.gytrinket.attr.shield_effect_radius": "Shield Effect Radius",
+  "tooltip.gytrinket.attr.shield_damage_reduction": "Shield Damage Reduction",
+  "tooltip.gytrinket.attr.shield_self_damage_reduction": "Shield Self Damage Reduction",
+  "tooltip.gytrinket.attr.player_health": "Player Health",
+  "tooltip.gytrinket.attr.player_health_percent": "Player Health Percentage",
+  "tooltip.gytrinket.attr.player_health_independent": "Player Health Independent Multiplier",
+  "tooltip.gytrinket.attr.player_damage_reduction": "Player Damage Reduction",
+  "tooltip.gytrinket.attr.player_self_damage_reduction": "Player Self Damage Reduction",
+  "tooltip.gytrinket.attr.coating": "Coating",
+  "tooltip.gytrinket.attr.adaptive_armor_duration": "Adaptive Armor Duration",
+  "tooltip.gytrinket.attr.recovery_efficiency_percent": "Recovery Efficiency Percentage",
+  "tooltip.gytrinket.attr.recovery_efficiency_independent": "Recovery Efficiency Independent Multiplier",
+  "tooltip.gytrinket.attr.attack_damage": "Attack Damage",
+  "tooltip.gytrinket.attr.attack_damage_percent": "Attack Damage Percentage",
+  "tooltip.gytrinket.attr.attack_damage_independent": "Attack Damage Independent Multiplier",
+  "tooltip.gytrinket.attr.attack_speed_percent": "Attack Speed Percentage",
+  "tooltip.gytrinket.attr.attack_speed_independent": "Attack Speed Independent Multiplier",
+  "tooltip.gytrinket.attr.movement_speed_percent": "Movement Speed Percentage",
+  "tooltip.gytrinket.attr.movement_speed_independent": "Movement Speed Independent Multiplier",
+  "tooltip.gytrinket.attr.knockback_resistance": "Knockback Resistance",
+  "tooltip.gytrinket.attr.player_knockback_percent": "Player Knockback Percentage",
+  "tooltip.gytrinket.attr.combo": "Combo",
+
+  "tooltip.gytrinket.attr.construct_base_count": "Base Construct Count",
+  "tooltip.gytrinket.attr.construct_standard_count": "Standard Construct Count",
+  "tooltip.gytrinket.attr.construct_standard_count_percent": "Standard Construct Count %",
+  "tooltip.gytrinket.attr.construct_standard_count_independent": "Standard Construct Count Independent",
+  "tooltip.gytrinket.attr.construct_advanced_count": "Advanced Construct Count",
+  "tooltip.gytrinket.attr.construct_advanced_count_percent": "Advanced Construct Count %",
+  "tooltip.gytrinket.attr.construct_advanced_count_independent": "Advanced Construct Count Independent",
+  "tooltip.gytrinket.attr.drone_count": "Drone Count",
+  "tooltip.gytrinket.attr.drone_count_percent": "Drone Count %",
+  "tooltip.gytrinket.attr.drone_count_independent": "Drone Count Independent",
+  "tooltip.gytrinket.attr.construct_health": "Construct Health",
+  "tooltip.gytrinket.attr.construct_health_percent": "Construct Health %",
+  "tooltip.gytrinket.attr.construct_health_independent": "Construct Health Independent",
+  "tooltip.gytrinket.attr.construct_damage": "Construct Damage",
+  "tooltip.gytrinket.attr.construct_damage_percent": "Construct Damage %",
+  "tooltip.gytrinket.attr.construct_damage_independent": "Construct Damage Independent",
+  "tooltip.gytrinket.attr.construct_attack_speed_percent": "Construct Attack Speed %",
+  "tooltip.gytrinket.attr.construct_attack_speed_independent": "Construct Attack Speed Independent",
+  "tooltip.gytrinket.attr.construct_build_speed_percent": "Construct Build Speed %",
+  "tooltip.gytrinket.attr.construct_build_speed_independent": "Construct Build Speed Independent",
+  "tooltip.gytrinket.attr.drone_health": "Drone Health",
+  "tooltip.gytrinket.attr.drone_health_percent": "Drone Health %",
+  "tooltip.gytrinket.attr.drone_health_independent": "Drone Health Independent",
+  "tooltip.gytrinket.attr.drone_damage": "Drone Damage",
+  "tooltip.gytrinket.attr.drone_damage_percent": "Drone Damage %",
+  "tooltip.gytrinket.attr.drone_damage_independent": "Drone Damage Independent",
+  "tooltip.gytrinket.attr.drone_assault_attack_speed_percent": "Assault Drone Attack Speed %",
+  "tooltip.gytrinket.attr.drone_assault_attack_speed_independent": "Assault Drone Attack Speed Independent",
+  "tooltip.gytrinket.attr.drone_defense_health": "Defense Drone Health",
+  "tooltip.gytrinket.attr.drone_defense_health_percent": "Defense Drone Health %",
+  "tooltip.gytrinket.attr.drone_defense_health_independent": "Defense Drone Health Independent",
+  "tooltip.gytrinket.attr.commander_health": "Commander Health",
+  "tooltip.gytrinket.attr.commander_health_percent": "Commander Health %",
+  "tooltip.gytrinket.attr.commander_health_independent": "Commander Health Independent",
+  "tooltip.gytrinket.attr.commander_damage": "Commander Damage",
+  "tooltip.gytrinket.attr.commander_damage_percent": "Commander Damage %",
+  "tooltip.gytrinket.attr.commander_damage_independent": "Commander Damage Independent",
+  "tooltip.gytrinket.shield_type.none": "None",
+  "tooltip.gytrinket.shield_type.aura": "Aura",
+  "tooltip.gytrinket.shield_type.reflect": "Reflect",
+  "tooltip.gytrinket.shield_type.amplification": "Amplification",
+  "tooltip.gytrinket.shield_type.warp": "Warp",
+  "tooltip.gytrinket.shield_type.none_desc": "Can additionally stack properties of the same type of shield",
+  "tooltip.gytrinket.shield_type.aura_desc": "Burn nearby enemies and ignite them. (If ignite damage isn't specified, default is %.1f/s damage for %d seconds)",
+  "tooltip.gytrinket.shield_type.reflect_desc": "Reflect projectiles that hit you. Reflected projectiles speed increases by %d%%, damage is affected by shield effect",
+  "tooltip.gytrinket.shield_type.amplification_desc": "Increases attack damage by %d%%. Amplification increases when enemies are nearby. Cap at %d%%. Shield effect provides both base amount and cap",
+  "tooltip.gytrinket.shield_type.warp_desc": "When shield breaks, teleport in facing direction. Explosions at teleport start and end points deal %.1f explosion damage",
+  
+  "tooltip.gytrinket.adaptive_armor_enabled": "Adaptive Armor Enabled",
+  "tooltip.gytrinket.adaptive_armor_effect": "Taking damage generates armor stacks. Each armor stack provides damage reduction",
+  "tooltip.gytrinket.adaptive_armor_bond": "Bond",
+  "tooltip.gytrinket.adaptive_armor_bond_effect": "Armor stacks additionally provide shield effect and recovery efficiency properties",
+  
+  "tooltip.gytrinket.electric_discharge": "Electric Discharge",
+  "tooltip.gytrinket.electric_discharge_effect": "Player attacks generate electric arcs that burn nearby enemies. Slower attack speed means longer arcs and higher damage",
+  
+  "tooltip.gytrinket.efficiency": "Efficiency",
+  "tooltip.gytrinket.efficiency_effect": "When player is not in attack cooldown, provides %s%% independent multiplier shield cooldown reduction and recovery efficiency properties",
+  
+  "tooltip.gytrinket.barrier_effect": "When shield takes damage exceeding %d points, the damage is limited to %d",
+  
+  "tooltip.gytrinket.regen_shield": "Regenerating Shield",
+  "tooltip.gytrinket.regen_shield_effect": "Enables shield natural recovery. When shield has value, player health regeneration efficiency is %d%%, shield regeneration efficiency is %d%%. When shield has no value, regeneration efficiency is 100%%",
+  
+  "tooltip.gytrinket.reflect_damage": "Reflect Shield",
+  "tooltip.gytrinket.reflect_damage_effect": "When shield takes damage, fires burning particles toward the attacker. Burns and ignites enemies",
+  
+  "tooltip.gytrinket.explosive_shield": "Explosive Shield",
+  "tooltip.gytrinket.explosive_shield_effect": "When shield breaks, deals %.1f explosion damage to nearby enemies",
+  
+  "tooltip.gytrinket.shield_transfer": "Shield Transfer",
+  "tooltip.gytrinket.shield_transfer_effect": "Shield no longer protects you, but protects your constructs (you can use Shield Receiver to additionally protect other entities). Each protected entity reduces shield effect and shield effect radius by %.1f%%",
+  
+  "tooltip.gytrinket.binary_protocol": "Binary Protocol",
+  "tooltip.gytrinket.binary_protocol_effect": "When shield takes damage, player takes %d%% of the damage for the shield (or vice versa)",
+  
+  "tooltip.gytrinket.weaponized_shield": "Weaponized Shield",
+  "tooltip.gytrinket.weaponized_shield_effect": "While shield is active, apply %d%% vulnerability to nearby enemies (affected by shield effect attributes)",
+
+  "tooltip.gytrinket.near_death_protection": "Near-Death Protection",
+  "tooltip.gytrinket.near_death_protection_effect": "When drone is about to die, prevents death, restores 1 health and grants invulnerability for %.1f seconds. Cooldown: %.1f seconds (per drone)",
+
+  "tooltip.gytrinket.near_death_explosion": "Near-Death Explosion",
+  "tooltip.gytrinket.near_death_explosion_effect": "When drone is about to die, prevents death, restores 1 health and grants invulnerability for %.1f seconds. Leaves formation and charges at enemies to self-destruct (damage = max health × speed × %.1f, radius %.1f blocks). Forced self-destruct when invulnerability ends",
+
+  "tooltip.gytrinket.pursuit_array": "Pursuit Array",
+  "tooltip.gytrinket.pursuit_array_effect": "Upgrades drones to assault drones and unlocks Pursuit Array (press Tab to switch arrays). Drones in Pursuit Array have increased attack speed",
+
+  "tooltip.gytrinket.formation_array": "Formation Array",
+  "tooltip.gytrinket.formation_array_effect": "Unlocks Formation Array. Drones in Formation Array have increased damage, decreased attack speed, and switch to beam cannon attacks",
+
+  "tooltip.gytrinket.commander": "Commander",
+  "tooltip.gytrinket.commander_effect": "Automatically appoints the healthiest drone as Commander (max %d). Appointment delay: %.1f seconds. Commanders gain bonus health and damage",
+
+  "tooltip.gytrinket.guard_array": "Guard Array",
+  "tooltip.gytrinket.guard_array_effect": "Unlocks Guard Array. Defense drones in Guard Array concentrate between the player and the nearest enemy to intercept attacks",
+
+  "tooltip.gytrinket.arc_barrier": "Arc Barrier",
+  "tooltip.gytrinket.arc_barrier_effect": "When a defense drone is between the player and the damage source, the drone intercepts the damage. Position deviation threshold: %.1f blocks",
+
+  "tooltip.gytrinket.reshaping": "Reshaping",
+  "tooltip.gytrinket.reshaping_effect": "Defense drones regenerate %.1f%% max health per second. Defense drones generate armor shards on death. Absorbing armor shards grants %.1f%% damage reduction for %.1f seconds",
+
+  "tooltip.gytrinket.counter_pulse": "Counter Pulse",
+  "tooltip.gytrinket.counter_pulse_effect": "Defense drones trigger counter pulse every %.1f seconds, dealing %.1f explosion damage to enemies within %.1f blocks. Charges up when not triggered (every %d ticks, max %d layers). Immediately triggers on taking damage, bypassing cooldown",
+
+  "tooltip.gytrinket.precision_construct": "Precision Construct",
+  "tooltip.gytrinket.precision_construct_effect": "Each player level provides %.2f%% independent multiplier construct build speed",
+
+  "tooltip.gytrinket.advanced_engineering": "Advanced Engineering",
+  "tooltip.gytrinket.advanced_engineering_effect": "Each player level provides %.1f%% independent multiplier drone health and drone damage",
+
+  "item.gytrinket.light_point_core": "Light Point Core",
+  "item.gytrinket.guardian": "Guardian Frame",
+  
+  "item.gytrinket.shield_gy": "Basic Shield",
+  "item.gytrinket.shield_gy1": "Basic Shield+",
+  "item.gytrinket.shield_gy2": "Basic Shield++",
+  "item.gytrinket.shield_gy3": "Basic Shield+++",
+  
+  "item.gytrinket.shield_aura_ring": "Aura Shield",
+  "item.gytrinket.shield_aura_ring1": "Aura Shield+",
+  "item.gytrinket.shield_aura_ring2": "Aura Shield++",
+  "item.gytrinket.shield_aura_ring3": "Aura Shield+++",
+  
+  "item.gytrinket.shield_reflect": "Reflect Shield",
+  "item.gytrinket.shield_reflect1": "Reflect Shield+",
+  "item.gytrinket.shield_reflect2": "Reflect Shield++",
+  "item.gytrinket.shield_reflect3": "Reflect Shield+++",
+  
+  "item.gytrinket.shield_amplifier": "Amplifier Shield",
+  "item.gytrinket.shield_amplifier1": "Amplifier Shield+",
+  "item.gytrinket.shield_amplifier2": "Amplifier Shield++",
+  "item.gytrinket.shield_amplifier3": "Amplifier Shield+++",
+  
+  "item.gytrinket.shield_warp": "Warp Shield",
+  "item.gytrinket.shield_warp1": "Warp Shield+",
+  "item.gytrinket.shield_warp2": "Warp Shield++",
+  "item.gytrinket.shield_warp3": "Warp Shield+++",
+  
+  "item.gytrinket.modular_framework": "Modular Framework",
+  "item.gytrinket.construct_frame": "Construct Frame",
+  "item.gytrinket.movement_frame": "Movement Frame",
+  "item.gytrinket.life_frame": "Life Frame",
+  "item.gytrinket.shield_receiver": "Shield Receiver",
+  
+  "item.gytrinket.shield_amplifier_module": "Shield Value Boost Module",
+  "item.gytrinket.barrier_shield_module": "Barrier Shield Module",
+  "item.gytrinket.reflect_shield_module": "Reflect Shield Module",
+  "item.gytrinket.ultimate_shield_module": "Ultimate Shield Module",
+  
+  "item.gytrinket.shield_cooldown_reduction_module": "Shield Cooldown Reduction Module",
+  "item.gytrinket.shield_quick_charge_module": "Quick Charge Module",
+  "item.gytrinket.explosive_shield_module": "Explosive Shield Module",
+  "item.gytrinket.electric_energy_release_module": "Electric Energy Release Module",
+  
+  "item.gytrinket.shield_effect_boost_module": "Shield Effect Boost Module",
+  "item.gytrinket.divergent_shield_module": "Divergent Shield Module",
+  "item.gytrinket.focused_shield_module": "Focused Shield Module",
+  "item.gytrinket.weaponized_shield_module": "Weaponized Shield Module",
+  
+  "item.gytrinket.health_boost_module": "Health Boost Module",
+  "item.gytrinket.coating_module": "Coating Module",
+  "item.gytrinket.colossus_module": "Colossus Module",
+  
+  "item.gytrinket.adaptive_armor_module": "Adaptive Armor Module",
+  "item.gytrinket.bond_module": "Bond Module",
+  "item.gytrinket.core_armor_module": "Core Armor Module",
+  
+  "item.gytrinket.regen_module": "Regeneration Module",
+  "item.gytrinket.regen_shield_module": "Shield Regen Module",
+  
+  "item.gytrinket.efficiency_module": "Efficiency Module",
+  "item.gytrinket.transformation_module": "Transformation Module",
+  "item.gytrinket.binary_protocol_module": "Binary Protocol Module",
+  
+  "item.gytrinket.fast_shooting_module": "Fast Shooting Module",
+  "item.gytrinket.burst_fire_module": "Burst Fire Module",
+  "item.gytrinket.assault_module": "Assault Module",
+  
+  "item.gytrinket.thrust_boost_module": "Thrust Boost Module",
+  "item.gytrinket.aerodynamic_framework_module": "Aerodynamic Framework Module",
+  "item.gytrinket.flash_module": "Flash Module",
+  
+  "item.gytrinket.precision_construct_module": "Precision Construct Module",
+  "item.gytrinket.shield_transfer_module": "Shield Transfer Module",
+  
+  "item.gytrinket.drone_module": "Drone Module",
+  "item.gytrinket.wide_protocol_module": "Wide Protocol Module",
+  "item.gytrinket.advanced_engineering_module": "Advanced Engineering Module",
+  
+  "item.gytrinket.assault_drone_module": "Assault Drone Module",
+  "item.gytrinket.last_order_module": "Last Order Module",
+  "item.gytrinket.line_formation_module": "Line Formation Module",
+  "item.gytrinket.wing_commander_module": "Wing Commander Module",
+  
+  "item.gytrinket.defense_drone_module": "Defense Drone Module",
+  "item.gytrinket.counter_pulse_module": "Counter Pulse Module",
+  "item.gytrinket.arc_barrier_module": "Arc Barrier Module",
+  "item.gytrinket.reshaping_module": "Reshaping Module",
+
+  "item.gytrinket.near_death_protection_module": "Near-Death Protection Module",
+  "item.gytrinket.near_death_explosion_module": "Near-Death Explosion Module",
+
+  "item.gytrinket.commander_module": "Commander Module",
+  
+  "item.gytrinket.beam": "Beam",
+  "item.gytrinket.barrier": "Barrier",
+  "item.gytrinket.ultimate_shield": "Ultimate Shield",
+  "item.gytrinket.clock": "Clock",
+  "item.gytrinket.gale": "Gale",
+  "item.gytrinket.light_bulb": "Light Bulb",
+  "item.gytrinket.effect_core": "Effect Core",
+  "item.gytrinket.divergent_shield": "Divergent Shield",
+  "item.gytrinket.convergent_shield": "Convergent Shield",
+  "item.gytrinket.weaponized_core": "Weaponized Core",
+  "item.gytrinket.life_essence": "Life Essence",
+  "item.gytrinket.coating": "Coating",
+  "item.gytrinket.statue": "Statue",
+  "item.gytrinket.adaptive_armor": "Adaptive Armor",
+  "item.gytrinket.bond": "Bond",
+  "item.gytrinket.core_armor": "Core Armor",
+  "item.gytrinket.gear": "Gear",
+  "item.gytrinket.transmute_rune": "Transmute Rune",
+  "item.gytrinket.protocol": "Protocol",
+  "item.gytrinket.particle_stream": "Particle Stream",
+  "item.gytrinket.overclock": "Overclock",
+  "item.gytrinket.star_spear": "Star Spear",
+  "item.gytrinket.thruster": "Thruster",
+  "item.gytrinket.aerodynamic_design_draft": "Aerodynamic Draft",
+  "item.gytrinket.coordinate": "Coordinate",
+  "item.gytrinket.precision_construct_part": "Precision Construct Part",
+  "item.gytrinket.shield_transfer_part": "Shield Transfer Part",
+  "item.gytrinket.drone_part": "Drone Part",
+  "item.gytrinket.wide_protocol": "Wide Protocol",
+  "item.gytrinket.advanced_engineering_part": "Advanced Engineering Part",
+  "item.gytrinket.assault_drone_part": "Assault Drone Part",
+  "item.gytrinket.last_order_part": "Last Order Part",
+  "item.gytrinket.line_formation_part": "Line Formation Part",
+  "item.gytrinket.wing_commander_part": "Wing Commander Part",
+  "item.gytrinket.defense_drone_part": "Defense Drone Part",
+  "item.gytrinket.counter_pulse_part": "Counter Pulse Part",
+  "item.gytrinket.arc_barrier_part": "Arc Barrier Part",
+  "item.gytrinket.reshaping_part": "Reshaping Part",
+
+  "item.gytrinket.shield_gy.tooltip": "Activates when placed in ender chest or Light Point Core\nRight-click to use, swapping shields costs 5 levels of experience",
+  "item.gytrinket.shield_gy.tooltip_effect": "Provides basic shield protection",
+  
+  "item.gytrinket.shield_reflect.tooltip": "Activates when placed in ender chest or Light Point Core\nRight-click to use, swapping shields costs 5 levels of experience",
+  "item.gytrinket.shield_reflect.tooltip_effect": "Reflect incoming projectiles, increasing speed and damage based on shield effect",
+  
+  "item.gytrinket.shield_aura_ring.tooltip": "Activates when placed in ender chest or Light Point Core\nRight-click to use, swapping shields costs 5 levels of experience",
+  "item.gytrinket.shield_aura_ring.tooltip_effect": "Generates an aura around the player, damaging nearby enemies",
+  
+  "item.gytrinket.shield_amplifier.tooltip": "Activates when placed in ender chest or Light Point Core\nRight-click to use, swapping shields costs 5 levels of experience",
+  "item.gytrinket.shield_amplifier.tooltip_effect": "Increases damage when losing shield value",
+  
+  "item.gytrinket.shield_amplifier_module.tooltip": "Only effective in Light Point Core\nRight-click to use and costs 1 level of experience",
+  "item.gytrinket.shield_amplifier_module.tooltip_effect": "+20% Shield Value",
+  "item.gytrinket.shield_amplifier_module.tooltip_effect_template": "+%s%% Shield Value",
+  
+  "item.gytrinket.shield_cooldown_reduction_module.tooltip": "Only effective in Light Point Core\nRight-click to use and costs 1 level of experience",
+  "item.gytrinket.shield_cooldown_reduction_module.tooltip_effect": "+20% Shield Cooldown Reduction",
+  "item.gytrinket.shield_cooldown_reduction_module.tooltip_effect_template": "+%s%% Shield Cooldown Reduction",
+  
+  "item.gytrinket.modular_framework.tooltip": "Basic material used to craft various shield modules",
+  "item.gytrinket.modular_framework.tooltip_effect": "No special function, only used as crafting material",
+  
+  "item.gytrinket.clock.tooltip": "Material used to craft special shield modules",
+  "item.gytrinket.clock.tooltip_effect": "No special function, only used as crafting material",
+  
+  "item.gytrinket.shield_quick_charge_module.tooltip": "Only effective in Light Point Core\nRight-click to use and costs 1 level of experience",
+  "item.gytrinket.shield_quick_charge_module.tooltip_effect": "+25% Shield Cooldown Reduction\n-25% Max Shield Value",
+  "item.gytrinket.shield_quick_charge_module.tooltip_effect_template": "+%s%% Shield Cooldown Reduction\n%s%% Max Shield Value",
+  
+  "item.gytrinket.shield_effect_boost_module.tooltip": "Only effective in Light Point Core\nRight-click to use and costs 1 level of experience",
+  "item.gytrinket.shield_effect_boost_module.tooltip_effect": "+10% Shield Effect\n+25% Shield Effect Radius",
+  "item.gytrinket.shield_effect_boost_module.tooltip_effect_template": "+%s%% Shield Effect\n+%s%% Shield Effect Radius",
+  
+  "item.gytrinket.ultimate_shield_module.tooltip": "Only effective in Light Point Core\nRight-click to use and costs 1 level of experience",
+  "item.gytrinket.ultimate_shield_module.tooltip_effect": "+10 Shield Value\n+15% Shield Damage Reduction\n+15% Shield Effect\n-50% Hit Extension Cooldown\n-85% Max Player Health",
+  "item.gytrinket.ultimate_shield_module.tooltip_effect_template": "+%.0f%% Shield Effect\n+%.0f Max Shield Value\n+%.0f%% Damage Reduction\n+%.0f%% Hit Extension Cooldown Reduction\n-%.0f%% Max Player Health",
+  
+  "item.gytrinket.explosive_shield_module.tooltip": "Only effective in Light Point Core\nRight-click to use and costs 1 level of experience",
+  "item.gytrinket.explosive_shield_module.tooltip_effect": "Explodes when shield breaks\nDeals 8 damage to nearby enemies",
+  
+  "item.gytrinket.focused_shield_module.tooltip": "Only effective in Light Point Core",
+  "item.gytrinket.focused_shield_module.tooltip_effect": "+25% Shield Effect\n+5% Shield Value\n-20% Shield Effect Radius",
+  
+  "item.gytrinket.divergent_shield_module.tooltip": "Only effective in Light Point Core",
+  "item.gytrinket.divergent_shield_module.tooltip_effect": "+50% Shield Effect Radius\n-10% Shield Cooldown\n-10% Max Shield Value",
+  "item.gytrinket.divergent_shield_module.tooltip_effect_template": "+%.0f%% Shield Effect Radius\n%.0f%% Shield Cooldown\n%.0f%% Max Shield Value",
+  
+  "item.gytrinket.weaponized_shield_module.tooltip": "Only effective in Light Point Core",
+  "item.gytrinket.weaponized_shield_module.tooltip_effect": "When shield protects you\nEnemies within 4 blocks of the player take 20% increased damage\nThis effect is modified by shield effect value",
+  "item.gytrinket.weaponized_shield_module.tooltip_effect_template": "When shield protects you\nEnemies within %.0f blocks of the player take %.0f%% increased damage\nThis effect is modified by shield effect value",
+  
+  "item.gytrinket.health_boost_module.tooltip": "Only effective in Light Point Core",
+  "item.gytrinket.health_boost_module.tooltip_effect": "Increases player maximum health by 10%",
+  "item.gytrinket.health_boost_module.tooltip_effect_template": "Increases player maximum health by %.0f%%",
+  
+  "item.gytrinket.barrier_shield_module.tooltip": "Only effective in Light Point Core",
+  "item.gytrinket.barrier_shield_module.tooltip_effect": "Shield takes maximum 5 damage per hit\n+5% Max Shield Value\n-5% Shield Cooldown Time",
+  "item.gytrinket.barrier_shield_module.tooltip_effect_template": "Shield takes maximum %.1f damage per hit\n+%.0f%% Max Shield Value\n%.0f%% Shield Cooldown Time",
+  
+  "item.gytrinket.efficiency_module.tooltip": "Only effective in Light Point Core",
+  "item.gytrinket.efficiency_module.tooltip_effect": "When player is not in attack cooldown\n+20% Shield Cooldown Reduction\n+20% Shield Natural Regeneration",
+  "item.gytrinket.efficiency_module.tooltip_effect_template": "When player is not in attack cooldown\n+%.0f%% Shield Cooldown Reduction\n+%.0f%% Shield Natural Regeneration",
+  
+  "item.gytrinket.adaptive_armor_module.tooltip": "Only effective in Light Point Core",
+  "item.gytrinket.adaptive_armor_module.tooltip_effect": "Gain adaptive armor when taking damage or losing shield\nEach stack provides 1% damage reduction\nDiminishing returns",
+  
+  "item.gytrinket.bond_module.tooltip": "Only effective in Light Point Core",
+  "item.gytrinket.bond_module.tooltip_effect": "+20% Adaptive Armor Duration\nEach adaptive armor stack provides\n+1% Shield Effect\n+1% Shield Natural Regeneration",
+  
+  "item.gytrinket.core_armor_module.tooltip": "Only effective in Light Point Core",
+  "item.gytrinket.core_armor_module.tooltip_effect": "+20% Adaptive Armor Duration\n+20% Self-damage Reduction\n+1 Shield Value\n+1 Player Health",
+  
+  "item.gytrinket.transformation_module.tooltip": "Only effective in Light Point Core",
+  "item.gytrinket.transformation_module.tooltip_effect": "Transforms 30% of player health to shield value or vice versa\nAlways transforms from lower value to higher value",
+  "item.gytrinket.transformation_module.tooltip_effect_template": "Transforms %.0f%% of player health to shield value or vice versa\nTransforms from the lower value to the higher value\nTransformation calculation is performed after all other modules",
+  
+  "item.gytrinket.binary_protocol_module.tooltip": "Only effective in Light Point Core",
+  "item.gytrinket.binary_protocol_module.tooltip_effect": "When shield protects the player\nPlayer health shares half the damage taken by shield\nOr shield shares half the damage taken by player health (Not implemented)",
+  "item.gytrinket.binary_protocol_module.tooltip_effect_template": "%s",
+  "item.gytrinket.binary_protocol_module.enabled": "When shield protects the player, player health shares half the damage taken by shield\nOr shield shares half the damage taken by player health, unless the other party has insufficient value",
+  "item.gytrinket.binary_protocol_module.disabled": "Module is disabled",
+  
+  "item.gytrinket.regen_module.tooltip": "Only effective in Light Point Core",
+  "item.gytrinket.regen_module.tooltip_effect": "+2%/s Player Health Natural Regeneration",
+  "item.gytrinket.regen_module.tooltip_effect_template": "+%.1f%%/s Player Health Natural Regeneration",
+  
+  "item.gytrinket.regen_shield_module.tooltip": "Only effective in Light Point Core",
+  "item.gytrinket.regen_shield_module.tooltip_effect": "+2%/s Shield Natural Regeneration\n-50% Player Health Natural Regeneration when shield is active",
+  "item.gytrinket.regen_shield_module.tooltip_effect_template": "+%.1f%%/s Shield Natural Regeneration\n-%.0f%% Player Health Natural Regeneration when shield is active",
+  
+  "item.gytrinket.barrier.tooltip": "Material used to craft special shield modules",
+  "item.gytrinket.barrier.tooltip_effect": "No special function, only used as crafting material",
+  
+  "item.gytrinket.convergent_shield.tooltip": "Material used to craft special shield modules",
+  "item.gytrinket.convergent_shield.tooltip_effect": "No special function, only used as crafting material",
+  
+  "item.gytrinket.divergent_shield.tooltip": "Material used to craft special shield modules",
+  "item.gytrinket.divergent_shield.tooltip_effect": "No special function, only used as crafting material",
+  
+  "item.gytrinket.bond.tooltip": "Material used to craft special shield modules",
+  "item.gytrinket.bond.tooltip_effect": "No special function, only used as crafting material",
+  
+  "item.gytrinket.adaptive_armor.tooltip": "Material used to craft special shield modules",
+  "item.gytrinket.adaptive_armor.tooltip_effect": "No special function, only used as crafting material",
+  
+  "item.gytrinket.gale.tooltip": "Material used to craft special shield modules",
+  "item.gytrinket.gale.tooltip_effect": "No special function, only used as crafting material",
+  
+  "item.gytrinket.effect_core.tooltip": "Material used to craft special shield modules",
+  "item.gytrinket.effect_core.tooltip_effect": "No special function, only used as crafting material",
+  
+  "item.gytrinket.weaponized_core.tooltip": "Material used to craft special shield modules",
+  "item.gytrinket.weaponized_core.tooltip_effect": "No special function, only used as crafting material",
+  
+  "item.gytrinket.core_armor.tooltip": "Material used to craft special shield modules",
+  "item.gytrinket.core_armor.tooltip_effect": "No special function, only used as crafting material",
+  
+  "item.gytrinket.life_essence.tooltip": "Material used to craft special shield modules",
+  "item.gytrinket.life_essence.tooltip_effect": "No special function, only used as crafting material",
+  
+  "item.gytrinket.transmute_rune.tooltip": "Material used to craft special shield modules",
+  "item.gytrinket.transmute_rune.tooltip_effect": "No special function, only used as crafting material",
+  
+  "item.gytrinket.ultimate_shield.tooltip": "Material used to craft special shield modules",
+  "item.gytrinket.ultimate_shield.tooltip_effect": "No special function, only used as crafting material",
+  
+  "item.gytrinket.gear.tooltip": "Material used to craft special shield modules",
+  "item.gytrinket.gear.tooltip_effect": "No special function, only used as crafting material",
+  
+  "item.gytrinket.protocol.tooltip": "Material used to craft special shield modules",
+  "item.gytrinket.protocol.tooltip_effect": "No special function, only used as crafting material",
+  
+  "item.gytrinket.wide_protocol.tooltip": "Material used to craft Wide Protocol Module",
+  "item.gytrinket.wide_protocol.tooltip_effect": "No special function, only used as crafting material",
+  
+  "item.gytrinket.drone_part.tooltip": "Material used to craft Drone Module",
+  "item.gytrinket.drone_part.tooltip_effect": "No special function, only used as crafting material",
+  
+  "item.gytrinket.last_order_part.tooltip": "Material used to craft Last Order Module",
+  "item.gytrinket.last_order_part.tooltip_effect": "No special function, only used as crafting material",
+  
+  "item.gytrinket.assault_drone_part.tooltip": "Material used to craft Assault Drone Module",
+  "item.gytrinket.assault_drone_part.tooltip_effect": "No special function, only used as a crafting material",
+  
+  "item.gytrinket.defense_drone_part.tooltip": "Material used to craft Defense Drone Module",
+  "item.gytrinket.defense_drone_part.tooltip_effect": "No special function, only used as a crafting material",
+  
+  "item.gytrinket.shield_transfer_part.tooltip": "Material used to craft Shield Transfer Module",
+  "item.gytrinket.shield_transfer_part.tooltip_effect": "No special function, only used as a crafting material",
+  
+  "item.gytrinket.line_formation_part.tooltip": "Material used to craft Line Formation Module",
+  "item.gytrinket.line_formation_part.tooltip_effect": "No special function, only used as crafting material",
+  
+  "item.gytrinket.wing_commander_part.tooltip": "Material used to craft Wing Commander Module",
+  "item.gytrinket.wing_commander_part.tooltip_effect": "No special function, only used as crafting material",
+  
+  "item.gytrinket.advanced_engineering_part.tooltip": "Material used to craft Advanced Engineering Module",
+  "item.gytrinket.advanced_engineering_part.tooltip_effect": "No special function, only used as crafting material",
+  
+  "item.gytrinket.drone_module.tooltip": "Only effective in Light Point Core",
+  "item.gytrinket.drone_module.tooltip_effect": "Summons drone constructs that follow the player as additional attack means\nPress Tab to switch drone formation",
+  "item.gytrinket.drone_module.tooltip_effect_template": "Summons drone constructs that follow the player as additional attack means. Max count: %d\nPress Tab to switch drone formation",
+  
+  "item.gytrinket.wide_protocol_module.tooltip": "Only effective in Light Point Core",
+  "item.gytrinket.wide_protocol_module.tooltip_effect": "Provides damage immunity effect for drones",
+  "item.gytrinket.wide_protocol_module.tooltip_effect_template": "When drone is about to die, survives, becomes invulnerable for 1 second, then enters %.1f seconds cooldown",
+  
+  "item.gytrinket.advanced_engineering_module.tooltip": "Only effective in Light Point Core",
+  "item.gytrinket.advanced_engineering_module.tooltip_effect": "Enhances drone attributes and increases maximum count",
+  "item.gytrinket.advanced_engineering_module.tooltip_effect_template": "+1 Max Drone Count\n+%.1f%% drone max health and damage per player level\nNote: Original game level is very hard to reach 50+, so I added a marginal decrease effect",
+  
+  "item.gytrinket.assault_drone_module.tooltip": "Only effective in Light Point Core",
+  "item.gytrinket.assault_drone_module.tooltip_effect": "Upgrades drones to assault drones",
+  "item.gytrinket.assault_drone_module.tooltip_effect_template": "Upgrades drones to assault drones\nAssault drones +%.0f%% attack speed\nUnlocks Pursuit Formation\nDrones in Pursuit Formation +50%% attack speed\n+1 Max drone count",
+  
+  "item.gytrinket.defense_drone_module.tooltip": "Only effective in Light Point Core",
+  "item.gytrinket.defense_drone_module.tooltip_effect": "Upgrades drones to defense drones",
+  "item.gytrinket.defense_drone_module.tooltip_effect_template": "Upgrades drones to defense drones\nDefense drones +%.0f%% max health\nUnlocks Guard Formation\nDrones in Guard Formation will concentrate between player and nearest enemy\nConflicts with Assault Drone Module",
+  
+  "item.gytrinket.line_formation_module.tooltip": "Only effective in Light Point Core",
+  "item.gytrinket.line_formation_module.tooltip_effect": "Drones line up on both sides of the player in formation",
+  "item.gytrinket.line_formation_module.tooltip_effect_template": "Drones line up on both sides of the player in formation\n+%.0f%% Drone Damage\n%.0f%% Drone Attack Speed",
+  
+  "item.gytrinket.wing_commander_module.tooltip": "Only effective in Light Point Core",
+  "item.gytrinket.wing_commander_module.tooltip_effect": "Enhances drone commander functionality",
+  "item.gytrinket.wing_commander_module.tooltip_effect_template": "+%d Commander Count\n+%.0f%% Max Health and Damage for Commander Drones\nCommander drones fully heal when appointed\nApplies %.1f%% vulnerability effect on hit\n+1 Max Drone Count",
+  
+  "item.gytrinket.last_order_module.tooltip": "Only effective in Light Point Core",
+  "item.gytrinket.last_order_module.tooltip_effect": "Adds last order effect to drones",
+  "item.gytrinket.last_order_module.tooltip_effect_template": "When drone is about to die, survives with 1 health and becomes invulnerable for %.1f seconds\nDuring invulnerability, drone leaves formation and charges at target\nExplodes when close to target (within 1 block), dealing area damage\nExplosion damage belongs to player and scales with drone max health and speed",
+  
+  "item.gytrinket.assault_module.tooltip": "Only effective in Light Point Core",
+  "item.gytrinket.assault_module.special_mechanism": "Gain %.0f%% attack speed for %.1f seconds per attack, stackable and reset timer. Deals %.1f drowning damage to self when attacking, damage increases with attack speed",
+  
+  "item.gytrinket.burst_fire_module.tooltip": "Only effective in Light Point Core",
+  "item.gytrinket.burst_fire_module.tooltip_effect_template": "Changes attack mode to burst fire, unleashes multiple attacks when combo count > 1. +%d combo segments, +%.0f%% attack speed",
+  
+  "item.gytrinket.fast_shooting_module.tooltip": "Only effective in Light Point Core",
+  "item.gytrinket.fast_shooting_module.tooltip_effect_template": "+%.0f%% Attack Speed Bonus",
+  
+  "item.gytrinket.construct_frame.tooltip": "Basic material used to craft construct modules",
+  "item.gytrinket.construct_frame.tooltip_effect": "No special function, only used as crafting material",
+  
+  "item.gytrinket.star_spear.tooltip": "Special material used to craft Assault Module",
+  "item.gytrinket.star_spear.tooltip_effect": "No special function, only used as crafting material",
+  
+  "item.gytrinket.overclock.tooltip": "Special material used to craft Burst Fire Module",
+  "item.gytrinket.overclock.tooltip_effect": "No special function, only used as crafting material",
+  
+  "item.gytrinket.particle_stream.tooltip": "Special material used to craft Fast Shooting Module",
+  "item.gytrinket.particle_stream.tooltip_effect": "No special function, only used as crafting material",
+  
+  "item.gytrinket.shield_transfer_module.tooltip": "Only effective in Light Point Core\nRight-click to use and deduct 1 level of experience",
+  "item.gytrinket.shield_transfer_module.tooltip_effect": "Transfer the player's shield to constructs or other entities\n+2.0 player health\n+10% player health\n+50% shield damage reduction",
+  "item.gytrinket.shield_transfer_module.tooltip_effect_template": "Transfer the player's shield to constructs or other entities\n+%.0f player health\n+%.0f%% player health\n+%.0f%% shield damage reduction",
+  "item.gytrinket.shield_transfer_module.special_mechanism": "Special Mechanism: Transfer the player's shield to constructs or other entities, protecting the targets instead of the player. Each additional target will cause a reduction in shield effect and radius",
+  
+  "item.gytrinket.shield_receiver.tooltip": "Used to include or remove entities from shield transfer protection",
+  "item.gytrinket.shield_receiver.tooltip_effect": "When you have the Shield Transfer Module equipped, you can right-click with this item to add entities to shield protection\nshift+right-click, open shield protection list",
+  
+  "item.gytrinket.precision_construct_module.tooltip": "Only effective in Light Point Core",
+  "item.gytrinket.precision_construct_module.tooltip_effect": "+25% Construct Health\n+10% Construct Build Speed\nPlayer per level +0.5% Build Speed",
+  
+  "item.gytrinket.precision_construct_part.tooltip": "Material used to craft Precision Construct Module",
+  "item.gytrinket.precision_construct_part.tooltip_effect": "No special function, only used as crafting material",
+  
+  "item.gytrinket.shield_warp.tooltip": "Activates when placed in ender chest or Light Point Core\nRight-click to use, swapping shields costs 5 levels of experience",
+  "item.gytrinket.shield_warp.tooltip_effect": "Shield that provides teleportation and explosion effects",
+  "tooltip.gytrinket.shield_warp.special": "Triggers teleportation effect when shield breaks",
+  
+  "item.gytrinket.arc_barrier_part.tooltip": "Material used to craft Arc Barrier Module",
+  "item.gytrinket.arc_barrier_part.tooltip_effect": "No special function, only used as crafting material",
+  
+  "item.gytrinket.arc_barrier_module.tooltip": "When defense drone is between you and enemy, it takes piercing attacks for you",
+  "item.gytrinket.arc_barrier_module.tooltip_effect": "Only effective in Light Point Core, requires Defense Drone Module to be equipped",
+  
+  "item.gytrinket.reshaping_part.tooltip": "Material used to craft Reshaping Module",
+  "item.gytrinket.reshaping_part.tooltip_effect": "No special function, only used as crafting material",
+  
+  "item.gytrinket.reshaping_module.tooltip": "Defense drones gain 2%/s max health regeneration. Defense drones generate armor shards on death. Armor shards can be absorbed by players, granting 15% damage reduction for 5 seconds",
+  "item.gytrinket.reshaping_module.tooltip_effect": "Only effective in Light Point Core, requires Defense Drone Module to be equipped",
+  
+  "item.gytrinket.counter_pulse_part.tooltip": "Material used to craft Counter Pulse Module",
+  "item.gytrinket.counter_pulse_part.tooltip_effect": "No special function, only used as crafting material",
+  
+  "item.gytrinket.counter_pulse_module.tooltip": "Defense drones trigger counter pulses every 3 seconds, dealing 1 point of explosion damage to enemies within 1.3 blocks. Charges up when not triggered, increasing explosion radius and damage. Immediately triggers counter pulse when taking damage, bypassing cooldown restrictions",
+  "item.gytrinket.counter_pulse_module.tooltip_effect": "Only effective in Light Point Core, requires Defense Drone Module to be equipped",
+  
+  "gy_trinket.item.no_extra_properties": "No extra property modifications",
+  
+  "item.gytrinket.thrust_boost_module.tooltip": "Only effective in Light Point Core",
+  "item.gytrinket.thruster.tooltip": "No effect, only used as crafting material",
+  "item.gytrinket.aerodynamic_framework_module.tooltip": "Only effective in Light Point Core",
+  "item.gytrinket.flash_module.tooltip": "Only effective in Light Point Core",
+  "item.gytrinket.flash_module.description": "Press X to flash forward and gain 5 ticks of invulnerability",
+  
+  "item.gytrinket.life_frame.tooltip": "Material used to craft special modules",
+  "item.gytrinket.life_frame.tooltip_effect": "No special function, only used as crafting material",
+  
+  "item.gytrinket.statue.tooltip": "Exclusive material used to craft Colossus Module",
+  "item.gytrinket.statue.tooltip_effect": "No special function, only used as crafting material",
+  
+  "item.gytrinket.colossus_module.tooltip": "Only effective in Light Point Core",
+  
+  "item.gytrinket.movement_frame.tooltip": "Material for crafting special modules",
+  "item.gytrinket.movement_frame.tooltip_effect": "No special function, only used as crafting material",
+  
+  "item.gytrinket.coordinate.tooltip": "Exclusive material for crafting special modules",
+  "item.gytrinket.coordinate.tooltip_effect": "No special function, only used as crafting material",
+  
+  "tooltip.gytrinket.shield.ender_chest_effect": "Activates when placed in ender chest or Light Point Core",
+  "tooltip.gytrinket.shield.max_shield": "Max Shield Value: %.1f",
+  "tooltip.gytrinket.shield.cooldown_time": "Shield Cooldown Time: %.1fs",
+  "tooltip.gytrinket.shield.regen_percentage": "Shield Natural Regeneration: %.2f",
+  "tooltip.gytrinket.shield.regen_interval": "Regen Interval: %.1fs",
+  "tooltip.gytrinket.shield.invulnerability_duration": "Invulnerability Duration: %.1fs",
+  "tooltip.gytrinket.shield.gy.special": "Basic shield, no special effects",
+  "tooltip.gytrinket.shield_reflect.special": "Converts incoming projectiles into fireballs for counterattack",
+  "tooltip.gytrinket.shield_aura_ring.special": "Generates an aura around the player, dealing continuous damage to nearby enemies",
+  "tooltip.gytrinket.shield_amplifier.special": "Increases damage when losing shield value",
+  
+  "death.attack.gytrinket.protocol_self_hurt.self": "%1$s was killed by binary protocol backlash",
+  "death.attack.gytrinket.shield_self_hurt.self": "%1$s was killed by shield backlash",
+  "death.attack.gytrinket.player_life_module_self_hurt.self": "%1$s was killed by assault self-harm",
+  "death.attack.gytrinket.shield_module_self_damage.self": "%1$s was killed by shield module self-damage",
+  "death.attack.gytrinket.construct_self_hurt.self": "%1$s was killed by construct self-harm",
+  "death.attack.gytrinket.dual_sword_damage": "%1$s was killed by dual swords",
+  "death.attack.gytrinket.dual_sword_damage.player": "%1$s was killed by %2$s's dual swords",
+  "death.attack.gytrinket.processed_damage": "%1$s was killed by processed damage",
+  "death.attack.gytrinket.processed_damage.player": "%1$s was killed by %2$s's processed damage",
+  "death.attack.gytrinket.protocol_player_self_hurt.self": "%1$s was killed by protocol player self-harm",
+  "death.attack.gytrinket.protocol_shield_self_hurt.self": "%1$s was killed by protocol shield self-harm",
+  
+  "message.gytrinket.shield_added_to_core": "Shield added to Light Point Core",
+  "message.gytrinket.shield_swapped": "Shields swapped successfully",
+  "message.gytrinket.not_enough_exp": "Not enough experience! Requires %d experience levels",
+  "message.gytrinket.not_enough_level": "Not enough levels! Requires at least %d levels",
+  "message.gytrinket.module_added_to_core": "Module added to Light Point Core",
+  "message.gytrinket.module_already_exists": "Module already exists in Light Point Core",
+  "message.gytrinket.module_conflict.assault_defense": "Cannot equip Assault Drone Module because Defense Drone Module is already equipped",
+  "message.gytrinket.module_conflict.defense_assault": "Cannot equip Defense Drone Module because Assault Drone Module is already equipped",
+  "message.gytrinket.shield_receiver.list_opened": "Shield protection list interface opened!",
+  "message.gytrinket.shield_receiver.list_ready": "Shield protection list inventory ready!",
+  "message.gytrinket.shield_receiver.aim_at_entity": "Please aim at an entity to use the Shield Receiver!",
+  "message.gytrinket.shield_receiver.need_transfer_module": "You need to equip a Shield Transfer Module to use the Shield Receiver!",
+  "message.gytrinket.shield_receiver.cannot_add_self": "You cannot add yourself to shield transfer protection!",
+  "message.gytrinket.shield_receiver.construct_already_protected": "Construct entities are already included in shield transfer protection by default, no need to use Shield Receiver!",
+  "message.gytrinket.shield_receiver.only_for_living_entities": "Shield Receiver can only be used on living entities!",
+  "message.gytrinket.shield_receiver.target_removed": "Entity removed from shield transfer protection!",
+  "message.gytrinket.shield_receiver.target_added": "Entity has been added to shield protection!",
+  "message.gytrinket.light_point_core_full": "Light Point Core is full, cannot add more items!",
+  "gui.gytrinket.shield_protection_list.title": "Shield Protection List",
+  
+  "attribute.player_health_damage_reduction": "Player Health Damage Reduction",
+  "attribute.ultimate_shield_hit_extension_multiplier": "Hit Extension Cooldown Multiplier",
+  "attribute.construct_health_bonus": "Construct Health",
+  "attribute.construct_build_speed_bonus": "Construct Build Speed",
+  "attribute.assault_module_attack_speed_bonus": "Assault Module Attack Speed Bonus",
+  "attribute.assault_module_movement_speed_penalty": "Assault Module Movement Speed Penalty",
+  "attribute.assault_module_base_damage": "Assault Module Base Damage",
+  
+  "entity.gytrinket.drone_construct": "Drone Construct",
+  "entity.gytrinket.dual_sword_construct": "Dual Sword Construct",
+  "entity.gytrinket.defense_drone": "Defense Drone",
+  "entity.gytrinket.drone_beam": "Drone Beam",
+  "entity.gytrinket.drone_bullet": "Drone Bullet",
+  "entity.gytrinket.fragment_shield": "Fragment Shield",
+  "entity.gytrinket.shield_stance": "Shield Stance",
+
+  "advancements.gytrinket.story.obtain_basic_shield.title": "Can it block everything?",
+  "advancements.gytrinket.story.obtain_basic_shield.description": "Starving makes the shield hurt",
+
+  "advancements.gytrinket.story.obtain_aura_ring_shield.title": "Environmental Fire Ring",
+  "advancements.gytrinket.story.obtain_aura_ring_shield.description": "Will not damage public property",
+
+  "advancements.gytrinket.story.obtain_reflect_shield.title": "Not falling for this 2.0",
+  "advancements.gytrinket.story.obtain_reflect_shield.description": "Not only reflect, but also strengthen and hit back!",
+
+  "advancements.gytrinket.story.obtain_amplifier_shield.title": "Weaker than vanilla",
+  "advancements.gytrinket.story.obtain_amplifier_shield.description": "Originally intended to be stronger than vanilla, but I don't want to adjust the values",
+
+  "advancements.gytrinket.story.obtain_warp_shield.title": "Invincible! Blink! Glitch into blocks!",
+  "advancements.gytrinket.story.obtain_warp_shield.description": "Why do entities have teleportation protection but I don't? Yes I'm biased",
+
+  "advancements.gytrinket.story.obtain_shield_amplifier_module.title": "More durable!",
+  "advancements.gytrinket.story.obtain_shield_amplifier_module.description": "A diamond for your shield boost, do you think it's worth it?",
+
+  "advancements.gytrinket.story.obtain_drone_module.title": "Unlimited supply!",
+  "advancements.gytrinket.story.obtain_drone_module.description": "Where did it come from?",
+
+  "advancements.gytrinket.story.obtain_shield_transfer_module.title": "Shield Transfer",
+  "advancements.gytrinket.story.obtain_shield_transfer_module.description": "Do not provide shield to your enemies!",
+
+  "advancements.gytrinket.story.obtain_defense_drone_module.title": "Defense Drone",
+  "advancements.gytrinket.story.obtain_defense_drone_module.description": "Can it block remote and local attacks? That's the question!",
+
+  "advancements.gytrinket.story.obtain_arc_barrier_module.title": "Explosion Expert",
+  "advancements.gytrinket.story.obtain_arc_barrier_module.description": "Be careful when the expert is not around",
+
+  "advancements.gytrinket.story.obtain_assault_drone_module.title": "Gang Up",
+  "advancements.gytrinket.story.obtain_assault_drone_module.description": "There are always flies buzzing around",
+
+  "advancements.gytrinket.story.obtain_wide_protocol_module.title": "I'm Still Alive",
+  "advancements.gytrinket.story.obtain_wide_protocol_module.description": "It pulled a Deathless Blade!",
+
+  "advancements.gytrinket.story.obtain_last_order_module.title": "Big Belly Impact",
+  "advancements.gytrinket.story.obtain_last_order_module.description": "More health means more damage?",
+
+  "advancements.gytrinket.story.obtain_shield_cooldown_reduction_module.title": "Faster!",
+  "advancements.gytrinket.story.obtain_shield_cooldown_reduction_module.description": "Even faster!",
+
+  "advancements.gytrinket.story.obtain_ultimate_shield_module.title": "If My Shield Breaks, I Die",
+  "advancements.gytrinket.story.obtain_ultimate_shield_module.description": "Giving up so much health at such a young age. (Is health really that bad?)",
+
+  "message.gytrinket.quick_equip.already_exists": "Same item already exists in Light Point Core",
+  "message.gytrinket.quick_equip.core_full": "Light Point Core is full",
+  "message.gytrinket.quick_equip.not_enough_level": "Not enough experience levels, need level %d",
+  "message.gytrinket.quick_equip.success": "Equipped to Light Point Core",
+  "message.gytrinket.quick_equip.shield_swapped": "Shield swapped in Light Point Core"
+}

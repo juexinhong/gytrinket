@@ -1,0 +1,18 @@
+﻿{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "$%$",
+    "%#%",
+    "$%$"
+  ],
+  "key": {
+    "#": { "item": "gytrinket:drone_part" },
+    "$": { "item": "minecraft:redstone" },
+    "%": { "item": "minecraft:diamond" }
+  },
+  "result": {
+    "item": "gytrinket:advanced_engineering_part",
+    "count": 1
+  }
+}

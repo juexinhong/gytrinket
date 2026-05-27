@@ -1,0 +1,6 @@
+{
+  "parent": "block/block",
+  "textures": {
+    "particle": "gy_trinket:item/light_point_core_block_gy"
+  }
+}

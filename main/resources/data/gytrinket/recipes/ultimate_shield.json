@@ -1,0 +1,19 @@
+﻿{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "ABA"
+  ],
+  "key": {
+    "A": {
+      "item": "minecraft:feather"
+    },
+    "B": {
+      "item": "minecraft:shield"
+    }
+  },
+  "result": {
+    "item": "gytrinket:ultimate_shield",
+    "count": 1
+  }
+}

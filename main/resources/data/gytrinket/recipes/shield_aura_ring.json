@@ -1,0 +1,20 @@
+﻿{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "F": {
+      "item": "minecraft:flint_and_steel"
+    },
+    "G": {
+      "item": "gytrinket:shield_gy"
+    }
+  },
+  "pattern": [
+    " F ",
+    "FGF",
+    " F "
+  ],
+  "result": {
+    "item": "gytrinket:shield_aura_ring"
+  }
+}

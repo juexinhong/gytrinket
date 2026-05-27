@@ -1,0 +1,17 @@
+﻿{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "AAA",
+    "AAA"
+  ],
+  "key": {
+    "A": {
+      "item": "minecraft:paper"
+    }
+  },
+  "result": {
+    "item": "gytrinket:protocol",
+    "count": 1
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "parent": "minecraft:story/root",
+  "criteria": {
+    "has_shield_cooldown_reduction_module": {
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "gytrinket:shield_cooldown_reduction_module"
+            ]
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "display": {
+    "description": {
+      "translate": "advancements.gytrinket.story.obtain_shield_cooldown_reduction_module.description"
+    },
+    "icon": {
+      "count": 1,
+      "item": "gytrinket:shield_cooldown_reduction_module"
+    },
+    "title": {
+      "translate": "advancements.gytrinket.story.obtain_shield_cooldown_reduction_module.title"
+    }
+  },
+  "requirements": [
+    [
+      "has_shield_cooldown_reduction_module"
+    ]
+  ],
+  "sends_telemetry_event": true
+}

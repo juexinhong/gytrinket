@@ -1,0 +1,23 @@
+﻿{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "S": {
+      "item": "minecraft:bow"
+    },
+    "G": {
+      "item": "gytrinket:shield_gy"
+    },
+    "B": {
+      "item": "minecraft:stick"
+    }
+  },
+  "pattern": [
+    " S ",
+    " G ",
+    " B "
+  ],
+  "result": {
+    "item": "gytrinket:shield_reflect"
+  }
+}

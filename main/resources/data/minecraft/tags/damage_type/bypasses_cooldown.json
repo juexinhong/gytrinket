@@ -1,0 +1,13 @@
+{
+  "replace": false,
+  "values": [
+    "gytrinket:burn_damage",
+    "gytrinket:on_fire_damage",
+    "gytrinket:shield_self_damage",
+    "gytrinket:player_self_damage",
+    "gytrinket:protocol_shield_self_damage",
+    "gytrinket:protocol_player_self_damage",
+    "gytrinket:final_damage",
+    "gytrinket:drone_bullet"
+  ]
+}

@@ -1,0 +1,17 @@
+﻿{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "###",
+    "$%$"
+  ],
+  "key": {
+    "#": { "item": "gytrinket:drone_part" },
+    "$": { "item": "minecraft:glowstone_dust" },
+    "%": { "item": "minecraft:redstone" }
+  },
+  "result": {
+    "item": "gytrinket:line_formation_part",
+    "count": 1
+  }
+}

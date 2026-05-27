@@ -1,0 +1,29 @@
+﻿{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "IFD",
+    "OGO"
+  ],
+  "key": {
+    "I": {
+      "item": "minecraft:iron_chestplate"
+    },
+    "F": {
+      "item": "minecraft:golden_chestplate"
+    },
+    "D": {
+      "item": "minecraft:diamond_chestplate"
+    },
+    "O": {
+      "item": "minecraft:obsidian"
+    },
+    "G": {
+      "item": "minecraft:leather_chestplate"
+    }
+  },
+  "result": {
+    "item": "gytrinket:adaptive_armor",
+    "count": 1
+  }
+}

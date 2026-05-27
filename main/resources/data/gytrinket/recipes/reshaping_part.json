@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " % ",
+    "%#%",
+    " % "
+  ],
+  "key": {
+    "#": { "item": "gytrinket:defense_drone_part" },
+    "%": { "item": "minecraft:blaze_powder" }
+  },
+  "result": {
+    "item": "gytrinket:reshaping_part",
+    "count": 1
+  }
+}

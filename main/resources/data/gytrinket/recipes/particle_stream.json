@@ -1,0 +1,24 @@
+﻿{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "Q": {
+      "item": "minecraft:quartz"
+    },
+    "R": {
+      "item": "minecraft:redstone"
+    },
+    "T": {
+      "item": "minecraft:tnt"
+    }
+  },
+  "pattern": [
+    "QRQ",
+    "RTR",
+    "QRQ"
+  ],
+  "result": {
+    "item": "gytrinket:particle_stream",
+    "count": 1
+  }
+}

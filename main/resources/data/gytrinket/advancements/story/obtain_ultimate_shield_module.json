@@ -1,0 +1,35 @@
+{
+  "parent": "minecraft:story/root",
+  "criteria": {
+    "has_ultimate_shield_module": {
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "gytrinket:ultimate_shield_module"
+            ]
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "display": {
+    "description": {
+      "translate": "advancements.gytrinket.story.obtain_ultimate_shield_module.description"
+    },
+    "icon": {
+      "count": 1,
+      "item": "gytrinket:ultimate_shield_module"
+    },
+    "title": {
+      "translate": "advancements.gytrinket.story.obtain_ultimate_shield_module.title"
+    }
+  },
+  "requirements": [
+    [
+      "has_ultimate_shield_module"
+    ]
+  ],
+  "sends_telemetry_event": true
+}

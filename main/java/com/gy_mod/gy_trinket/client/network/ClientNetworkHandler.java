@@ -1,0 +1,137 @@
+package com.gy_mod.gy_trinket.client.network;
+
+import com.gy_mod.gy_trinket.client.shield.ShieldHudRenderer;
+import com.gy_mod.gy_trinket.client.storage.ClientPlayerStoreManager;
+import com.gy_mod.gy_trinket.particle.ModParticles;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
+
+public class ClientNetworkHandler {
+
+    public static void handleSyncLightPointCoreMessage(ListTag itemList, int slotCount) {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.player == null) {
+            return;
+        }
+
+        ClientPlayerStoreManager.ClientPlayerStore store = ClientPlayerStoreManager.getOrCreateClientStore(minecraft.player);
+        CompoundTag tag = new CompoundTag();
+        tag.put("items", itemList);
+        store.loadFromNBT(tag);
+    }
+
+    public static void handleSyncShieldMessage(double currentShield, double maxShield, int currentCooldown, int maxCooldown, double adaptiveArmorReduction) {
+        ShieldHudRenderer.getInstance().updateShieldData(currentShield, maxShield, currentCooldown, maxCooldown, adaptiveArmorReduction);
+    }
+
+    public static void handleResponseAttributesMessage(java.util.Map<String, Double> attributes) {
+        var player = Minecraft.getInstance().player;
+        if (player != null) {
+            displayAttributes(player, attributes);
+        }
+    }
+
+    private static void displayAttributes(net.minecraft.world.entity.player.Player player, java.util.Map<String, Double> attributes) {
+        if (attributes.isEmpty()) {
+            player.sendSystemMessage(net.minecraft.network.chat.Component.literal("§7[光点核心] §f当前没有激活任何属性"));
+            return;
+        }
+
+        player.sendSystemMessage(net.minecraft.network.chat.Component.literal("§7[光点核心] §f当前属性："));
+
+        for (var entry : attributes.entrySet()) {
+            String attrName = entry.getKey();
+            double value = entry.getValue();
+            String displayText = formatAttribute(attrName, value);
+            player.sendSystemMessage(net.minecraft.network.chat.Component.literal("  " + displayText));
+        }
+    }
+
+    private static String formatAttribute(String attrName, double value) {
+        if (Math.abs(value - 1.0) < 0.0001) {
+            return String.format("§c%s§f: 1.0x", attrName);
+        } else if (value > 0 && value < 2) {
+            return String.format("§c%s§f: %.2fx", attrName, value);
+        } else {
+            return String.format("§c%s§f: %.2f", attrName, value);
+        }
+    }
+
+    public static void handleAuraParticlesMessage(double x, double y, double z, double radius) {
+        var minecraft = Minecraft.getInstance();
+        var level = minecraft.level;
+        if (level != null) {
+            generateAuraParticles(level, x, y, z, radius);
+        }
+    }
+
+    private static void generateAuraParticles(ClientLevel level, double x, double y, double z, double radius) {
+        int particleCount = (int) Math.max(5, Math.round((radius / 3.0) * 8));
+
+        for (int i = 0; i < particleCount; i++) {
+            double angle = (i / (double) particleCount) * Math.PI * 2;
+            double angleOffset = (Math.random() - 0.5) * 0.2;
+            double finalAngle = angle + angleOffset;
+
+            double particleX = x + Math.cos(finalAngle) * radius;
+            double particleY = y + (Math.random() - 0.5) * 0.2;
+            double particleZ = z + Math.sin(finalAngle) * radius;
+
+            double vx = -Math.sin(finalAngle) * 0.166;
+            double vz = Math.cos(finalAngle) * 0.166;
+            double speedOffset = (Math.random() - 0.5) * 0.05;
+            vx += speedOffset;
+            vz += speedOffset;
+            double vy = 0.0;
+
+            level.addParticle(ParticleTypes.FLAME, particleX, particleY, particleZ, vx, vy, vz);
+        }
+    }
+
+    public static void handleReflectParticlesMessage(double x, double y, double z, double radius, double dirX, double dirY, double dirZ) {
+        var minecraft = Minecraft.getInstance();
+        var level = minecraft.level;
+        if (level != null) {
+            generateReflectParticles(level, x, y, z, radius, dirX, dirY, dirZ);
+        }
+    }
+
+    private static void generateReflectParticles(ClientLevel level, double x, double y, double z, double radius, double dirX, double dirY, double dirZ) {
+        int particleCount = (int) Math.max(8, Math.round((radius / 3.0) * 12));
+        var particleType = ModParticles.REFLECT_SHIELD_PARTICLE.get();
+
+        for (int i = 0; i < particleCount; i++) {
+            double spreadAngle = (Math.random() - 0.5) * 0.5;
+            
+            double perpX = -dirZ;
+            double perpZ = dirX;
+            
+            double offsetX = perpX * spreadAngle;
+            double offsetZ = perpZ * spreadAngle;
+            
+            double speed = 0.4 + Math.random() * 0.3;
+            
+            double vx = (dirX + offsetX) * speed;
+            double vy = dirY * speed + (Math.random() - 0.5) * 0.1;
+            double vz = (dirZ + offsetZ) * speed;
+
+            level.addParticle(particleType, x, y, z, vx, vy, vz);
+        }
+    }
+
+    public static void handleExplosiveShieldFlashMessage(double x, double y, double z) {
+        var minecraft = Minecraft.getInstance();
+        var level = minecraft.level;
+        if (level != null) {
+            generateExplosiveShieldFlashParticles(level, x, y, z);
+        }
+    }
+
+    private static void generateExplosiveShieldFlashParticles(ClientLevel level, double x, double y, double z) {
+        level.addParticle(ParticleTypes.FLASH, x, y, z, 0, 0, 0);
+    }
+}

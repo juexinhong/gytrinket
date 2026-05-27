@@ -1,0 +1,35 @@
+{
+  "parent": "minecraft:story/root",
+  "criteria": {
+    "has_warp_shield": {
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "gytrinket:shield_warp"
+              ]
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "display": {
+    "description": {
+      "translate": "advancements.gytrinket.story.obtain_warp_shield.description"
+    },
+    "icon": {
+      "count": 1,
+      "item": "gytrinket:shield_warp"
+    },
+    "title": {
+      "translate": "advancements.gytrinket.story.obtain_warp_shield.title"
+    }
+  },
+  "requirements": [
+    [
+      "has_warp_shield"
+    ]
+  ],
+  "sends_telemetry_event": true
+}

@@ -1,0 +1,17 @@
+﻿{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "$#$",
+    "$#$",
+    "$#$"
+  ],
+  "key": {
+    "#": { "item": "minecraft:paper" },
+    "$": { "item": "minecraft:glowstone_dust" }
+  },
+  "result": {
+    "item": "gytrinket:wide_protocol",
+    "count": 1
+  }
+}

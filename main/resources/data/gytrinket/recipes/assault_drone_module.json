@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " % ",
+    "#@#",
+    " * "
+  ],
+  "key": {
+    "#": { "item": "minecraft:string" },
+    "%": { "item": "gytrinket:construct_frame" },
+    "@": { "item": "gytrinket:assault_drone_part" },
+    "*": { "item": "minecraft:blue_wool" }
+  },
+  "result": {
+    "item": "gytrinket:assault_drone_module",
+    "count": 1
+  }
+}

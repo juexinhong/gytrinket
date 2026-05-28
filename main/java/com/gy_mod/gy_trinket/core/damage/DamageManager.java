@@ -1,5 +1,6 @@
 package com.gy_mod.gy_trinket.core.damage;
 
+import com.gy_mod.gy_trinket.core.shield.ShieldManager;
 import com.gy_mod.gy_trinket.core.shield.type.ShieldTypeManager;
 import com.gy_mod.gy_trinket.core.shield_transfer.ShieldTransferManager;
 import com.gy_mod.gy_trinket.damage.ModDamageTypes;
@@ -57,7 +58,7 @@ public class DamageManager {
             return;
         }
 
-        boolean isShieldSelfDamage = damageTypeKey.map(type -> 
+        boolean isShieldSelfDamage = damageTypeKey.map(type ->
             type == ModDamageTypes.SHIELD_SELF_DAMAGE || type == ModDamageTypes.PROTOCOL_SHIELD_SELF_DAMAGE
         ).orElse(false);
 
@@ -90,6 +91,10 @@ public class DamageManager {
         if (context.isCanceled()) {
             event.setCanceled(true);
         } else if (context.getCurrentDamage() != originalDamage) {
+            if (shouldPreventFinalDamageConversion(attackedEntity, source)) {
+                return;
+            }
+
             event.setCanceled(true);
             float finalDamage = context.getCurrentDamage();
             if (finalDamage > 0) {
@@ -100,5 +105,27 @@ public class DamageManager {
                 ), finalDamage);
             }
         }
+    }
+
+    private static boolean shouldPreventFinalDamageConversion(LivingEntity attackedEntity, DamageSource source) {
+        var damageTypeKey = source.typeHolder().unwrapKey().orElse(null);
+        if (damageTypeKey == ModDamageTypes.PLAYER_SELF_DAMAGE ||
+            damageTypeKey == ModDamageTypes.PROTOCOL_PLAYER_SELF_DAMAGE) {
+            return true;
+        }
+
+        if (!(attackedEntity instanceof Player player)) {
+            return false;
+        }
+
+        if (ShieldManager.getCurrentShield(player.getUUID()) <= 0) {
+            return false;
+        }
+
+        if (!ShieldTransferManager.shouldProtectPlayer(player)) {
+            return true;
+        }
+
+        return false;
     }
 }

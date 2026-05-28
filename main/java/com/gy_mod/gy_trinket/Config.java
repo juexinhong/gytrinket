@@ -101,6 +101,11 @@ public class Config {
     public static final ForgeConfigSpec.DoubleValue ELECTRIC_DISCHARGE_BURN_CHARGE;
     public static final ForgeConfigSpec.IntValue ELECTRIC_DISCHARGE_BURN_DURATION;
 
+    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> ASSAULT_ITEMS;
+    public static final ForgeConfigSpec.DoubleValue ASSAULT_ATTACK_SPEED_PER_STACK;
+    public static final ForgeConfigSpec.IntValue ASSAULT_DURATION_TICKS;
+    public static final ForgeConfigSpec.DoubleValue ASSAULT_SELF_DAMAGE_PER_STACK;
+
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> ATTACK_COOLDOWN_EFFICIENCY_ITEMS;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> SHIELD_NATURAL_RECOVERY_ITEMS;    public static final ForgeConfigSpec.DoubleValue NATURAL_RECOVERY_SHIELD_RECOVERY_PER_TICK;
     public static final ForgeConfigSpec.DoubleValue NATURAL_RECOVERY_SHIELD_PRESENT_HEALTH_MODIFIER;
@@ -296,7 +301,7 @@ public class Config {
                 "gytrinket:colossus_module|player_health_percent=0.25|player_knockback_percent=0.4|knockback_resistance=0.2|movement_speed_independent=-0.25",
 
                 "gytrinket:bond_module|adaptive_armor_duration=0.2",
-                "gytrinket:core_armor_module|shield_base=1.0|player_health=1.0|shield_self_damage_reduction=0.2|player_self_damage_reduction=0.2|adaptive_armor_duration=0.2",
+                "gytrinket:core_armor_module|shield_base=1.0|player_health=1.0|shield_self_damage_reduction=-0.2|player_self_damage_reduction=-0.2|adaptive_armor_duration=0.2",
 
                 "gytrinket:regen_module|recovery_efficiency_percent=0.4",
                 "gytrinket:regen_shield_module|recovery_efficiency_percent=0.1",
@@ -833,6 +838,38 @@ public class Config {
 
         BUILDER.pop();
 
+        BUILDER.comment("强袭系统配置").push("assault");
+
+        ASSAULT_ITEMS = BUILDER.comment(
+            "强袭模块物品",
+            "放入光点核心后，玩家按住左键可进入自动攻击状态（强袭模式）",
+            "格式：物品ID",
+            "示例：gytrinket:assault_module"
+        ).defineListAllowEmpty("assaultItems",
+            java.util.List.of("gytrinket:assault_module"),
+            s -> true
+        );
+
+        ASSAULT_ATTACK_SPEED_PER_STACK = BUILDER.comment(
+            "每层强袭提供的攻击速度独立乘区加成",
+            "默认0.1（即10%）",
+            "范围：0.01 ~ 1.0"
+        ).defineInRange("attackSpeedPerStack", 0.1, 0.01, 1.0);
+
+        ASSAULT_DURATION_TICKS = BUILDER.comment(
+            "强袭层数持续时间（刻）",
+            "默认40tick（2秒），重复叠加刷新时间",
+            "范围：10 ~ 200"
+        ).defineInRange("durationTicks", 40, 10, 200);
+
+        ASSAULT_SELF_DAMAGE_PER_STACK = BUILDER.comment(
+            "每层强袭对玩家自身造成的伤害",
+            "默认0.1",
+            "范围：0.01 ~ 10.0"
+        ).defineInRange("selfDamagePerStack", 0.05, 0.01, 10.0);
+
+        BUILDER.pop();
+
         BUILDER.comment("攻击冷却效率系统配置").push("attack_cooldown_efficiency");
 
         ATTACK_COOLDOWN_EFFICIENCY_ITEMS = BUILDER.comment(
@@ -1228,6 +1265,7 @@ public class Config {
     private static final Set<Item> ARC_BARRIER_ITEM_SET = new HashSet<>();
     private static final Set<Item> RESHAPING_ITEM_SET = new HashSet<>();
     private static final Set<Item> COUNTER_PULSE_ITEM_SET = new HashSet<>();
+    private static final Set<Item> ASSAULT_ITEM_SET = new HashSet<>();
 
     public static List<String> getItemShieldTypes(ResourceLocation itemId) {
         Item item = ForgeRegistries.ITEMS.getValue(itemId);
@@ -1595,6 +1633,18 @@ public class Config {
             }
         }
 
+        ASSAULT_ITEM_SET.clear();
+        List<? extends String> assaultItems = ASSAULT_ITEMS.get();
+        for (String itemId : assaultItems) {
+            if (!itemId.trim().isEmpty()) {
+                Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(itemId.trim()));
+                if (item != null) {
+                    ASSAULT_ITEM_SET.add(item);
+                    gytrinket.LOGGER.info("注册强袭模块物品: {}", itemId);
+                }
+            }
+        }
+
         gytrinket.LOGGER.info("属性系统配置加载完成");
     }
 
@@ -1776,5 +1826,21 @@ public class Config {
 
     public static boolean isCounterPulseItem(Item item) {
         return COUNTER_PULSE_ITEM_SET.contains(item);
+    }
+
+    public static boolean isAssaultItem(Item item) {
+        return ASSAULT_ITEM_SET.contains(item);
+    }
+
+    public static double getAssaultAttackSpeedPerStack() {
+        return ASSAULT_ATTACK_SPEED_PER_STACK.get();
+    }
+
+    public static int getAssaultDurationTicks() {
+        return ASSAULT_DURATION_TICKS.get();
+    }
+
+    public static double getAssaultSelfDamagePerStack() {
+        return ASSAULT_SELF_DAMAGE_PER_STACK.get();
     }
 }

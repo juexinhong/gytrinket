@@ -145,6 +145,14 @@ public class NetworkHandler {
             ShieldParticlePacket::new,
             ShieldParticlePacket::handle
         );
+
+        INSTANCE.registerMessage(
+            messageId++,
+            AssaultAttackMessage.class,
+            AssaultAttackMessage::encode,
+            AssaultAttackMessage::decode,
+            AssaultAttackMessage::handle
+        );
     }
     
     public static class ShieldParticlePacket {
@@ -796,5 +804,28 @@ public class NetworkHandler {
 
     public static void sendAttackStrengthToPlayer(ServerPlayer player, boolean reflectToFull) {
         INSTANCE.send(PacketDistributor.PLAYER.with(() -> player), new SyncAttackStrengthMessage(reflectToFull));
+    }
+
+    public static class AssaultAttackMessage {
+        public AssaultAttackMessage() {}
+
+        public static void encode(AssaultAttackMessage msg, FriendlyByteBuf buf) {}
+
+        public static AssaultAttackMessage decode(FriendlyByteBuf buf) {
+            return new AssaultAttackMessage();
+        }
+
+        public static void handle(AssaultAttackMessage msg, Supplier<NetworkEvent.Context> ctx) {
+            NetworkEvent.Context context = ctx.get();
+
+            context.enqueueWork(() -> {
+                var player = context.getSender();
+                if (player != null) {
+                    com.gy_mod.gy_trinket.core.assault.AssaultManager.triggerAssault(player);
+                }
+            });
+
+            context.setPacketHandled(true);
+        }
     }
 }

@@ -2,6 +2,7 @@ package com.gy_mod.gy_trinket.core.damage;
 
 import com.gy_mod.gy_trinket.core.entity.construct.drone.behavior.ReshapingBehavior;
 import com.gy_mod.gy_trinket.core.shield.ShieldManager;
+import com.gy_mod.gy_trinket.core.shield_transfer.ShieldTransferManager;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 
@@ -17,6 +18,10 @@ public class ReshapingDamageHandler implements DamageHandler {
 
         LivingEntity attackedEntity = context.getAttackedEntity();
         if (!(attackedEntity instanceof Player player)) return;
+
+        if (!ShieldTransferManager.shouldProtectPlayer(player)) {
+            return;
+        }
 
         float reduction = ReshapingBehavior.getPlayerDamageReduction(player);
         if (reduction <= 0.0f) return;

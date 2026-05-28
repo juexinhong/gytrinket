@@ -18,13 +18,13 @@ public class CoatingDamageLastHandler implements LastDamageHandler {
             return;
         }
 
-        // 检测伤害源：若是协议伤害、玩家自伤或护盾自伤，跳过处理
         DamageSource source = context.getSource();
         ResourceKey<DamageType> damageType = source.typeHolder().unwrapKey().orElse(null);
         if (damageType == ModDamageTypes.PROTOCOL_PLAYER_SELF_DAMAGE ||
             damageType == ModDamageTypes.PROTOCOL_SHIELD_SELF_DAMAGE ||
             damageType == ModDamageTypes.PLAYER_SELF_DAMAGE ||
-            damageType == ModDamageTypes.SHIELD_SELF_DAMAGE) {
+            damageType == ModDamageTypes.SHIELD_SELF_DAMAGE ||
+            damageType == ModDamageTypes.FINAL_DAMAGE) {
             return;
         }
 

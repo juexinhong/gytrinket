@@ -254,6 +254,10 @@ public class BurstFireManager {
         // 攻击后立即再次移除目标无敌时间，因为player.attack()会自动设置无敌时间
         target.invulnerableTime = 0;
 
+        if (com.gy_mod.gy_trinket.core.assault.AssaultManager.hasAssault(player)) {
+            com.gy_mod.gy_trinket.core.assault.AssaultManager.triggerAssault(player);
+        }
+
         // 连击数-1
         remainingCombo--;
         REMAINING_COMBO.put(playerUUID, remainingCombo);

@@ -1,8 +1,10 @@
 package com.gy_mod.gy_trinket.core.modifier.player.attack;
 
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
+import com.gy_mod.gy_trinket.event.AttributeDynamicChangeEvent;
 import com.gy_mod.gy_trinket.event.PlayerAttributesCalculatedEvent;
 import com.gy_mod.gy_trinket.gytrinket;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
@@ -11,6 +13,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.server.ServerLifecycleHooks;
 
 import java.util.Map;
 import java.util.UUID;
@@ -50,6 +53,39 @@ public class AttackSpeedManager {
         }
 
         // 计算总倍数
+        double totalMultiplier = attackSpeedPercent * attackSpeedIndependent;
+
+        if (totalMultiplier != 1.0) {
+            addModifier(player, totalMultiplier - 1, AttributeModifier.Operation.MULTIPLY_TOTAL, MODIFIER_UUID, MODIFIER_NAME);
+        } else {
+            removeModifier(player, MODIFIER_UUID);
+        }
+
+        PLAYER_ATTACK_SPEED_MAP.put(playerUUID, player.getAttributeValue(Attributes.ATTACK_SPEED));
+    }
+
+    @SubscribeEvent
+    public static void onAttributeDynamicChange(AttributeDynamicChangeEvent event) {
+        UUID playerUUID = event.getPlayerUUID();
+        String attrName = event.getAttributeName();
+
+        if (!attrName.equals("attack_speed_percent") && !attrName.equals("attack_speed_independent")) {
+            return;
+        }
+
+        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+        if (server == null) {
+            return;
+        }
+
+        ServerPlayer player = server.getPlayerList().getPlayer(playerUUID);
+        if (player == null || !player.isAlive()) {
+            return;
+        }
+
+        double attackSpeedPercent = AttributeManager.getPlayerAttribute(playerUUID, "attack_speed_percent");
+        double attackSpeedIndependent = AttributeManager.getPlayerAttribute(playerUUID, "attack_speed_independent");
+
         double totalMultiplier = attackSpeedPercent * attackSpeedIndependent;
 
         if (totalMultiplier != 1.0) {

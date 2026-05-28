@@ -3,6 +3,7 @@ package com.gy_mod.gy_trinket.core.damage;
 import com.gy_mod.gy_trinket.Config;
 import com.gy_mod.gy_trinket.core.disable.DisableSystem;
 import com.gy_mod.gy_trinket.core.shield.ShieldManager;
+import com.gy_mod.gy_trinket.core.shield_transfer.ShieldTransferManager;
 import com.gy_mod.gy_trinket.damage.ModDamageTypes;
 import com.gy_mod.gy_trinket.storage.PlayerStore;
 import com.gy_mod.gy_trinket.storage.PlayerStoreManager;
@@ -28,6 +29,12 @@ public class BinaryProtocolHandler implements DamageHandler {
             return;
         }
 
+        if (context.getAttackedEntity() instanceof Player attackedPlayer) {
+            if (!ShieldTransferManager.shouldProtectPlayer(attackedPlayer)) {
+                return;
+            }
+        }
+
         ResourceKey<DamageType> damageType = context.getSource().typeHolder().unwrapKey().orElse(null);
 
         if (damageType == ModDamageTypes.PROTOCOL_SHIELD_SELF_DAMAGE ||
@@ -43,31 +50,37 @@ public class BinaryProtocolHandler implements DamageHandler {
 
         boolean isPlayerSelfDamage = (damageType == ModDamageTypes.PLAYER_SELF_DAMAGE);
 
-        DamageSource protocolDamageSource;
-        boolean protocolTargetIsShield;
         if (isPlayerSelfDamage) {
-            protocolDamageSource = ModDamageTypes.getProtocolShieldSelfDamageSource(player.level());
-            protocolTargetIsShield = true;
-        } else {
-            protocolDamageSource = ModDamageTypes.getProtocolPlayerSelfDamageSource(player.level());
-            protocolTargetIsShield = false;
+            float actualShieldDamage = splitDamage;
+            float shieldRemainingDamage = 0;
+            double currentShield = ShieldManager.getCurrentShield(player.getUUID());
+            if (splitDamage > currentShield - 1) {
+                actualShieldDamage = (float) (currentShield - 1);
+                shieldRemainingDamage = splitDamage - actualShieldDamage;
+            }
+
+            if (actualShieldDamage > 0) {
+                player.hurt(ModDamageTypes.getProtocolShieldSelfDamageSource(player.level()), actualShieldDamage);
+            }
+
+            float playerDamage = splitDamage + shieldRemainingDamage;
+            if (playerDamage > 0) {
+                player.hurt(ModDamageTypes.getProtocolPlayerSelfDamageSource(player.level()), playerDamage);
+            }
+
+            context.setCanceled(true);
+            return;
         }
+
+        DamageSource protocolDamageSource = ModDamageTypes.getProtocolPlayerSelfDamageSource(player.level());
 
         float actualProtocolDamage = splitDamage;
         float remainingDamage = 0;
 
-        if (protocolTargetIsShield) {
-            double currentShield = ShieldManager.getCurrentShield(player.getUUID());
-            if (splitDamage > currentShield - 1) {
-                actualProtocolDamage = (float) (currentShield - 1);
-                remainingDamage = splitDamage - actualProtocolDamage;
-            }
-        } else {
-            float currentHealth = player.getHealth();
-            if (splitDamage > currentHealth - 1) {
-                actualProtocolDamage = currentHealth - 1;
-                remainingDamage = splitDamage - actualProtocolDamage;
-            }
+        float currentHealth = player.getHealth();
+        if (splitDamage > currentHealth - 1) {
+            actualProtocolDamage = currentHealth - 1;
+            remainingDamage = splitDamage - actualProtocolDamage;
         }
 
         if (actualProtocolDamage > 0) {

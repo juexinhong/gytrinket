@@ -166,6 +166,10 @@ public class AdaptiveArmorManager {
         if (event.phase != TickEvent.Phase.END) return;
 
         Player player = event.player;
+        if (player.level().isClientSide()) {
+            return;
+        }
+
         UUID uuid = player.getUUID();
 
         List<ArmorLayerBatch> batches = PLAYER_ARMOR_LAYERS.get(uuid);

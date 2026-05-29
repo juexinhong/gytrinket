@@ -153,6 +153,14 @@ public class NetworkHandler {
             AssaultAttackMessage::decode,
             AssaultAttackMessage::handle
         );
+
+        INSTANCE.registerMessage(
+            messageId++,
+            SiphonParticlePacket.class,
+            SiphonParticlePacket::encode,
+            SiphonParticlePacket::decode,
+            SiphonParticlePacket::handle
+        );
     }
     
     public static class ShieldParticlePacket {
@@ -316,15 +324,23 @@ public class NetworkHandler {
         private int currentCooldown;
         private int maxCooldown;
         private double adaptiveArmorReduction;
+        private int siphonStacks;
+        private double shieldEffectRadius;
+        private int[] protectedEntityIds;
+        private boolean auraDamaging;
 
         public SyncShieldMessage() {}
 
-        public SyncShieldMessage(double currentShield, double maxShield, int currentCooldown, int maxCooldown, double adaptiveArmorReduction) {
+        public SyncShieldMessage(double currentShield, double maxShield, int currentCooldown, int maxCooldown, double adaptiveArmorReduction, int siphonStacks, double shieldEffectRadius, int[] protectedEntityIds, boolean auraDamaging) {
             this.currentShield = currentShield;
             this.maxShield = maxShield;
             this.currentCooldown = currentCooldown;
             this.maxCooldown = maxCooldown;
             this.adaptiveArmorReduction = adaptiveArmorReduction;
+            this.siphonStacks = siphonStacks;
+            this.shieldEffectRadius = shieldEffectRadius;
+            this.protectedEntityIds = protectedEntityIds;
+            this.auraDamaging = auraDamaging;
         }
 
         public static void encode(SyncShieldMessage msg, FriendlyByteBuf buf) {
@@ -333,6 +349,10 @@ public class NetworkHandler {
             buf.writeInt(msg.currentCooldown);
             buf.writeInt(msg.maxCooldown);
             buf.writeDouble(msg.adaptiveArmorReduction);
+            buf.writeInt(msg.siphonStacks);
+            buf.writeDouble(msg.shieldEffectRadius);
+            buf.writeVarIntArray(msg.protectedEntityIds);
+            buf.writeBoolean(msg.auraDamaging);
         }
 
         public static SyncShieldMessage decode(FriendlyByteBuf buf) {
@@ -341,7 +361,11 @@ public class NetworkHandler {
             int currentCooldown = buf.readInt();
             int maxCooldown = buf.readInt();
             double adaptiveArmorReduction = buf.readDouble();
-            return new SyncShieldMessage(currentShield, maxShield, currentCooldown, maxCooldown, adaptiveArmorReduction);
+            int siphonStacks = buf.readInt();
+            double shieldEffectRadius = buf.readDouble();
+            int[] protectedEntityIds = buf.readVarIntArray();
+            boolean auraDamaging = buf.readBoolean();
+            return new SyncShieldMessage(currentShield, maxShield, currentCooldown, maxCooldown, adaptiveArmorReduction, siphonStacks, shieldEffectRadius, protectedEntityIds, auraDamaging);
         }
 
         public static void handle(SyncShieldMessage msg, Supplier<NetworkEvent.Context> ctx) {
@@ -349,15 +373,15 @@ public class NetworkHandler {
 
             context.enqueueWork(() -> {
                 DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> {
-                    handleSyncShieldOnClient(msg.currentShield, msg.maxShield, msg.currentCooldown, msg.maxCooldown, msg.adaptiveArmorReduction);
+                    handleSyncShieldOnClient(msg.currentShield, msg.maxShield, msg.currentCooldown, msg.maxCooldown, msg.adaptiveArmorReduction, msg.siphonStacks, msg.shieldEffectRadius, msg.protectedEntityIds, msg.auraDamaging);
                 });
             });
 
             context.setPacketHandled(true);
         }
 
-        private static void handleSyncShieldOnClient(double currentShield, double maxShield, int currentCooldown, int maxCooldown, double adaptiveArmorReduction) {
-            com.gy_mod.gy_trinket.client.network.ClientNetworkHandler.handleSyncShieldMessage(currentShield, maxShield, currentCooldown, maxCooldown, adaptiveArmorReduction);
+        private static void handleSyncShieldOnClient(double currentShield, double maxShield, int currentCooldown, int maxCooldown, double adaptiveArmorReduction, int siphonStacks, double shieldEffectRadius, int[] protectedEntityIds, boolean auraDamaging) {
+            com.gy_mod.gy_trinket.client.network.ClientNetworkHandler.handleSyncShieldMessage(currentShield, maxShield, currentCooldown, maxCooldown, adaptiveArmorReduction, siphonStacks, shieldEffectRadius, protectedEntityIds, auraDamaging);
         }
     }
 
@@ -381,8 +405,12 @@ public class NetworkHandler {
                     double currentShield = ShieldManager.getCurrentShield(player.getUUID());
                     double maxShield = ShieldManager.getMaxShield(player.getUUID());
                     double adaptiveArmorReduction = com.gy_mod.gy_trinket.core.damage.AdaptiveArmorManager.calculateDamageReduction(player);
+                    int siphonStacks = com.gy_mod.gy_trinket.core.shield.type.SiphonShieldType.getSiphonStacks(player.getUUID());
+                    double shieldEffectRadius = com.gy_mod.gy_trinket.core.attribute.AttributeManager.getGroupAttribute(player.getUUID(), "shield_effect_radius");
+                    int[] protectedEntityIds = com.gy_mod.gy_trinket.core.shield_transfer.ShieldTransferManager.getProtectedEntityIds(player.getUUID(), player.serverLevel());
+                    boolean auraDamaging = com.gy_mod.gy_trinket.core.shield.type.AuraShieldType.isAuraDamaging(player.getUUID());
                     INSTANCE.send(PacketDistributor.PLAYER.with(() -> player),
-                        new SyncShieldMessage(currentShield, maxShield, currentCooldown, maxCooldown, adaptiveArmorReduction));
+                        new SyncShieldMessage(currentShield, maxShield, currentCooldown, maxCooldown, adaptiveArmorReduction, siphonStacks, shieldEffectRadius, protectedEntityIds, auraDamaging));
                 }
             });
 
@@ -394,8 +422,12 @@ public class NetworkHandler {
         int currentCooldown = ShieldCooldownManager.getCurrentCooldown(player.getUUID());
         int maxCooldown = ShieldCooldownManager.getMaxCooldown(player.getUUID());
         double adaptiveArmorReduction = com.gy_mod.gy_trinket.core.damage.AdaptiveArmorManager.calculateDamageReduction(player);
+        int siphonStacks = com.gy_mod.gy_trinket.core.shield.type.SiphonShieldType.getSiphonStacks(player.getUUID());
+        double shieldEffectRadius = com.gy_mod.gy_trinket.core.attribute.AttributeManager.getGroupAttribute(player.getUUID(), "shield_effect_radius");
+        int[] protectedEntityIds = com.gy_mod.gy_trinket.core.shield_transfer.ShieldTransferManager.getProtectedEntityIds(player.getUUID(), player.serverLevel());
+        boolean auraDamaging = com.gy_mod.gy_trinket.core.shield.type.AuraShieldType.isAuraDamaging(player.getUUID());
         INSTANCE.send(PacketDistributor.PLAYER.with(() -> player),
-            new SyncShieldMessage(currentShield, maxShield, currentCooldown, maxCooldown, adaptiveArmorReduction));
+            new SyncShieldMessage(currentShield, maxShield, currentCooldown, maxCooldown, adaptiveArmorReduction, siphonStacks, shieldEffectRadius, protectedEntityIds, auraDamaging));
     }
 
     public static void sendShieldCooldownRequestToServer() {
@@ -827,5 +859,70 @@ public class NetworkHandler {
 
             context.setPacketHandled(true);
         }
+    }
+
+    public static class SiphonParticlePacket {
+        private double targetX;
+        private double targetY;
+        private double targetZ;
+        private double targetHeight;
+        private double playerHeadX;
+        private double playerHeadY;
+        private double playerHeadZ;
+
+        public SiphonParticlePacket() {}
+
+        public SiphonParticlePacket(double targetX, double targetY, double targetZ, double targetHeight,
+                                    double playerHeadX, double playerHeadY, double playerHeadZ) {
+            this.targetX = targetX;
+            this.targetY = targetY;
+            this.targetZ = targetZ;
+            this.targetHeight = targetHeight;
+            this.playerHeadX = playerHeadX;
+            this.playerHeadY = playerHeadY;
+            this.playerHeadZ = playerHeadZ;
+        }
+
+        public static void encode(SiphonParticlePacket msg, FriendlyByteBuf buf) {
+            buf.writeDouble(msg.targetX);
+            buf.writeDouble(msg.targetY);
+            buf.writeDouble(msg.targetZ);
+            buf.writeDouble(msg.targetHeight);
+            buf.writeDouble(msg.playerHeadX);
+            buf.writeDouble(msg.playerHeadY);
+            buf.writeDouble(msg.playerHeadZ);
+        }
+
+        public static SiphonParticlePacket decode(FriendlyByteBuf buf) {
+            double targetX = buf.readDouble();
+            double targetY = buf.readDouble();
+            double targetZ = buf.readDouble();
+            double targetHeight = buf.readDouble();
+            double playerHeadX = buf.readDouble();
+            double playerHeadY = buf.readDouble();
+            double playerHeadZ = buf.readDouble();
+            return new SiphonParticlePacket(targetX, targetY, targetZ, targetHeight, playerHeadX, playerHeadY, playerHeadZ);
+        }
+
+        public static void handle(SiphonParticlePacket msg, Supplier<NetworkEvent.Context> ctx) {
+            NetworkEvent.Context context = ctx.get();
+
+            context.enqueueWork(() -> {
+                DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> {
+                    com.gy_mod.gy_trinket.client.network.ClientNetworkHandler.handleSiphonParticlesMessage(
+                        msg.targetX, msg.targetY, msg.targetZ, msg.targetHeight,
+                        msg.playerHeadX, msg.playerHeadY, msg.playerHeadZ
+                    );
+                });
+            });
+
+            context.setPacketHandled(true);
+        }
+    }
+
+    public static void sendSiphonParticlesToPlayer(ServerPlayer player, double targetX, double targetY, double targetZ, double targetHeight,
+                                                   double playerHeadX, double playerHeadY, double playerHeadZ) {
+        INSTANCE.send(PacketDistributor.PLAYER.with(() -> player),
+            new SiphonParticlePacket(targetX, targetY, targetZ, targetHeight, playerHeadX, playerHeadY, playerHeadZ));
     }
 }

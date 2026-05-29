@@ -33,6 +33,7 @@ public class ShieldTypeManager {
     public static void init() {
         registerType(new NoneShieldType());
         registerType(new AuraShieldType());
+        registerType(new SiphonShieldType());
         registerType(new ReflectShieldType());
         registerType(new AmplificationShieldType());
         registerType(new WarpShieldType());
@@ -271,6 +272,7 @@ public class ShieldTypeManager {
             PLAYER_SHIELD_TYPES.remove(playerId);
             
             AuraShieldType.clearPlayerData(playerId);
+            SiphonShieldType.clearPlayerData(playerId);
             ReflectShieldType.clearPlayerData(playerId);
             AmplificationShieldType.clearPlayerData(playerId);
             WarpShieldType.clearPlayerData(playerId);

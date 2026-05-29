@@ -84,6 +84,11 @@ public class ModDamageTypes {
             Registries.DAMAGE_TYPE, ResourceLocation.fromNamespaceAndPath(NAMESPACE, "drone_bullet")
     );
 
+    /** 虹吸伤害 */
+    public static final ResourceKey<DamageType> SIPHON_DAMAGE = ResourceKey.create(
+            Registries.DAMAGE_TYPE, ResourceLocation.fromNamespaceAndPath(NAMESPACE, "siphon_damage")
+    );
+
     // ==================== 伤害来源创建方法 ====================
 
     /**
@@ -294,6 +299,14 @@ public class ModDamageTypes {
         return new DamageSource(
                 level.registryAccess().registryOrThrow(Registries.DAMAGE_TYPE).getHolderOrThrow(DRONE_BULLET),
                 directEntity,
+                causingEntity
+        );
+    }
+
+    public static DamageSource getSiphonDamageSource(Level level, @Nullable Entity causingEntity) {
+        return new DamageSource(
+                level.registryAccess().registryOrThrow(Registries.DAMAGE_TYPE).getHolderOrThrow(SIPHON_DAMAGE),
+                causingEntity,
                 causingEntity
         );
     }

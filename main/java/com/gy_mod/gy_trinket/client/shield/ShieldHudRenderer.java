@@ -51,6 +51,10 @@ public class ShieldHudRenderer {
         this.adaptiveArmorReduction = adaptiveArmorReduction;
     }
 
+    public double getCurrentShield() {
+        return this.displayShield;
+    }
+
     public void render(GuiGraphics guiGraphics) {
         Minecraft minecraft = Minecraft.getInstance();
 

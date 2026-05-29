@@ -84,11 +84,13 @@
   "tooltip.gytrinket.shield_type.reflect": "Reflect",
   "tooltip.gytrinket.shield_type.amplification": "Amplification",
   "tooltip.gytrinket.shield_type.warp": "Warp",
+  "tooltip.gytrinket.shield_type.siphon": "Siphon",
   "tooltip.gytrinket.shield_type.none_desc": "Can additionally stack properties of the same type of shield",
   "tooltip.gytrinket.shield_type.aura_desc": "Burn nearby enemies and ignite them. (If ignite damage isn't specified, default is %.1f/s damage for %d seconds)",
   "tooltip.gytrinket.shield_type.reflect_desc": "Reflect projectiles that hit you. Reflected projectiles speed increases by %d%%, damage is affected by shield effect",
   "tooltip.gytrinket.shield_type.amplification_desc": "Increases attack damage by %d%%. Amplification increases when enemies are nearby. Cap at %d%%. Shield effect provides both base amount and cap",
   "tooltip.gytrinket.shield_type.warp_desc": "When shield breaks, teleport in facing direction. Explosions at teleport start and end points deal %.1f explosion damage",
+  "tooltip.gytrinket.shield_type.siphon_desc": "Every %d ticks, deals %.1f damage to nearby enemies and recovers %d%% of damage dealt as shield. (Damage is evenly distributed among enemies) Siphoning continuously increases shield effect and shield effect radius, up to %d%%. Quickly decays when no targets are present.",
   
   "tooltip.gytrinket.adaptive_armor_enabled": "Adaptive Armor Enabled",
   "tooltip.gytrinket.adaptive_armor_effect": "Taking damage generates armor stacks. Each armor stack provides damage reduction",
@@ -166,6 +168,11 @@
   "item.gytrinket.shield_aura_ring1": "Aura Shield+",
   "item.gytrinket.shield_aura_ring2": "Aura Shield++",
   "item.gytrinket.shield_aura_ring3": "Aura Shield+++",
+  
+  "item.gytrinket.shield_siphon": "Siphon Shield",
+  "item.gytrinket.shield_siphon1": "Siphon Shield+",
+  "item.gytrinket.shield_siphon2": "Siphon Shield++",
+  "item.gytrinket.shield_siphon3": "Siphon Shield+++",
   
   "item.gytrinket.shield_reflect": "Reflect Shield",
   "item.gytrinket.shield_reflect1": "Reflect Shield+",
@@ -622,6 +629,9 @@
 
   "advancements.gytrinket.story.obtain_aura_ring_shield.title": "Environmental Fire Ring",
   "advancements.gytrinket.story.obtain_aura_ring_shield.description": "Will not damage public property",
+  
+  "advancements.gytrinket.story.obtain_siphon_shield.title": "Siphon Fun",
+  "advancements.gytrinket.story.obtain_siphon_shield.description": "Why can't it hit groups?",
 
   "advancements.gytrinket.story.obtain_reflect_shield.title": "Not falling for this 2.0",
   "advancements.gytrinket.story.obtain_reflect_shield.description": "Not only reflect, but also strengthen and hit back!",

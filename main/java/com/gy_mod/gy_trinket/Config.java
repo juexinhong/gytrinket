@@ -38,6 +38,15 @@ public class Config {
     public static final ForgeConfigSpec.DoubleValue AURA_DAMAGE;
     public static final ForgeConfigSpec.IntValue AURA_TRIGGER_FREQUENCY;
     public static final ForgeConfigSpec.DoubleValue AURA_SHIELD_COST;
+
+    public static final ForgeConfigSpec.DoubleValue SIPHON_RADIUS;
+    public static final ForgeConfigSpec.DoubleValue SIPHON_DAMAGE;
+    public static final ForgeConfigSpec.IntValue SIPHON_TICK_INTERVAL;
+    public static final ForgeConfigSpec.DoubleValue SIPHON_HEAL_RATIO;
+    public static final ForgeConfigSpec.IntValue SIPHON_DURATION_TICKS;
+    public static final ForgeConfigSpec.DoubleValue SIPHON_EFFECT_PER_STACK;
+    public static final ForgeConfigSpec.DoubleValue SIPHON_MAX_EFFECT;
+    public static final ForgeConfigSpec.DoubleValue SIPHON_DECAY_RATIO;
     public static final ForgeConfigSpec.DoubleValue REFLECT_RADIUS;
     public static final ForgeConfigSpec.DoubleValue REFLECT_SPEED_BASE_MODIFIER;
     public static final ForgeConfigSpec.DoubleValue REFLECT_SPEED_EXTRA_MODIFIER;
@@ -268,6 +277,11 @@ public class Config {
                 "gytrinket:shield_aura_ring2|shield_base=16.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.4",
                 "gytrinket:shield_aura_ring3|shield_base=20.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.4",
 
+                "gytrinket:shield_siphon|shield_base=8.0|shield_cooldown_time=7|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.4|shield_effect_percent=-0.3",
+                "gytrinket:shield_siphon1|shield_base=12.0|shield_cooldown_time=7|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.4|shield_effect_percent=-0.2",
+                "gytrinket:shield_siphon2|shield_base=16.0|shield_cooldown_time=7|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.4|shield_effect_percent=-0.1",
+                "gytrinket:shield_siphon3|shield_base=20.0|shield_cooldown_time=7|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.4|shield_effect_percent=0.0",
+
                 "gytrinket:shield_reflect|shield_base=9.6|shield_cooldown_time=7.5|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.4",
                 "gytrinket:shield_reflect1|shield_base=14.4|shield_cooldown_time=7.5|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.4",
                 "gytrinket:shield_reflect2|shield_base=19.2|shield_cooldown_time=7.5|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.4",
@@ -286,7 +300,7 @@ public class Config {
                 "gytrinket:shield_amplifier_module|shield_percent=0.2",
                 "gytrinket:barrier_shield_module|shield_percent=0.05",
                 "gytrinket:reflect_shield_module|shield_percent=0.05",
-                "gytrinket:ultimate_shield_module|shield_base=11.0|shield_damage_reduction=-0.15|shield_effect_percent=0.15|shield_hit_cooldown_extend_final_multiplier=-0.8|player_health_independent=-0.85",
+                "gytrinket:ultimate_shield_module|shield_base=11.0|shield_damage_reduction=-0.15|shield_effect_percent=0.15|shield_hit_cooldown_extend_final_multiplier=-0.5|player_health_independent=-0.85",
 
                 "gytrinket:shield_cooldown_reduction_module|shield_cooldown_reduction_percent=0.2",
                 "gytrinket:shield_quick_charge_module|shield_cooldown_reduction_percent=0.25|shield_independent=-0.25",
@@ -327,7 +341,7 @@ public class Config {
 
                 "gytrinket:guardian|shield_effect_percent=0.10|shield_effect_radius=0.25|shield_damage_reduction=-0.1|attack_speed_percent=-0.1",
 
-                "minecraft:command_block|shield_cooldown_reduction_percent=0.8|shield_damage_reduction=-0.9|shield_self_damage_reduction=-0.9|player_health_percent=1|attack_speed_percent=1|attack_damage_percent=1|knockback_resistance=1|player_knockback_percent=1|movement_speed_percent=0.5|player_damage_reduction=-0.9|player_self_damage_reduction=-0.9|recovery_efficiency=0.5"
+                "minecraft:command_block|shield_effect_percent=1.0|shield_cooldown_reduction_percent=0.8|shield_damage_reduction=-0.9|shield_self_damage_reduction=-0.9|player_health_percent=1|attack_speed_percent=1|attack_damage_percent=1|knockback_resistance=1|player_knockback_percent=1|movement_speed_percent=0.5|player_damage_reduction=-0.9|player_self_damage_reduction=-0.9|recovery_efficiency=0.5"
             ),
             s -> true
         );
@@ -341,7 +355,7 @@ public class Config {
             "格式：类型名=是否兼容;类型名=是否兼容;...",
             "是否兼容：true=可与其他类型共存，false=不兼容，第一个激活的生效",
             "示例：none=true;aura=false"
-        ).define("shieldTypeDefinitions", "none=true;aura=false;reflect=false;amplification=false;warp=false");
+        ).define("shieldTypeDefinitions", "none=true;aura=false;siphon=false;reflect=false;amplification=false;warp=false");
 
         ITEM_SHIELD_TYPES_CONFIG = BUILDER.comment(
             "物品护盾类型配置",
@@ -359,7 +373,11 @@ public class Config {
                 "gytrinket:shield_aura_ring1|aura",
                 "gytrinket:shield_aura_ring2|aura",
                 "gytrinket:shield_aura_ring3|aura",
-                "gytrinket:shield_reflect|reflect",
+        "gytrinket:shield_siphon|siphon",
+        "gytrinket:shield_siphon1|siphon",
+        "gytrinket:shield_siphon2|siphon",
+        "gytrinket:shield_siphon3|siphon",
+        "gytrinket:shield_reflect|reflect",
                 "gytrinket:shield_reflect1|reflect",
                 "gytrinket:shield_reflect2|reflect",
                 "gytrinket:shield_reflect3|reflect",
@@ -418,6 +436,19 @@ public class Config {
         AURA_DAMAGE = BUILDER.comment("光环护盾伤害").defineInRange("auraDamage", 0.15, 0.0, 100.0);
         AURA_TRIGGER_FREQUENCY = BUILDER.comment("光环护盾触发频率（刻）").defineInRange("auraTriggerFrequency", 4, 1, 200);
         AURA_SHIELD_COST = BUILDER.comment("光环护盾消耗护盾值").defineInRange("auraShieldCost", 0.0084, 0.0, 10.0);
+
+        BUILDER.pop();
+
+        BUILDER.comment("虹吸护盾配置").push("siphon_shield");
+
+        SIPHON_RADIUS = BUILDER.comment("虹吸护盾基础半径").defineInRange("siphonRadius", 3.5, 0.0, 100.0);
+        SIPHON_DAMAGE = BUILDER.comment("虹吸护盾基础伤害量").defineInRange("siphonDamage", 0.3, 0.0, 100.0);
+        SIPHON_TICK_INTERVAL = BUILDER.comment("虹吸护盾伤害频率（刻）").defineInRange("siphonTickInterval", 5, 1, 200);
+        SIPHON_HEAL_RATIO = BUILDER.comment("虹吸护盾伤害恢复护盾比例").defineInRange("siphonHealRatio", 0.3, 0.0, 1.0);
+        SIPHON_DURATION_TICKS = BUILDER.comment("虹吸效果持续时间（刻）").defineInRange("siphonDurationTicks", 20, 1, 200);
+        SIPHON_EFFECT_PER_STACK = BUILDER.comment("每层虹吸效果提供的百分比加成").defineInRange("siphonEffectPerStack", 0.025, 0.001, 1.0);
+        SIPHON_MAX_EFFECT = BUILDER.comment("虹吸效果最大百分比加成").defineInRange("siphonMaxEffect", 0.4, 0.01, 1.0);
+        SIPHON_DECAY_RATIO = BUILDER.comment("虹吸效果消退比率").defineInRange("siphonDecayRatio", 0.03, 0.0, 1.0);
 
         BUILDER.pop();
 
@@ -949,7 +980,7 @@ public class Config {
             "该值会受到护盾效果属性组影响",
             "范围：0.0 ~ 1.0",
             "示例：0.20"
-        ).defineInRange("weaponizedShieldVulnerability", 0.20, 0.0, 1.0);
+        ).defineInRange("weaponizedShieldVulnerability", 0.20, 0.0, 10.0);
 
         WEAPONIZED_SHIELD_RADIUS = BUILDER.comment(
             "武器化护盾基础作用半径（格）",

@@ -36,6 +36,12 @@ public class ModCreativeModeTabs {
                         output.accept(ModItems.SHIELD_AURA_RING2.get());
                         output.accept(ModItems.SHIELD_AURA_RING3.get());
 
+                        // 虹吸护盾物品
+                        output.accept(ModItems.SHIELD_SIPHON.get());
+                        output.accept(ModItems.SHIELD_SIPHON1.get());
+                        output.accept(ModItems.SHIELD_SIPHON2.get());
+                        output.accept(ModItems.SHIELD_SIPHON3.get());
+
                         // 反射护盾物品
                         output.accept(ModItems.SHIELD_REFLECT.get());
                         output.accept(ModItems.SHIELD_REFLECT1.get());

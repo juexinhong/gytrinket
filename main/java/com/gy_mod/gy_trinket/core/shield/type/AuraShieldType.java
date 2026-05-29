@@ -21,8 +21,7 @@ import java.util.*;
 
 public class AuraShieldType implements IShieldType {
 
-    private static final Map<UUID, Integer> PARTICLE_COUNTER = new HashMap<>();
-    private static final int PARTICLE_TRIGGER_INTERVAL = 3;
+    private static final Map<UUID, Boolean> AURA_DAMAGING = new HashMap<>();
 
     private static class AuraBurnSource implements IBurnSource {
         private final Player player;
@@ -71,6 +70,17 @@ public class AuraShieldType implements IShieldType {
     }
 
     @Override
+    public void onRemoved(Player player) {
+        if (player.level().isClientSide) return;
+        UUID uuid = player.getUUID();
+        AURA_DAMAGING.put(uuid, false);
+        if (player instanceof ServerPlayer serverPlayer) {
+            NetworkHandler.sendShieldSyncToPlayer(serverPlayer,
+                ShieldManager.getCurrentShield(uuid), ShieldManager.getMaxShield(uuid));
+        }
+    }
+
+    @Override
     public void onTick(Player player) {
         if (player.level().isClientSide) {
             return;
@@ -78,6 +88,7 @@ public class AuraShieldType implements IShieldType {
 
         double currentShield = ShieldManager.getCurrentShield(player.getUUID());
         if (currentShield <= 0) {
+            AURA_DAMAGING.put(player.getUUID(), false);
             return;
         }
 
@@ -121,9 +132,10 @@ public class AuraShieldType implements IShieldType {
             if (!entities.isEmpty()) {
                 double baseShieldCost = Config.AURA_SHIELD_COST.get();
                 totalShieldCost += baseShieldCost * entities.size();
-                sendParticles(player, center, radius);
             }
         }
+
+        AURA_DAMAGING.put(player.getUUID(), hasEnemies);
 
         IBurnSource burnSource = new AuraBurnSource(player);
         for (Map.Entry<LivingEntity, Float> entry : burnChargeMap.entrySet()) {
@@ -167,33 +179,15 @@ public class AuraShieldType implements IShieldType {
         return false;
     }
 
-    private void sendParticles(Player player, LivingEntity center, double radius) {
-        if (!(player instanceof ServerPlayer serverPlayer)) {
-            return;
-        }
-
-        UUID playerId = player.getUUID();
-
-        int particleCounter = PARTICLE_COUNTER.getOrDefault(playerId, 0);
-        particleCounter++;
-        PARTICLE_COUNTER.put(playerId, particleCounter);
-
-        if (particleCounter < PARTICLE_TRIGGER_INTERVAL) {
-            return;
-        }
-        PARTICLE_COUNTER.put(playerId, 0);
-
-        double x = center.getX();
-        double y = center.getY() + center.getBbHeight() / 4.0;
-        double z = center.getZ();
-        NetworkHandler.sendAuraParticlesToPlayer(serverPlayer, x, y, z, radius);
+    public static boolean isAuraDamaging(UUID playerUUID) {
+        return AURA_DAMAGING.getOrDefault(playerUUID, false);
     }
 
     public static void clearPlayerData(UUID playerUUID) {
-        PARTICLE_COUNTER.remove(playerUUID);
+        AURA_DAMAGING.remove(playerUUID);
     }
 
     public static void clearAllData() {
-        PARTICLE_COUNTER.clear();
+        AURA_DAMAGING.clear();
     }
 }

@@ -24,8 +24,13 @@ public class ClientNetworkHandler {
         store.loadFromNBT(tag);
     }
 
-    public static void handleSyncShieldMessage(double currentShield, double maxShield, int currentCooldown, int maxCooldown, double adaptiveArmorReduction) {
+    public static void handleSyncShieldMessage(double currentShield, double maxShield, int currentCooldown, int maxCooldown, double adaptiveArmorReduction, int siphonStacks, double shieldEffectRadius, int[] protectedEntityIds, boolean auraDamaging) {
         ShieldHudRenderer.getInstance().updateShieldData(currentShield, maxShield, currentCooldown, maxCooldown, adaptiveArmorReduction);
+        com.gy_mod.gy_trinket.client.shield.type.SiphonClientData.setSiphonStacks(siphonStacks);
+        com.gy_mod.gy_trinket.client.shield.type.SiphonClientData.setShieldEffectRadius(shieldEffectRadius);
+        com.gy_mod.gy_trinket.client.shield.type.SiphonClientData.setProtectedEntityIds(protectedEntityIds);
+        com.gy_mod.gy_trinket.client.shield.type.AuraClientData.setShieldEffectRadius(shieldEffectRadius);
+        com.gy_mod.gy_trinket.client.shield.type.AuraClientData.setDamaging(auraDamaging);
     }
 
     public static void handleResponseAttributesMessage(java.util.Map<String, Double> attributes) {
@@ -133,5 +138,43 @@ public class ClientNetworkHandler {
 
     private static void generateExplosiveShieldFlashParticles(ClientLevel level, double x, double y, double z) {
         level.addParticle(ParticleTypes.FLASH, x, y, z, 0, 0, 0);
+    }
+
+    public static void handleSiphonParticlesMessage(double targetX, double targetY, double targetZ, double targetHeight,
+                                                     double playerHeadX, double playerHeadY, double playerHeadZ) {
+        var minecraft = Minecraft.getInstance();
+        var level = minecraft.level;
+        if (level != null) {
+            generateSiphonParticles(level, targetX, targetY, targetZ, targetHeight, playerHeadX, playerHeadY, playerHeadZ);
+        }
+    }
+
+    private static void generateSiphonParticles(ClientLevel level, double targetX, double targetY, double targetZ,
+                                                 double targetHeight, double playerHeadX, double playerHeadY, double playerHeadZ) {
+        double radius = targetHeight / 2.0;
+        int count = 3 + (int) (Math.random() * 3);
+
+        for (int i = 0; i < count; i++) {
+            double theta = Math.random() * Math.PI * 2;
+            double phi = Math.acos(2 * Math.random() - 1);
+            double r = Math.cbrt(Math.random()) * radius;
+
+            double px = targetX + r * Math.sin(phi) * Math.cos(theta);
+            double py = targetY + r * Math.sin(phi) * Math.sin(theta);
+            double pz = targetZ + r * Math.cos(phi);
+
+            double dx = playerHeadX - px;
+            double dy = playerHeadY - py;
+            double dz = playerHeadZ - pz;
+            double dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+            if (dist < 0.001) dist = 0.001;
+
+            double speed = 0.05 + Math.random() * 0.3;
+            double vx = (dx / dist) * speed;
+            double vy = (dy / dist) * speed;
+            double vz = (dz / dist) * speed;
+
+            level.addParticle(ParticleTypes.SMOKE, px, py, pz, vx, vy, vz);
+        }
     }
 }

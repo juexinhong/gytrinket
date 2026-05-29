@@ -144,6 +144,12 @@ public class TooltipHandler {
                 } else if (type.equals("warp")) {
                     formattedDesc = String.format(descTooltip.getString(), 
                         Config.getWarpShieldExplosionDamage());
+                } else if (type.equals("siphon")) {
+                    formattedDesc = String.format(descTooltip.getString(),
+                        Config.SIPHON_TICK_INTERVAL.get(),
+                        Config.SIPHON_DAMAGE.get(),
+                        (int)(Config.SIPHON_HEAL_RATIO.get() * 100),
+                        (int)(Config.SIPHON_MAX_EFFECT.get() * 100));
                 }
                 event.getToolTip().add(Component.literal("    ").append(Component.literal(formattedDesc).withStyle(ChatFormatting.GRAY)));
             } catch (Exception e) {

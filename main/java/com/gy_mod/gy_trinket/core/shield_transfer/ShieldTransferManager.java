@@ -14,6 +14,7 @@ import com.gy_mod.gy_trinket.storage.PlayerStoreManager;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
@@ -195,6 +196,15 @@ public class ShieldTransferManager {
                 .map(data -> data.getProtectedEntity(level))
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
+    }
+
+    public static int[] getProtectedEntityIds(UUID playerUUID, ServerLevel level) {
+        List<LivingEntity> entities = getProtectedEntities(playerUUID, level);
+        int[] ids = new int[entities.size()];
+        for (int i = 0; i < entities.size(); i++) {
+            ids[i] = entities.get(i).getId();
+        }
+        return ids;
     }
 
     public static LivingEntity getProtectedEntity(UUID playerUUID, Level level) {

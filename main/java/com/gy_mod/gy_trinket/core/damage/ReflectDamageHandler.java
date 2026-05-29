@@ -10,6 +10,7 @@ import com.gy_mod.gy_trinket.core.ignite.IIgniteSource;
 import com.gy_mod.gy_trinket.core.ignite.IgniteManager;
 import com.gy_mod.gy_trinket.core.shield.ShieldManager;
 import com.gy_mod.gy_trinket.core.shield_transfer.ShieldTransferManager;
+import com.gy_mod.gy_trinket.damage.ModDamageTypes;
 
 import com.gy_mod.gy_trinket.network.NetworkHandler;
 import com.gy_mod.gy_trinket.storage.PlayerStore;
@@ -208,6 +209,14 @@ public class ReflectDamageHandler implements DamageHandler {
      */
     @Override
     public void handle(DamageContext context) {
+        var damageTypeKey = context.getSource().typeHolder().unwrapKey().orElse(null);
+        if (damageTypeKey == ModDamageTypes.SHIELD_SELF_DAMAGE
+            || damageTypeKey == ModDamageTypes.PROTOCOL_SHIELD_SELF_DAMAGE
+            || damageTypeKey == ModDamageTypes.PLAYER_SELF_DAMAGE
+            || damageTypeKey == ModDamageTypes.PROTOCOL_PLAYER_SELF_DAMAGE) {
+            return;
+        }
+
         Player shieldOwner = context.getShieldOwner();
         LivingEntity attackedEntity = context.getAttackedEntity();
         UUID shieldOwnerUUID = shieldOwner.getUUID();

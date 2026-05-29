@@ -84,11 +84,13 @@
   "tooltip.gytrinket.shield_type.reflect": "反射",
   "tooltip.gytrinket.shield_type.amplification": "增幅",
   "tooltip.gytrinket.shield_type.warp": "跃传",
+  "tooltip.gytrinket.shield_type.siphon": "虹吸",
   "tooltip.gytrinket.shield_type.none_desc": "可以额外叠加同类型护盾的属性",
   "tooltip.gytrinket.shield_type.aura_desc": "灼烧附近的敌人，并点燃。(若点燃没有另外说明，默认%.1f/s伤害，持续%d秒)",
   "tooltip.gytrinket.shield_type.reflect_desc": "反射命中你的弹射物。反射的弹射物速度提高%d%%，伤害受护盾效果影响",
   "tooltip.gytrinket.shield_type.amplification_desc": "增加%d%%攻击伤害。周围有敌人时提升增幅量。上限%d%%。护盾效果会同时提供基础量和上限",
   "tooltip.gytrinket.shield_type.warp_desc": "护盾破裂时，向朝向方向传送。传送起点和终点会发生爆炸，造成%.1f的爆炸伤害",
+  "tooltip.gytrinket.shield_type.siphon_desc": "每%d刻对周围的敌人造成%.1f点伤害，并恢复造成伤害量%d%%的护盾值。(伤害量会在敌人之间平均分配) 虹吸攻击时，持续增加护盾效果和护盾效果半径，最高%d%%。没有目标则会快速消退。",
   
   "tooltip.gytrinket.adaptive_armor_enabled": "适应性装甲启用",
   "tooltip.gytrinket.adaptive_armor_effect": "受到攻击产生装甲叠层。每点装甲叠层提供伤害减免",
@@ -166,6 +168,11 @@
   "item.gytrinket.shield_aura_ring1": "光环护盾+",
   "item.gytrinket.shield_aura_ring2": "光环护盾++",
   "item.gytrinket.shield_aura_ring3": "光环护盾+++",
+  
+  "item.gytrinket.shield_siphon": "虹吸护盾",
+  "item.gytrinket.shield_siphon1": "虹吸护盾+",
+  "item.gytrinket.shield_siphon2": "虹吸护盾++",
+  "item.gytrinket.shield_siphon3": "虹吸护盾+++",
   
   "item.gytrinket.shield_reflect": "反射护盾",
   "item.gytrinket.shield_reflect1": "反射护盾+",
@@ -292,6 +299,9 @@
 
   "advancements.gytrinket.story.obtain_aura_ring_shield.title": "环保的火焰环",
   "advancements.gytrinket.story.obtain_aura_ring_shield.description": "不会损坏公共财产",
+  
+  "advancements.gytrinket.story.obtain_siphon_shield.title": "吸吸乐",
+  "advancements.gytrinket.story.obtain_siphon_shield.description": "为啥不能对群啊",
 
   "advancements.gytrinket.story.obtain_reflect_shield.title": "不吃这套2.0",
   "advancements.gytrinket.story.obtain_reflect_shield.description": "还给你!",

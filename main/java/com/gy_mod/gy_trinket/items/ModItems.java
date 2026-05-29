@@ -28,6 +28,12 @@ public class ModItems {
     public static final RegistryObject<Item> SHIELD_AURA_RING2 = ITEMS.register("shield_aura_ring2", () -> new Item(new Item.Properties())); // 光环护盾++
     public static final RegistryObject<Item> SHIELD_AURA_RING3 = ITEMS.register("shield_aura_ring3", () -> new Item(new Item.Properties())); // 光环护盾+++
 
+    // 虹吸护盾物品
+    public static final RegistryObject<Item> SHIELD_SIPHON = ITEMS.register("shield_siphon", () -> new Item(new Item.Properties())); // 虹吸护盾
+    public static final RegistryObject<Item> SHIELD_SIPHON1 = ITEMS.register("shield_siphon1", () -> new Item(new Item.Properties())); // 虹吸护盾+
+    public static final RegistryObject<Item> SHIELD_SIPHON2 = ITEMS.register("shield_siphon2", () -> new Item(new Item.Properties())); // 虹吸护盾++
+    public static final RegistryObject<Item> SHIELD_SIPHON3 = ITEMS.register("shield_siphon3", () -> new Item(new Item.Properties())); // 虹吸护盾+++
+
     // 反射护盾物品
     public static final RegistryObject<Item> SHIELD_REFLECT = ITEMS.register("shield_reflect", () -> new Item(new Item.Properties())); // 反射护盾
     public static final RegistryObject<Item> SHIELD_REFLECT1 = ITEMS.register("shield_reflect1", () -> new Item(new Item.Properties())); // 反射护盾+

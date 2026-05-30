@@ -161,6 +161,14 @@ public class NetworkHandler {
             SiphonParticlePacket::decode,
             SiphonParticlePacket::handle
         );
+
+        INSTANCE.registerMessage(
+            messageId++,
+            SyncPlayerDataSnapshotMessage.class,
+            SyncPlayerDataSnapshotMessage::encode,
+            SyncPlayerDataSnapshotMessage::decode,
+            SyncPlayerDataSnapshotMessage::handle
+        );
     }
     
     public static class ShieldParticlePacket {
@@ -924,5 +932,39 @@ public class NetworkHandler {
                                                    double playerHeadX, double playerHeadY, double playerHeadZ) {
         INSTANCE.send(PacketDistributor.PLAYER.with(() -> player),
             new SiphonParticlePacket(targetX, targetY, targetZ, targetHeight, playerHeadX, playerHeadY, playerHeadZ));
+    }
+
+    public static void sendPlayerDataSnapshotToClient(ServerPlayer player, CompoundTag snapshotData) {
+        INSTANCE.send(PacketDistributor.PLAYER.with(() -> player),
+            new SyncPlayerDataSnapshotMessage(snapshotData));
+    }
+
+    public static class SyncPlayerDataSnapshotMessage {
+        private CompoundTag snapshotData;
+
+        public SyncPlayerDataSnapshotMessage() {}
+
+        public SyncPlayerDataSnapshotMessage(CompoundTag snapshotData) {
+            this.snapshotData = snapshotData;
+        }
+
+        public static void encode(SyncPlayerDataSnapshotMessage msg, FriendlyByteBuf buf) {
+            buf.writeNbt(msg.snapshotData);
+        }
+
+        public static SyncPlayerDataSnapshotMessage decode(FriendlyByteBuf buf) {
+            CompoundTag tag = buf.readNbt();
+            return new SyncPlayerDataSnapshotMessage(tag != null ? tag : new CompoundTag());
+        }
+
+        public static void handle(SyncPlayerDataSnapshotMessage msg, Supplier<NetworkEvent.Context> ctx) {
+            NetworkEvent.Context context = ctx.get();
+            context.enqueueWork(() -> {
+                DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> {
+                    com.gy_mod.gy_trinket.client.datacenter.ClientDataCenter.loadFromNBT(msg.snapshotData);
+                });
+            });
+            context.setPacketHandled(true);
+        }
     }
 }

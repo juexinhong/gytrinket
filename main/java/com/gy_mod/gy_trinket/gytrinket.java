@@ -23,6 +23,7 @@ import com.gy_mod.gy_trinket.event.LightPointStoreEventHandler;
 import com.gy_mod.gy_trinket.items.ModCreativeModeTabs;
 import com.gy_mod.gy_trinket.items.ModItems;
 import com.gy_mod.gy_trinket.network.NetworkHandler;
+import com.gy_mod.gy_trinket.storage.datacenter.DataCenterLifecycleHandler;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.EntityAttributeCreationEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
@@ -49,6 +50,7 @@ public class gytrinket {
 
         MinecraftForge.EVENT_BUS.register(TickScheduler.class);
         MinecraftForge.EVENT_BUS.register(new LightPointStoreEventHandler());
+        MinecraftForge.EVENT_BUS.register(DataCenterLifecycleHandler.class);
         MinecraftForge.EVENT_BUS.register(AttributeManager.class);
         MinecraftForge.EVENT_BUS.register(ShieldTypeManager.class);
         MinecraftForge.EVENT_BUS.register(ReflectShieldType.class);
@@ -64,6 +66,10 @@ public class gytrinket {
     private void setup(final FMLCommonSetupEvent event) {
         NetworkHandler.registerMessages();
         LOGGER.info("网络消息注册完成");
+
+        DataCenterLifecycleHandler.init();
+        LOGGER.info("数据中心初始化完成");
+
         DamageManager.init();
         LOGGER.info("伤害管理器初始化完成");
         LastDamageManager.init();

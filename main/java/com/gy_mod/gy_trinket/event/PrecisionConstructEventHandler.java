@@ -2,12 +2,10 @@ package com.gy_mod.gy_trinket.event;
 
 import com.gy_mod.gy_trinket.Config;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
-import com.gy_mod.gy_trinket.core.entity.construct.ConstructAttributeApplier;
 import com.gy_mod.gy_trinket.gytrinket;
 import com.gy_mod.gy_trinket.storage.PlayerStore;
 import com.gy_mod.gy_trinket.storage.PlayerStoreManager;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.event.entity.player.PlayerXpEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.registries.ForgeRegistries;
@@ -23,14 +21,6 @@ public class PrecisionConstructEventHandler {
     private static final String NAMESPACE = "precision_construct";
 
     @SubscribeEvent
-    public static void onLevelChange(PlayerXpEvent.LevelChange event) {
-        if (event.getEntity() instanceof ServerPlayer player) {
-            applyPrecisionConstructBonus(player);
-            ConstructAttributeApplier.refreshForPlayer(player.getUUID(), player);
-        }
-    }
-
-    @SubscribeEvent
     public static void onAttributesCalculated(PlayerAttributesCalculatedEvent event) {
         ServerPlayer player = event.getPlayer();
         if (player != null) {
@@ -38,7 +28,7 @@ public class PrecisionConstructEventHandler {
         }
     }
 
-    private static void applyPrecisionConstructBonus(ServerPlayer player) {
+    public static void applyPrecisionConstructBonus(ServerPlayer player) {
         UUID playerUUID = player.getUUID();
 
         if (!hasRequiredItem(playerUUID)) {

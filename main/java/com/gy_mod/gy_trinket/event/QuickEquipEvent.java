@@ -26,6 +26,10 @@ public class QuickEquipEvent {
 
     private static final int SHIELD_SWAP_EXP_LEVEL = 5;
 
+    private static int getShieldSwapRequiredLevel() {
+        return Math.max(1, (int) Math.ceil(SHIELD_SWAP_EXP_LEVEL * Config.getQuickEquipExpLevelMultiplier()));
+    }
+
     private QuickEquipEvent() {}
 
     @SubscribeEvent
@@ -82,14 +86,15 @@ public class QuickEquipEvent {
         boolean newIsCompatible = newShieldTypes.stream().allMatch(Config::isShieldTypeCompatible);
 
         if (!newIsCompatible) {
-            if (player.experienceLevel < SHIELD_SWAP_EXP_LEVEL) {
-                player.sendSystemMessage(Component.translatable("message.gytrinket.quick_equip.not_enough_level", SHIELD_SWAP_EXP_LEVEL));
+            int requiredLevel = getShieldSwapRequiredLevel();
+            if (player.experienceLevel < requiredLevel) {
+                player.sendSystemMessage(Component.translatable("message.gytrinket.quick_equip.not_enough_level", requiredLevel));
                 return;
             }
 
             transferItemsToPlayer(player, handler, shieldSlots);
 
-            int expCost = calculateExpCost(SHIELD_SWAP_EXP_LEVEL);
+            int expCost = calculateExpCost(requiredLevel);
             player.giveExperiencePoints(-expCost);
 
             addToStore(handler, stack);
@@ -106,14 +111,15 @@ public class QuickEquipEvent {
             }
 
             if (!incompatibleSlots.isEmpty()) {
-                if (player.experienceLevel < SHIELD_SWAP_EXP_LEVEL) {
-                    player.sendSystemMessage(Component.translatable("message.gytrinket.quick_equip.not_enough_level", SHIELD_SWAP_EXP_LEVEL));
+                int requiredLevel = getShieldSwapRequiredLevel();
+                if (player.experienceLevel < requiredLevel) {
+                    player.sendSystemMessage(Component.translatable("message.gytrinket.quick_equip.not_enough_level", requiredLevel));
                     return;
                 }
 
                 transferItemsToPlayer(player, handler, incompatibleSlots);
 
-                int expCost = calculateExpCost(SHIELD_SWAP_EXP_LEVEL);
+                int expCost = calculateExpCost(requiredLevel);
                 player.giveExperiencePoints(-expCost);
             }
 
@@ -138,12 +144,13 @@ public class QuickEquipEvent {
         }
 
         int uniqueItemsCount = countUniqueItems(handler);
-        if (player.experienceLevel < uniqueItemsCount) {
-            player.sendSystemMessage(Component.translatable("message.gytrinket.quick_equip.not_enough_level", uniqueItemsCount));
+        int requiredLevel = Math.max(1, (int) Math.ceil(uniqueItemsCount * Config.getQuickEquipExpLevelMultiplier()));
+        if (player.experienceLevel < requiredLevel) {
+            player.sendSystemMessage(Component.translatable("message.gytrinket.quick_equip.not_enough_level", requiredLevel));
             return;
         }
 
-        int expToDeduct = calculateExpCost(uniqueItemsCount);
+        int expToDeduct = calculateExpCost(requiredLevel);
         player.giveExperiencePoints(-expToDeduct);
 
         addToStore(handler, stack);

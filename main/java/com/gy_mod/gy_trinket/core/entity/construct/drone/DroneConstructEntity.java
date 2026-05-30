@@ -306,10 +306,10 @@ public class DroneConstructEntity extends PathfinderMob implements GeoEntity {
 
     @Override
     public boolean isPickable() {
-        if (isDefenseDrone() && isGuardArray()) {
+        if (isDefenseDrone()) {
             return isTemporarilyPickable;
         }
-        return false;
+        return true;
     }
 
     public void addEffectTag(DroneEffectTag tag) {
@@ -924,7 +924,7 @@ public class DroneConstructEntity extends PathfinderMob implements GeoEntity {
     private void updateTemporarilyPickable() {
         isTemporarilyPickable = false;
 
-        if (!isDefenseDrone() || !isGuardArray()) return;
+        if (!isDefenseDrone()) return;
         if (this.level().isClientSide) return;
 
         Entity ownerEntity = this.getOwner();

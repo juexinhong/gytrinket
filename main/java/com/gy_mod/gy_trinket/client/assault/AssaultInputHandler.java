@@ -1,14 +1,13 @@
 package com.gy_mod.gy_trinket.client.assault;
 
 import com.gy_mod.gy_trinket.Config;
-import com.gy_mod.gy_trinket.client.storage.ClientPlayerStoreManager;
+import com.gy_mod.gy_trinket.client.datacenter.ClientDataCenter;
 import com.gy_mod.gy_trinket.gytrinket;
 import com.gy_mod.gy_trinket.network.NetworkHandler;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
@@ -40,7 +39,7 @@ public class AssaultInputHandler {
 
         boolean isLeftClickDown = minecraft.options.keyAttack.isDown();
 
-        if (isLeftClickDown && hasAssaultItem(player)) {
+        if (isLeftClickDown && hasAssaultItem()) {
             if (!isInAssaultMode) {
                 isInAssaultMode = true;
             }
@@ -84,14 +83,10 @@ public class AssaultInputHandler {
         }
     }
 
-    private static boolean hasAssaultItem(Player player) {
-        var clientStore = ClientPlayerStoreManager.getClientStore(player.getUUID());
-        if (clientStore == null) {
-            return false;
-        }
-
-        for (int i = 0; i < clientStore.getSlotCount(); i++) {
-            ItemStack stack = clientStore.getStackInSlot(i);
+    private static boolean hasAssaultItem() {
+        var snapshot = com.gy_mod.gy_trinket.client.datacenter.ClientDataCenter.getSnapshot();
+        for (int i = 0; i < snapshot.getSlotCount(); i++) {
+            net.minecraft.world.item.ItemStack stack = snapshot.getItemInSlot(i);
             if (!stack.isEmpty() && Config.isAssaultItem(stack.getItem())) {
                 return true;
             }
@@ -102,7 +97,10 @@ public class AssaultInputHandler {
     private static Entity findTargetInCrosshair(Player player) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.hitResult instanceof EntityHitResult entityHitResult) {
-            return entityHitResult.getEntity();
+            Entity entity = entityHitResult.getEntity();
+            if (!shouldSkipEntity(entity)) {
+                return entity;
+            }
         }
 
         double reachDistance = player.getBlockReach();
@@ -117,6 +115,10 @@ public class AssaultInputHandler {
         double closestDistance = reachDistance;
 
         for (Entity entity : entities) {
+            if (shouldSkipEntity(entity)) {
+                continue;
+            }
+
             AABB entityBox = entity.getBoundingBox().inflate(0.3);
             var clipResult = entityBox.clip(eyePos, endPos);
             if (clipResult.isPresent()) {
@@ -129,6 +131,10 @@ public class AssaultInputHandler {
         }
 
         return closestEntity;
+    }
+
+    private static boolean shouldSkipEntity(Entity entity) {
+        return entity instanceof com.gy_mod.gy_trinket.core.entity.construct.drone.DroneConstructEntity;
     }
 
     public static boolean isAssaultMode() {

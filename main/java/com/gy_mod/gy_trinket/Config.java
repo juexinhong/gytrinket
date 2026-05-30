@@ -155,6 +155,9 @@ public class Config {
     public static final ForgeConfigSpec.IntValue COUNTER_PULSE_CHARGE_INTERVAL;
     public static final ForgeConfigSpec.IntValue COUNTER_PULSE_MAX_CHARGE_LEVEL;
 
+    public static final ForgeConfigSpec.DoubleValue QUICK_EQUIP_EXP_LEVEL_MULTIPLIER;
+    public static final ForgeConfigSpec.ConfigValue<Boolean> HARDCORE_MODE_ENABLED;
+
     public static final ForgeConfigSpec.ConfigValue<Boolean> SHIELD_IDLE_PARTICLE_ENABLED;
     public static final ForgeConfigSpec.IntValue SHIELD_BLOCK_INVULNERABLE_TICKS;
     public static final ForgeConfigSpec.ConfigValue<Boolean> VANILLA_STYLE_HUD;
@@ -1169,6 +1172,23 @@ public class Config {
 
         BUILDER.pop();
 
+        BUILDER.comment("快速装备配置").push("quick_equip");
+
+        QUICK_EQUIP_EXP_LEVEL_MULTIPLIER = BUILDER.comment(
+            "快速装备经验需求倍率",
+            "直接乘在需要的经验等级上",
+            "例如：倍率为2时，光点核心内已有1个物品，再装备时需求等级为1×2=2级",
+            "默认1.0（无加成）"
+        ).defineInRange("expLevelMultiplier", 1.0, 0.0, 100.0);
+
+        HARDCORE_MODE_ENABLED = BUILDER.comment(
+            "困难模式",
+            "启用后，当玩家死亡时，将移除玩家光点核心内所有物品",
+            "默认不启用"
+        ).define("hardcoreMode", false);
+
+        BUILDER.pop();
+
         BUILDER.comment("护盾待机粒子配置").push("shield_idle_particle");
 
         SHIELD_IDLE_PARTICLE_ENABLED = BUILDER.comment(
@@ -1873,5 +1893,13 @@ public class Config {
 
     public static double getAssaultSelfDamagePerStack() {
         return ASSAULT_SELF_DAMAGE_PER_STACK.get();
+    }
+
+    public static double getQuickEquipExpLevelMultiplier() {
+        return QUICK_EQUIP_EXP_LEVEL_MULTIPLIER.get();
+    }
+
+    public static boolean isHardcoreModeEnabled() {
+        return HARDCORE_MODE_ENABLED.get();
     }
 }

@@ -1,6 +1,7 @@
 package com.gy_mod.gy_trinket.core.modifier.player.attack;
 
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
+import com.gy_mod.gy_trinket.core.modifier.ModifierHelper;
 import com.gy_mod.gy_trinket.event.AttributeDynamicChangeEvent;
 import com.gy_mod.gy_trinket.event.PlayerAttributesCalculatedEvent;
 import com.gy_mod.gy_trinket.gytrinket;
@@ -19,19 +20,11 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * 攻击伤害修饰符管理器
- * <p>
- * 功能：
- * 1. 监听属性计算完毕事件，获取攻击伤害属性并应用
- * 2. attack_damage_base：使用 ADDITION 操作，加到底数
- * 3. attack_damage_percent：使用 MULTIPLY_TOTAL 操作，应用百分比加成（原版会自动+1）
- */
 @Mod.EventBusSubscriber(modid = gytrinket.MODID)
 public class AttackDamageManager {
 
-    private static final String BASE_MODIFIER_NAME = "player_attack_damage_base_modifier";
-    private static final String PERCENT_MODIFIER_NAME = "player_attack_damage_bonus_percent_modifier";
+    private static final String BASE_MODIFIER_NAME = ModifierHelper.MOD_PREFIX + "attack_damage_base";
+    private static final String PERCENT_MODIFIER_NAME = ModifierHelper.MOD_PREFIX + "attack_damage_percent";
     private static final UUID BASE_MODIFIER_UUID = UUID.fromString("d2e3f4a5-b6c7-8901-def0-123456789013");
     private static final UUID PERCENT_MODIFIER_UUID = UUID.fromString("e3f4a5b6-c7d8-9012-ef01-234567890124");
 
@@ -47,7 +40,7 @@ public class AttackDamageManager {
 
         ServerPlayer player = event.getPlayer();
         if (player == null) {
-            var server = net.minecraftforge.server.ServerLifecycleHooks.getCurrentServer();
+            var server = ServerLifecycleHooks.getCurrentServer();
             if (server != null) {
                 player = server.getPlayerList().getPlayer(playerUUID);
             }
@@ -56,49 +49,26 @@ public class AttackDamageManager {
             return;
         }
 
-        // 计算总倍数 (百分比和独立相乘)
         double totalMultiplier = attackDamagePercent * attackDamageIndependent;
 
+        AttributeInstance attribute = player.getAttribute(Attributes.ATTACK_DAMAGE);
+        if (attribute == null) {
+            return;
+        }
+
+        ModifierHelper.removeAllModModifiers(attribute);
+
         if (attackDamageBase != 0) {
-            addModifier(player, attackDamageBase, AttributeModifier.Operation.ADDITION, BASE_MODIFIER_UUID, BASE_MODIFIER_NAME);
-        } else {
-            removeModifier(player, BASE_MODIFIER_UUID);
+            AttributeModifier baseModifier = new AttributeModifier(BASE_MODIFIER_UUID, BASE_MODIFIER_NAME, attackDamageBase, AttributeModifier.Operation.ADDITION);
+            attribute.addTransientModifier(baseModifier);
         }
 
         if (totalMultiplier != 1.0) {
-            // 原版MULTIPLY_TOTAL会自动+1，所以需要-1来补偿
-            addModifier(player, totalMultiplier - 1, AttributeModifier.Operation.MULTIPLY_TOTAL, PERCENT_MODIFIER_UUID, PERCENT_MODIFIER_NAME);
-        } else {
-            removeModifier(player, PERCENT_MODIFIER_UUID);
+            AttributeModifier percentModifier = new AttributeModifier(PERCENT_MODIFIER_UUID, PERCENT_MODIFIER_NAME, totalMultiplier - 1, AttributeModifier.Operation.MULTIPLY_TOTAL);
+            attribute.addTransientModifier(percentModifier);
         }
 
         PLAYER_ATTACK_DAMAGE_MAP.put(playerUUID, player.getAttributeValue(Attributes.ATTACK_DAMAGE));
-    }
-
-    private static void addModifier(Player player, double value, AttributeModifier.Operation operation, UUID modifierUuid, String modifierName) {
-        AttributeInstance attribute = player.getAttribute(Attributes.ATTACK_DAMAGE);
-        if (attribute == null) {
-            return;
-        }
-
-        removeModifier(player, modifierUuid);
-
-        AttributeModifier modifier = new AttributeModifier(modifierUuid, modifierName, value, operation);
-        attribute.addPermanentModifier(modifier);
-    }
-
-    private static void removeModifier(Player player, UUID modifierUuid) {
-        AttributeInstance attribute = player.getAttribute(Attributes.ATTACK_DAMAGE);
-        if (attribute == null) {
-            return;
-        }
-
-        for (AttributeModifier modifier : attribute.getModifiers()) {
-            if (modifier.getId().equals(modifierUuid)) {
-                attribute.removeModifier(modifier);
-                break;
-            }
-        }
     }
 
     @SubscribeEvent
@@ -126,19 +96,38 @@ public class AttackDamageManager {
 
         double totalMultiplier = attackDamagePercent * attackDamageIndependent;
 
+        AttributeInstance attribute = player.getAttribute(Attributes.ATTACK_DAMAGE);
+        if (attribute == null) {
+            return;
+        }
+
+        ModifierHelper.removeAllModModifiers(attribute);
+
         if (attackDamageBase != 0) {
-            addModifier(player, attackDamageBase, AttributeModifier.Operation.ADDITION, BASE_MODIFIER_UUID, BASE_MODIFIER_NAME);
-        } else {
-            removeModifier(player, BASE_MODIFIER_UUID);
+            AttributeModifier baseModifier = new AttributeModifier(BASE_MODIFIER_UUID, BASE_MODIFIER_NAME, attackDamageBase, AttributeModifier.Operation.ADDITION);
+            attribute.addTransientModifier(baseModifier);
         }
 
         if (totalMultiplier != 1.0) {
-            addModifier(player, totalMultiplier - 1, AttributeModifier.Operation.MULTIPLY_TOTAL, PERCENT_MODIFIER_UUID, PERCENT_MODIFIER_NAME);
-        } else {
-            removeModifier(player, PERCENT_MODIFIER_UUID);
+            AttributeModifier percentModifier = new AttributeModifier(PERCENT_MODIFIER_UUID, PERCENT_MODIFIER_NAME, totalMultiplier - 1, AttributeModifier.Operation.MULTIPLY_TOTAL);
+            attribute.addTransientModifier(percentModifier);
         }
 
         PLAYER_ATTACK_DAMAGE_MAP.put(playerUUID, player.getAttributeValue(Attributes.ATTACK_DAMAGE));
+    }
+
+    @SubscribeEvent
+    public static void onPlayerClone(PlayerEvent.Clone event) {
+        AttributeInstance attribute = event.getEntity().getAttribute(Attributes.ATTACK_DAMAGE);
+        ModifierHelper.removeAllModModifiers(attribute);
+    }
+
+    @SubscribeEvent
+    public static void onPlayerRespawn(PlayerEvent.PlayerRespawnEvent event) {
+        if (!(event.getEntity() instanceof ServerPlayer player)) {
+            return;
+        }
+        AttributeManager.recalculateAndCachePlayerAttributes(player);
     }
 
     @SubscribeEvent
@@ -146,9 +135,8 @@ public class AttackDamageManager {
         if (!(event.getEntity() instanceof ServerPlayer player)) {
             return;
         }
-
-        removeModifier(player, BASE_MODIFIER_UUID);
-        removeModifier(player, PERCENT_MODIFIER_UUID);
+        AttributeInstance attribute = player.getAttribute(Attributes.ATTACK_DAMAGE);
+        ModifierHelper.removeAllModModifiers(attribute);
         PLAYER_ATTACK_DAMAGE_MAP.remove(player.getUUID());
     }
 

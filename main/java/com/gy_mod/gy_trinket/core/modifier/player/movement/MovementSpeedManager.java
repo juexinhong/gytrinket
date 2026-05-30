@@ -1,6 +1,7 @@
 package com.gy_mod.gy_trinket.core.modifier.player.movement;
 
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
+import com.gy_mod.gy_trinket.core.modifier.ModifierHelper;
 import com.gy_mod.gy_trinket.event.PlayerAttributesCalculatedEvent;
 import com.gy_mod.gy_trinket.gytrinket;
 import net.minecraft.server.level.ServerPlayer;
@@ -16,17 +17,10 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * 移动速度修饰符管理器
- * <p>
- * 功能：
- * 1. 监听属性计算完毕事件，获取移动速度属性并应用
- * 2. 使用 MULTIPLY_TOTAL 操作，应用百分比加成
- */
 @Mod.EventBusSubscriber(modid = gytrinket.MODID)
 public class MovementSpeedManager {
 
-    private static final String MODIFIER_NAME = "player_movement_speed_modifier";
+    private static final String MODIFIER_NAME = ModifierHelper.MOD_PREFIX + "movement_speed";
     private static final UUID MODIFIER_UUID = UUID.fromString("e3f4a5b6-c7d8-9012-ef01-234567890124");
 
     private static final Map<UUID, Double> PLAYER_MOVEMENT_SPEED_MAP = new ConcurrentHashMap<>();
@@ -49,43 +43,35 @@ public class MovementSpeedManager {
             return;
         }
 
-        // 计算总倍数
         double totalMultiplier = movementSpeedPercent * movementSpeedIndependent;
 
+        AttributeInstance attribute = player.getAttribute(Attributes.MOVEMENT_SPEED);
+        if (attribute == null) {
+            return;
+        }
+
+        ModifierHelper.removeAllModModifiers(attribute);
+
         if (totalMultiplier != 1.0) {
-            // 原版修饰符乘法会自动+1，所以需要-1来补偿
-            addModifier(player, totalMultiplier - 1, AttributeModifier.Operation.MULTIPLY_TOTAL, MODIFIER_UUID, MODIFIER_NAME);
-        } else {
-            removeModifier(player, MODIFIER_UUID);
+            AttributeModifier modifier = new AttributeModifier(MODIFIER_UUID, MODIFIER_NAME, totalMultiplier - 1, AttributeModifier.Operation.MULTIPLY_TOTAL);
+            attribute.addTransientModifier(modifier);
         }
 
         PLAYER_MOVEMENT_SPEED_MAP.put(playerUUID, player.getAttributeValue(Attributes.MOVEMENT_SPEED));
     }
 
-    private static void addModifier(Player player, double value, AttributeModifier.Operation operation, UUID modifierUuid, String modifierName) {
-        AttributeInstance attribute = player.getAttribute(Attributes.MOVEMENT_SPEED);
-        if (attribute == null) {
-            return;
-        }
-
-        removeModifier(player, modifierUuid);
-
-        AttributeModifier modifier = new AttributeModifier(modifierUuid, modifierName, value, operation);
-        attribute.addPermanentModifier(modifier);
+    @SubscribeEvent
+    public static void onPlayerClone(PlayerEvent.Clone event) {
+        AttributeInstance attribute = event.getEntity().getAttribute(Attributes.MOVEMENT_SPEED);
+        ModifierHelper.removeAllModModifiers(attribute);
     }
 
-    private static void removeModifier(Player player, UUID modifierUuid) {
-        AttributeInstance attribute = player.getAttribute(Attributes.MOVEMENT_SPEED);
-        if (attribute == null) {
+    @SubscribeEvent
+    public static void onPlayerRespawn(PlayerEvent.PlayerRespawnEvent event) {
+        if (!(event.getEntity() instanceof ServerPlayer player)) {
             return;
         }
-
-        for (AttributeModifier modifier : attribute.getModifiers()) {
-            if (modifier.getId().equals(modifierUuid)) {
-                attribute.removeModifier(modifier);
-                break;
-            }
-        }
+        AttributeManager.recalculateAndCachePlayerAttributes(player);
     }
 
     @SubscribeEvent
@@ -93,8 +79,8 @@ public class MovementSpeedManager {
         if (!(event.getEntity() instanceof ServerPlayer player)) {
             return;
         }
-
-        removeModifier(player, MODIFIER_UUID);
+        AttributeInstance attribute = player.getAttribute(Attributes.MOVEMENT_SPEED);
+        ModifierHelper.removeAllModModifiers(attribute);
         PLAYER_MOVEMENT_SPEED_MAP.remove(player.getUUID());
     }
 

@@ -1,6 +1,7 @@
 package com.gy_mod.gy_trinket.core.modifier.player.attack;
 
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
+import com.gy_mod.gy_trinket.core.modifier.ModifierHelper;
 import com.gy_mod.gy_trinket.event.AttributeDynamicChangeEvent;
 import com.gy_mod.gy_trinket.event.PlayerAttributesCalculatedEvent;
 import com.gy_mod.gy_trinket.gytrinket;
@@ -19,17 +20,10 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * 攻击速度修饰符管理器
- * <p>
- * 功能：
- * 1. 监听属性计算完毕事件，获取攻击速度属性并应用
- * 2. 使用 MULTIPLY_TOTAL 操作，应用百分比加成
- */
 @Mod.EventBusSubscriber(modid = gytrinket.MODID)
 public class AttackSpeedManager {
 
-    private static final String MODIFIER_NAME = "player_attack_speed_modifier";
+    private static final String MODIFIER_NAME = ModifierHelper.MOD_PREFIX + "attack_speed";
     private static final UUID MODIFIER_UUID = UUID.fromString("c1d2e3f4-a5b6-7890-cdef-012345678902");
 
     private static final Map<UUID, Double> PLAYER_ATTACK_SPEED_MAP = new ConcurrentHashMap<>();
@@ -43,7 +37,7 @@ public class AttackSpeedManager {
 
         ServerPlayer player = event.getPlayer();
         if (player == null) {
-            var server = net.minecraftforge.server.ServerLifecycleHooks.getCurrentServer();
+            var server = ServerLifecycleHooks.getCurrentServer();
             if (server != null) {
                 player = server.getPlayerList().getPlayer(playerUUID);
             }
@@ -52,13 +46,18 @@ public class AttackSpeedManager {
             return;
         }
 
-        // 计算总倍数
         double totalMultiplier = attackSpeedPercent * attackSpeedIndependent;
 
+        AttributeInstance attribute = player.getAttribute(Attributes.ATTACK_SPEED);
+        if (attribute == null) {
+            return;
+        }
+
+        ModifierHelper.removeAllModModifiers(attribute);
+
         if (totalMultiplier != 1.0) {
-            addModifier(player, totalMultiplier - 1, AttributeModifier.Operation.MULTIPLY_TOTAL, MODIFIER_UUID, MODIFIER_NAME);
-        } else {
-            removeModifier(player, MODIFIER_UUID);
+            AttributeModifier modifier = new AttributeModifier(MODIFIER_UUID, MODIFIER_NAME, totalMultiplier - 1, AttributeModifier.Operation.MULTIPLY_TOTAL);
+            attribute.addTransientModifier(modifier);
         }
 
         PLAYER_ATTACK_SPEED_MAP.put(playerUUID, player.getAttributeValue(Attributes.ATTACK_SPEED));
@@ -88,39 +87,33 @@ public class AttackSpeedManager {
 
         double totalMultiplier = attackSpeedPercent * attackSpeedIndependent;
 
+        AttributeInstance attribute = player.getAttribute(Attributes.ATTACK_SPEED);
+        if (attribute == null) {
+            return;
+        }
+
+        ModifierHelper.removeAllModModifiers(attribute);
+
         if (totalMultiplier != 1.0) {
-            addModifier(player, totalMultiplier - 1, AttributeModifier.Operation.MULTIPLY_TOTAL, MODIFIER_UUID, MODIFIER_NAME);
-        } else {
-            removeModifier(player, MODIFIER_UUID);
+            AttributeModifier modifier = new AttributeModifier(MODIFIER_UUID, MODIFIER_NAME, totalMultiplier - 1, AttributeModifier.Operation.MULTIPLY_TOTAL);
+            attribute.addTransientModifier(modifier);
         }
 
         PLAYER_ATTACK_SPEED_MAP.put(playerUUID, player.getAttributeValue(Attributes.ATTACK_SPEED));
     }
 
-    private static void addModifier(Player player, double value, AttributeModifier.Operation operation, UUID modifierUuid, String modifierName) {
-        AttributeInstance attribute = player.getAttribute(Attributes.ATTACK_SPEED);
-        if (attribute == null) {
-            return;
-        }
-
-        removeModifier(player, modifierUuid);
-
-        AttributeModifier modifier = new AttributeModifier(modifierUuid, modifierName, value, operation);
-        attribute.addPermanentModifier(modifier);
+    @SubscribeEvent
+    public static void onPlayerClone(PlayerEvent.Clone event) {
+        AttributeInstance attribute = event.getEntity().getAttribute(Attributes.ATTACK_SPEED);
+        ModifierHelper.removeAllModModifiers(attribute);
     }
 
-    private static void removeModifier(Player player, UUID modifierUuid) {
-        AttributeInstance attribute = player.getAttribute(Attributes.ATTACK_SPEED);
-        if (attribute == null) {
+    @SubscribeEvent
+    public static void onPlayerRespawn(PlayerEvent.PlayerRespawnEvent event) {
+        if (!(event.getEntity() instanceof ServerPlayer player)) {
             return;
         }
-
-        for (AttributeModifier modifier : attribute.getModifiers()) {
-            if (modifier.getId().equals(modifierUuid)) {
-                attribute.removeModifier(modifier);
-                break;
-            }
-        }
+        AttributeManager.recalculateAndCachePlayerAttributes(player);
     }
 
     @SubscribeEvent
@@ -128,8 +121,8 @@ public class AttackSpeedManager {
         if (!(event.getEntity() instanceof ServerPlayer player)) {
             return;
         }
-
-        removeModifier(player, MODIFIER_UUID);
+        AttributeInstance attribute = player.getAttribute(Attributes.ATTACK_SPEED);
+        ModifierHelper.removeAllModModifiers(attribute);
         PLAYER_ATTACK_SPEED_MAP.remove(player.getUUID());
     }
 

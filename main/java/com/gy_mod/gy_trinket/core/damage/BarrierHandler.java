@@ -57,8 +57,9 @@ public class BarrierHandler implements DamageHandler {
         }
 
         float originalDamage = context.getOriginalDamage();
-        if (originalDamage > 5.0f) {
-            context.setCurrentDamage(5.0f);
+        float maxDamage = (float) Config.BARRIER_MAX_DAMAGE.get().doubleValue();
+        if (originalDamage > maxDamage) {
+            context.setCurrentDamage(maxDamage);
         }
     }
 

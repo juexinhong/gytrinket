@@ -1,8 +1,6 @@
 {
   "replace": false,
   "values": [
-    "gytrinket:burn_damage",
-    "gytrinket:on_fire_damage",
     "gytrinket:siphon_damage"
   ]
 }

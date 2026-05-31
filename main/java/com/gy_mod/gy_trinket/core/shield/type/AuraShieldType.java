@@ -22,6 +22,7 @@ import java.util.*;
 public class AuraShieldType implements IShieldType {
 
     private static final Map<UUID, Boolean> AURA_DAMAGING = new HashMap<>();
+    private static final Map<UUID, Integer> TICK_COUNTERS = new HashMap<>();
 
     private static class AuraBurnSource implements IBurnSource {
         private final Player player;
@@ -74,6 +75,7 @@ public class AuraShieldType implements IShieldType {
         if (player.level().isClientSide) return;
         UUID uuid = player.getUUID();
         AURA_DAMAGING.put(uuid, false);
+        TICK_COUNTERS.remove(uuid);
         if (player instanceof ServerPlayer serverPlayer) {
             NetworkHandler.sendShieldSyncToPlayer(serverPlayer,
                 ShieldManager.getCurrentShield(uuid), ShieldManager.getMaxShield(uuid));
@@ -86,11 +88,21 @@ public class AuraShieldType implements IShieldType {
             return;
         }
 
-        double currentShield = ShieldManager.getCurrentShield(player.getUUID());
+        UUID uuid = player.getUUID();
+
+        double currentShield = ShieldManager.getCurrentShield(uuid);
         if (currentShield <= 0) {
-            AURA_DAMAGING.put(player.getUUID(), false);
+            AURA_DAMAGING.put(uuid, false);
+            TICK_COUNTERS.remove(uuid);
             return;
         }
+
+        int tickCounter = TICK_COUNTERS.getOrDefault(uuid, 0) + 1;
+        if (tickCounter < Config.AURA_TRIGGER_FREQUENCY.get()) {
+            TICK_COUNTERS.put(uuid, tickCounter);
+            return;
+        }
+        TICK_COUNTERS.put(uuid, 0);
 
         List<LivingEntity> effectCenters;
         if (!ShieldTransferManager.shouldProtectPlayer(player)) {
@@ -185,9 +197,11 @@ public class AuraShieldType implements IShieldType {
 
     public static void clearPlayerData(UUID playerUUID) {
         AURA_DAMAGING.remove(playerUUID);
+        TICK_COUNTERS.remove(playerUUID);
     }
 
     public static void clearAllData() {
         AURA_DAMAGING.clear();
+        TICK_COUNTERS.clear();
     }
 }

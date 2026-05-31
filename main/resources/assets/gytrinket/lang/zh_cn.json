@@ -156,6 +156,9 @@
   "tooltip.gytrinket.advanced_engineering": "高等工程",
   "tooltip.gytrinket.advanced_engineering_effect": "玩家每级提供%.1f%%独立乘区无人机生命和无人机伤害属性",
 
+  "tooltip.gytrinket.assault": "强袭",
+  "tooltip.gytrinket.assault_effect": "按住左键自动攻击，攻击速度逐渐提高。并受到自伤（随攻击速度提高而提高）",
+
   "item.gytrinket.light_point_core": "光点核心",
   "item.gytrinket.guardian": "哨卫机身",
   

@@ -156,6 +156,9 @@
   "tooltip.gytrinket.advanced_engineering": "Advanced Engineering",
   "tooltip.gytrinket.advanced_engineering_effect": "Each player level provides %.1f%% independent multiplier drone health and drone damage",
 
+  "tooltip.gytrinket.assault": "Assault",
+  "tooltip.gytrinket.assault_effect": "Hold left click to auto-attack. Attack speed gradually increases. Takes self-damage (increases with attack speed)",
+
   "item.gytrinket.light_point_core": "Light Point Core",
   "item.gytrinket.guardian": "Guardian Frame",
   

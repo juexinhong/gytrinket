@@ -98,6 +98,7 @@ public class Config {
     public static final ForgeConfigSpec.DoubleValue ADAPTIVE_ARMOR_LAYERS_PER_DAMAGE;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> ADAPTIVE_ARMOR_SHIELD_EFFECT_ITEMS;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> BARRIER_ITEMS;
+    public static final ForgeConfigSpec.DoubleValue BARRIER_MAX_DAMAGE;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> SHIELD_TRANSFER_ITEMS;
     public static final ForgeConfigSpec.DoubleValue SHIELD_TRANSFER_EFFECT_PENALTY_PER_ENTITY;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> EXPLOSIVE_SHIELD_ITEMS;
@@ -376,11 +377,11 @@ public class Config {
                 "gytrinket:shield_aura_ring1|aura",
                 "gytrinket:shield_aura_ring2|aura",
                 "gytrinket:shield_aura_ring3|aura",
-        "gytrinket:shield_siphon|siphon",
-        "gytrinket:shield_siphon1|siphon",
-        "gytrinket:shield_siphon2|siphon",
-        "gytrinket:shield_siphon3|siphon",
-        "gytrinket:shield_reflect|reflect",
+                "gytrinket:shield_siphon|siphon",
+                "gytrinket:shield_siphon1|siphon",
+                "gytrinket:shield_siphon2|siphon",
+                "gytrinket:shield_siphon3|siphon",
+                "gytrinket:shield_reflect|reflect",
                 "gytrinket:shield_reflect1|reflect",
                 "gytrinket:shield_reflect2|reflect",
                 "gytrinket:shield_reflect3|reflect",
@@ -436,9 +437,9 @@ public class Config {
         BUILDER.comment("光环护盾配置").push("aura_shield");
 
         AURA_RADIUS = BUILDER.comment("光环护盾半径").defineInRange("auraRadius", 3.0, 0.0, 100.0);
-        AURA_DAMAGE = BUILDER.comment("光环护盾伤害").defineInRange("auraDamage", 0.15, 0.0, 100.0);
-        AURA_TRIGGER_FREQUENCY = BUILDER.comment("光环护盾触发频率（刻）").defineInRange("auraTriggerFrequency", 4, 1, 200);
-        AURA_SHIELD_COST = BUILDER.comment("光环护盾消耗护盾值").defineInRange("auraShieldCost", 0.0084, 0.0, 10.0);
+        AURA_DAMAGE = BUILDER.comment("光环护盾伤害").defineInRange("auraDamage", 0.75, 0.0, 100.0);
+        AURA_TRIGGER_FREQUENCY = BUILDER.comment("光环护盾触发频率（刻）").defineInRange("auraTriggerFrequency", 5, 1, 200);
+        AURA_SHIELD_COST = BUILDER.comment("光环护盾消耗护盾值").defineInRange("auraShieldCost", 0.042, 0.0, 10.0);
 
         BUILDER.pop();
 
@@ -772,6 +773,12 @@ public class Config {
             s -> true
         );
 
+        BARRIER_MAX_DAMAGE = BUILDER.comment(
+            "屏障限制伤害最大值",
+            "当伤害超过此值时，将被限制为此值",
+            "示例：5.0"
+        ).defineInRange("barrierMaxDamage", 5.0, 0.0, 1000.0);
+
         BUILDER.pop();
 
         BUILDER.comment("易爆护盾系统配置").push("explosive_shield");
@@ -835,7 +842,7 @@ public class Config {
             "反射护盾基础伤害值",
             "该伤害会受护盾效果属性影响",
             "示例：1.0"
-        ).defineInRange("reflectDamageBaseDamage", 1.0, 0.0, 10.0);
+        ).defineInRange("reflectDamageBaseDamage", 0.7, 0.0, 10.0);
 
         REFLECT_DAMAGE_RAY_LENGTH = BUILDER.comment(
             "反射护盾射线基础长度（格）",

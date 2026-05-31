@@ -54,6 +54,7 @@ public class TooltipHandler {
         addPrecisionConstructTooltip(event, itemId);
         addAdvancedEngineeringTooltip(event, itemId);
         addCommanderTooltip(event, itemId);
+        addAssaultTooltip(event, itemId);
     }
     
     private static void addItemAttributesTooltip(ItemTooltipEvent event, String itemId) {
@@ -396,6 +397,16 @@ public class TooltipHandler {
             event.getToolTip().add(Component.literal("").withStyle(ChatFormatting.GRAY));
             addTooltip(event, "commander", ChatFormatting.LIGHT_PURPLE);
             addFormattedTooltip(event, "commander_effect", ChatFormatting.GRAY);
+        }
+    }
+
+    private static void addAssaultTooltip(ItemTooltipEvent event, String itemId) {
+        boolean isAssaultItem = Config.ASSAULT_ITEMS.get().contains(itemId);
+
+        if (isAssaultItem) {
+            event.getToolTip().add(Component.literal("").withStyle(ChatFormatting.GRAY));
+            addTooltip(event, "assault", ChatFormatting.RED);
+            addTooltip(event, "assault_effect", ChatFormatting.GRAY);
         }
     }
     

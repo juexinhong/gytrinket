@@ -17,12 +17,14 @@ public class ShieldParticleTimerManager {
         return instance;
     }
     
-    public void addPendingParticle(double x, double y, double z,
+    public void addPendingParticle(int entityId,
+                                   double originOffsetX, double originOffsetY, double originOffsetZ,
+                                   double offsetX, double offsetY, double offsetZ,
                                    double dirX, double dirY, double dirZ,
-                                   double originX, double originY, double originZ,
                                    long delayMs) {
-        pendingParticles.add(new PendingParticle(x, y, z, dirX, dirY, dirZ, 
-                                                 originX, originY, originZ, 
+        pendingParticles.add(new PendingParticle(entityId, originOffsetX, originOffsetY, originOffsetZ,
+                                                 offsetX, offsetY, offsetZ,
+                                                 dirX, dirY, dirZ,
                                                  System.currentTimeMillis() + delayMs));
     }
     
@@ -31,9 +33,9 @@ public class ShieldParticleTimerManager {
         pendingParticles.removeIf(p -> {
             if (currentTime >= p.delayTime) {
                 ShieldParticleRenderManager.getInstance().addParticle(
-                    p.x, p.y, p.z, 
-                    p.dirX, p.dirY, p.dirZ, 
-                    p.originX, p.originY, p.originZ
+                    p.entityId, p.originOffsetX, p.originOffsetY, p.originOffsetZ,
+                    p.offsetX, p.offsetY, p.offsetZ,
+                    p.dirX, p.dirY, p.dirZ
                 );
                 return true;
             }
@@ -42,24 +44,27 @@ public class ShieldParticleTimerManager {
     }
     
     private static class PendingParticle {
-        final double x, y, z;
+        final int entityId;
+        final double originOffsetX, originOffsetY, originOffsetZ;
+        final double offsetX, offsetY, offsetZ;
         final double dirX, dirY, dirZ;
-        final double originX, originY, originZ;
         final long delayTime;
         
-        PendingParticle(double x, double y, double z,
+        PendingParticle(int entityId,
+                       double originOffsetX, double originOffsetY, double originOffsetZ,
+                       double offsetX, double offsetY, double offsetZ,
                        double dirX, double dirY, double dirZ,
-                       double originX, double originY, double originZ,
                        long delayTime) {
-            this.x = x;
-            this.y = y;
-            this.z = z;
+            this.entityId = entityId;
+            this.originOffsetX = originOffsetX;
+            this.originOffsetY = originOffsetY;
+            this.originOffsetZ = originOffsetZ;
+            this.offsetX = offsetX;
+            this.offsetY = offsetY;
+            this.offsetZ = offsetZ;
             this.dirX = dirX;
             this.dirY = dirY;
             this.dirZ = dirZ;
-            this.originX = originX;
-            this.originY = originY;
-            this.originZ = originZ;
             this.delayTime = delayTime;
         }
     }

@@ -7,52 +7,57 @@ import java.util.function.Supplier;
 
 public class ShieldParticlePacket {
     
-    private final double x, y, z;
+    private final int entityId;
+    private final double originOffsetX, originOffsetY, originOffsetZ;
+    private final double offsetX, offsetY, offsetZ;
     private final double dirX, dirY, dirZ;
-    private final double originX, originY, originZ;
     
-    public ShieldParticlePacket(double x, double y, double z, 
-                               double dirX, double dirY, double dirZ,
-                               double originX, double originY, double originZ) {
-        this.x = x;
-        this.y = y;
-        this.z = z;
+    public ShieldParticlePacket(int entityId,
+                               double originOffsetX, double originOffsetY, double originOffsetZ,
+                               double offsetX, double offsetY, double offsetZ,
+                               double dirX, double dirY, double dirZ) {
+        this.entityId = entityId;
+        this.originOffsetX = originOffsetX;
+        this.originOffsetY = originOffsetY;
+        this.originOffsetZ = originOffsetZ;
+        this.offsetX = offsetX;
+        this.offsetY = offsetY;
+        this.offsetZ = offsetZ;
         this.dirX = dirX;
         this.dirY = dirY;
         this.dirZ = dirZ;
-        this.originX = originX;
-        this.originY = originY;
-        this.originZ = originZ;
     }
     
     public ShieldParticlePacket(FriendlyByteBuf buf) {
-        this.x = buf.readDouble();
-        this.y = buf.readDouble();
-        this.z = buf.readDouble();
+        this.entityId = buf.readInt();
+        this.originOffsetX = buf.readDouble();
+        this.originOffsetY = buf.readDouble();
+        this.originOffsetZ = buf.readDouble();
+        this.offsetX = buf.readDouble();
+        this.offsetY = buf.readDouble();
+        this.offsetZ = buf.readDouble();
         this.dirX = buf.readDouble();
         this.dirY = buf.readDouble();
         this.dirZ = buf.readDouble();
-        this.originX = buf.readDouble();
-        this.originY = buf.readDouble();
-        this.originZ = buf.readDouble();
     }
     
     public void toBytes(FriendlyByteBuf buf) {
-        buf.writeDouble(x);
-        buf.writeDouble(y);
-        buf.writeDouble(z);
+        buf.writeInt(entityId);
+        buf.writeDouble(originOffsetX);
+        buf.writeDouble(originOffsetY);
+        buf.writeDouble(originOffsetZ);
+        buf.writeDouble(offsetX);
+        buf.writeDouble(offsetY);
+        buf.writeDouble(offsetZ);
         buf.writeDouble(dirX);
         buf.writeDouble(dirY);
         buf.writeDouble(dirZ);
-        buf.writeDouble(originX);
-        buf.writeDouble(originY);
-        buf.writeDouble(originZ);
     }
     
     public void handle(Supplier<NetworkEvent.Context> context) {
         context.get().enqueueWork(() -> {
             com.gy_mod.gy_trinket.client.effect.particle.ShieldParticleRenderManager.getInstance()
-                .addParticle(x, y, z, dirX, dirY, dirZ, originX, originY, originZ);
+                .addParticle(entityId, originOffsetX, originOffsetY, originOffsetZ, offsetX, offsetY, offsetZ, dirX, dirY, dirZ);
         });
         context.get().setPacketHandled(true);
     }

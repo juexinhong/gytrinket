@@ -207,7 +207,7 @@ public class ShieldIdleParticleEvent {
         double particleZ = originZ + dirZ * RADIUS;
 
         if (!reverseOrder) {
-            NetworkHandler.sendShieldParticleToPlayer(player, particleX, particleY, particleZ,
+            NetworkHandler.sendShieldParticleToPlayer(player, player, particleX, particleY, particleZ,
                     dirX, dirY, dirZ, originX, originY, originZ, baseDelayMs);
         }
 
@@ -298,14 +298,14 @@ public class ShieldIdleParticleEvent {
                 double pointY = originY + pointDir[1] * RADIUS;
                 double pointZ = originZ + pointDir[2] * RADIUS;
 
-                NetworkHandler.sendShieldParticleToPlayer(player, pointX, pointY, pointZ,
+                NetworkHandler.sendShieldParticleToPlayer(player, player, pointX, pointY, pointZ,
                         pointDir[0], pointDir[1], pointDir[2], originX, originY, originZ, baseDelayMs + delayMs);
             }
         }
 
         // 反序时中心粒子最后出现（3圈后，延迟300ms）
         if (reverseOrder) {
-            NetworkHandler.sendShieldParticleToPlayer(player, particleX, particleY, particleZ,
+            NetworkHandler.sendShieldParticleToPlayer(player, player, particleX, particleY, particleZ,
                     dirX, dirY, dirZ, originX, originY, originZ, baseDelayMs + 300);
         }
     }

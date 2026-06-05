@@ -1,28 +1,34 @@
 package com.gy_mod.gy_trinket.client.effect.particle;
 
 public class ShieldParticleData {
-    
-    public final double x, y, z;
+
+    public final int entityId;
+    // 从实体脚底到球心的偏移
+    public final double originOffsetX, originOffsetY, originOffsetZ;
+    // 从球心到粒子位置的偏移
+    public final double offsetX, offsetY, offsetZ;
+    // 从粒子指向球心的方向（归一化）
     public final double dirX, dirY, dirZ;
-    public final double originX, originY, originZ;
-    
+
     public int age = 0;
     public final int lifetime = 20;
-    
-    public ShieldParticleData(double x, double y, double z,
-                             double dirX, double dirY, double dirZ,
-                             double originX, double originY, double originZ) {
-        this.x = x;
-        this.y = y;
-        this.z = z;
+
+    public ShieldParticleData(int entityId,
+                             double originOffsetX, double originOffsetY, double originOffsetZ,
+                             double offsetX, double offsetY, double offsetZ,
+                             double dirX, double dirY, double dirZ) {
+        this.entityId = entityId;
+        this.originOffsetX = originOffsetX;
+        this.originOffsetY = originOffsetY;
+        this.originOffsetZ = originOffsetZ;
+        this.offsetX = offsetX;
+        this.offsetY = offsetY;
+        this.offsetZ = offsetZ;
         this.dirX = dirX;
         this.dirY = dirY;
         this.dirZ = dirZ;
-        this.originX = originX;
-        this.originY = originY;
-        this.originZ = originZ;
     }
-    
+
     public void tick() {
         age++;
     }

@@ -17,10 +17,12 @@ public class ShieldParticleRenderManager {
         return instance;
     }
     
-    public void addParticle(double x, double y, double z,
-                           double dirX, double dirY, double dirZ,
-                           double originX, double originY, double originZ) {
-        particles.add(new ShieldParticleData(x, y, z, dirX, dirY, dirZ, originX, originY, originZ));
+    public void addParticle(int entityId,
+                           double originOffsetX, double originOffsetY, double originOffsetZ,
+                           double offsetX, double offsetY, double offsetZ,
+                           double dirX, double dirY, double dirZ) {
+        particles.add(new ShieldParticleData(entityId, originOffsetX, originOffsetY, originOffsetZ,
+                                             offsetX, offsetY, offsetZ, dirX, dirY, dirZ));
     }
     
     public List<ShieldParticleData> getParticles() {

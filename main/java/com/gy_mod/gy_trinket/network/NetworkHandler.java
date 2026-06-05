@@ -1,13 +1,23 @@
 package com.gy_mod.gy_trinket.network;
 
+import com.gy_mod.gy_trinket.Config;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
+import com.gy_mod.gy_trinket.core.attribute.ItemAttributeConfig;
 import com.gy_mod.gy_trinket.core.shield.cooldown.ShieldCooldownManager;
 import com.gy_mod.gy_trinket.core.shield.ShieldManager;
+import com.gy_mod.gy_trinket.core.upgrade.UpgradeData;
+import com.gy_mod.gy_trinket.core.upgrade.UpgradeManager;
+import com.gy_mod.gy_trinket.storage.PlayerStore;
+import com.gy_mod.gy_trinket.storage.PlayerStoreManager;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.Ingredient;
+import net.minecraft.world.item.crafting.Recipe;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.network.NetworkEvent;
@@ -169,54 +179,146 @@ public class NetworkHandler {
             SyncPlayerDataSnapshotMessage::decode,
             SyncPlayerDataSnapshotMessage::handle
         );
+
+        INSTANCE.registerMessage(
+            messageId++,
+            RequestPanelDataMessage.class,
+            RequestPanelDataMessage::encode,
+            RequestPanelDataMessage::decode,
+            RequestPanelDataMessage::handle
+        );
+
+        INSTANCE.registerMessage(
+            messageId++,
+            ResponsePanelDataMessage.class,
+            ResponsePanelDataMessage::encode,
+            ResponsePanelDataMessage::decode,
+            ResponsePanelDataMessage::handle
+        );
+
+        INSTANCE.registerMessage(
+            messageId++,
+            UpgradeConsumeMessage.class,
+            UpgradeConsumeMessage::encode,
+            UpgradeConsumeMessage::decode,
+            UpgradeConsumeMessage::handle
+        );
+        INSTANCE.registerMessage(
+            messageId++,
+            UpgradeReturnMessage.class,
+            UpgradeReturnMessage::encode,
+            UpgradeReturnMessage::decode,
+            UpgradeReturnMessage::handle
+        );
+        INSTANCE.registerMessage(
+            messageId++,
+            RequestConfigDataMessage.class,
+            RequestConfigDataMessage::encode,
+            RequestConfigDataMessage::decode,
+            RequestConfigDataMessage::handle
+        );
+        INSTANCE.registerMessage(
+            messageId++,
+            ResponseConfigDataMessage.class,
+            ResponseConfigDataMessage::encode,
+            ResponseConfigDataMessage::decode,
+            ResponseConfigDataMessage::handle
+        );
+        INSTANCE.registerMessage(
+            messageId++,
+            ConfigUpdateMessage.class,
+            ConfigUpdateMessage::encode,
+            ConfigUpdateMessage::decode,
+            ConfigUpdateMessage::handle
+        );
+        INSTANCE.registerMessage(
+            messageId++,
+            ConfigDeleteItemMessage.class,
+            ConfigDeleteItemMessage::encode,
+            ConfigDeleteItemMessage::decode,
+            ConfigDeleteItemMessage::handle
+        );
+        INSTANCE.registerMessage(
+            messageId++,
+            ConfigAddItemMessage.class,
+            ConfigAddItemMessage::encode,
+            ConfigAddItemMessage::decode,
+            ConfigAddItemMessage::handle
+        );
+        INSTANCE.registerMessage(
+            messageId++,
+            ConfigRemoveAttrMessage.class,
+            ConfigRemoveAttrMessage::encode,
+            ConfigRemoveAttrMessage::decode,
+            ConfigRemoveAttrMessage::handle
+        );
+        INSTANCE.registerMessage(
+            messageId++,
+            ConfigResetMessage.class,
+            ConfigResetMessage::encode,
+            ConfigResetMessage::decode,
+            ConfigResetMessage::handle
+        );
+        INSTANCE.registerMessage(
+            messageId++,
+            ConfigReorderMessage.class,
+            ConfigReorderMessage::encode,
+            ConfigReorderMessage::decode,
+            ConfigReorderMessage::handle
+        );
     }
     
     public static class ShieldParticlePacket {
         
-        private final double x, y, z;
+        private final int entityId;
+        private final double originOffsetX, originOffsetY, originOffsetZ;
+        private final double offsetX, offsetY, offsetZ;
         private final double dirX, dirY, dirZ;
-        private final double originX, originY, originZ;
         private final long delayMs;
         
-        public ShieldParticlePacket(double x, double y, double z, 
+        public ShieldParticlePacket(int entityId,
+                                   double originOffsetX, double originOffsetY, double originOffsetZ,
+                                   double offsetX, double offsetY, double offsetZ,
                                    double dirX, double dirY, double dirZ,
-                                   double originX, double originY, double originZ,
                                    long delayMs) {
-            this.x = x;
-            this.y = y;
-            this.z = z;
+            this.entityId = entityId;
+            this.originOffsetX = originOffsetX;
+            this.originOffsetY = originOffsetY;
+            this.originOffsetZ = originOffsetZ;
+            this.offsetX = offsetX;
+            this.offsetY = offsetY;
+            this.offsetZ = offsetZ;
             this.dirX = dirX;
             this.dirY = dirY;
             this.dirZ = dirZ;
-            this.originX = originX;
-            this.originY = originY;
-            this.originZ = originZ;
             this.delayMs = delayMs;
         }
         
         public ShieldParticlePacket(FriendlyByteBuf buf) {
-            this.x = buf.readDouble();
-            this.y = buf.readDouble();
-            this.z = buf.readDouble();
+            this.entityId = buf.readInt();
+            this.originOffsetX = buf.readDouble();
+            this.originOffsetY = buf.readDouble();
+            this.originOffsetZ = buf.readDouble();
+            this.offsetX = buf.readDouble();
+            this.offsetY = buf.readDouble();
+            this.offsetZ = buf.readDouble();
             this.dirX = buf.readDouble();
             this.dirY = buf.readDouble();
             this.dirZ = buf.readDouble();
-            this.originX = buf.readDouble();
-            this.originY = buf.readDouble();
-            this.originZ = buf.readDouble();
             this.delayMs = buf.readLong();
         }
         
         public void toBytes(FriendlyByteBuf buf) {
-            buf.writeDouble(x);
-            buf.writeDouble(y);
-            buf.writeDouble(z);
+            buf.writeInt(entityId);
+            buf.writeDouble(originOffsetX);
+            buf.writeDouble(originOffsetY);
+            buf.writeDouble(originOffsetZ);
+            buf.writeDouble(offsetX);
+            buf.writeDouble(offsetY);
+            buf.writeDouble(offsetZ);
             buf.writeDouble(dirX);
             buf.writeDouble(dirY);
             buf.writeDouble(dirZ);
-            buf.writeDouble(originX);
-            buf.writeDouble(originY);
-            buf.writeDouble(originZ);
             buf.writeLong(delayMs);
         }
         
@@ -224,37 +326,49 @@ public class NetworkHandler {
             context.get().enqueueWork(() -> {
                 DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> {
                     if (delayMs > 0) {
-                        ShieldParticlePacket.handleShieldParticleWithDelayOnClient(x, y, z, dirX, dirY, dirZ, originX, originY, originZ, delayMs);
+                        ShieldParticlePacket.handleShieldParticleWithDelayOnClient(entityId, originOffsetX, originOffsetY, originOffsetZ, offsetX, offsetY, offsetZ, dirX, dirY, dirZ, delayMs);
                     } else {
-                        ShieldParticlePacket.handleShieldParticleOnClient(x, y, z, dirX, dirY, dirZ, originX, originY, originZ);
+                        ShieldParticlePacket.handleShieldParticleOnClient(entityId, originOffsetX, originOffsetY, originOffsetZ, offsetX, offsetY, offsetZ, dirX, dirY, dirZ);
                     }
                 });
             });
             context.get().setPacketHandled(true);
         }
         
-        private static void handleShieldParticleOnClient(double x, double y, double z,
-                                                        double dirX, double dirY, double dirZ,
-                                                        double originX, double originY, double originZ) {
+        private static void handleShieldParticleOnClient(int entityId,
+                                                        double originOffsetX, double originOffsetY, double originOffsetZ,
+                                                        double offsetX, double offsetY, double offsetZ,
+                                                        double dirX, double dirY, double dirZ) {
             com.gy_mod.gy_trinket.client.effect.particle.ShieldParticleRenderManager.getInstance()
-                .addParticle(x, y, z, dirX, dirY, dirZ, originX, originY, originZ);
+                .addParticle(entityId, originOffsetX, originOffsetY, originOffsetZ, offsetX, offsetY, offsetZ, dirX, dirY, dirZ);
         }
         
-        private static void handleShieldParticleWithDelayOnClient(double x, double y, double z,
+        private static void handleShieldParticleWithDelayOnClient(int entityId,
+                                                               double originOffsetX, double originOffsetY, double originOffsetZ,
+                                                               double offsetX, double offsetY, double offsetZ,
                                                                double dirX, double dirY, double dirZ,
-                                                               double originX, double originY, double originZ,
                                                                long delayMs) {
             com.gy_mod.gy_trinket.client.effect.particle.ShieldParticleTimerManager.getInstance()
-                .addPendingParticle(x, y, z, dirX, dirY, dirZ, originX, originY, originZ, delayMs);
+                .addPendingParticle(entityId, originOffsetX, originOffsetY, originOffsetZ, offsetX, offsetY, offsetZ, dirX, dirY, dirZ, delayMs);
         }
     }
     
-    public static void sendShieldParticleToPlayer(ServerPlayer player, double x, double y, double z,
+    public static void sendShieldParticleToPlayer(ServerPlayer player, net.minecraft.world.entity.Entity trackedEntity,
+                                                 double x, double y, double z,
                                                  double dirX, double dirY, double dirZ,
                                                  double originX, double originY, double originZ,
                                                  long delayMs) {
+        // 计算偏移量：从实体脚底到球心的偏移
+        double originOffsetX = originX - trackedEntity.getX();
+        double originOffsetY = originY - trackedEntity.getY();
+        double originOffsetZ = originZ - trackedEntity.getZ();
+        // 计算偏移量：从球心到粒子位置的偏移
+        double offsetX = x - originX;
+        double offsetY = y - originY;
+        double offsetZ = z - originZ;
+        
         INSTANCE.send(PacketDistributor.PLAYER.with(() -> player), 
-            new ShieldParticlePacket(x, y, z, dirX, dirY, dirZ, originX, originY, originZ, delayMs));
+            new ShieldParticlePacket(trackedEntity.getId(), originOffsetX, originOffsetY, originOffsetZ, offsetX, offsetY, offsetZ, dirX, dirY, dirZ, delayMs));
     }
 
     public static class RequestAttributesMessage {
@@ -963,6 +1077,637 @@ public class NetworkHandler {
                 DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> {
                     com.gy_mod.gy_trinket.client.datacenter.ClientDataCenter.loadFromNBT(msg.snapshotData);
                 });
+            });
+            context.setPacketHandled(true);
+        }
+    }
+
+    public static class RequestPanelDataMessage {
+        public RequestPanelDataMessage() {}
+
+        public static void encode(RequestPanelDataMessage msg, FriendlyByteBuf buf) {}
+
+        public static RequestPanelDataMessage decode(FriendlyByteBuf buf) {
+            return new RequestPanelDataMessage();
+        }
+
+        public static void handle(RequestPanelDataMessage msg, Supplier<NetworkEvent.Context> ctx) {
+            NetworkEvent.Context context = ctx.get();
+            context.enqueueWork(() -> {
+                var player = context.getSender();
+                if (player != null) {
+                    sendPanelUpdate(player);
+                }
+            });
+            context.setPacketHandled(true);
+        }
+    }
+
+    public static class ResponsePanelDataMessage {
+        public Map<String, Double> attributes;
+        public ListTag items;
+        public int slotCount;
+        public CompoundTag upgradeData;
+        public ListTag upgradeTargets;
+
+        public ResponsePanelDataMessage() {}
+
+        public ResponsePanelDataMessage(Map<String, Double> attributes, ListTag items, int slotCount,
+                                         CompoundTag upgradeData, ListTag upgradeTargets) {
+            this.attributes = attributes;
+            this.items = items;
+            this.slotCount = slotCount;
+            this.upgradeData = upgradeData;
+            this.upgradeTargets = upgradeTargets;
+        }
+
+        public static void encode(ResponsePanelDataMessage msg, FriendlyByteBuf buf) {
+            buf.writeInt(msg.attributes.size());
+            for (var entry : msg.attributes.entrySet()) {
+                buf.writeUtf(entry.getKey());
+                buf.writeDouble(entry.getValue());
+            }
+            CompoundTag tag = new CompoundTag();
+            tag.put("items", msg.items);
+            tag.putInt("slotCount", msg.slotCount);
+            tag.put("upgradeData", msg.upgradeData);
+            tag.put("upgradeTargets", msg.upgradeTargets);
+            buf.writeNbt(tag);
+        }
+
+        public static ResponsePanelDataMessage decode(FriendlyByteBuf buf) {
+            Map<String, Double> attributes = new HashMap<>();
+            int size = buf.readInt();
+            for (int i = 0; i < size; i++) {
+                String name = buf.readUtf();
+                double value = buf.readDouble();
+                attributes.put(name, value);
+            }
+            CompoundTag tag = buf.readNbt();
+            ListTag items = tag != null ? tag.getList("items", 10) : new ListTag();
+            int slotCount = tag != null ? tag.getInt("slotCount") : 0;
+            CompoundTag upgradeData = tag != null ? tag.getCompound("upgradeData") : new CompoundTag();
+            ListTag upgradeTargets = tag != null ? tag.getList("upgradeTargets", 10) : new ListTag();
+            return new ResponsePanelDataMessage(attributes, items, slotCount, upgradeData, upgradeTargets);
+        }
+
+        public static void handle(ResponsePanelDataMessage msg, Supplier<NetworkEvent.Context> ctx) {
+            NetworkEvent.Context context = ctx.get();
+            context.enqueueWork(() -> {
+                DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () ->
+                    com.gy_mod.gy_trinket.client.network.ClientPacketHandler.handleResponsePanelData(msg));
+            });
+            context.setPacketHandled(true);
+        }
+    }
+
+    public static class UpgradeConsumeMessage {
+        private int slotIndex;
+        private String baseItemKey;
+        private String upgradedItemKey;
+
+        public UpgradeConsumeMessage() {}
+
+        public UpgradeConsumeMessage(int slotIndex, String baseItemKey, String upgradedItemKey) {
+            this.slotIndex = slotIndex;
+            this.baseItemKey = baseItemKey;
+            this.upgradedItemKey = upgradedItemKey;
+        }
+
+        public static void encode(UpgradeConsumeMessage msg, FriendlyByteBuf buf) {
+            buf.writeInt(msg.slotIndex);
+            buf.writeUtf(msg.baseItemKey);
+            buf.writeUtf(msg.upgradedItemKey);
+        }
+
+        public static UpgradeConsumeMessage decode(FriendlyByteBuf buf) {
+            return new UpgradeConsumeMessage(buf.readInt(), buf.readUtf(), buf.readUtf());
+        }
+
+        public static void handle(UpgradeConsumeMessage msg, Supplier<NetworkEvent.Context> ctx) {
+            NetworkEvent.Context context = ctx.get();
+            context.enqueueWork(() -> {
+                var player = context.getSender();
+                if (player == null) return;
+                if (!com.gy_mod.gy_trinket.Config.UPGRADE_SYSTEM_ENABLED.get()) return;
+
+                ItemStack clickedItem = player.getInventory().getItem(msg.slotIndex);
+                if (clickedItem.isEmpty()) return;
+
+                PlayerStore store = PlayerStoreManager.getPlayerStore(player);
+                if (store == null) return;
+
+                var handler = store.getItemHandler();
+                java.util.UUID playerUUID = player.getUUID();
+                UpgradeData upgradeData = UpgradeManager.getUpgradeData(playerUUID);
+
+                ResourceLocation baseItemRes = new ResourceLocation(msg.baseItemKey);
+                Item baseItem = net.minecraftforge.registries.ForgeRegistries.ITEMS.getValue(baseItemRes);
+                if (baseItem == null) return;
+
+                ResourceLocation upgradedItemRes = new ResourceLocation(msg.upgradedItemKey);
+                Item upgradedItem = net.minecraftforge.registries.ForgeRegistries.ITEMS.getValue(upgradedItemRes);
+                if (upgradedItem == null) return;
+
+                boolean foundInTargets = false;
+                for (Item target : UpgradeManager.getUpgradeTargets(baseItem)) {
+                    if (target == upgradedItem) {
+                        foundInTargets = true;
+                        break;
+                    }
+                }
+                if (!foundInTargets) return;
+
+                boolean baseItemInStore = false;
+                for (int i = 0; i < handler.getSlots(); i++) {
+                    if (handler.getStackInSlot(i).is(baseItem)) {
+                        baseItemInStore = true;
+                        break;
+                    }
+                }
+                if (!baseItemInStore) return;
+
+                Recipe<?> recipe = UpgradeManager.getUpgradeRecipe(
+                    player.serverLevel().getRecipeManager(),
+                    player.serverLevel().registryAccess(),
+                    upgradedItem
+                );
+                if (recipe == null) return;
+
+                String baseKey = UpgradeManager.getItemKey(baseItem);
+                String pathKey = baseKey + "->" + UpgradeManager.getItemKey(upgradedItem);
+
+                java.util.Map<String, int[]> ingredientStatus = UpgradeManager.getIngredientStatus(
+                        handler, upgradeData, pathKey, recipe);
+
+                boolean isNeeded = false;
+                for (Map.Entry<String, int[]> entry : ingredientStatus.entrySet()) {
+                    if (entry.getValue()[1] < entry.getValue()[0]) {
+                        Ingredient ingredient = UpgradeManager.getIngredientForItemKey(recipe, entry.getKey());
+                        if (ingredient != null && ingredient.test(clickedItem)) {
+                            isNeeded = true;
+                            break;
+                        }
+                    }
+                }
+                if (!isNeeded) return;
+
+                upgradeData.addMaterial(pathKey, clickedItem);
+                clickedItem.shrink(1);
+                UpgradeManager.setUpgradeData(playerUUID, upgradeData);
+
+                int[] checkResult = UpgradeManager.checkIngredients(handler, upgradeData, pathKey, recipe);
+                if (checkResult[0] >= checkResult[1]) {
+                    if (UpgradeManager.performUpgrade(handler, upgradeData, baseItem, upgradedItem, recipe, playerUUID)) {
+                        UpgradeManager.setUpgradeData(playerUUID, upgradeData);
+                        player.sendSystemMessage(net.minecraft.network.chat.Component.translatable(
+                            "message.gytrinket.upgrade.success",
+                            baseItem.getName(new ItemStack(baseItem)),
+                            upgradedItem.getName(new ItemStack(upgradedItem))
+                        ));
+                    } else {
+                        player.sendSystemMessage(net.minecraft.network.chat.Component.translatable("message.gytrinket.upgrade.no_space"));
+                    }
+                } else {
+                    player.sendSystemMessage(net.minecraft.network.chat.Component.translatable(
+                        "message.gytrinket.upgrade.material_collected",
+                        checkResult[0], checkResult[1]
+                    ));
+                }
+
+                sendPanelUpdate(player);
+            });
+            context.setPacketHandled(true);
+        }
+    }
+
+    public static class UpgradeReturnMessage {
+        private String baseItemKey;
+        private String upgradedItemKey;
+
+        public UpgradeReturnMessage() {}
+
+        public UpgradeReturnMessage(String baseItemKey, String upgradedItemKey) {
+            this.baseItemKey = baseItemKey;
+            this.upgradedItemKey = upgradedItemKey;
+        }
+
+        public static void encode(UpgradeReturnMessage msg, FriendlyByteBuf buf) {
+            buf.writeUtf(msg.baseItemKey);
+            buf.writeUtf(msg.upgradedItemKey);
+        }
+
+        public static UpgradeReturnMessage decode(FriendlyByteBuf buf) {
+            return new UpgradeReturnMessage(buf.readUtf(), buf.readUtf());
+        }
+
+        public static void handle(UpgradeReturnMessage msg, Supplier<NetworkEvent.Context> ctx) {
+            NetworkEvent.Context context = ctx.get();
+            context.enqueueWork(() -> {
+                var player = context.getSender();
+                if (player == null) return;
+                if (!com.gy_mod.gy_trinket.Config.UPGRADE_SYSTEM_ENABLED.get()) return;
+
+                java.util.UUID playerUUID = player.getUUID();
+                UpgradeData upgradeData = UpgradeManager.getUpgradeData(playerUUID);
+
+                String pathKey = msg.baseItemKey + "->" + msg.upgradedItemKey;
+                List<ItemStack> materials = upgradeData.getMaterials(pathKey);
+                if (materials.isEmpty()) return;
+
+                for (ItemStack stack : materials) {
+                    if (!stack.isEmpty()) {
+                        ItemStack returnStack = stack.copy();
+                        boolean added = player.getInventory().add(returnStack);
+                        if (!added) {
+                            player.drop(returnStack, false);
+                        }
+                    }
+                }
+
+                upgradeData.clearMaterials(pathKey);
+                UpgradeManager.setUpgradeData(playerUUID, upgradeData);
+
+                player.sendSystemMessage(net.minecraft.network.chat.Component.translatable(
+                    "message.gytrinket.upgrade.materials_returned"));
+
+                sendPanelUpdate(player);
+            });
+            context.setPacketHandled(true);
+        }
+    }
+
+    private static void sendPanelUpdate(net.minecraft.server.level.ServerPlayer player) {
+        var attributes = AttributeManager.getPlayerAttributes(player);
+        PlayerStore store = PlayerStoreManager.getPlayerStore(player);
+        ListTag items = new ListTag();
+        int slotCount = 0;
+        ListTag upgradeTargets = new ListTag();
+        if (store != null) {
+            slotCount = store.getItemHandler().getSlots();
+            for (int i = 0; i < slotCount; i++) {
+                CompoundTag itemTag = new CompoundTag();
+                itemTag.putInt("slot", i);
+                ItemStack stack = store.getItemHandler().getStackInSlot(i);
+                if (!stack.isEmpty()) {
+                    stack.save(itemTag);
+                }
+                items.add(itemTag);
+            }
+            if (com.gy_mod.gy_trinket.Config.UPGRADE_SYSTEM_ENABLED.get()) {
+                UpgradeData upgradeData = UpgradeManager.getUpgradeData(player.getUUID());
+                upgradeTargets = UpgradeManager.buildUpgradeTargets(
+                    store.getItemHandler(), upgradeData,
+                    player.serverLevel().getRecipeManager(),
+                    player.serverLevel().registryAccess()
+                );
+            }
+        }
+        UpgradeData upgradeData = UpgradeManager.getUpgradeData(player.getUUID());
+        CompoundTag upgradeTag = upgradeData.save();
+        INSTANCE.send(PacketDistributor.PLAYER.with(() -> player),
+            new ResponsePanelDataMessage(attributes, items, slotCount, upgradeTag, upgradeTargets));
+    }
+
+    private static void sendConfigDataToPlayer(net.minecraft.server.level.ServerPlayer player) {
+        ResponseConfigDataMessage msg = buildConfigDataMessage(true);
+        INSTANCE.send(PacketDistributor.PLAYER.with(() -> player), msg);
+    }
+
+    private static void sendConfigDataToAllPlayers(net.minecraft.server.level.ServerPlayer source) {
+        ResponseConfigDataMessage msg = buildConfigDataMessage(false);
+        for (var p : source.server.getPlayerList().getPlayers()) {
+            INSTANCE.send(PacketDistributor.PLAYER.with(() -> p), msg);
+        }
+    }
+
+    private static ResponseConfigDataMessage buildConfigDataMessage(boolean openScreen) {
+        ListTag itemConfigList = new ListTag();
+        for (String itemId : AttributeManager.getAllRegisteredItemAttributes()) {
+            ItemAttributeConfig config = AttributeManager.getItemAttributes(itemId);
+            if (config == null) continue;
+            CompoundTag itemTag = new CompoundTag();
+            itemTag.putString("itemId", itemId);
+            ListTag attrsTag = new ListTag();
+            for (var entry : config.getAttributes().entrySet()) {
+                CompoundTag attrTag = new CompoundTag();
+                attrTag.putString("name", entry.getKey());
+                attrTag.putDouble("value", entry.getValue());
+                attrsTag.add(attrTag);
+            }
+            itemTag.put("attributes", attrsTag);
+            itemConfigList.add(itemTag);
+        }
+
+        List<String> allAttrs = new java.util.ArrayList<>(AttributeManager.getAllRegisteredAttributes());
+        java.util.Collections.sort(allAttrs);
+
+        return new ResponseConfigDataMessage(itemConfigList, allAttrs, openScreen);
+    }
+
+    public static class RequestConfigDataMessage {
+        public RequestConfigDataMessage() {}
+
+        public static void encode(RequestConfigDataMessage msg, FriendlyByteBuf buf) {}
+
+        public static RequestConfigDataMessage decode(FriendlyByteBuf buf) {
+            return new RequestConfigDataMessage();
+        }
+
+        public static void handle(RequestConfigDataMessage msg, Supplier<NetworkEvent.Context> ctx) {
+            NetworkEvent.Context context = ctx.get();
+            context.enqueueWork(() -> {
+                var player = context.getSender();
+                if (player == null) return;
+                if (!player.hasPermissions(2)) return;
+
+                sendConfigDataToPlayer(player);
+            });
+            context.setPacketHandled(true);
+        }
+    }
+
+    public static class ResponseConfigDataMessage {
+        public ListTag itemConfigData;
+        public List<String> allAttributeNames;
+        public boolean openScreen;
+
+        public ResponseConfigDataMessage() {}
+
+        public ResponseConfigDataMessage(ListTag itemConfigData, List<String> allAttributeNames, boolean openScreen) {
+            this.itemConfigData = itemConfigData;
+            this.allAttributeNames = allAttributeNames;
+            this.openScreen = openScreen;
+        }
+
+        public static void encode(ResponseConfigDataMessage msg, FriendlyByteBuf buf) {
+            CompoundTag tag = new CompoundTag();
+            tag.put("items", msg.itemConfigData);
+            ListTag attrsList = new ListTag();
+            for (String attr : msg.allAttributeNames) {
+                CompoundTag attrTag = new CompoundTag();
+                attrTag.putString("name", attr);
+                attrsList.add(attrTag);
+            }
+            tag.put("allAttrs", attrsList);
+            tag.putBoolean("openScreen", msg.openScreen);
+            buf.writeNbt(tag);
+        }
+
+        public static ResponseConfigDataMessage decode(FriendlyByteBuf buf) {
+            CompoundTag tag = buf.readNbt();
+            ListTag itemConfigData = tag != null ? tag.getList("items", 10) : new ListTag();
+            List<String> allAttributeNames = new java.util.ArrayList<>();
+            if (tag != null) {
+                ListTag attrsList = tag.getList("allAttrs", 10);
+                for (int i = 0; i < attrsList.size(); i++) {
+                    allAttributeNames.add(attrsList.getCompound(i).getString("name"));
+                }
+            }
+            boolean openScreen = tag != null && tag.getBoolean("openScreen");
+            return new ResponseConfigDataMessage(itemConfigData, allAttributeNames, openScreen);
+        }
+
+        public static void handle(ResponseConfigDataMessage msg, Supplier<NetworkEvent.Context> ctx) {
+            NetworkEvent.Context context = ctx.get();
+            context.enqueueWork(() -> {
+                DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () ->
+                    com.gy_mod.gy_trinket.client.network.ClientPacketHandler.handleResponseConfigData(msg));
+            });
+            context.setPacketHandled(true);
+        }
+    }
+
+    public static class ConfigUpdateMessage {
+        private String itemId;
+        private String attributeName;
+        private double value;
+
+        public ConfigUpdateMessage() {}
+
+        public ConfigUpdateMessage(String itemId, String attributeName, double value) {
+            this.itemId = itemId;
+            this.attributeName = attributeName;
+            this.value = value;
+        }
+
+        public static void encode(ConfigUpdateMessage msg, FriendlyByteBuf buf) {
+            buf.writeUtf(msg.itemId);
+            buf.writeUtf(msg.attributeName);
+            buf.writeDouble(msg.value);
+        }
+
+        public static ConfigUpdateMessage decode(FriendlyByteBuf buf) {
+            return new ConfigUpdateMessage(buf.readUtf(), buf.readUtf(), buf.readDouble());
+        }
+
+        public static void handle(ConfigUpdateMessage msg, Supplier<NetworkEvent.Context> ctx) {
+            NetworkEvent.Context context = ctx.get();
+            context.enqueueWork(() -> {
+                var player = context.getSender();
+                if (player == null) return;
+                if (!player.hasPermissions(2)) return;
+
+                ItemAttributeConfig config = AttributeManager.getItemAttributes(msg.itemId);
+                if (config != null) {
+                    config.addAttribute(msg.attributeName, msg.value);
+                } else {
+                    Map<String, Double> attrs = new HashMap<>();
+                    attrs.put(msg.attributeName, msg.value);
+                    AttributeManager.registerItemAttributes(msg.itemId, attrs);
+                }
+
+                Config.saveItemAttributesConfig();
+
+                for (var p : player.server.getPlayerList().getPlayers()) {
+                    AttributeManager.recalculateAndCachePlayerAttributes(p);
+                }
+
+                sendConfigDataToAllPlayers(player);
+            });
+            context.setPacketHandled(true);
+        }
+    }
+
+    public static class ConfigDeleteItemMessage {
+        private String itemId;
+
+        public ConfigDeleteItemMessage() {}
+
+        public ConfigDeleteItemMessage(String itemId) {
+            this.itemId = itemId;
+        }
+
+        public static void encode(ConfigDeleteItemMessage msg, FriendlyByteBuf buf) {
+            buf.writeUtf(msg.itemId);
+        }
+
+        public static ConfigDeleteItemMessage decode(FriendlyByteBuf buf) {
+            return new ConfigDeleteItemMessage(buf.readUtf());
+        }
+
+        public static void handle(ConfigDeleteItemMessage msg, Supplier<NetworkEvent.Context> ctx) {
+            NetworkEvent.Context context = ctx.get();
+            context.enqueueWork(() -> {
+                var player = context.getSender();
+                if (player == null) return;
+                if (!player.hasPermissions(2)) return;
+
+                AttributeManager.removeItemAttributes(msg.itemId);
+
+                Config.saveItemAttributesConfig();
+
+                for (var p : player.server.getPlayerList().getPlayers()) {
+                    AttributeManager.recalculateAndCachePlayerAttributes(p);
+                }
+
+                sendConfigDataToAllPlayers(player);
+            });
+            context.setPacketHandled(true);
+        }
+    }
+
+    public static class ConfigAddItemMessage {
+        private String itemId;
+
+        public ConfigAddItemMessage() {}
+
+        public ConfigAddItemMessage(String itemId) {
+            this.itemId = itemId;
+        }
+
+        public static void encode(ConfigAddItemMessage msg, FriendlyByteBuf buf) {
+            buf.writeUtf(msg.itemId);
+        }
+
+        public static ConfigAddItemMessage decode(FriendlyByteBuf buf) {
+            return new ConfigAddItemMessage(buf.readUtf());
+        }
+
+        public static void handle(ConfigAddItemMessage msg, Supplier<NetworkEvent.Context> ctx) {
+            NetworkEvent.Context context = ctx.get();
+            context.enqueueWork(() -> {
+                var player = context.getSender();
+                if (player == null) return;
+                if (!player.hasPermissions(2)) return;
+
+                if (msg.itemId != null && !msg.itemId.isEmpty() && !msg.itemId.equals("minecraft:air")) {
+                    if (!AttributeManager.isItemAttributeRegistered(msg.itemId)) {
+                        Map<String, Double> attrs = new HashMap<>();
+                        AttributeManager.registerItemAttributes(msg.itemId, attrs);
+                        Config.saveItemAttributesConfig();
+                    }
+                }
+
+                sendConfigDataToAllPlayers(player);
+            });
+            context.setPacketHandled(true);
+        }
+    }
+
+    public static class ConfigRemoveAttrMessage {
+        private String itemId;
+        private String attributeName;
+
+        public ConfigRemoveAttrMessage() {}
+
+        public ConfigRemoveAttrMessage(String itemId, String attributeName) {
+            this.itemId = itemId;
+            this.attributeName = attributeName;
+        }
+
+        public static void encode(ConfigRemoveAttrMessage msg, FriendlyByteBuf buf) {
+            buf.writeUtf(msg.itemId);
+            buf.writeUtf(msg.attributeName);
+        }
+
+        public static ConfigRemoveAttrMessage decode(FriendlyByteBuf buf) {
+            return new ConfigRemoveAttrMessage(buf.readUtf(), buf.readUtf());
+        }
+
+        public static void handle(ConfigRemoveAttrMessage msg, Supplier<NetworkEvent.Context> ctx) {
+            NetworkEvent.Context context = ctx.get();
+            context.enqueueWork(() -> {
+                var player = context.getSender();
+                if (player == null) return;
+                if (!player.hasPermissions(2)) return;
+
+                AttributeManager.removeItemAttribute(msg.itemId, msg.attributeName);
+
+                Config.saveItemAttributesConfig();
+
+                for (var p : player.server.getPlayerList().getPlayers()) {
+                    AttributeManager.recalculateAndCachePlayerAttributes(p);
+                }
+
+                sendConfigDataToAllPlayers(player);
+            });
+            context.setPacketHandled(true);
+        }
+    }
+
+    public static class ConfigResetMessage {
+        public ConfigResetMessage() {}
+
+        public static void encode(ConfigResetMessage msg, FriendlyByteBuf buf) {}
+
+        public static ConfigResetMessage decode(FriendlyByteBuf buf) {
+            return new ConfigResetMessage();
+        }
+
+        public static void handle(ConfigResetMessage msg, Supplier<NetworkEvent.Context> ctx) {
+            NetworkEvent.Context context = ctx.get();
+            context.enqueueWork(() -> {
+                var player = context.getSender();
+                if (player == null) return;
+                if (!player.hasPermissions(2)) return;
+
+                AttributeManager.resetToDefaults();
+                Config.resetItemAttributesConfig();
+
+                for (var p : player.server.getPlayerList().getPlayers()) {
+                    AttributeManager.recalculateAndCachePlayerAttributes(p);
+                }
+
+                sendConfigDataToAllPlayers(player);
+            });
+            context.setPacketHandled(true);
+        }
+    }
+
+    public static class ConfigReorderMessage {
+        public final int fromIndex;
+        public final int toIndex;
+
+        public ConfigReorderMessage(int fromIndex, int toIndex) {
+            this.fromIndex = fromIndex;
+            this.toIndex = toIndex;
+        }
+
+        public static void encode(ConfigReorderMessage msg, FriendlyByteBuf buf) {
+            buf.writeVarInt(msg.fromIndex);
+            buf.writeVarInt(msg.toIndex);
+        }
+
+        public static ConfigReorderMessage decode(FriendlyByteBuf buf) {
+            return new ConfigReorderMessage(buf.readVarInt(), buf.readVarInt());
+        }
+
+        public static void handle(ConfigReorderMessage msg, Supplier<NetworkEvent.Context> ctx) {
+            NetworkEvent.Context context = ctx.get();
+            context.enqueueWork(() -> {
+                var player = context.getSender();
+                if (player == null) return;
+                if (!player.hasPermissions(2)) return;
+
+                AttributeManager.reorderItem(msg.fromIndex, msg.toIndex);
+                Config.saveItemAttributesConfig();
+
+                for (var p : player.server.getPlayerList().getPlayers()) {
+                    AttributeManager.recalculateAndCachePlayerAttributes(p);
+                }
+
+                sendConfigDataToAllPlayers(player);
             });
             context.setPacketHandled(true);
         }

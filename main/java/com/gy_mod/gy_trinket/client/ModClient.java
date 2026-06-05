@@ -9,9 +9,11 @@ import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneRenderer;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneBulletRenderer;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.client.renderer.DroneBeamRenderer;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.client.renderer.ArmorShardRenderer;
+import com.gy_mod.gy_trinket.key.KeyInputHandler;
+import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneInputHandler;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.EntityRenderersEvent;
-import net.minecraftforge.client.event.RenderLevelStageEvent;
+import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -32,6 +34,12 @@ public class ModClient {
         ShieldParticleRenderEvent.init();
         ShieldParticleTickEvent.init();
         com.gy_mod.gy_trinket.client.burst_fire.BurstFireClientHandler.init();
+    }
+
+    @SubscribeEvent
+    public static void onRegisterKeyMappings(RegisterKeyMappingsEvent event) {
+        KeyInputHandler.onRegisterKeyMappings(event);
+        DroneInputHandler.onRegisterKeyMappings(event);
     }
     
     /**

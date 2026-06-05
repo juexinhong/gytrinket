@@ -102,7 +102,7 @@ public class ShieldParticleHandler implements DamageHandler {
             return;
         }
         
-        NetworkHandler.sendShieldParticleToPlayer(shieldOwner, particleX, particleY, particleZ, dirX, dirY, dirZ, originX, originY, originZ, 0);
+        NetworkHandler.sendShieldParticleToPlayer(shieldOwner, attackedEntity, particleX, particleY, particleZ, dirX, dirY, dirZ, originX, originY, originZ, 0);
         
         double[] normal = new double[3];
         if (Math.abs(dirY) < 0.999) {
@@ -167,7 +167,7 @@ public class ShieldParticleHandler implements DamageHandler {
                 double pointY = originY + pointDir[1] * radius;
                 double pointZ = originZ + pointDir[2] * radius;
                 
-                NetworkHandler.sendShieldParticleToPlayer(shieldOwner, pointX, pointY, pointZ, pointDir[0], pointDir[1], pointDir[2], originX, originY, originZ, delayMs);
+                NetworkHandler.sendShieldParticleToPlayer(shieldOwner, attackedEntity, pointX, pointY, pointZ, pointDir[0], pointDir[1], pointDir[2], originX, originY, originZ, delayMs);
             }
         }
     }

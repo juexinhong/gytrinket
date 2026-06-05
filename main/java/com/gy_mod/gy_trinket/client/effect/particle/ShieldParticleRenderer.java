@@ -6,6 +6,7 @@ import com.mojang.blaze3d.vertex.*;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec3;
 
 public class ShieldParticleRenderer {
@@ -26,6 +27,9 @@ public class ShieldParticleRenderer {
         }
         
         Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null) {
+            return;
+        }
         Vec3 cameraPos = mc.gameRenderer.getMainCamera().getPosition();
         
         RenderSystem.enableBlend();
@@ -42,18 +46,29 @@ public class ShieldParticleRenderer {
             int textureIndex = Math.min(particle.age - 1, SHIELD_TEXTURES.length - 1);
             if (textureIndex < 0) continue;
             
-            ResourceLocation texture = SHIELD_TEXTURES[textureIndex];
+            // 通过 entityId 查找实体，动态计算当前位置
+            Entity entity = mc.level.getEntity(particle.entityId);
+            if (entity == null) continue;
             
-            double px = particle.x;
-            double py = particle.y;
-            double pz = particle.z;
+            // 使用插值位置使粒子跟随更平滑
+            double entityX = entity.xOld + (entity.getX() - entity.xOld) * partialTicks;
+            double entityY = entity.yOld + (entity.getY() - entity.yOld) * partialTicks;
+            double entityZ = entity.zOld + (entity.getZ() - entity.zOld) * partialTicks;
+            
+            // 计算当前球心位置
+            double originX = entityX + particle.originOffsetX;
+            double originY = entityY + particle.originOffsetY;
+            double originZ = entityZ + particle.originOffsetZ;
+            
+            // 计算当前粒子位置
+            double px = originX + particle.offsetX;
+            double py = originY + particle.offsetY;
+            double pz = originZ + particle.offsetZ;
+            
+            ResourceLocation texture = SHIELD_TEXTURES[textureIndex];
             
             float size = calculateSize(particle.age);
             float alpha = calculateAlpha(particle.age);
-            
-            double originX = particle.originX;
-            double originY = particle.originY;
-            double originZ = particle.originZ;
             
             float dirX = (float)(originX - px);
             float dirY = (float)(originY - py);

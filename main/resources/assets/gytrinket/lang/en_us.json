@@ -1,6 +1,7 @@
 {
   "creative_tab.gytrinket": "Light Point Trinket",
   "key.gytrinket.show_attributes": "Show Light Point Core Attributes",
+  "key.gytrinket.switch_array": "Switch Drone Array",
   "category.gytrinket.gameplay": "Light Point Trinket",
   "tooltip.gytrinket.drone_module": "Drone Construction Material",
   "tooltip.gytrinket.drone_module_desc": "Allows building drone constructs\nMax Count: %d  Health: %d  Damage: %.1f  Attack Speed: %.0f/s\nDrone is a Standard Construct",
@@ -628,7 +629,7 @@
   "entity.gytrinket.shield_stance": "Shield Stance",
 
   "advancements.gytrinket.story.obtain_basic_shield.title": "Can it block everything?",
-  "advancements.gytrinket.story.obtain_basic_shield.description": "Starving makes the shield hurt",
+  "advancements.gytrinket.story.obtain_basic_shield.description": "Hey you know? Press G to open the mod menu!",
 
   "advancements.gytrinket.story.obtain_aura_ring_shield.title": "Environmental Fire Ring",
   "advancements.gytrinket.story.obtain_aura_ring_shield.description": "Will not damage public property",
@@ -679,5 +680,39 @@
   "message.gytrinket.quick_equip.core_full": "Light Point Core is full",
   "message.gytrinket.quick_equip.not_enough_level": "Not enough experience levels, need level %d",
   "message.gytrinket.quick_equip.success": "Equipped to Light Point Core",
-  "message.gytrinket.quick_equip.shield_swapped": "Shield swapped in Light Point Core"
+  "message.gytrinket.quick_equip.shield_swapped": "Shield swapped in Light Point Core",
+
+  "message.gytrinket.upgrade.material_collected": "Upgrade materials collected: %d/%d",
+  "message.gytrinket.upgrade.success": "Upgrade complete! %s → %s",
+  "message.gytrinket.upgrade.core_full": "Light Point Core is full, cannot add upgrade material",
+  "message.gytrinket.upgrade.no_space": "Not enough space in Light Point Core to complete upgrade",
+  "message.gytrinket.upgrade.materials_returned": "Upgrade materials returned",
+
+  "screen.gytrinket.player_panel": "Player Panel",
+  "screen.gytrinket.equipped_items": "Equipped Items",
+  "screen.gytrinket.attributes": "Attributes",
+  "screen.gytrinket.upgrade_info": "Upgrade Info",
+  "screen.gytrinket.upgrade_button": "Upgrade",
+  "screen.gytrinket.upgrade_materials_for": "Upgrade Materials - %s",
+  "screen.gytrinket.no_upgrade_materials": "No upgrade materials",
+  "screen.gytrinket.upgrade_target": "Select Upgrade Target",
+  "screen.gytrinket.upgrade_target_title": "Select item to upgrade",
+  "screen.gytrinket.upgrade_target_hint": "Click item to view requirements",
+  "screen.gytrinket.no_upgrade_targets": "No upgradable items",
+  "screen.gytrinket.upgrade_select": "Select Upgrade Material",
+  "screen.gytrinket.upgrade_select_title": "Select item to consume",
+  "screen.gytrinket.upgrade_select_hint": "Left-click item to consume 1",
+  "screen.gytrinket.return_materials": "Return Materials",
+  "screen.gytrinket.config_button": "Config",
+  "screen.gytrinket.config_panel_title": "Item Attribute Config",
+  "screen.gytrinket.add_item": "Add Item",
+  "screen.gytrinket.add_attribute": "Add Attribute",
+  "screen.gytrinket.select_attribute": "Select Attribute",
+  "screen.gytrinket.no_attributes": "No attributes, click [+] to add",
+  "screen.gytrinket.no_config_items": "No item configs",
+  "screen.gytrinket.reset_defaults": "Reset Defaults",
+  "screen.gytrinket.back": "Back",
+  "screen.gytrinket.add_item_prompt": "Item ID (e.g. minecraft:diamond):",
+  "screen.gytrinket.no_attributes_registered": "No attributes registered",
+  "screen.gytrinket.reorder_hint": "Drop to reorder"
 }

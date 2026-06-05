@@ -66,11 +66,10 @@ public class ItemAttributeConfig {
         return attributes.containsKey(attributeName);
     }
 
-    /**
-     * 创建物品属性配置的静态工厂方法
-     * @param itemId 物品注册名
-     * @return 新的 ItemAttributeConfig 实例
-     */
+    public void removeAttribute(String attributeName) {
+        attributes.remove(attributeName);
+    }
+
     public static ItemAttributeConfig of(String itemId) {
         return new ItemAttributeConfig(itemId);
     }

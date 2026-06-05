@@ -34,6 +34,8 @@ public class QuickEquipEvent {
 
     @SubscribeEvent
     public static void onPlayerRightClick(PlayerInteractEvent.RightClickItem event) {
+        if (event.isCanceled()) return;
+
         Player player = event.getEntity();
         ItemStack stack = event.getItemStack();
 

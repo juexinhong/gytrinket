@@ -1,9 +1,11 @@
 package com.gy_mod.gy_trinket;
 
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
+import com.gy_mod.gy_trinket.core.attribute.ItemAttributeConfig;
 import com.gy_mod.gy_trinket.core.attribute.AttributeType;
 import com.gy_mod.gy_trinket.core.disable.DisableSystem;
 import com.gy_mod.gy_trinket.core.shield.type.ShieldTypeManager;
+import com.gy_mod.gy_trinket.core.upgrade.UpgradeManager;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraftforge.common.ForgeConfigSpec;
@@ -156,6 +158,9 @@ public class Config {
     public static final ForgeConfigSpec.IntValue COUNTER_PULSE_CHARGE_INTERVAL;
     public static final ForgeConfigSpec.IntValue COUNTER_PULSE_MAX_CHARGE_LEVEL;
 
+    public static final ForgeConfigSpec.ConfigValue<Boolean> UPGRADE_SYSTEM_ENABLED;
+    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> UPGRADE_PATHS;
+
     public static final ForgeConfigSpec.DoubleValue QUICK_EQUIP_EXP_LEVEL_MULTIPLIER;
     public static final ForgeConfigSpec.ConfigValue<Boolean> HARDCORE_MODE_ENABLED;
 
@@ -271,40 +276,40 @@ public class Config {
             "示例：minecraft:diamond|shield_base=10.0|shield_percent=0.1"
         ).defineListAllowEmpty("itemAttributes",
             List.of(
-                "gytrinket:shield_gy|shield_base=8.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.4",
-                "gytrinket:shield_gy1|shield_base=12.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.4",
-                "gytrinket:shield_gy2|shield_base=16.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.4",
-                "gytrinket:shield_gy3|shield_base=20.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.4",
+                "gytrinket:shield_gy|shield_base=8.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.25",
+                "gytrinket:shield_gy1|shield_base=12.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.25",
+                "gytrinket:shield_gy2|shield_base=16.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.25",
+                "gytrinket:shield_gy3|shield_base=20.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.25",
 
-                "gytrinket:shield_aura_ring|shield_base=8.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.4",
-                "gytrinket:shield_aura_ring1|shield_base=12.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.4",
-                "gytrinket:shield_aura_ring2|shield_base=16.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.4",
-                "gytrinket:shield_aura_ring3|shield_base=20.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.4",
+                "gytrinket:shield_aura_ring|shield_base=8.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.25",
+                "gytrinket:shield_aura_ring1|shield_base=12.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.25",
+                "gytrinket:shield_aura_ring2|shield_base=16.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.25",
+                "gytrinket:shield_aura_ring3|shield_base=20.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.25",
 
-                "gytrinket:shield_siphon|shield_base=8.0|shield_cooldown_time=7|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.4|shield_effect_percent=-0.3",
-                "gytrinket:shield_siphon1|shield_base=12.0|shield_cooldown_time=7|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.4|shield_effect_percent=-0.2",
-                "gytrinket:shield_siphon2|shield_base=16.0|shield_cooldown_time=7|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.4|shield_effect_percent=-0.1",
-                "gytrinket:shield_siphon3|shield_base=20.0|shield_cooldown_time=7|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.4|shield_effect_percent=0.0",
+                "gytrinket:shield_siphon|shield_base=8.0|shield_cooldown_time=7|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.25|shield_effect_percent=-0.3",
+                "gytrinket:shield_siphon1|shield_base=12.0|shield_cooldown_time=7|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.25|shield_effect_percent=-0.2",
+                "gytrinket:shield_siphon2|shield_base=16.0|shield_cooldown_time=7|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.25|shield_effect_percent=-0.1",
+                "gytrinket:shield_siphon3|shield_base=20.0|shield_cooldown_time=7|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.25|shield_effect_percent=0.0",
 
-                "gytrinket:shield_reflect|shield_base=9.6|shield_cooldown_time=7.5|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.4",
-                "gytrinket:shield_reflect1|shield_base=14.4|shield_cooldown_time=7.5|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.4",
-                "gytrinket:shield_reflect2|shield_base=19.2|shield_cooldown_time=7.5|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.4",
-                "gytrinket:shield_reflect3|shield_base=24.0|shield_cooldown_time=7.5|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.4",
+                "gytrinket:shield_reflect|shield_base=9.6|shield_cooldown_time=7.5|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.25",
+                "gytrinket:shield_reflect1|shield_base=14.4|shield_cooldown_time=7.5|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.25",
+                "gytrinket:shield_reflect2|shield_base=19.2|shield_cooldown_time=7.5|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.25",
+                "gytrinket:shield_reflect3|shield_base=24.0|shield_cooldown_time=7.5|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.25",
 
-                "gytrinket:shield_amplifier|shield_base=4.0|shield_cooldown_time=6.0|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.4",
-                "gytrinket:shield_amplifier1|shield_base=6.0|shield_cooldown_time=6.0|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.4",
-                "gytrinket:shield_amplifier2|shield_base=8.0|shield_cooldown_time=6.0|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.4",
-                "gytrinket:shield_amplifier3|shield_base=10.0|shield_cooldown_time=6.0|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.4",
+                "gytrinket:shield_amplifier|shield_base=4.0|shield_cooldown_time=6.0|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.25",
+                "gytrinket:shield_amplifier1|shield_base=6.0|shield_cooldown_time=6.0|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.25",
+                "gytrinket:shield_amplifier2|shield_base=8.0|shield_cooldown_time=6.0|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.25",
+                "gytrinket:shield_amplifier3|shield_base=10.0|shield_cooldown_time=6.0|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.25",
 
-                "gytrinket:shield_warp|shield_base=18.0|shield_cooldown_time=10.5|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.4",
-                "gytrinket:shield_warp1|shield_base=18.0|shield_cooldown_time=8.5|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.4",
-                "gytrinket:shield_warp2|shield_base=18.0|shield_cooldown_time=7.0|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.4",
-                "gytrinket:shield_warp3|shield_base=18.0|shield_cooldown_time=6.0|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.4",
+                "gytrinket:shield_warp|shield_base=18.0|shield_cooldown_time=10.5|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.25",
+                "gytrinket:shield_warp1|shield_base=18.0|shield_cooldown_time=8.5|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.25",
+                "gytrinket:shield_warp2|shield_base=18.0|shield_cooldown_time=7.0|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.25",
+                "gytrinket:shield_warp3|shield_base=18.0|shield_cooldown_time=6.0|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.25",
 
                 "gytrinket:shield_amplifier_module|shield_percent=0.2",
                 "gytrinket:barrier_shield_module|shield_percent=0.05",
                 "gytrinket:reflect_shield_module|shield_percent=0.05",
-                "gytrinket:ultimate_shield_module|shield_base=11.0|shield_damage_reduction=-0.15|shield_effect_percent=0.15|shield_hit_cooldown_extend_final_multiplier=-0.5|player_health_independent=-0.85",
+                "gytrinket:ultimate_shield_module|shield_base=11.0|shield_damage_reduction=-0.15|shield_effect_percent=0.15|shield_hit_cooldown_extend_final_multiplier=-0.75|player_health_independent=-0.85",
 
                 "gytrinket:shield_cooldown_reduction_module|shield_cooldown_reduction_percent=0.2",
                 "gytrinket:shield_quick_charge_module|shield_cooldown_reduction_percent=0.25|shield_independent=-0.25",
@@ -1179,6 +1184,47 @@ public class Config {
 
         BUILDER.pop();
 
+        BUILDER.comment("升级系统配置").push("upgrade_system");
+
+        UPGRADE_SYSTEM_ENABLED = BUILDER.comment("是否启用升级系统").define("enabled", true);
+
+        UPGRADE_PATHS = BUILDER.comment(
+            "升级路径定义",
+            "格式：基础物品ID.升级物品ID",
+            "每条代表一个升级步骤，若有多级升级则分别注册",
+            "同一基础物品可以注册多个升级目标，形成升级分支",
+            "示例：gytrinket:shield_gy.gytrinket:shield_gy1"
+        ).defineListAllowEmpty("upgradePaths",
+            java.util.List.of(
+                "gytrinket:shield_gy.gytrinket:shield_gy1",
+                "gytrinket:shield_gy1.gytrinket:shield_gy2",
+                "gytrinket:shield_gy2.gytrinket:shield_gy3",
+                "gytrinket:shield_gy.gytrinket:shield_aura_ring",
+                "gytrinket:shield_gy.gytrinket:shield_siphon",
+                "gytrinket:shield_gy.gytrinket:shield_reflect",
+                "gytrinket:shield_gy.gytrinket:shield_amplifier",
+                "gytrinket:shield_gy.gytrinket:shield_warp",
+                "gytrinket:shield_aura_ring.gytrinket:shield_aura_ring1",
+                "gytrinket:shield_aura_ring1.gytrinket:shield_aura_ring2",
+                "gytrinket:shield_aura_ring2.gytrinket:shield_aura_ring3",
+                "gytrinket:shield_siphon.gytrinket:shield_siphon1",
+                "gytrinket:shield_siphon1.gytrinket:shield_siphon2",
+                "gytrinket:shield_siphon2.gytrinket:shield_siphon3",
+                "gytrinket:shield_reflect.gytrinket:shield_reflect1",
+                "gytrinket:shield_reflect1.gytrinket:shield_reflect2",
+                "gytrinket:shield_reflect2.gytrinket:shield_reflect3",
+                "gytrinket:shield_amplifier.gytrinket:shield_amplifier1",
+                "gytrinket:shield_amplifier1.gytrinket:shield_amplifier2",
+                "gytrinket:shield_amplifier2.gytrinket:shield_amplifier3",
+                "gytrinket:shield_warp.gytrinket:shield_warp1",
+                "gytrinket:shield_warp1.gytrinket:shield_warp2",
+                "gytrinket:shield_warp2.gytrinket:shield_warp3"
+            ),
+            s -> true
+        );
+
+        BUILDER.pop();
+
         BUILDER.comment("快速装备配置").push("quick_equip");
 
         QUICK_EQUIP_EXP_LEVEL_MULTIPLIER = BUILDER.comment(
@@ -1335,6 +1381,58 @@ public class Config {
 
     public static boolean isShieldTypeCompatible(String typeName) {
         return SHIELD_TYPE_COMPATIBILITY.getOrDefault(typeName, true);
+    }
+
+    public static void saveItemAttributesConfig() {
+        java.util.Set<String> registeredItems = AttributeManager.getAllRegisteredItemAttributes();
+        java.util.List<String> configList = new java.util.ArrayList<>();
+        for (String itemId : registeredItems) {
+            ItemAttributeConfig config = AttributeManager.getItemAttributes(itemId);
+            if (config == null || config.getAttributes().isEmpty()) continue;
+            StringBuilder sb = new StringBuilder(itemId);
+            for (var entry : config.getAttributes().entrySet()) {
+                sb.append("|").append(entry.getKey()).append("=").append(entry.getValue());
+            }
+            configList.add(sb.toString());
+        }
+        ITEM_ATTRIBUTES_CONFIG.set(configList);
+        SPEC.save();
+        gytrinket.LOGGER.info("物品属性配置已保存，共 {} 个物品", configList.size());
+    }
+
+    public static void loadItemAttributes() {
+        List<? extends String> itemAttrsList = ITEM_ATTRIBUTES_CONFIG.get();
+        for (String itemConfig : itemAttrsList) {
+            if (!itemConfig.trim().isEmpty()) {
+                String[] itemParts = itemConfig.trim().split("\\|");
+                if (itemParts.length >= 2) {
+                    String itemId = itemParts[0].trim();
+                    Map<String, Double> attrs = new HashMap<>();
+                    for (int i = 1; i < itemParts.length; i++) {
+                        String[] attrParts = itemParts[i].trim().split("=");
+                        if (attrParts.length == 2) {
+                            String attrName = attrParts[0].trim();
+                            try {
+                                double value = Double.parseDouble(attrParts[1].trim());
+                                attrs.put(attrName, value);
+                            } catch (NumberFormatException e) {
+                                gytrinket.LOGGER.warn("无效的属性值：{} for {}", attrParts[1], itemId);
+                            }
+                        }
+                    }
+                    if (!attrs.isEmpty()) {
+                        AttributeManager.registerItemAttributes(itemId, attrs);
+                    }
+                }
+            }
+        }
+    }
+
+    public static void resetItemAttributesConfig() {
+        ITEM_ATTRIBUTES_CONFIG.set(ITEM_ATTRIBUTES_CONFIG.getDefault());
+        SPEC.save();
+        loadItemAttributes();
+        gytrinket.LOGGER.info("物品属性配置已重置为默认值");
     }
 
     @SubscribeEvent
@@ -1702,6 +1800,8 @@ public class Config {
                 }
             }
         }
+
+        UpgradeManager.loadConfig();
 
         gytrinket.LOGGER.info("属性系统配置加载完成");
     }

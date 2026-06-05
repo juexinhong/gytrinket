@@ -33,7 +33,6 @@ public class DroneInputHandler {
         );
     }
 
-    @SubscribeEvent
     public static void onRegisterKeyMappings(RegisterKeyMappingsEvent event) {
         event.register(arraySwitchKey);
         gytrinket.LOGGER.info("阵列切换按键绑定已注册：Tab 键");

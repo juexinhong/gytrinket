@@ -1,5 +1,6 @@
 package com.gy_mod.gy_trinket.core.attribute;
 
+import com.gy_mod.gy_trinket.Config;
 import com.gy_mod.gy_trinket.core.disable.DisableSystem;
 import com.gy_mod.gy_trinket.gytrinket;
 import com.gy_mod.gy_trinket.event.AttributeDynamicChangeEvent;
@@ -23,7 +24,7 @@ import java.util.*;
 public class AttributeManager {
     private static final Map<String, AttributeDefinition> ATTRIBUTE_DEFINITIONS = new java.util.concurrent.ConcurrentHashMap<>();
     private static final Map<String, List<String>> ATTRIBUTE_GROUPS = new java.util.concurrent.ConcurrentHashMap<>();
-    private static final Map<String, ItemAttributeConfig> ITEM_ATTRIBUTES = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final Map<String, ItemAttributeConfig> ITEM_ATTRIBUTES = new java.util.LinkedHashMap<>();
     
     private static final Map<UUID, Map<String, AttributeValueSet>> PLAYER_STATIC_ATTRIBUTES = new HashMap<>();
     private static final Map<UUID, Map<String, AttributeValueSet>> PLAYER_DYNAMIC_ATTRIBUTES = new java.util.concurrent.ConcurrentHashMap<>();
@@ -362,12 +363,49 @@ public class AttributeManager {
         return ITEM_ATTRIBUTES.containsKey(itemId);
     }
 
+    public static void removeItemAttributes(String itemId) {
+        ITEM_ATTRIBUTES.remove(itemId);
+    }
+
+    public static void clearAllItemAttributes() {
+        ITEM_ATTRIBUTES.clear();
+    }
+
+    public static void removeItemAttribute(String itemId, String attributeName) {
+        ItemAttributeConfig config = ITEM_ATTRIBUTES.get(itemId);
+        if (config != null) {
+            config.removeAttribute(attributeName);
+            if (config.getAttributes().isEmpty()) {
+                ITEM_ATTRIBUTES.remove(itemId);
+            }
+        }
+    }
+
+    public static void resetToDefaults() {
+        ITEM_ATTRIBUTES.clear();
+        Config.loadItemAttributes();
+    }
+
+    public static void reorderItem(int fromIndex, int toIndex) {
+        List<String> keys = new ArrayList<>(ITEM_ATTRIBUTES.keySet());
+        if (fromIndex < 0 || fromIndex >= keys.size() || toIndex < 0 || toIndex >= keys.size()) return;
+        if (fromIndex == toIndex) return;
+        String key = keys.remove(fromIndex);
+        keys.add(toIndex, key);
+        Map<String, ItemAttributeConfig> newMap = new java.util.LinkedHashMap<>();
+        for (String k : keys) {
+            newMap.put(k, ITEM_ATTRIBUTES.get(k));
+        }
+        ITEM_ATTRIBUTES.clear();
+        ITEM_ATTRIBUTES.putAll(newMap);
+    }
+
     public static Set<String> getAllRegisteredAttributes() {
         return new HashSet<>(ATTRIBUTE_DEFINITIONS.keySet());
     }
 
     public static Set<String> getAllRegisteredItemAttributes() {
-        return new HashSet<>(ITEM_ATTRIBUTES.keySet());
+        return new java.util.LinkedHashSet<>(ITEM_ATTRIBUTES.keySet());
     }
 
     @SubscribeEvent

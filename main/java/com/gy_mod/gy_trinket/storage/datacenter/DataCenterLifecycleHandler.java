@@ -10,6 +10,7 @@ import com.gy_mod.gy_trinket.core.shield_transfer.ShieldTransferManager;
 import com.gy_mod.gy_trinket.gytrinket;
 import com.gy_mod.gy_trinket.storage.PlayerStore;
 import com.gy_mod.gy_trinket.storage.PlayerStoreManager;
+import com.gy_mod.gy_trinket.core.upgrade.UpgradeDataSlot;
 import com.gy_mod.gy_trinket.storage.datacenter.slot.HealthDataSlot;
 import com.gy_mod.gy_trinket.storage.datacenter.slot.LightPointStoreSlot;
 import com.gy_mod.gy_trinket.storage.datacenter.slot.ShieldDataSlot;
@@ -47,6 +48,7 @@ public class DataCenterLifecycleHandler {
         initialized = true;
 
         PlayerDataCenter.registerSlot(new LightPointStoreSlot());
+        PlayerDataCenter.registerSlot(new UpgradeDataSlot());
         PlayerDataCenter.registerSlot(new ShieldTypeSlot());
         PlayerDataCenter.registerSlot(new ShieldDataSlot());
         PlayerDataCenter.registerSlot(new HealthDataSlot());

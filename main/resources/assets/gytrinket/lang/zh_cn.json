@@ -1,6 +1,7 @@
 {
   "creative_tab.gytrinket": "光点饰品",
   "key.gytrinket.show_attributes": "显示光点核心属性",
+  "key.gytrinket.switch_array": "切换无人机阵列",
   "category.gytrinket.gameplay": "光点饰品",
   "tooltip.gytrinket.drone_module": "无人机",
   "tooltip.gytrinket.drone_module_desc": "允许构建无人机构造体\n上限%d  生命%d  伤害%.1f  攻速%.0f/s\n无人机是标准构造体",
@@ -298,7 +299,7 @@
   "item.gytrinket.reshaping_part": "重塑零件",
 
   "advancements.gytrinket.story.obtain_basic_shield.title": "啥都能防?",
-  "advancements.gytrinket.story.obtain_basic_shield.description": "饥饿使护盾受伤",
+  "advancements.gytrinket.story.obtain_basic_shield.description": "嘿你知道吗?按下G键,可以打开模组菜单!",
 
   "advancements.gytrinket.story.obtain_aura_ring_shield.title": "环保的火焰环",
   "advancements.gytrinket.story.obtain_aura_ring_shield.description": "不会损坏公共财产",
@@ -349,5 +350,39 @@
   "message.gytrinket.quick_equip.core_full": "光点核心已满",
   "message.gytrinket.quick_equip.not_enough_level": "经验等级不足，需要%d级",
   "message.gytrinket.quick_equip.success": "已装备到光点核心",
-  "message.gytrinket.quick_equip.shield_swapped": "已替换护盾到光点核心"
+  "message.gytrinket.quick_equip.shield_swapped": "已替换护盾到光点核心",
+
+  "message.gytrinket.upgrade.material_collected": "升级材料已收集: %d/%d",
+  "message.gytrinket.upgrade.success": "升级完成! %s → %s",
+  "message.gytrinket.upgrade.core_full": "光点核心已满，无法添加升级材料",
+  "message.gytrinket.upgrade.no_space": "光点核心空间不足，无法完成升级",
+  "message.gytrinket.upgrade.materials_returned": "升级材料已返还",
+
+  "screen.gytrinket.player_panel": "玩家面板",
+  "screen.gytrinket.equipped_items": "已装备物品",
+  "screen.gytrinket.attributes": "属性值",
+  "screen.gytrinket.upgrade_info": "升级信息",
+  "screen.gytrinket.upgrade_button": "升级",
+  "screen.gytrinket.upgrade_materials_for": "升级材料 - %s",
+  "screen.gytrinket.no_upgrade_materials": "暂无升级材料",
+  "screen.gytrinket.upgrade_target": "选择升级物品",
+  "screen.gytrinket.upgrade_target_title": "选择要升级的物品",
+  "screen.gytrinket.upgrade_target_hint": "点击物品查看升级需求",
+  "screen.gytrinket.no_upgrade_targets": "没有可升级的物品",
+  "screen.gytrinket.upgrade_select": "选择升级材料",
+  "screen.gytrinket.upgrade_select_title": "选择要消耗的物品",
+  "screen.gytrinket.upgrade_select_hint": "左键点击物品消耗1个",
+  "screen.gytrinket.return_materials": "返还材料",
+  "screen.gytrinket.config_button": "配置",
+  "screen.gytrinket.config_panel_title": "物品属性配置",
+  "screen.gytrinket.add_item": "添加物品",
+  "screen.gytrinket.add_attribute": "添加属性",
+  "screen.gytrinket.select_attribute": "选择属性名",
+  "screen.gytrinket.no_attributes": "暂无属性，点击[+]添加",
+  "screen.gytrinket.no_config_items": "暂无物品配置",
+  "screen.gytrinket.reset_defaults": "恢复默认",
+  "screen.gytrinket.back": "返回",
+  "screen.gytrinket.add_item_prompt": "物品ID (例如 minecraft:diamond):",
+  "screen.gytrinket.no_attributes_registered": "没有已注册的属性",
+  "screen.gytrinket.reorder_hint": "拖拽到目标位置释放"
 }

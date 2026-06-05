@@ -9,6 +9,7 @@ import com.gy_mod.gy_trinket.core.shield_transfer.ShieldTransferManager;
 import com.gy_mod.gy_trinket.damage.ModDamageTypes;
 import com.gy_mod.gy_trinket.network.NetworkHandler;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.AABB;
@@ -128,8 +129,12 @@ public class SiphonShieldType implements IShieldType {
             for (LivingEntity target : targets) {
                 KnockbackManager.markNoKnockback(target.getUUID());
                 target.invulnerableTime = 0;
-                target.hurt(ModDamageTypes.getSiphonDamageSource(player.level(), player), damagePerTarget);
-
+                boolean usePlayerOwner = target.getHealth() <= damagePerTarget;
+                DamageSource siphonSource = usePlayerOwner
+                        ? ModDamageTypes.getSiphonDamageSource(player.level(), player)
+                        : ModDamageTypes.getSiphonDamageSource(player.level(), null);
+                target.hurt(siphonSource, damagePerTarget);
+                target.invulnerableTime = 0;  //这个决定不能删除!害我找半天哪里有问题.
                 sendSiphonParticles(player, target);
             }
 

@@ -1,17 +1,14 @@
 package com.gy_mod.gy_trinket.core.damage;
 
 import com.gy_mod.gy_trinket.Config;
-import com.gy_mod.gy_trinket.core.disable.DisableSystem;
 import com.gy_mod.gy_trinket.core.shield.ShieldManager;
 import com.gy_mod.gy_trinket.core.shield_transfer.ShieldTransferManager;
 import com.gy_mod.gy_trinket.damage.ModDamageTypes;
-import com.gy_mod.gy_trinket.storage.PlayerStore;
-import com.gy_mod.gy_trinket.storage.PlayerStoreManager;
+import com.gy_mod.gy_trinket.storage.PlayerStoreUtils;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageType;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.ItemStack;
 
 public class BinaryProtocolHandler implements DamageHandler {
 
@@ -37,8 +34,7 @@ public class BinaryProtocolHandler implements DamageHandler {
 
         ResourceKey<DamageType> damageType = context.getSource().typeHolder().unwrapKey().orElse(null);
 
-        if (damageType == ModDamageTypes.PROTOCOL_SHIELD_SELF_DAMAGE ||
-            damageType == ModDamageTypes.PROTOCOL_PLAYER_SELF_DAMAGE) {
+        if (context.isProtocolSelfDamage()) {
             return;
         }
 
@@ -91,20 +87,7 @@ public class BinaryProtocolHandler implements DamageHandler {
     }
 
     private boolean hasBinaryProtocolItem(Player player) {
-        PlayerStore store = PlayerStoreManager.getPlayerStore(player.getUUID());
-        if (store == null) {
-            return false;
-        }
-
-        for (int i = 0; i < store.getItemHandler().getSlots(); i++) {
-            ItemStack stack = store.getItemHandler().getStackInSlot(i);
-            if (!stack.isEmpty()) {
-                if (!DisableSystem.isItemDisabled(player.getUUID(), stack) && Config.isBinaryProtocolItem(stack.getItem())) {
-                    return true;
-                }
-            }
-        }
-        return false;
+        return PlayerStoreUtils.hasActiveItem(player, Config::isBinaryProtocolItem);
     }
 
     @Override

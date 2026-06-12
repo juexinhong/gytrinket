@@ -244,7 +244,7 @@ public class TooltipHandler {
 
         // 配置驱动的通用工具提示
         for (TooltipConfig config : TOOLTIP_RULES) {
-            addConfiguredTooltip(event, config);
+            addConfiguredTooltip(event, itemId, config);
         }
     }
 
@@ -252,8 +252,7 @@ public class TooltipHandler {
      * 通用的配置驱动工具提示处理方法
      * 替代所有重复的 add*Tooltip 方法
      */
-    private static void addConfiguredTooltip(ItemTooltipEvent event, TooltipConfig config) {
-        String itemId = BuiltInRegistries.ITEM.getKey(event.getItemStack().getItem()).toString();
+    private static void addConfiguredTooltip(ItemTooltipEvent event, String itemId, TooltipConfig config) {
         if (!config.matchesItem(itemId)) {
             return;
         }
@@ -383,10 +382,6 @@ public class TooltipHandler {
 
         if (Config.DEFENSE_DRONE_MODULE_ITEMS.get().contains(itemId)) {
             addTooltip(event, "defense_drone_module", ChatFormatting.BLUE);
-        }
-
-        if (Config.ADAPTIVE_ARMOR_ITEMS.get().contains(itemId)) {
-            addTooltip(event, "adaptive_armor", ChatFormatting.GREEN);
         }
 
         if (Config.BARRIER_ITEMS.get().contains(itemId)) {

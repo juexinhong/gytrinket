@@ -348,20 +348,6 @@ public class BurstFireManager {
     }
 
     /**
-     * 获取玩家剩余连击数
-     */
-    public static int getRemainingCombo(Player player) {
-        return REMAINING_COMBO.getOrDefault(player.getUUID(), 0);
-    }
-
-    /**
-     * 获取玩家剩余冷却时间（刻）
-     */
-    public static int getRemainingCooldown(UUID playerUUID) {
-        return COMBO_COOLDOWN.getOrDefault(playerUUID, 0);
-    }
-
-    /**
      * 获取玩家是否处于点射状态
      */
     public static boolean isInBurstFireState(Player player) {

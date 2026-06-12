@@ -1,18 +1,15 @@
 package com.gy_mod.gy_trinket.core.damage;
 
 import com.gy_mod.gy_trinket.Config;
-import com.gy_mod.gy_trinket.core.disable.DisableSystem;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructManager;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneConstructEntity;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneConstructTypes;
 import com.gy_mod.gy_trinket.damage.ModDamageTypes;
-import com.gy_mod.gy_trinket.storage.PlayerStore;
-import com.gy_mod.gy_trinket.storage.PlayerStoreManager;
+import com.gy_mod.gy_trinket.storage.PlayerStoreUtils;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.ItemStack;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -57,17 +54,7 @@ public class ArcBarrierHandler implements DamageHandler {
     }
 
     private boolean hasArcBarrierItem(Player player) {
-        UUID playerUUID = player.getUUID();
-        PlayerStore store = PlayerStoreManager.getPlayerStore(playerUUID);
-        if (store == null) return false;
-        for (int i = 0; i < store.getItemHandler().getSlots(); i++) {
-            ItemStack stack = store.getItemHandler().getStackInSlot(i);
-            if (!stack.isEmpty() && !DisableSystem.isItemDisabled(playerUUID, stack)
-                    && Config.isArcBarrierItem(stack.getItem())) {
-                return true;
-            }
-        }
-        return false;
+        return PlayerStoreUtils.hasActiveItem(player, Config::isArcBarrierItem);
     }
 
     private DroneConstructEntity findDroneInBetween(Player player, Entity source) {

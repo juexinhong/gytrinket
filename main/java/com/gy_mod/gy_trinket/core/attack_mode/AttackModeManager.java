@@ -245,10 +245,7 @@ public class AttackModeManager {
             if (chargeValue > 0) {
                 // 充能释放攻击：允许通过
                 // 触发电能释放
-                if (modes.hasElectricDischarge && !ELECTRIC_TRIGGERED_THIS_TICK.contains(uuid)) {
-                    ElectricDischargeManager.releaseElectric(player);
-                    ELECTRIC_TRIGGERED_THIS_TICK.add(uuid);
-                }
+                triggerElectricDischarge(player);
                 // 点射+充能 / 三合一：充能释放后触发点射
                 if (canBurstFireTriggerFromChargedRelease(combo)) {
                     PENDING_BURST_FROM_CHARGED.put(uuid, true);
@@ -260,10 +257,7 @@ public class AttackModeManager {
                     AssaultManager.triggerAssault(player);
                 }
                 // 电能释放
-                if (modes.hasElectricDischarge && !ELECTRIC_TRIGGERED_THIS_TICK.contains(uuid)) {
-                    ElectricDischargeManager.releaseElectric(player);
-                    ELECTRIC_TRIGGERED_THIS_TICK.add(uuid);
-                }
+                triggerElectricDischarge(player);
             } else {
                 // 常态禁用：取消攻击
                 event.setCanceled(true);
@@ -275,10 +269,7 @@ public class AttackModeManager {
         // ===== 无充能攻击的普通流程 =====
 
         // 电能释放：正常攻击打到目标时触发
-        if (modes.hasElectricDischarge && !ELECTRIC_TRIGGERED_THIS_TICK.contains(uuid)) {
-            ElectricDischargeManager.releaseElectric(player);
-            ELECTRIC_TRIGGERED_THIS_TICK.add(uuid);
-        }
+        triggerElectricDischarge(player);
 
         // 点射+强袭：强袭攻击后触发点射（仅非点射自动攻击时，避免与 onBurstFireAutoAttack 双重触发）
         if (doesAssaultAttackTriggerBurstFire(combo) && AttackStateManager.isPlayerHeld(player)

@@ -12,6 +12,7 @@ import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.List;
+import java.util.function.Predicate;
 
 /**
  * 攻击模式客户端工具类
@@ -98,13 +99,13 @@ public class AttackModeClientUtil {
     }
 
     /**
-     * 检查玩家是否拥有充能攻击物品
+     * 检查玩家是否拥有指定类型的物品
      */
-    public static boolean hasChargedAttackItem() {
+    public static boolean hasActiveItem(Predicate<net.minecraft.world.item.Item> itemPredicate) {
         var snapshot = ClientDataCenter.getSnapshot();
         for (int i = 0; i < snapshot.getSlotCount(); i++) {
             net.minecraft.world.item.ItemStack stack = snapshot.getItemInSlot(i);
-            if (!stack.isEmpty() && Config.isChargedAttackItem(stack.getItem())) {
+            if (!stack.isEmpty() && itemPredicate.test(stack.getItem())) {
                 return true;
             }
         }
@@ -112,16 +113,16 @@ public class AttackModeClientUtil {
     }
 
     /**
+     * 检查玩家是否拥有充能攻击物品
+     */
+    public static boolean hasChargedAttackItem() {
+        return hasActiveItem(Config::isChargedAttackItem);
+    }
+
+    /**
      * 检查玩家是否拥有强袭物品
      */
     public static boolean hasAssaultItem() {
-        var snapshot = ClientDataCenter.getSnapshot();
-        for (int i = 0; i < snapshot.getSlotCount(); i++) {
-            net.minecraft.world.item.ItemStack stack = snapshot.getItemInSlot(i);
-            if (!stack.isEmpty() && Config.isAssaultItem(stack.getItem())) {
-                return true;
-            }
-        }
-        return false;
+        return hasActiveItem(Config::isAssaultItem);
     }
 }

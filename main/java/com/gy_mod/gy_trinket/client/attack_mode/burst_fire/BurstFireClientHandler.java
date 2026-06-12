@@ -62,13 +62,6 @@ public class BurstFireClientHandler {
         }
     }
 
-    /**
-     * 使用反射设置玩家攻击强度为满
-     */
-    public static void reflectAttackStrengthToFull(Player player) {
-        AttackModeClientUtil.reflectAttackStrengthToFull(player);
-    }
-
     public static boolean isInComboCooldown(UUID playerUUID) {
         return COMBO_COOLDOWN_STATE.getOrDefault(playerUUID, false);
     }
@@ -87,10 +80,6 @@ public class BurstFireClientHandler {
         return isBurstFiring(playerUUID) || isInComboCooldown(playerUUID);
     }
 
-    public static int getRemainingCooldown(UUID playerUUID) {
-        return REMAINING_COOLDOWN_TICKS.getOrDefault(playerUUID, 0);
-    }
-
     public static void handleSyncComboCooldownOnClient(boolean inCooldown, int remainingTicks) {
         net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
         if (mc.player != null) {
@@ -102,7 +91,7 @@ public class BurstFireClientHandler {
     public static void handleSyncAttackStrengthOnClient(boolean reflectToFull) {
         net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
         if (mc.player != null && reflectToFull) {
-            reflectAttackStrengthToFull(mc.player);
+            AttackModeClientUtil.reflectAttackStrengthToFull(mc.player);
         }
     }
 

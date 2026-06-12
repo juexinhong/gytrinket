@@ -37,6 +37,14 @@ public class ChargedShieldManager {
     private ChargedShieldManager() {}
 
     /**
+     * 清除指定玩家的所有动态属性
+     */
+    private static void removeAllDynamicAttributes(UUID uuid) {
+        AttributeManager.removeDynamicAttribute(uuid, NAMESPACE, "shield_effect_independent");
+        AttributeManager.removeDynamicAttribute(uuid, NAMESPACE, "shield_effect_radius");
+    }
+
+    /**
      * 判断玩家是否拥有充能护盾能力
      */
     public static boolean hasChargedShield(Player player) {
@@ -53,8 +61,7 @@ public class ChargedShieldManager {
             PLAYER_HAS_CHARGED_SHIELD.remove(playerUUID);
             PLAYER_CURRENT_BONUS.remove(playerUUID);
             // 清除动态属性
-            AttributeManager.removeDynamicAttribute(playerUUID, NAMESPACE, "shield_effect_independent");
-            AttributeManager.removeDynamicAttribute(playerUUID, NAMESPACE, "shield_effect_radius");
+            removeAllDynamicAttributes(playerUUID);
         }
     }
 
@@ -92,8 +99,7 @@ public class ChargedShieldManager {
             if (currentBonus <= 0) {
                 PLAYER_CURRENT_BONUS.remove(uuid);
                 // 完全消退，移除动态属性
-                AttributeManager.removeDynamicAttribute(uuid, NAMESPACE, "shield_effect_independent");
-                AttributeManager.removeDynamicAttribute(uuid, NAMESPACE, "shield_effect_radius");
+                removeAllDynamicAttributes(uuid);
                 return;
             }
 
@@ -116,8 +122,7 @@ public class ChargedShieldManager {
         UUID uuid = player.getUUID();
         PLAYER_HAS_CHARGED_SHIELD.remove(uuid);
         PLAYER_CURRENT_BONUS.remove(uuid);
-        AttributeManager.removeDynamicAttribute(uuid, NAMESPACE, "shield_effect_independent");
-        AttributeManager.removeDynamicAttribute(uuid, NAMESPACE, "shield_effect_radius");
+        removeAllDynamicAttributes(uuid);
     }
 
     @SubscribeEvent
@@ -127,16 +132,6 @@ public class ChargedShieldManager {
         }
         UUID uuid = player.getUUID();
         PLAYER_CURRENT_BONUS.remove(uuid);
-        AttributeManager.removeDynamicAttribute(uuid, NAMESPACE, "shield_effect_independent");
-        AttributeManager.removeDynamicAttribute(uuid, NAMESPACE, "shield_effect_radius");
-    }
-
-    public static void clearAllData() {
-        for (UUID uuid : PLAYER_HAS_CHARGED_SHIELD) {
-            AttributeManager.removeDynamicAttribute(uuid, NAMESPACE, "shield_effect_independent");
-            AttributeManager.removeDynamicAttribute(uuid, NAMESPACE, "shield_effect_radius");
-        }
-        PLAYER_HAS_CHARGED_SHIELD.clear();
-        PLAYER_CURRENT_BONUS.clear();
+        removeAllDynamicAttributes(uuid);
     }
 }

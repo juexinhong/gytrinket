@@ -1,13 +1,10 @@
 package com.gy_mod.gy_trinket.core.charged_shield;
 
 import com.gy_mod.gy_trinket.Config;
-import com.gy_mod.gy_trinket.core.disable.DisableSystem;
 import com.gy_mod.gy_trinket.event.PlayerAttributesCalculatedEvent;
 import com.gy_mod.gy_trinket.gytrinket;
-import com.gy_mod.gy_trinket.storage.PlayerStore;
-import com.gy_mod.gy_trinket.storage.PlayerStoreManager;
+import com.gy_mod.gy_trinket.storage.PlayerStoreUtils;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
@@ -26,25 +23,13 @@ public class ChargedShieldItemChecker {
     @SubscribeEvent
     public static void onAttributesCalculated(PlayerAttributesCalculatedEvent event) {
         UUID playerUUID = event.getPlayerUUID();
-
-        PlayerStore store = PlayerStoreManager.getPlayerStore(playerUUID);
-        if (store == null) {
+        Player player = event.getPlayer();
+        if (player == null) {
             ChargedShieldManager.setHasChargedShield(playerUUID, false);
             return;
         }
 
-        boolean hasChargedShield = false;
-
-        for (int i = 0; i < store.getItemHandler().getSlots(); i++) {
-            ItemStack stack = store.getItemHandler().getStackInSlot(i);
-            if (!stack.isEmpty()) {
-                if (DisableSystem.isItemDisabled(playerUUID, stack)) continue;
-                if (Config.isChargedShieldItem(stack.getItem())) {
-                    hasChargedShield = true;
-                    break;
-                }
-            }
-        }
+        boolean hasChargedShield = PlayerStoreUtils.hasActiveItem(player, Config::isChargedShieldItem);
 
         ChargedShieldManager.setHasChargedShield(playerUUID, hasChargedShield);
     }

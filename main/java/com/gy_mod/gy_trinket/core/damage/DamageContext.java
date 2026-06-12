@@ -1,6 +1,9 @@
 package com.gy_mod.gy_trinket.core.damage;
 
+import com.gy_mod.gy_trinket.damage.ModDamageTypes;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.damagesource.DamageType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import org.jetbrains.annotations.Nullable;
@@ -85,5 +88,42 @@ public class DamageContext {
 
     public boolean isShieldTransferred() {
         return attackedEntity != shieldOwner;
+    }
+
+    // ===== 伤害类型辅助判断方法 =====
+
+    /**
+     * 判断当前伤害是否为指定伤害类型
+     */
+    private boolean isDamageType(ResourceKey<DamageType> typeKey) {
+        return source.typeHolder().is(typeKey);
+    }
+
+    /**
+     * 判断是否为玩家自伤类型（PLAYER_SELF_DAMAGE 或 PROTOCOL_PLAYER_SELF_DAMAGE）
+     */
+    public boolean isPlayerSelfDamage() {
+        return isDamageType(ModDamageTypes.PLAYER_SELF_DAMAGE) || isDamageType(ModDamageTypes.PROTOCOL_PLAYER_SELF_DAMAGE);
+    }
+
+    /**
+     * 判断是否为护盾自伤类型（SHIELD_SELF_DAMAGE 或 PROTOCOL_SHIELD_SELF_DAMAGE）
+     */
+    public boolean isShieldSelfDamage() {
+        return isDamageType(ModDamageTypes.SHIELD_SELF_DAMAGE) || isDamageType(ModDamageTypes.PROTOCOL_SHIELD_SELF_DAMAGE);
+    }
+
+    /**
+     * 判断是否为任意自伤类型（玩家自伤 + 护盾自伤）
+     */
+    public boolean isAnySelfDamage() {
+        return isPlayerSelfDamage() || isShieldSelfDamage();
+    }
+
+    /**
+     * 判断是否为协议自伤类型（PROTOCOL_PLAYER_SELF_DAMAGE 或 PROTOCOL_SHIELD_SELF_DAMAGE）
+     */
+    public boolean isProtocolSelfDamage() {
+        return isDamageType(ModDamageTypes.PROTOCOL_PLAYER_SELF_DAMAGE) || isDamageType(ModDamageTypes.PROTOCOL_SHIELD_SELF_DAMAGE);
     }
 }

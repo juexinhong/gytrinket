@@ -5,10 +5,7 @@ import com.gy_mod.gy_trinket.core.shield.ShieldData;
 import com.gy_mod.gy_trinket.core.shield.ShieldManager;
 import com.gy_mod.gy_trinket.core.shield.type.ShieldTypeManager;
 import com.gy_mod.gy_trinket.core.shield_transfer.ShieldTransferManager;
-import com.gy_mod.gy_trinket.damage.ModDamageTypes;
-import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.damagesource.DamageType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 
@@ -17,6 +14,17 @@ import java.util.UUID;
 public class ShieldHandler implements DamageHandler {
 
     private static final int PRIORITY = 20;
+
+    /**
+     * 设置护盾值，根据持有者类型选择合适的方法
+     */
+    private static void setCurrentShieldForEntity(Player shieldOwner, UUID shieldOwnerUUID, double value) {
+        if (shieldOwner instanceof ServerPlayer serverPlayer) {
+            ShieldManager.setCurrentShield(serverPlayer, value);
+        } else {
+            ShieldManager.setCurrentShield(shieldOwnerUUID, value);
+        }
+    }
 
     @Override
     public void handle(DamageContext context) {
@@ -29,12 +37,11 @@ public class ShieldHandler implements DamageHandler {
             return;
         }
 
-        ResourceKey<DamageType> damageType = context.getSource().typeHolder().unwrapKey().orElse(null);
-        if (damageType == ModDamageTypes.PLAYER_SELF_DAMAGE || damageType == ModDamageTypes.PROTOCOL_PLAYER_SELF_DAMAGE) {
+        if (context.isPlayerSelfDamage()) {
             return;
         }
 
-        boolean isShieldSelfDamage = damageType == ModDamageTypes.SHIELD_SELF_DAMAGE || damageType == ModDamageTypes.PROTOCOL_SHIELD_SELF_DAMAGE;
+        boolean isShieldSelfDamage = context.isShieldSelfDamage();
 
         if (!isShieldSelfDamage && attackedEntity instanceof Player) {
             if (!ShieldTransferManager.shouldProtectPlayer((Player) attackedEntity)) {
@@ -59,11 +66,7 @@ public class ShieldHandler implements DamageHandler {
         }
 
         if (currentShield >= originalDamage) {
-            if (shieldOwner instanceof ServerPlayer serverPlayer) {
-                ShieldManager.setCurrentShield(serverPlayer, currentShield - originalDamage);
-            } else {
-                ShieldManager.setCurrentShield(shieldOwnerUUID, currentShield - originalDamage);
-            }
+            setCurrentShieldForEntity(shieldOwner, shieldOwnerUUID, currentShield - originalDamage);
             context.setCanceled(true);
             
             // 当承受护盾自伤或协议护盾自伤时，不施加无敌标记
@@ -72,11 +75,7 @@ public class ShieldHandler implements DamageHandler {
             }
         } else {
             float remainingDamage = (float) (originalDamage - currentShield);
-            if (shieldOwner instanceof ServerPlayer serverPlayer) {
-                ShieldManager.setCurrentShield(serverPlayer, 0);
-            } else {
-                ShieldManager.setCurrentShield(shieldOwnerUUID, 0);
-            }
+            setCurrentShieldForEntity(shieldOwner, shieldOwnerUUID, 0);
             context.setCurrentDamage(remainingDamage);
         }
 

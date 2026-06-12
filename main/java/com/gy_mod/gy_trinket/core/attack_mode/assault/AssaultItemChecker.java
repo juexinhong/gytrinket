@@ -3,13 +3,10 @@ package com.gy_mod.gy_trinket.core.attack_mode.assault;
 import com.gy_mod.gy_trinket.Config;
 import com.gy_mod.gy_trinket.core.attack_mode.AttackModeManager;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
-import com.gy_mod.gy_trinket.core.disable.DisableSystem;
 import com.gy_mod.gy_trinket.event.PlayerAttributesCalculatedEvent;
 import com.gy_mod.gy_trinket.gytrinket;
-import com.gy_mod.gy_trinket.storage.PlayerStore;
-import com.gy_mod.gy_trinket.storage.PlayerStoreManager;
+import com.gy_mod.gy_trinket.storage.PlayerStoreUtils;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
@@ -29,33 +26,16 @@ public class AssaultItemChecker {
     @SubscribeEvent
     public static void onAttributesCalculated(PlayerAttributesCalculatedEvent event) {
         UUID playerUUID = event.getPlayerUUID();
-
-        PlayerStore store = PlayerStoreManager.getPlayerStore(playerUUID);
-        if (store == null) {
+        Player player = event.getPlayer();
+        if (player == null) {
             AssaultManager.setHasAssault(playerUUID, false);
             updateCoordinatorModes(playerUUID, false, false, false, false);
             return;
         }
 
-        boolean hasAssault = false;
-        boolean hasChargedAttack = false;
-        boolean hasElectricDischarge = false;
-
-        for (int i = 0; i < store.getItemHandler().getSlots(); i++) {
-            ItemStack stack = store.getItemHandler().getStackInSlot(i);
-            if (!stack.isEmpty()) {
-                if (DisableSystem.isItemDisabled(playerUUID, stack)) continue;
-                if (Config.isAssaultItem(stack.getItem())) {
-                    hasAssault = true;
-                }
-                if (Config.isChargedAttackItem(stack.getItem())) {
-                    hasChargedAttack = true;
-                }
-                if (Config.isElectricDischargeItem(stack.getItem())) {
-                    hasElectricDischarge = true;
-                }
-            }
-        }
+        boolean hasAssault = PlayerStoreUtils.hasActiveItem(player, Config::isAssaultItem);
+        boolean hasChargedAttack = PlayerStoreUtils.hasActiveItem(player, Config::isChargedAttackItem);
+        boolean hasElectricDischarge = PlayerStoreUtils.hasActiveItem(player, Config::isElectricDischargeItem);
 
         // 点射由 combo 属性决定
         boolean hasBurstFire = AttributeManager.getPlayerAttribute(playerUUID, "combo") > 0;

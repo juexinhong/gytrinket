@@ -1878,11 +1878,6 @@ public class NetworkHandler {
         }
     }
 
-    public static void sendChargedAttackReleaseToPlayer(ServerPlayer player, double chargeValue) {
-        INSTANCE.send(PacketDistributor.PLAYER.with(() -> player),
-            new SyncChargedAttackMessage(chargeValue));
-    }
-
     public static void sendChargedAttackSyncToPlayer(ServerPlayer player, double chargeValue) {
         INSTANCE.send(PacketDistributor.PLAYER.with(() -> player),
             new SyncChargedAttackMessage(chargeValue));

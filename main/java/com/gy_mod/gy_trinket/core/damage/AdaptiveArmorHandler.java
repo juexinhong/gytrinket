@@ -3,9 +3,6 @@ package com.gy_mod.gy_trinket.core.damage;
 import com.gy_mod.gy_trinket.Config;
 import com.gy_mod.gy_trinket.core.shield.ShieldManager;
 import com.gy_mod.gy_trinket.core.shield_transfer.ShieldTransferManager;
-import com.gy_mod.gy_trinket.damage.ModDamageTypes;
-import net.minecraft.resources.ResourceKey;
-import net.minecraft.world.damagesource.DamageType;
 
 public class AdaptiveArmorHandler implements DamageHandler {
     private static final int PRIORITY = 100;
@@ -26,9 +23,7 @@ public class AdaptiveArmorHandler implements DamageHandler {
             return;
         }
 
-        ResourceKey<DamageType> damageType = context.getSource().typeHolder().unwrapKey().orElse(null);
-        if (damageType == ModDamageTypes.PLAYER_SELF_DAMAGE ||
-            damageType == ModDamageTypes.PROTOCOL_PLAYER_SELF_DAMAGE) {
+        if (context.isPlayerSelfDamage()) {
             return;
         }
 

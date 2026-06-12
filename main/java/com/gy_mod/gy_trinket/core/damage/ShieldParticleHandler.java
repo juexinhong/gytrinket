@@ -2,15 +2,12 @@ package com.gy_mod.gy_trinket.core.damage;
 
 import com.gy_mod.gy_trinket.core.shield.ShieldManager;
 import com.gy_mod.gy_trinket.core.shield_transfer.ShieldTransferManager;
-import com.gy_mod.gy_trinket.damage.ModDamageTypes;
 import com.gy_mod.gy_trinket.event.ShieldIdleParticleEvent;
 import com.gy_mod.gy_trinket.network.NetworkHandler;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.resources.ResourceKey;
-import net.minecraft.world.damagesource.DamageType;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -41,11 +38,7 @@ public class ShieldParticleHandler implements DamageHandler {
             }
         }
         
-        ResourceKey<DamageType> damageType = context.getSource().typeHolder().unwrapKey().orElse(null);
-        if (damageType == ModDamageTypes.PLAYER_SELF_DAMAGE
-                || damageType == ModDamageTypes.PROTOCOL_PLAYER_SELF_DAMAGE
-                || damageType == ModDamageTypes.SHIELD_SELF_DAMAGE
-                || damageType == ModDamageTypes.PROTOCOL_SHIELD_SELF_DAMAGE) {
+        if (context.isAnySelfDamage()) {
             return;
         }
         

@@ -4,7 +4,6 @@ import com.gy_mod.gy_trinket.Config;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
 import com.gy_mod.gy_trinket.core.burn.BurnManager;
 import com.gy_mod.gy_trinket.core.burn.IBurnSource;
-import com.gy_mod.gy_trinket.core.disable.DisableSystem;
 import com.gy_mod.gy_trinket.core.hostile_target.HostileTargetManager;
 import com.gy_mod.gy_trinket.core.ignite.IIgniteSource;
 import com.gy_mod.gy_trinket.core.ignite.IgniteManager;
@@ -13,15 +12,13 @@ import com.gy_mod.gy_trinket.core.shield.ShieldManager;
 import com.gy_mod.gy_trinket.core.shield_transfer.ShieldTransferManager;
 import com.gy_mod.gy_trinket.damage.ModDamageTypes;
 import com.gy_mod.gy_trinket.network.NetworkHandler;
-import com.gy_mod.gy_trinket.storage.PlayerStore;
-import com.gy_mod.gy_trinket.storage.PlayerStoreManager;
+import com.gy_mod.gy_trinket.storage.PlayerStoreUtils;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
@@ -82,18 +79,7 @@ public class ElectricDischargeManager {
             return;
         }
 
-        boolean hasElectricItem = false;
-        PlayerStore store = PlayerStoreManager.getPlayerStore(player.getUUID());
-        if (store != null) {
-            for (int i = 0; i < store.getItemHandler().getSlots(); i++) {
-                ItemStack stack = store.getItemHandler().getStackInSlot(i);
-                if (!stack.isEmpty() && Config.isElectricDischargeItem(stack.getItem())
-                        && !DisableSystem.isItemDisabled(player.getUUID(), stack)) {
-                    hasElectricItem = true;
-                    break;
-                }
-            }
-        }
+        boolean hasElectricItem = PlayerStoreUtils.hasActiveItem(player, Config::isElectricDischargeItem);
         if (!hasElectricItem) {
             return;
         }
@@ -264,7 +250,7 @@ public class ElectricDischargeManager {
         for (LivingEntity target : igniteTargets) {
             Player attacker = burnAttackerMap.get(target);
             if (attacker != null) {
-                IgniteManager.applyIgnite(target, new ElectricIgniteSource(attacker), "electric_burn", true);
+                IgniteManager.applyIgnite(target, new ElectricDischargeSource(attacker), "electric_burn", true);
             }
         }
 
@@ -272,7 +258,7 @@ public class ElectricDischargeManager {
         for (Map.Entry<LivingEntity, Float> entry : burnChargeMap.entrySet()) {
             Player attacker = burnAttackerMap.get(entry.getKey());
             if (attacker != null) {
-                BurnManager.applyBurnCharge(entry.getKey(), entry.getValue(), new ElectricBurnSource(attacker));
+                BurnManager.applyBurnCharge(entry.getKey(), entry.getValue(), new ElectricDischargeSource(attacker));
             }
         }
 
@@ -432,7 +418,7 @@ public class ElectricDischargeManager {
         double shieldEffectRadius = AttributeManager.getGroupAttribute(player.getUUID(), "shield_effect_radius");
         double totalLength = baseLength * shieldEffectRadius;
 
-        List<Vec3> mainPath = generateMainLightningPath(start, direction, totalLength, random);
+        List<Vec3> mainPath = generateLightningPath(start, direction, totalLength, random, true);
 
         // 添加主路径到闪电线段
         for (int i = 0; i < mainPath.size() - 1; i++) {
@@ -479,76 +465,18 @@ public class ElectricDischargeManager {
     }
 
     /**
-     * 生成主闪电路径
+     * 生成闪电路径
      * <p>
-     * 使用分形算法生成一条带有随机偏移的路径
+     * 使用分形算法生成一条带有随机偏移的路径，主路径和分支路径共用此方法。
      *
      * @param start       起点
      * @param direction   主方向
      * @param totalLength 总长度
      * @param random      随机数生成器
+     * @param isMain      是否为主路径（影响线段长度和弯曲参数）
      * @return 路径点列表
      */
-    private static List<Vec3> generateMainLightningPath(Vec3 start, Vec3 direction, double totalLength, Random random) {
-        List<Vec3> path = new ArrayList<>();
-        path.add(start);
-
-        Vec3 current = start;
-        double distanceTraveled = 0;
-
-        double defaultLength = 5.0;
-        double scaleRatio = totalLength / defaultLength;
-        if (scaleRatio < 1) scaleRatio = 1;
-        while (distanceTraveled < totalLength) {
-            double progress = distanceTraveled / totalLength;
-            double baseMinLength = (0.4 - progress * 0.3) * scaleRatio;
-            double baseMaxLength = (0.8 - progress * 0.5) * (1 + (scaleRatio - 1) * 0.5);
-            double segmentLength = baseMinLength + random.nextDouble() * (baseMaxLength - baseMinLength);
-
-            if (distanceTraveled + segmentLength > totalLength) {
-                segmentLength = totalLength - distanceTraveled;
-            }
-
-            // 弯曲因子：越往末端，弯曲程度越大
-            double bendFactor = 0.4 + progress * 0.8;
-
-            // 随机角度偏移
-            double angleX = (random.nextDouble() - 0.5) * 1.4 * bendFactor;
-            double angleY = (random.nextDouble() - 0.5) * 1.1 * bendFactor;
-            double angleZ = (random.nextDouble() - 0.5) * 1.4 * bendFactor;
-
-            // 计算垂直方向
-            Vec3 perpX = new Vec3(0, direction.z(), -direction.y()).normalize();
-            Vec3 perpY = direction.cross(perpX).normalize();
-
-            // 计算偏移后的方向
-            Vec3 offsetDir = direction
-                .add(perpX.scale(angleX))
-                .add(perpY.scale(angleY))
-                .normalize();
-
-            Vec3 nextPoint = current.add(offsetDir.scale(segmentLength));
-
-            path.add(nextPoint);
-            current = nextPoint;
-            distanceTraveled += segmentLength;
-        }
-
-        return path;
-    }
-
-    /**
-     * 生成闪电路径（用于分支）
-     * <p>
-     * 与主路径类似，但使用不同的参数
-     *
-     * @param start       起点
-     * @param direction   主方向
-     * @param totalLength 总长度
-     * @param random      随机数生成器
-     * @return 路径点列表
-     */
-    private static List<Vec3> generateBranchPath(Vec3 start, Vec3 direction, double totalLength, Random random) {
+    private static List<Vec3> generateLightningPath(Vec3 start, Vec3 direction, double totalLength, Random random, boolean isMain) {
         List<Vec3> path = new ArrayList<>();
         path.add(start);
 
@@ -560,19 +488,34 @@ public class ElectricDischargeManager {
 
         while (distanceTraveled < totalLength) {
             double progress = distanceTraveled / totalLength;
-            double baseMinLength = (0.2 - progress * 0.1) * scaleRatio;
-            double baseMaxLength = (0.5 - progress * 0.4) * (1 + (scaleRatio - 1) * 0.5);
+
+            double baseMinLength, baseMaxLength, bendBase, bendProgress, angleXFactor, angleYFactor;
+            if (isMain) {
+                baseMinLength = (0.4 - progress * 0.3) * scaleRatio;
+                baseMaxLength = (0.8 - progress * 0.5) * (1 + (scaleRatio - 1) * 0.5);
+                bendBase = 0.4;
+                bendProgress = 0.8;
+                angleXFactor = 1.4;
+                angleYFactor = 1.1;
+            } else {
+                baseMinLength = (0.2 - progress * 0.1) * scaleRatio;
+                baseMaxLength = (0.5 - progress * 0.4) * (1 + (scaleRatio - 1) * 0.5);
+                bendBase = 0.5;
+                bendProgress = 0.5;
+                angleXFactor = 1.2;
+                angleYFactor = 1.0;
+            }
+
             double segmentLength = baseMinLength + random.nextDouble() * (baseMaxLength - baseMinLength);
 
             if (distanceTraveled + segmentLength > totalLength) {
                 segmentLength = totalLength - distanceTraveled;
             }
 
-            double bendFactor = 0.5 + progress * 0.5;
+            double bendFactor = bendBase + progress * bendProgress;
 
-            double angleX = (random.nextDouble() - 0.5) * 1.2 * bendFactor;
-            double angleY = (random.nextDouble() - 0.5) * 1.0 * bendFactor;
-            double angleZ = (random.nextDouble() - 0.5) * 1.2 * bendFactor;
+            double angleX = (random.nextDouble() - 0.5) * angleXFactor * bendFactor;
+            double angleY = (random.nextDouble() - 0.5) * angleYFactor * bendFactor;
 
             Vec3 perpX = new Vec3(0, direction.z(), -direction.y()).normalize();
             Vec3 perpY = direction.cross(perpX).normalize();
@@ -646,7 +589,7 @@ public class ElectricDischargeManager {
                 );
             }
 
-            List<Vec3> branchPath = generateBranchPath(start, branchDir, branchLength, random);
+            List<Vec3> branchPath = generateLightningPath(start, branchDir, branchLength, random, false);
 
             // 添加分支到闪电线段
             for (int j = 0; j < branchPath.size() - 1; j++) {
@@ -683,12 +626,12 @@ public class ElectricDischargeManager {
     public record LightningSegment(Vec3 start, Vec3 end) {}
 
     /**
-     * 电能释放灼烧来源
+     * 电能释放来源（同时实现灼烧和点燃接口）
      */
-    public static class ElectricBurnSource implements IBurnSource {
+    public static class ElectricDischargeSource implements IBurnSource, IIgniteSource {
         private final Player player;
 
-        public ElectricBurnSource(Player player) {
+        public ElectricDischargeSource(Player player) {
             this.player = player;
         }
 
@@ -701,26 +644,10 @@ public class ElectricDischargeManager {
         public String getName() {
             return "electric_discharge";
         }
-    }
-
-    /**
-     * 电能释放点燃来源
-     */
-    public static class ElectricIgniteSource implements IIgniteSource {
-        private final Player player;
-
-        public ElectricIgniteSource(Player player) {
-            this.player = player;
-        }
 
         @Override
-        public Entity getInitiator() {
-            return player;
-        }
-
-        @Override
-        public String getName() {
-            return "electric_discharge";
+        public java.util.UUID getInitiatorUUID() {
+            return player.getUUID();
         }
     }
 }

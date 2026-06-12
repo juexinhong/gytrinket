@@ -2,7 +2,6 @@ package com.gy_mod.gy_trinket.core.damage;
 
 import com.gy_mod.gy_trinket.Config;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
-import com.gy_mod.gy_trinket.core.disable.DisableSystem;
 import com.gy_mod.gy_trinket.core.burn.BurnManager;
 import com.gy_mod.gy_trinket.core.burn.IBurnSource;
 import com.gy_mod.gy_trinket.core.hostile_target.HostileTargetManager;
@@ -10,16 +9,13 @@ import com.gy_mod.gy_trinket.core.ignite.IIgniteSource;
 import com.gy_mod.gy_trinket.core.ignite.IgniteManager;
 import com.gy_mod.gy_trinket.core.shield.ShieldManager;
 import com.gy_mod.gy_trinket.core.shield_transfer.ShieldTransferManager;
-import com.gy_mod.gy_trinket.damage.ModDamageTypes;
 
 import com.gy_mod.gy_trinket.network.NetworkHandler;
-import com.gy_mod.gy_trinket.storage.PlayerStore;
-import com.gy_mod.gy_trinket.storage.PlayerStoreManager;
+import com.gy_mod.gy_trinket.storage.PlayerStoreUtils;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
@@ -209,11 +205,7 @@ public class ReflectDamageHandler implements DamageHandler {
      */
     @Override
     public void handle(DamageContext context) {
-        var damageTypeKey = context.getSource().typeHolder().unwrapKey().orElse(null);
-        if (damageTypeKey == ModDamageTypes.SHIELD_SELF_DAMAGE
-            || damageTypeKey == ModDamageTypes.PROTOCOL_SHIELD_SELF_DAMAGE
-            || damageTypeKey == ModDamageTypes.PLAYER_SELF_DAMAGE
-            || damageTypeKey == ModDamageTypes.PROTOCOL_PLAYER_SELF_DAMAGE) {
+        if (context.isAnySelfDamage()) {
             return;
         }
 
@@ -304,21 +296,7 @@ public class ReflectDamageHandler implements DamageHandler {
      * @return 是否装备反射模块
      */
     private boolean hasReflectItem(Player player) {
-        PlayerStore store = PlayerStoreManager.getPlayerStore(player.getUUID());
-        if (store == null) {
-            return false;
-        }
-
-        // 遍历玩家光点核心中的物品
-        for (int i = 0; i < store.getItemHandler().getSlots(); i++) {
-            ItemStack stack = store.getItemHandler().getStackInSlot(i);
-            if (!stack.isEmpty()) {
-                if (!DisableSystem.isItemDisabled(player.getUUID(), stack) && Config.isReflectDamageItem(stack.getItem())) {
-                    return true;
-                }
-            }
-        }
-        return false;
+        return PlayerStoreUtils.hasActiveItem(player, Config::isReflectDamageItem);
     }
 
     /**

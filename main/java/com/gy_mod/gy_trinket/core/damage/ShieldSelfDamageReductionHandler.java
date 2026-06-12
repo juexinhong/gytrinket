@@ -2,9 +2,6 @@ package com.gy_mod.gy_trinket.core.damage;
 
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
 import com.gy_mod.gy_trinket.core.shield.ShieldManager;
-import com.gy_mod.gy_trinket.damage.ModDamageTypes;
-import net.minecraft.resources.ResourceKey;
-import net.minecraft.world.damagesource.DamageType;
 import net.minecraft.world.entity.player.Player;
 
 import java.util.UUID;
@@ -33,8 +30,7 @@ public class ShieldSelfDamageReductionHandler implements DamageHandler {
             return;
         }
 
-        ResourceKey<DamageType> damageType = context.getSource().typeHolder().unwrapKey().orElse(null);
-        if (damageType != ModDamageTypes.SHIELD_SELF_DAMAGE && damageType != ModDamageTypes.PROTOCOL_SHIELD_SELF_DAMAGE) {
+        if (!context.isShieldSelfDamage()) {
             return;
         }
 

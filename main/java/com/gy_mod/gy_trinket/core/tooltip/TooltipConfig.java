@@ -15,7 +15,6 @@ public class TooltipConfig {
     private final String titleKey;
     private final String descriptionKey;
     private final ChatFormatting titleColor;
-    private final boolean hasTitle;
     private final TooltipFormatter formatter;
 
     /**
@@ -38,19 +37,7 @@ public class TooltipConfig {
         this.titleKey = titleKey;
         this.descriptionKey = descriptionKey;
         this.titleColor = titleColor;
-        this.hasTitle = true;
         this.formatter = formatter;
-    }
-
-    /**
-     * 仅格式化描述（无标题）的工具提示配置
-     */
-    public static TooltipConfig descriptionOnly(ForgeConfigSpec.ConfigValue<List<? extends String>> itemConfig,
-                                                String descriptionKey,
-                                                ChatFormatting titleColor,
-                                                TooltipFormatter formatter) {
-        TooltipConfig config = new TooltipConfig(itemConfig, null, descriptionKey, titleColor, formatter);
-        return config;
     }
 
     public ForgeConfigSpec.ConfigValue<List<? extends String>> getItemConfig() {
@@ -70,7 +57,7 @@ public class TooltipConfig {
     }
 
     public boolean hasTitle() {
-        return hasTitle && titleKey != null;
+        return titleKey != null;
     }
 
     public boolean needsFormatting() {

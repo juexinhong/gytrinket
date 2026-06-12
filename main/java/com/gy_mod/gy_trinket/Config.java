@@ -1528,6 +1528,7 @@ public class Config {
                     }
                     if (!attrs.isEmpty()) {
                         AttributeManager.registerItemAttributes(itemId, attrs);
+                        gytrinket.LOGGER.info("注册物品属性: {} -> {}", itemId, attrs);
                     }
                 }
             }
@@ -1539,6 +1540,20 @@ public class Config {
         SPEC.save();
         loadItemAttributes();
         gytrinket.LOGGER.info("物品属性配置已重置为默认值");
+    }
+
+    private static void loadItemSet(Set<Item> targetSet, List<? extends String> configList, String logLabel) {
+        targetSet.clear();
+        for (String itemId : configList) {
+            String trimmed = itemId.trim();
+            if (!trimmed.isEmpty()) {
+                Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(trimmed));
+                if (item != null) {
+                    targetSet.add(item);
+                    gytrinket.LOGGER.info("注册{}物品: {}", logLabel, trimmed);
+                }
+            }
+        }
     }
 
     @SubscribeEvent
@@ -1567,32 +1582,7 @@ public class Config {
             }
         }
 
-        List<? extends String> itemAttrsList = ITEM_ATTRIBUTES_CONFIG.get();
-        for (String itemConfig : itemAttrsList) {
-            if (!itemConfig.trim().isEmpty()) {
-                String[] itemParts = itemConfig.trim().split("\\|");
-                if (itemParts.length >= 2) {
-                    String itemId = itemParts[0].trim();
-                    Map<String, Double> attrs = new HashMap<>();
-                    for (int i = 1; i < itemParts.length; i++) {
-                        String[] attrParts = itemParts[i].trim().split("=");
-                        if (attrParts.length == 2) {
-                            String attrName = attrParts[0].trim();
-                            try {
-                                double value = Double.parseDouble(attrParts[1].trim());
-                                attrs.put(attrName, value);
-                            } catch (NumberFormatException e) {
-                                gytrinket.LOGGER.warn("无效的属性值：{} for {}", attrParts[1], itemId);
-                            }
-                        }
-                    }
-                    if (!attrs.isEmpty()) {
-                        AttributeManager.registerItemAttributes(itemId, attrs);
-                        gytrinket.LOGGER.info("注册物品属性: {} -> {}", itemId, attrs);
-                    }
-                }
-            }
-        }
+        loadItemAttributes();
 
         SHIELD_TYPE_COMPATIBILITY.clear();
         String shieldTypesStr = SHIELD_TYPES_CONFIG.get();
@@ -1634,185 +1624,21 @@ public class Config {
 
         DisableSystem.loadConfig();
 
-        DRONE_MODULE_ITEM_SET.clear();
-        List<? extends String> droneModuleItems = DRONE_MODULE_ITEMS.get();
-        for (String itemId : droneModuleItems) {
-            if (!itemId.trim().isEmpty()) {
-                Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(itemId.trim()));
-                if (item != null) {
-                    DRONE_MODULE_ITEM_SET.add(item);
-                    gytrinket.LOGGER.info("注册基础无人机构建物品: {}", itemId);
-                }
-            }
-        }
-
-        ASSAULT_DRONE_MODULE_ITEM_SET.clear();
-        List<? extends String> assaultModuleItems = ASSAULT_DRONE_MODULE_ITEMS.get();
-        for (String itemId : assaultModuleItems) {
-            if (!itemId.trim().isEmpty()) {
-                Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(itemId.trim()));
-                if (item != null) {
-                    ASSAULT_DRONE_MODULE_ITEM_SET.add(item);
-                    gytrinket.LOGGER.info("注册突击无人机构建物品: {}", itemId);
-                }
-            }
-        }
-
-        DEFENSE_DRONE_MODULE_ITEM_SET.clear();
-        List<? extends String> defenseModuleItems = DEFENSE_DRONE_MODULE_ITEMS.get();
-        for (String itemId : defenseModuleItems) {
-            if (!itemId.trim().isEmpty()) {
-                Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(itemId.trim()));
-                if (item != null) {
-                    DEFENSE_DRONE_MODULE_ITEM_SET.add(item);
-                    gytrinket.LOGGER.info("注册防御无人机构建物品: {}", itemId);
-                }
-            }
-        }
-
-        ADAPTIVE_ARMOR_ITEM_SET.clear();
-        List<? extends String> adaptiveArmorItems = ADAPTIVE_ARMOR_ITEMS.get();
-        for (String itemId : adaptiveArmorItems) {
-            if (!itemId.trim().isEmpty()) {
-                Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(itemId.trim()));
-                if (item != null) {
-                    ADAPTIVE_ARMOR_ITEM_SET.add(item);
-                    gytrinket.LOGGER.info("注册适应性装甲启用物品: {}", itemId);
-                }
-            }
-        }
-
-        ADAPTIVE_ARMOR_SHIELD_EFFECT_ITEM_SET.clear();
-        List<? extends String> shieldEffectItems = ADAPTIVE_ARMOR_SHIELD_EFFECT_ITEMS.get();
-        for (String itemId : shieldEffectItems) {
-            if (!itemId.trim().isEmpty()) {
-                Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(itemId.trim()));
-                if (item != null) {
-                    ADAPTIVE_ARMOR_SHIELD_EFFECT_ITEM_SET.add(item);
-                    gytrinket.LOGGER.info("注册适应性装甲护盾效果物品: {}", itemId);
-                }
-            }
-        }
-
-        SHIELD_TRANSFER_ITEM_SET.clear();
-        List<? extends String> shieldTransferItems = SHIELD_TRANSFER_ITEMS.get();
-        for (String itemId : shieldTransferItems) {
-            if (!itemId.trim().isEmpty()) {
-                Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(itemId.trim()));
-                if (item != null) {
-                    SHIELD_TRANSFER_ITEM_SET.add(item);
-                    gytrinket.LOGGER.info("注册护盾移植模块物品: {}", itemId);
-                }
-            }
-        }
-
-        BARRIER_ITEM_SET.clear();
-        List<? extends String> barrierItems = BARRIER_ITEMS.get();
-        for (String itemId : barrierItems) {
-            if (!itemId.trim().isEmpty()) {
-                Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(itemId.trim()));
-                if (item != null) {
-                    BARRIER_ITEM_SET.add(item);
-                    gytrinket.LOGGER.info("注册屏障处理器启用物品: {}", itemId);
-                }
-            }
-        }
-
-        EXPLOSIVE_SHIELD_ITEM_SET.clear();
-        List<? extends String> explosiveShieldItems = EXPLOSIVE_SHIELD_ITEMS.get();
-        for (String itemId : explosiveShieldItems) {
-            if (!itemId.trim().isEmpty()) {
-                Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(itemId.trim()));
-                if (item != null) {
-                    EXPLOSIVE_SHIELD_ITEM_SET.add(item);
-                    gytrinket.LOGGER.info("注册易爆护盾效果启用物品: {}", itemId);
-                }
-            }
-        }
-
-        CONVERSION_ITEM_SET.clear();
-        List<? extends String> conversionItems = CONVERSION_ITEMS.get();
-        for (String itemId : conversionItems) {
-            if (!itemId.trim().isEmpty()) {
-                Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(itemId.trim()));
-                if (item != null) {
-                    CONVERSION_ITEM_SET.add(item);
-                    gytrinket.LOGGER.info("注册转化效果启用物品: {}", itemId);
-                }
-            }
-        }
-
-        REFLECT_DAMAGE_ITEM_SET.clear();
-        List<? extends String> reflectDamageItems = REFLECT_DAMAGE_ITEMS.get();
-        for (String itemId : reflectDamageItems) {
-            if (!itemId.trim().isEmpty()) {
-                Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(itemId.trim()));
-                if (item != null) {
-                    REFLECT_DAMAGE_ITEM_SET.add(item);
-                    gytrinket.LOGGER.info("注册反射护盾伤害处理器启用物品: {}", itemId);
-                }
-            }
-        }
-
-        ELECTRIC_DISCHARGE_ITEM_SET.clear();
-        List<? extends String> electricDischargeItems = ELECTRIC_DISCHARGE_ITEMS.get();
-        for (String itemId : electricDischargeItems) {
-            if (!itemId.trim().isEmpty()) {
-                Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(itemId.trim()));
-                if (item != null) {
-                    ELECTRIC_DISCHARGE_ITEM_SET.add(item);
-                    gytrinket.LOGGER.info("注册闪电释放模块物品: {}", itemId);
-                }
-            }
-        }
-
-        ATTACK_COOLDOWN_EFFICIENCY_ITEM_SET.clear();
-        List<? extends String> efficiencyItems = ATTACK_COOLDOWN_EFFICIENCY_ITEMS.get();
-        for (String itemId : efficiencyItems) {
-            if (!itemId.trim().isEmpty()) {
-                Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(itemId.trim()));
-                if (item != null) {
-                    ATTACK_COOLDOWN_EFFICIENCY_ITEM_SET.add(item);
-                    gytrinket.LOGGER.info("注册攻击冷却效率物品: {}", itemId);
-                }
-            }
-        }
-
-        SHIELD_NATURAL_RECOVERY_ITEM_SET.clear();
-        List<? extends String> shieldRecoveryItems = SHIELD_NATURAL_RECOVERY_ITEMS.get();
-        for (String itemId : shieldRecoveryItems) {
-            if (!itemId.trim().isEmpty()) {
-                Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(itemId.trim()));
-                if (item != null) {
-                    SHIELD_NATURAL_RECOVERY_ITEM_SET.add(item);
-                    gytrinket.LOGGER.info("注册护盾自然恢复物品: {}", itemId);
-                }
-            }
-        }
-
-        BINARY_PROTOCOL_ITEM_SET.clear();
-        List<? extends String> binaryProtocolItems = BINARY_PROTOCOL_ITEMS.get();
-        for (String itemId : binaryProtocolItems) {
-            if (!itemId.trim().isEmpty()) {
-                Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(itemId.trim()));
-                if (item != null) {
-                    BINARY_PROTOCOL_ITEM_SET.add(item);
-                    gytrinket.LOGGER.info("注册二元协议物品: {}", itemId);
-                }
-            }
-        }
-
-        WEAPONIZED_SHIELD_ITEM_SET.clear();
-        List<? extends String> weaponizedShieldItems = WEAPONIZED_SHIELD_ITEMS.get();
-        for (String itemId : weaponizedShieldItems) {
-            if (!itemId.trim().isEmpty()) {
-                Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(itemId.trim()));
-                if (item != null) {
-                    WEAPONIZED_SHIELD_ITEM_SET.add(item);
-                    gytrinket.LOGGER.info("注册武器化护盾物品: {}", itemId);
-                }
-            }
-        }
+        loadItemSet(DRONE_MODULE_ITEM_SET, DRONE_MODULE_ITEMS.get(), "基础无人机构建");
+        loadItemSet(ASSAULT_DRONE_MODULE_ITEM_SET, ASSAULT_DRONE_MODULE_ITEMS.get(), "突击无人机构建");
+        loadItemSet(DEFENSE_DRONE_MODULE_ITEM_SET, DEFENSE_DRONE_MODULE_ITEMS.get(), "防御无人机构建");
+        loadItemSet(ADAPTIVE_ARMOR_ITEM_SET, ADAPTIVE_ARMOR_ITEMS.get(), "适应性装甲启用");
+        loadItemSet(ADAPTIVE_ARMOR_SHIELD_EFFECT_ITEM_SET, ADAPTIVE_ARMOR_SHIELD_EFFECT_ITEMS.get(), "适应性装甲护盾效果");
+        loadItemSet(SHIELD_TRANSFER_ITEM_SET, SHIELD_TRANSFER_ITEMS.get(), "护盾移植模块");
+        loadItemSet(BARRIER_ITEM_SET, BARRIER_ITEMS.get(), "屏障处理器启用");
+        loadItemSet(EXPLOSIVE_SHIELD_ITEM_SET, EXPLOSIVE_SHIELD_ITEMS.get(), "易爆护盾效果启用");
+        loadItemSet(CONVERSION_ITEM_SET, CONVERSION_ITEMS.get(), "转化效果启用");
+        loadItemSet(REFLECT_DAMAGE_ITEM_SET, REFLECT_DAMAGE_ITEMS.get(), "反射护盾伤害处理器启用");
+        loadItemSet(ELECTRIC_DISCHARGE_ITEM_SET, ELECTRIC_DISCHARGE_ITEMS.get(), "闪电释放模块");
+        loadItemSet(ATTACK_COOLDOWN_EFFICIENCY_ITEM_SET, ATTACK_COOLDOWN_EFFICIENCY_ITEMS.get(), "攻击冷却效率");
+        loadItemSet(SHIELD_NATURAL_RECOVERY_ITEM_SET, SHIELD_NATURAL_RECOVERY_ITEMS.get(), "护盾自然恢复");
+        loadItemSet(BINARY_PROTOCOL_ITEM_SET, BINARY_PROTOCOL_ITEMS.get(), "二元协议");
+        loadItemSet(WEAPONIZED_SHIELD_ITEM_SET, WEAPONIZED_SHIELD_ITEMS.get(), "武器化护盾");
 
         DANGEROUS_ENTITY_SET.clear();
         List<? extends String> dangerousEntities = DANGEROUS_ENTITIES.get();
@@ -1823,113 +1649,15 @@ public class Config {
             }
         }
 
-        NEAR_DEATH_PROTECTION_ITEM_SET.clear();
-        List<? extends String> ndpItems = NEAR_DEATH_PROTECTION_ITEMS.get();
-        for (String itemId : ndpItems) {
-            if (!itemId.trim().isEmpty()) {
-                Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(itemId.trim()));
-                if (item != null) {
-                    NEAR_DEATH_PROTECTION_ITEM_SET.add(item);
-                    gytrinket.LOGGER.info("注册濒死保护前置物品: {}", itemId);
-                }
-            }
-        }
-
-        NEAR_DEATH_EXPLOSION_ITEM_SET.clear();
-        List<? extends String> ndeItems = NEAR_DEATH_EXPLOSION_ITEMS.get();
-        for (String itemId : ndeItems) {
-            if (!itemId.trim().isEmpty()) {
-                Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(itemId.trim()));
-                if (item != null) {
-                    NEAR_DEATH_EXPLOSION_ITEM_SET.add(item);
-                    gytrinket.LOGGER.info("注册濒死自爆前置物品: {}", itemId);
-                }
-            }
-        }
-
-        COMMANDER_ITEM_SET.clear();
-        List<? extends String> cmdItems = COMMANDER_REQUIRED_ITEMS.get();
-        for (String itemId : cmdItems) {
-            if (!itemId.trim().isEmpty()) {
-                Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(itemId.trim()));
-                if (item != null) {
-                    COMMANDER_ITEM_SET.add(item);
-                    gytrinket.LOGGER.info("注册指挥官前置物品: {}", itemId);
-                }
-            }
-        }
-
-        ARC_BARRIER_ITEM_SET.clear();
-        List<? extends String> arcBarrierItems = ARC_BARRIER_ITEMS.get();
-        for (String itemId : arcBarrierItems) {
-            if (!itemId.trim().isEmpty()) {
-                Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(itemId.trim()));
-                if (item != null) {
-                    ARC_BARRIER_ITEM_SET.add(item);
-                    gytrinket.LOGGER.info("注册弧形屏障启用物品: {}", itemId);
-                }
-            }
-        }
-
-        RESHAPING_ITEM_SET.clear();
-        List<? extends String> reshapingItems = RESHAPING_ITEMS.get();
-        for (String itemId : reshapingItems) {
-            if (!itemId.trim().isEmpty()) {
-                Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(itemId.trim()));
-                if (item != null) {
-                    RESHAPING_ITEM_SET.add(item);
-                    gytrinket.LOGGER.info("注册重塑启用物品: {}", itemId);
-                }
-            }
-        }
-
-        COUNTER_PULSE_ITEM_SET.clear();
-        List<? extends String> counterPulseItems = COUNTER_PULSE_ITEMS.get();
-        for (String itemId : counterPulseItems) {
-            if (!itemId.trim().isEmpty()) {
-                Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(itemId.trim()));
-                if (item != null) {
-                    COUNTER_PULSE_ITEM_SET.add(item);
-                    gytrinket.LOGGER.info("注册反制脉冲启用物品: {}", itemId);
-                }
-            }
-        }
-
-        ASSAULT_ITEM_SET.clear();
-        List<? extends String> assaultItems = ASSAULT_ITEMS.get();
-        for (String itemId : assaultItems) {
-            if (!itemId.trim().isEmpty()) {
-                Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(itemId.trim()));
-                if (item != null) {
-                    ASSAULT_ITEM_SET.add(item);
-                    gytrinket.LOGGER.info("注册强袭模块物品: {}", itemId);
-                }
-            }
-        }
-
-        CHARGED_ATTACK_ITEM_SET.clear();
-        List<? extends String> chargedAttackItems = CHARGED_ATTACK_ITEMS.get();
-        for (String itemId : chargedAttackItems) {
-            if (!itemId.trim().isEmpty()) {
-                Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(itemId.trim()));
-                if (item != null) {
-                    CHARGED_ATTACK_ITEM_SET.add(item);
-                    gytrinket.LOGGER.info("注册充能攻击模块物品: {}", itemId);
-                }
-            }
-        }
-
-        CHARGED_SHIELD_ITEM_SET.clear();
-        List<? extends String> chargedShieldItems = CHARGED_SHIELD_ITEMS.get();
-        for (String itemId : chargedShieldItems) {
-            if (!itemId.trim().isEmpty()) {
-                Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(itemId.trim()));
-                if (item != null) {
-                    CHARGED_SHIELD_ITEM_SET.add(item);
-                    gytrinket.LOGGER.info("注册充能护盾模块物品: {}", itemId);
-                }
-            }
-        }
+        loadItemSet(NEAR_DEATH_PROTECTION_ITEM_SET, NEAR_DEATH_PROTECTION_ITEMS.get(), "濒死保护前置");
+        loadItemSet(NEAR_DEATH_EXPLOSION_ITEM_SET, NEAR_DEATH_EXPLOSION_ITEMS.get(), "濒死自爆前置");
+        loadItemSet(COMMANDER_ITEM_SET, COMMANDER_REQUIRED_ITEMS.get(), "指挥官前置");
+        loadItemSet(ARC_BARRIER_ITEM_SET, ARC_BARRIER_ITEMS.get(), "弧形屏障启用");
+        loadItemSet(RESHAPING_ITEM_SET, RESHAPING_ITEMS.get(), "重塑启用");
+        loadItemSet(COUNTER_PULSE_ITEM_SET, COUNTER_PULSE_ITEMS.get(), "反制脉冲启用");
+        loadItemSet(ASSAULT_ITEM_SET, ASSAULT_ITEMS.get(), "强袭模块");
+        loadItemSet(CHARGED_ATTACK_ITEM_SET, CHARGED_ATTACK_ITEMS.get(), "充能攻击模块");
+        loadItemSet(CHARGED_SHIELD_ITEM_SET, CHARGED_SHIELD_ITEMS.get(), "充能护盾模块");
 
         UpgradeManager.loadConfig();
 

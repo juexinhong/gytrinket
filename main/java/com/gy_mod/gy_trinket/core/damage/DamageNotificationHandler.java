@@ -3,9 +3,7 @@ package com.gy_mod.gy_trinket.core.damage;
 import com.gy_mod.gy_trinket.core.shield.cooldown.IShieldCooldownModifier;
 import com.gy_mod.gy_trinket.core.shield.cooldown.CooldownContext;
 import com.gy_mod.gy_trinket.core.shield.cooldown.ShieldCooldownManager;
-import com.gy_mod.gy_trinket.damage.ModDamageTypes;
-import net.minecraft.resources.ResourceKey;
-import net.minecraft.world.damagesource.DamageType;
+
 import net.minecraft.world.entity.player.Player;
 
 public class DamageNotificationHandler implements DamageHandler {
@@ -20,11 +18,7 @@ public class DamageNotificationHandler implements DamageHandler {
 
         var playerUUID = context.getPlayer().getUUID();
 
-        ResourceKey<DamageType> damageType = context.getSource().typeHolder().unwrapKey().orElse(null);
-        if (damageType == ModDamageTypes.PLAYER_SELF_DAMAGE
-                || damageType == ModDamageTypes.PROTOCOL_PLAYER_SELF_DAMAGE
-                || damageType == ModDamageTypes.SHIELD_SELF_DAMAGE
-                || damageType == ModDamageTypes.PROTOCOL_SHIELD_SELF_DAMAGE) {
+        if (context.isAnySelfDamage()) {
             return;
         }
 

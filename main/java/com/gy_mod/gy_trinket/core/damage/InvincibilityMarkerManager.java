@@ -94,23 +94,4 @@ public class InvincibilityMarkerManager {
             MARKER_DATA.remove(entity.getUUID());
         }
     }
-
-    /**
-     * 获取实体无敌标记的剩余时间
-     * @param entity 目标实体
-     * @return 剩余刻数，无标记返回0
-     */
-    public static int getRemainingTicks(LivingEntity entity) {
-        if (entity == null) {
-            return 0;
-        }
-        return MARKER_DATA.getOrDefault(entity.getUUID(), 0);
-    }
-
-    /**
-     * 清除所有无敌标记
-     */
-    public static void clearAll() {
-        MARKER_DATA.clear();
-    }
 }

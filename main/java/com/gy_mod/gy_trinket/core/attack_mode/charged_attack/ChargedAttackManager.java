@@ -227,7 +227,7 @@ public class ChargedAttackManager {
             double chargeValue = releaseCharge(uuid);
             if (chargeValue > 0) {
                 // 通知客户端释放攻击
-                com.gy_mod.gy_trinket.network.NetworkHandler.sendChargedAttackReleaseToPlayer(player, chargeValue);
+                com.gy_mod.gy_trinket.network.NetworkHandler.sendChargedAttackSyncToPlayer(player, chargeValue);
             }
             // 同步0到客户端，清空HUD显示
             com.gy_mod.gy_trinket.network.NetworkHandler.sendChargedAttackSyncToPlayer(player, 0);

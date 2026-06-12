@@ -65,6 +65,7 @@ public class ModCreativeModeTabs {
                         output.accept(ModItems.CONSTRUCT_FRAME.get());
                         output.accept(ModItems.MOVEMENT_FRAME.get());
                         output.accept(ModItems.LIFE_FRAME.get());
+                        output.accept(ModItems.ATTACK_FRAME.get());
                         output.accept(ModItems.SHIELD_RECEIVER.get());
 
                         // 护盾值物品
@@ -109,6 +110,9 @@ public class ModCreativeModeTabs {
                         output.accept(ModItems.BURST_FIRE_MODULE.get());
                         output.accept(ModItems.ASSAULT_MODULE.get());
 
+                        // 攻击伤害物品
+                        output.accept(ModItems.CHARGED_ATTACK_MODULE.get());
+
                         // 速度物品
                         output.accept(ModItems.THRUST_BOOST_MODULE.get());
                         output.accept(ModItems.AERODYNAMIC_FRAMEWORK_MODULE.get());
@@ -135,6 +139,9 @@ public class ModCreativeModeTabs {
                         output.accept(ModItems.ARC_BARRIER_MODULE.get());
                         output.accept(ModItems.RESHAPING_MODULE.get());
 
+                        // 超越模块
+                        output.accept(ModItems.CHARGED_SHIELD_MODULE.get());
+                        
                         // 零件
                         output.accept(ModItems.BEAM.get());
                         output.accept(ModItems.BARRIER.get());
@@ -158,6 +165,7 @@ public class ModCreativeModeTabs {
                         output.accept(ModItems.PARTICLE_STREAM.get());
                         output.accept(ModItems.OVERCLOCK.get());
                         output.accept(ModItems.STAR_SPEAR.get());
+                        output.accept(ModItems.FOCUS_CORE.get());
                         output.accept(ModItems.THRUSTER.get());
                         output.accept(ModItems.AERODYNAMIC_DESIGN_DRAFT.get());
                         output.accept(ModItems.COORDINATE.get());

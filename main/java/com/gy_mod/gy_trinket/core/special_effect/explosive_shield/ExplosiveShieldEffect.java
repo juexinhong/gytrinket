@@ -3,7 +3,7 @@ package com.gy_mod.gy_trinket.core.special_effect.explosive_shield;
 import com.gy_mod.gy_trinket.Config;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
 import com.gy_mod.gy_trinket.core.disable.DisableSystem;
-import com.gy_mod.gy_trinket.core.shield.ShieldManager;
+import com.gy_mod.gy_trinket.core.explosion.SimulatedExplosion;
 import com.gy_mod.gy_trinket.core.shield_transfer.ShieldTransferManager;
 import com.gy_mod.gy_trinket.event.ShieldBreakEvent;
 import com.gy_mod.gy_trinket.gytrinket;
@@ -12,12 +12,10 @@ import com.gy_mod.gy_trinket.storage.PlayerStore;
 import com.gy_mod.gy_trinket.storage.PlayerStoreManager;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.damagesource.DamageSource;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.phys.AABB;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
@@ -58,22 +56,18 @@ public class ExplosiveShieldEffect {
                 NetworkHandler.sendExplosiveShieldFlashToAll(serverLevel, effectCenter);
             }
 
-            AABB aabb = new AABB(
-                effectCenter.getX() - radius, effectCenter.getY() - radius, effectCenter.getZ() - radius,
-                effectCenter.getX() + radius, effectCenter.getY() + radius, effectCenter.getZ() + radius
-            );
-
-            List<Entity> entities = effectCenter.level().getEntities(effectCenter, aabb, entity ->
-                entity instanceof Mob mob && !mob.isDeadOrDying()
-            );
-
             DamageSource damageSource = effectCenter.damageSources().explosion(effectCenter, player);
 
-            for (Entity entity : entities) {
-                if (entity instanceof LivingEntity livingEntity) {
-                    livingEntity.hurt(damageSource, damage);
-                }
-            }
+            SimulatedExplosion.execute(
+                    effectCenter.level(),
+                    effectCenter.position(),
+                    radius,
+                    damage,
+                    damageSource,
+                    entity -> entity instanceof Mob mob && !mob.isDeadOrDying(),
+                    false,
+                    player
+            );
         }
     }
 

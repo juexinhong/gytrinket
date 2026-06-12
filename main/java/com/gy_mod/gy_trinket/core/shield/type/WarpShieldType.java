@@ -2,6 +2,8 @@ package com.gy_mod.gy_trinket.core.shield.type;
 
 import com.gy_mod.gy_trinket.Config;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
+import com.gy_mod.gy_trinket.core.damage.InvincibilityMarkerManager;
+import com.gy_mod.gy_trinket.core.explosion.SimulatedExplosion;
 import com.gy_mod.gy_trinket.core.hostile_target.HostileTargetManager;
 import com.gy_mod.gy_trinket.core.shield_transfer.ShieldTransferManager;
 import com.gy_mod.gy_trinket.event.ShieldBreakEvent;
@@ -14,7 +16,6 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -60,6 +61,7 @@ public class WarpShieldType implements IShieldType {
     public void onRemoved(Player player) {
         UUID playerUUID = player.getUUID();
         INVINCIBLE_PLAYERS.remove(playerUUID);
+        InvincibilityMarkerManager.removeMarker(player);
     }
 
     @Override
@@ -98,8 +100,6 @@ public class WarpShieldType implements IShieldType {
         }
 
         if (invincible) {
-            // 设置无敌状态
-            serverPlayer.setInvulnerable(true);
             // 清除速度
             serverPlayer.setDeltaMovement(Vec3.ZERO);
             // 设置不受重力影响
@@ -108,7 +108,7 @@ public class WarpShieldType implements IShieldType {
             serverPlayer.resetAttackStrengthTicker();
         } else {
             // 恢复正常状态
-            serverPlayer.setInvulnerable(false);
+            InvincibilityMarkerManager.removeMarker(serverPlayer);
             serverPlayer.noPhysics = false;
         }
     }
@@ -267,52 +267,29 @@ public class WarpShieldType implements IShieldType {
         
         // 获取护盾效果属性组（影响爆炸伤害）
         double shieldEffect = AttributeManager.getGroupAttribute(player.getUUID(), "shield_effect");
-        
+
         // 获取护盾效果半径属性组（影响爆炸半径）
         double shieldEffectRadius = AttributeManager.getGroupAttribute(player.getUUID(), "shield_effect_radius");
-        
+
         // 计算实际爆炸半径 = 基础半径 × 护盾效果半径属性组
         double actualExplosionRadius = Config.WARP_SHIELD_EXPLOSION_RADIUS.get() * shieldEffectRadius;
-        
-        // 创建爆炸范围
-        AABB explosionBox = new AABB(
-            position.x() - actualExplosionRadius,
-            position.y() - actualExplosionRadius,
-            position.z() - actualExplosionRadius,
-            position.x() + actualExplosionRadius,
-            position.y() + actualExplosionRadius,
-            position.z() + actualExplosionRadius
-        );
-        
-        // 遍历范围内的实体
-        List<LivingEntity> entities = level.getEntitiesOfClass(LivingEntity.class, explosionBox);
-        
+
         // 创建爆炸伤害源（归属玩家）
         DamageSource damageSource = player.damageSources().explosion(player, player);
-        
+
         // 计算实际爆炸伤害 = 基础伤害 × 护盾效果属性组
         float actualExplosionDamage = (float) (Config.WARP_SHIELD_EXPLOSION_DAMAGE.get() * shieldEffect);
         
-        for (LivingEntity entity : entities) {
-            // 跳过玩家自己
-            if (entity == player) {
-                continue;
-            }
-            
-            // 使用攻击过滤判断是否为危险目标
-            if (!HostileTargetManager.shouldAttackPlayer(entity, player)) {
-                continue;
-            }
-            
-            // 移除目标无敌时间
-            entity.invulnerableTime = 0;
-            
-            // 应用伤害
-            entity.hurt(damageSource, actualExplosionDamage);
-            
-            // 再次移除无敌时间（防止伤害后产生无敌）
-            entity.invulnerableTime = 0;
-        }
+        SimulatedExplosion.execute(
+                level,
+                position,
+                actualExplosionRadius,
+                actualExplosionDamage,
+                damageSource,
+                entity -> entity != player && HostileTargetManager.shouldAttackPlayer(entity, player),
+                true,
+                player
+        );
     }
 
     /**
@@ -348,7 +325,9 @@ public class WarpShieldType implements IShieldType {
             shieldType.createExplosion(player, player.position());
             
             // 设置玩家无敌状态（玩家会在无敌状态结束后自动传送）
-            INVINCIBLE_PLAYERS.put(playerUUID, Config.WARP_SHIELD_INVINCIBLE_DURATION.get());
+            int invincibleDuration = Config.WARP_SHIELD_INVINCIBLE_DURATION.get();
+            INVINCIBLE_PLAYERS.put(playerUUID, invincibleDuration);
+            InvincibilityMarkerManager.addMarker(player, invincibleDuration);
         }
     }
 

@@ -3,6 +3,7 @@ package com.gy_mod.gy_trinket.core.entity.construct.drone.behavior;
 import com.gy_mod.gy_trinket.Config;
 import com.gy_mod.gy_trinket.core.disable.DisableSystem;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneConstructEntity;
+import com.gy_mod.gy_trinket.core.explosion.SimulatedExplosion;
 import com.gy_mod.gy_trinket.core.hostile_target.HostileTargetManager;
 import com.gy_mod.gy_trinket.storage.PlayerStore;
 import com.gy_mod.gy_trinket.storage.PlayerStoreManager;
@@ -12,7 +13,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.damagesource.DamageSource;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.TamableAnimal;
 import net.minecraft.world.entity.player.Player;
@@ -104,19 +104,23 @@ public class CounterPulseBehavior implements IDroneSpecialBehavior {
 
         Player owner = drone.getOwner() instanceof Player p ? p : null;
 
-        for (LivingEntity enemy : enemies) {
-            if (enemy == drone || enemy instanceof Player) continue;
+        DamageSource explosionSource = owner != null
+                ? drone.damageSources().explosion(null, owner)
+                : drone.damageSources().generic();
 
-            enemy.invulnerableTime = 0;
-
-            DamageSource explosionSource = owner != null
-                    ? drone.damageSources().explosion(null, owner)
-                    : drone.damageSources().generic();
-            enemy.hurt(explosionSource, explosionDamage);
-
-            enemy.invulnerableTime = 0;
-            enemy.setDeltaMovement(0, 0, 0);
-        }
+        SimulatedExplosion.execute(
+                drone.level(),
+                drone.position(),
+                explosionRadius,
+                explosionDamage,
+                explosionSource,
+                entity -> entity != drone && entity.isAlive() && !entity.isInvisible()
+                        && !(entity instanceof Player)
+                        && (owner == null || !HostileTargetManager.isEntityProtectedByPlayer(entity, owner))
+                        && HostileTargetManager.shouldAttackPlayer(entity, owner),
+                true,
+                owner
+        );
 
         serverLevel.sendParticles(
                 ParticleTypes.EXPLOSION,

@@ -7,6 +7,7 @@ import com.gy_mod.gy_trinket.core.TickScheduler;
 import com.gy_mod.gy_trinket.particle.ModParticles;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
 import com.gy_mod.gy_trinket.core.damage.DamageManager;
+import com.gy_mod.gy_trinket.core.damage.InvincibilityMarkerManager;
 import com.gy_mod.gy_trinket.core.damage_last.LastDamageManager;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructTypeRegistry;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructAttributeRegistry;
@@ -49,6 +50,7 @@ public class gytrinket {
         ModEntities.register(modEventBus);
 
         MinecraftForge.EVENT_BUS.register(TickScheduler.class);
+        MinecraftForge.EVENT_BUS.register(InvincibilityMarkerManager.class);
         MinecraftForge.EVENT_BUS.register(new LightPointStoreEventHandler());
         MinecraftForge.EVENT_BUS.register(DataCenterLifecycleHandler.class);
         MinecraftForge.EVENT_BUS.register(AttributeManager.class);

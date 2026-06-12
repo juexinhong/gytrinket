@@ -118,6 +118,18 @@ public class Config {
     public static final ForgeConfigSpec.IntValue ASSAULT_DURATION_TICKS;
     public static final ForgeConfigSpec.DoubleValue ASSAULT_SELF_DAMAGE_PER_STACK;
 
+    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> CHARGED_ATTACK_ITEMS;
+    public static final ForgeConfigSpec.DoubleValue CHARGED_ATTACK_BASE_CHARGE_RATE;
+    public static final ForgeConfigSpec.DoubleValue CHARGED_ATTACK_DAMAGE_SCALE_FACTOR;
+    public static final ForgeConfigSpec.DoubleValue CHARGED_ATTACK_SPEED_SCALE_FACTOR;
+    public static final ForgeConfigSpec.DoubleValue CHARGED_ATTACK_DRAG_COEFFICIENT;
+    public static final ForgeConfigSpec.DoubleValue CHARGED_ATTACK_DRAG_THRESHOLD_FACTOR;
+
+    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> CHARGED_SHIELD_ITEMS;
+    public static final ForgeConfigSpec.DoubleValue CHARGED_SHIELD_CHARGE_RATIO;
+    public static final ForgeConfigSpec.DoubleValue CHARGED_SHIELD_MAX_BONUS;
+    public static final ForgeConfigSpec.DoubleValue CHARGED_SHIELD_DECAY_RATE;
+
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> ATTACK_COOLDOWN_EFFICIENCY_ITEMS;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> SHIELD_NATURAL_RECOVERY_ITEMS;    public static final ForgeConfigSpec.DoubleValue NATURAL_RECOVERY_SHIELD_RECOVERY_PER_TICK;
     public static final ForgeConfigSpec.DoubleValue NATURAL_RECOVERY_SHIELD_PRESENT_HEALTH_MODIFIER;
@@ -265,7 +277,11 @@ public class Config {
             "commander_health_independent:INDEPENDENT_MULTIPLY:commander_health," +
             "commander_damage:BASE:commander_damage," +
             "commander_damage_percent:PERCENT:commander_damage," +
-            "commander_damage_independent:INDEPENDENT_MULTIPLY:commander_damage"
+            "commander_damage_independent:INDEPENDENT_MULTIPLY:commander_damage," +
+            "explosion_damage_percent:PERCENT:explosion_damage," +
+            "explosion_damage_independent:INDEPENDENT_MULTIPLY:explosion_damage," +
+            "explosion_radius_percent:PERCENT:explosion_radius," +
+            "explosion_radius_independent:INDEPENDENT_MULTIPLY:explosion_radius"
         );
 
         ITEM_ATTRIBUTES_CONFIG = BUILDER.comment(
@@ -276,40 +292,40 @@ public class Config {
             "示例：minecraft:diamond|shield_base=10.0|shield_percent=0.1"
         ).defineListAllowEmpty("itemAttributes",
             List.of(
-                "gytrinket:shield_gy|shield_base=8.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.25",
-                "gytrinket:shield_gy1|shield_base=12.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.25",
-                "gytrinket:shield_gy2|shield_base=16.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.25",
-                "gytrinket:shield_gy3|shield_base=20.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.25",
+                "gytrinket:shield_gy|shield_base=8.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
+                "gytrinket:shield_gy1|shield_base=12.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
+                "gytrinket:shield_gy2|shield_base=16.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
+                "gytrinket:shield_gy3|shield_base=20.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
 
-                "gytrinket:shield_aura_ring|shield_base=8.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.25",
-                "gytrinket:shield_aura_ring1|shield_base=12.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.25",
-                "gytrinket:shield_aura_ring2|shield_base=16.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.25",
-                "gytrinket:shield_aura_ring3|shield_base=20.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.25",
+                "gytrinket:shield_aura_ring|shield_base=8.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
+                "gytrinket:shield_aura_ring1|shield_base=12.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
+                "gytrinket:shield_aura_ring2|shield_base=16.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
+                "gytrinket:shield_aura_ring3|shield_base=20.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
 
-                "gytrinket:shield_siphon|shield_base=8.0|shield_cooldown_time=7|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.25|shield_effect_percent=-0.3",
-                "gytrinket:shield_siphon1|shield_base=12.0|shield_cooldown_time=7|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.25|shield_effect_percent=-0.2",
-                "gytrinket:shield_siphon2|shield_base=16.0|shield_cooldown_time=7|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.25|shield_effect_percent=-0.1",
-                "gytrinket:shield_siphon3|shield_base=20.0|shield_cooldown_time=7|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.25|shield_effect_percent=0.0",
+                "gytrinket:shield_siphon|shield_base=8.0|shield_cooldown_time=7|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1|shield_effect_percent=-0.3",
+                "gytrinket:shield_siphon1|shield_base=12.0|shield_cooldown_time=7|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1|shield_effect_percent=-0.2",
+                "gytrinket:shield_siphon2|shield_base=16.0|shield_cooldown_time=7|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1|shield_effect_percent=-0.1",
+                "gytrinket:shield_siphon3|shield_base=20.0|shield_cooldown_time=7|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1|shield_effect_percent=0.0",
 
-                "gytrinket:shield_reflect|shield_base=9.6|shield_cooldown_time=7.5|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.25",
-                "gytrinket:shield_reflect1|shield_base=14.4|shield_cooldown_time=7.5|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.25",
-                "gytrinket:shield_reflect2|shield_base=19.2|shield_cooldown_time=7.5|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.25",
-                "gytrinket:shield_reflect3|shield_base=24.0|shield_cooldown_time=7.5|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.25",
+                "gytrinket:shield_reflect|shield_base=9.6|shield_cooldown_time=7.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
+                "gytrinket:shield_reflect1|shield_base=14.4|shield_cooldown_time=7.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
+                "gytrinket:shield_reflect2|shield_base=19.2|shield_cooldown_time=7.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
+                "gytrinket:shield_reflect3|shield_base=24.0|shield_cooldown_time=7.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
 
-                "gytrinket:shield_amplifier|shield_base=4.0|shield_cooldown_time=6.0|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.25",
-                "gytrinket:shield_amplifier1|shield_base=6.0|shield_cooldown_time=6.0|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.25",
-                "gytrinket:shield_amplifier2|shield_base=8.0|shield_cooldown_time=6.0|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.25",
-                "gytrinket:shield_amplifier3|shield_base=10.0|shield_cooldown_time=6.0|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.25",
+                "gytrinket:shield_amplifier|shield_base=4.0|shield_cooldown_time=6.0|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
+                "gytrinket:shield_amplifier1|shield_base=6.0|shield_cooldown_time=6.0|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
+                "gytrinket:shield_amplifier2|shield_base=8.0|shield_cooldown_time=6.0|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
+                "gytrinket:shield_amplifier3|shield_base=10.0|shield_cooldown_time=6.0|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
 
-                "gytrinket:shield_warp|shield_base=18.0|shield_cooldown_time=10.5|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.25",
-                "gytrinket:shield_warp1|shield_base=18.0|shield_cooldown_time=8.5|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.25",
-                "gytrinket:shield_warp2|shield_base=18.0|shield_cooldown_time=7.0|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.25",
-                "gytrinket:shield_warp3|shield_base=18.0|shield_cooldown_time=6.0|shield_hit_cooldown_extend=20|shield_hit_cooldown_extend_multiplier=0.25",
+                "gytrinket:shield_warp|shield_base=18.0|shield_cooldown_time=10.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
+                "gytrinket:shield_warp1|shield_base=18.0|shield_cooldown_time=8.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
+                "gytrinket:shield_warp2|shield_base=18.0|shield_cooldown_time=7.0|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
+                "gytrinket:shield_warp3|shield_base=18.0|shield_cooldown_time=6.0|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
 
                 "gytrinket:shield_amplifier_module|shield_percent=0.2",
                 "gytrinket:barrier_shield_module|shield_percent=0.05",
                 "gytrinket:reflect_shield_module|shield_percent=0.05",
-                "gytrinket:ultimate_shield_module|shield_base=11.0|shield_damage_reduction=-0.15|shield_effect_percent=0.15|shield_hit_cooldown_extend_final_multiplier=-0.75|player_health_independent=-0.85",
+                "gytrinket:ultimate_shield_module|shield_base=11.0|shield_damage_reduction=-0.15|shield_effect_percent=0.15|shield_hit_cooldown_extend_final_multiplier=-0.5|player_health_independent=-0.85",
 
                 "gytrinket:shield_cooldown_reduction_module|shield_cooldown_reduction_percent=0.2",
                 "gytrinket:shield_quick_charge_module|shield_cooldown_reduction_percent=0.25|shield_independent=-0.25",
@@ -433,7 +449,8 @@ public class Config {
             "gytrinket:wing_commander_module|gytrinket:assault_drone_module",
             "gytrinket:arc_barrier_module|gytrinket:defense_drone_module",
             "gytrinket:reshaping_module|gytrinket:defense_drone_module",
-            "gytrinket:counter_pulse_module|gytrinket:defense_drone_module"
+            "gytrinket:counter_pulse_module|gytrinket:defense_drone_module",
+            "gytrinket:charged_shield_module|gytrinket:charged_attack_module"
             ),
             s -> true);
 
@@ -916,6 +933,93 @@ public class Config {
 
         BUILDER.pop();
 
+        BUILDER.comment("充能攻击系统配置").push("charged_attack");
+
+        CHARGED_ATTACK_ITEMS = BUILDER.comment(
+            "充能攻击模块物品",
+            "放入光点核心后，玩家按住左键进行充能，松开释放充能攻击",
+            "格式：物品ID",
+            "示例：gytrinket:charged_attack_module"
+        ).defineListAllowEmpty("chargedAttackItems",
+            java.util.List.of("gytrinket:charged_attack_module"),
+            s -> true
+        );
+
+        CHARGED_ATTACK_BASE_CHARGE_RATE = BUILDER.comment(
+            "充能攻击基础充能速率（每tick充能值）",
+            "实际充能速率 = 基础速率 * (攻击伤害加成) * (攻击速度加成)",
+            "默认0.5",
+            "范围：0.01 ~ 10.0"
+        ).defineInRange("baseChargeRate", 0.05, 0.0, 10.0);
+
+        CHARGED_ATTACK_DAMAGE_SCALE_FACTOR = BUILDER.comment(
+            "攻击伤害对充能速率的影响系数",
+            "充能速率额外乘区 = 攻击伤害 * 此系数",
+            "默认1.0",
+            "范围：0.0 ~ 1.0"
+        ).defineInRange("damageScaleFactor", 1.0, 0.0, 10.0);
+
+        CHARGED_ATTACK_SPEED_SCALE_FACTOR = BUILDER.comment(
+            "攻击速度对充能速率的影响系数",
+            "充能速率额外乘区 = 攻击速度 * 此系数",
+            "默认0.15",
+            "范围：0.0 ~ 1.0"
+        ).defineInRange("speedScaleFactor", 1.0, 0.0, 10.0);
+
+        CHARGED_ATTACK_DRAG_COEFFICIENT = BUILDER.comment(
+            "充能阻力系数",
+            "充能值越大，阻力越大",
+            "实际充能增量 = 基础增量 * (1 - 阻力系数 * 充能值 / (充能值 + 阈值))",
+            "默认0.8",
+            "范围：0.0 ~ 1.0"
+        ).defineInRange("dragCoefficient", 1.0, 0.0, 10.0);
+
+        CHARGED_ATTACK_DRAG_THRESHOLD_FACTOR = BUILDER.comment(
+            "充能阻力阈值修正系数",
+            "动态阈值 = 玩家攻击伤害 * 攻击速度 * 此系数",
+            "阈值越大，阻力效果越晚显现，充能前期增长越快",
+            "默认1.0",
+            "范围：0.1 ~ 10.0"
+        ).defineInRange("dragThresholdFactor", 5.0, 0.1, 100.0);
+
+        BUILDER.pop();
+
+        BUILDER.comment("充能护盾系统配置").push("charged_shield");
+
+        CHARGED_SHIELD_ITEMS = BUILDER.comment(
+            "充能护盾模块物品",
+            "放入光点核心后，玩家充能时获得动态护盾效果和护盾效果半径加成",
+            "该物品依赖充能攻击模块",
+            "格式：物品ID",
+            "示例：gytrinket:charged_shield_module"
+        ).defineListAllowEmpty("chargedShieldItems",
+            java.util.List.of("gytrinket:charged_shield_module"),
+            s -> true
+        );
+
+        CHARGED_SHIELD_CHARGE_RATIO = BUILDER.comment(
+            "充能值转化为护盾加成的比率",
+            "动态属性值 = 累计充能值 * 此比率",
+            "默认0.1（即10%）",
+            "范围：0.01 ~ 1.0"
+        ).defineInRange("chargeRatio", 0.1, 0.01, 1.0);
+
+        CHARGED_SHIELD_MAX_BONUS = BUILDER.comment(
+            "动态属性值上限",
+            "动态属性值不超过此值（独立乘区值，0.8即80%加成）",
+            "默认0.8",
+            "范围：0.1 ~ 5.0"
+        ).defineInRange("maxBonus", 0.8, 0.1, 5.0);
+
+        CHARGED_SHIELD_DECAY_RATE = BUILDER.comment(
+            "充能护盾消退速率（每tick消退的独立乘区值）",
+            "停止充能后，动态属性值按此速率线性消退",
+            "默认0.05（即每tick消退5%，约16tick完全消退）",
+            "范围：0.005 ~ 0.5"
+        ).defineInRange("decayRate", 0.08, 0.005, 0.5);
+
+        BUILDER.pop();
+
         BUILDER.comment("攻击冷却效率系统配置").push("attack_cooldown_efficiency");
 
         ATTACK_COOLDOWN_EFFICIENCY_ITEMS = BUILDER.comment(
@@ -1254,7 +1358,7 @@ public class Config {
             "护盾格挡时施加的无敌状态持续时间（刻）",
             "当护盾完全吸收伤害时，被攻击者获得短暂无敌帧",
             "默认6刻（0.3秒）"
-        ).defineInRange("blockInvulnerableTicks", 6, 0, 100);
+        ).defineInRange("blockInvulnerableTicks", 10, 0, 100);
 
         BUILDER.pop();
 
@@ -1370,6 +1474,8 @@ public class Config {
     private static final Set<Item> RESHAPING_ITEM_SET = new HashSet<>();
     private static final Set<Item> COUNTER_PULSE_ITEM_SET = new HashSet<>();
     private static final Set<Item> ASSAULT_ITEM_SET = new HashSet<>();
+    private static final Set<Item> CHARGED_ATTACK_ITEM_SET = new HashSet<>();
+    private static final Set<Item> CHARGED_SHIELD_ITEM_SET = new HashSet<>();
 
     public static List<String> getItemShieldTypes(ResourceLocation itemId) {
         Item item = ForgeRegistries.ITEMS.getValue(itemId);
@@ -1801,6 +1907,30 @@ public class Config {
             }
         }
 
+        CHARGED_ATTACK_ITEM_SET.clear();
+        List<? extends String> chargedAttackItems = CHARGED_ATTACK_ITEMS.get();
+        for (String itemId : chargedAttackItems) {
+            if (!itemId.trim().isEmpty()) {
+                Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(itemId.trim()));
+                if (item != null) {
+                    CHARGED_ATTACK_ITEM_SET.add(item);
+                    gytrinket.LOGGER.info("注册充能攻击模块物品: {}", itemId);
+                }
+            }
+        }
+
+        CHARGED_SHIELD_ITEM_SET.clear();
+        List<? extends String> chargedShieldItems = CHARGED_SHIELD_ITEMS.get();
+        for (String itemId : chargedShieldItems) {
+            if (!itemId.trim().isEmpty()) {
+                Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(itemId.trim()));
+                if (item != null) {
+                    CHARGED_SHIELD_ITEM_SET.add(item);
+                    gytrinket.LOGGER.info("注册充能护盾模块物品: {}", itemId);
+                }
+            }
+        }
+
         UpgradeManager.loadConfig();
 
         gytrinket.LOGGER.info("属性系统配置加载完成");
@@ -2000,6 +2130,46 @@ public class Config {
 
     public static double getAssaultSelfDamagePerStack() {
         return ASSAULT_SELF_DAMAGE_PER_STACK.get();
+    }
+
+    public static boolean isChargedAttackItem(Item item) {
+        return CHARGED_ATTACK_ITEM_SET.contains(item);
+    }
+
+    public static double getChargedAttackBaseChargeRate() {
+        return CHARGED_ATTACK_BASE_CHARGE_RATE.get();
+    }
+
+    public static double getChargedAttackDamageScaleFactor() {
+        return CHARGED_ATTACK_DAMAGE_SCALE_FACTOR.get();
+    }
+
+    public static double getChargedAttackSpeedScaleFactor() {
+        return CHARGED_ATTACK_SPEED_SCALE_FACTOR.get();
+    }
+
+    public static double getChargedAttackDragCoefficient() {
+        return CHARGED_ATTACK_DRAG_COEFFICIENT.get();
+    }
+
+    public static double getChargedAttackDragThresholdFactor() {
+        return CHARGED_ATTACK_DRAG_THRESHOLD_FACTOR.get();
+    }
+
+    public static boolean isChargedShieldItem(Item item) {
+        return CHARGED_SHIELD_ITEM_SET.contains(item);
+    }
+
+    public static double getChargedShieldChargeRatio() {
+        return CHARGED_SHIELD_CHARGE_RATIO.get();
+    }
+
+    public static double getChargedShieldMaxBonus() {
+        return CHARGED_SHIELD_MAX_BONUS.get();
+    }
+
+    public static double getChargedShieldDecayRate() {
+        return CHARGED_SHIELD_DECAY_RATE.get();
     }
 
     public static double getQuickEquipExpLevelMultiplier() {

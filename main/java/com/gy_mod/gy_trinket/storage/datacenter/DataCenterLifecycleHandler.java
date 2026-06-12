@@ -1,6 +1,7 @@
 package com.gy_mod.gy_trinket.storage.datacenter;
 
 import com.gy_mod.gy_trinket.Config;
+import com.gy_mod.gy_trinket.core.damage.InvincibilityMarkerManager;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructData;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructManager;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.*;
@@ -120,6 +121,7 @@ public class DataCenterLifecycleHandler {
         if (player.isInvulnerable()) {
             player.setInvulnerable(false);
         }
+        InvincibilityMarkerManager.removeMarker(player);
 
         // Phase 1: 保存当前血量到数据中心
         PlayerDataCenter.setData(player.getUUID(), "health", (double) serverPlayer.getHealth());

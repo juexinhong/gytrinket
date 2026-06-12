@@ -56,6 +56,7 @@ public class ModItems {
     public static final RegistryObject<Item> CONSTRUCT_FRAME = ITEMS.register("construct_frame", () -> new Item(new Item.Properties())); // 构造体框架
     public static final RegistryObject<Item> MOVEMENT_FRAME = ITEMS.register("movement_frame", () -> new Item(new Item.Properties())); // 移动框架
     public static final RegistryObject<Item> LIFE_FRAME = ITEMS.register("life_frame", () -> new Item(new Item.Properties())); // 生命框架
+    public static final RegistryObject<Item> ATTACK_FRAME = ITEMS.register("attack_frame", () -> new Item(new Item.Properties())); // 攻击框架
     public static final RegistryObject<Item> SHIELD_RECEIVER = ITEMS.register("shield_receiver", () -> new ShieldReceiverItem(new Item.Properties())); // 护盾接收器
 
     // 护盾值物品
@@ -100,6 +101,9 @@ public class ModItems {
     public static final RegistryObject<Item> BURST_FIRE_MODULE = ITEMS.register("burst_fire_module", () -> new Item(new Item.Properties())); // 点射模块
     public static final RegistryObject<Item> ASSAULT_MODULE = ITEMS.register("assault_module", () -> new Item(new Item.Properties())); // 强袭模块
 
+    // 攻击伤害物品
+    public static final RegistryObject<Item> CHARGED_ATTACK_MODULE = ITEMS.register("charged_attack_module", () -> new Item(new Item.Properties())); // 充能攻击模块
+
     // 速度物品
     public static final RegistryObject<Item> THRUST_BOOST_MODULE = ITEMS.register("thrust_boost_module", () -> new Item(new Item.Properties())); // 推进改良模块
     public static final RegistryObject<Item> AERODYNAMIC_FRAMEWORK_MODULE = ITEMS.register("aerodynamic_framework_module", () -> new Item(new Item.Properties())); // 流线构型模块
@@ -125,6 +129,9 @@ public class ModItems {
     public static final RegistryObject<Item> ARC_BARRIER_MODULE = ITEMS.register("arc_barrier_module", () -> new Item(new Item.Properties())); // 弧形屏障模块
     public static final RegistryObject<Item> RESHAPING_MODULE = ITEMS.register("reshaping_module", () -> new Item(new Item.Properties())); // 重塑模块
 
+    // 超越模块
+    public static final RegistryObject<Item> CHARGED_SHIELD_MODULE = ITEMS.register("charged_shield_module", () -> new Item(new Item.Properties())); // 充能护盾模块
+    
     // 零件
     public static final RegistryObject<Item> BEAM = ITEMS.register("beam", () -> new Item(new Item.Properties())); // 光束
     public static final RegistryObject<Item> BARRIER = ITEMS.register("barrier", () -> new Item(new Item.Properties())); // 屏障
@@ -148,6 +155,7 @@ public class ModItems {
     public static final RegistryObject<Item> PARTICLE_STREAM = ITEMS.register("particle_stream", () -> new Item(new Item.Properties())); // 粒子流
     public static final RegistryObject<Item> OVERCLOCK = ITEMS.register("overclock", () -> new Item(new Item.Properties())); // 超频
     public static final RegistryObject<Item> STAR_SPEAR = ITEMS.register("star_spear", () -> new Item(new Item.Properties())); // 星宇之矛
+    public static final RegistryObject<Item> FOCUS_CORE = ITEMS.register("focus_core", () -> new Item(new Item.Properties())); // 聚能核心
     public static final RegistryObject<Item> THRUSTER = ITEMS.register("thruster", () -> new Item(new Item.Properties())); // 推进器
     public static final RegistryObject<Item> AERODYNAMIC_DESIGN_DRAFT = ITEMS.register("aerodynamic_design_draft", () -> new Item(new Item.Properties())); // 流线设计稿
     public static final RegistryObject<Item> COORDINATE = ITEMS.register("coordinate", () -> new Item(new Item.Properties())); // 坐标

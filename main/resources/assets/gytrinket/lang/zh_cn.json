@@ -159,6 +159,10 @@
 
   "tooltip.gytrinket.assault": "强袭",
   "tooltip.gytrinket.assault_effect": "按住左键自动攻击，攻击速度逐渐提高。并受到自伤（随攻击速度提高而提高）",
+  "tooltip.gytrinket.charged_attack": "充能攻击",
+  "tooltip.gytrinket.charged_attack_effect": "按住左键充能，松开释放攻击。充能无上限但受阻力制衡，伤害=当前伤害+充能值",
+  "tooltip.gytrinket.charged_shield": "充能护盾",
+  "tooltip.gytrinket.charged_shield_effect": "充能时获得动态护盾效果和护盾效果半径加成（充能值的%s%%，上限%s%%）。停止充能后快速消退",
 
   "item.gytrinket.light_point_core": "光点核心",
   "item.gytrinket.guardian": "哨卫机身",
@@ -197,6 +201,7 @@
   "item.gytrinket.construct_frame": "构造体框架",
   "item.gytrinket.movement_frame": "移动框架",
   "item.gytrinket.life_frame": "生命框架",
+  "item.gytrinket.attack_frame": "攻击框架",
   "item.gytrinket.shield_receiver": "护盾接收器",
   
   "item.gytrinket.shield_amplifier_module": "护盾值提升模块",
@@ -232,6 +237,8 @@
   "item.gytrinket.fast_shooting_module": "快速射击模块",
   "item.gytrinket.burst_fire_module": "点射模块",
   "item.gytrinket.assault_module": "强袭模块",
+  "item.gytrinket.charged_attack_module": "充能攻击模块",
+  "item.gytrinket.charged_shield_module": "充能护盾模块",
   
   "item.gytrinket.thrust_boost_module": "推进改良模块",
   "item.gytrinket.aerodynamic_framework_module": "流线构型模块",
@@ -281,6 +288,7 @@
   "item.gytrinket.particle_stream": "粒子流",
   "item.gytrinket.overclock": "超频",
   "item.gytrinket.star_spear": "星宇之矛",
+  "item.gytrinket.focus_core": "聚能核心",
   "item.gytrinket.thruster": "推进器",
   "item.gytrinket.aerodynamic_design_draft": "流线设计稿",
   "item.gytrinket.coordinate": "坐标",

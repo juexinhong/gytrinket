@@ -21,17 +21,16 @@ public class ShieldParticleTimerManager {
                                    double originOffsetX, double originOffsetY, double originOffsetZ,
                                    double offsetX, double offsetY, double offsetZ,
                                    double dirX, double dirY, double dirZ,
-                                   long delayMs) {
+                                   int delayTicks) {
         pendingParticles.add(new PendingParticle(entityId, originOffsetX, originOffsetY, originOffsetZ,
                                                  offsetX, offsetY, offsetZ,
                                                  dirX, dirY, dirZ,
-                                                 System.currentTimeMillis() + delayMs));
+                                                 delayTicks));
     }
     
     public void tick() {
-        long currentTime = System.currentTimeMillis();
         pendingParticles.removeIf(p -> {
-            if (currentTime >= p.delayTime) {
+            if (p.delayTicks <= 0) {
                 ShieldParticleRenderManager.getInstance().addParticle(
                     p.entityId, p.originOffsetX, p.originOffsetY, p.originOffsetZ,
                     p.offsetX, p.offsetY, p.offsetZ,
@@ -39,6 +38,7 @@ public class ShieldParticleTimerManager {
                 );
                 return true;
             }
+            p.delayTicks--;
             return false;
         });
     }
@@ -48,13 +48,13 @@ public class ShieldParticleTimerManager {
         final double originOffsetX, originOffsetY, originOffsetZ;
         final double offsetX, offsetY, offsetZ;
         final double dirX, dirY, dirZ;
-        final long delayTime;
+        int delayTicks;
         
         PendingParticle(int entityId,
                        double originOffsetX, double originOffsetY, double originOffsetZ,
                        double offsetX, double offsetY, double offsetZ,
                        double dirX, double dirY, double dirZ,
-                       long delayTime) {
+                       int delayTicks) {
             this.entityId = entityId;
             this.originOffsetX = originOffsetX;
             this.originOffsetY = originOffsetY;
@@ -65,7 +65,7 @@ public class ShieldParticleTimerManager {
             this.dirX = dirX;
             this.dirY = dirY;
             this.dirZ = dirZ;
-            this.delayTime = delayTime;
+            this.delayTicks = delayTicks;
         }
     }
 }

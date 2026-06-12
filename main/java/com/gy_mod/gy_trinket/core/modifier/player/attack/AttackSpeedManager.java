@@ -16,6 +16,8 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.server.ServerLifecycleHooks;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -128,6 +130,37 @@ public class AttackSpeedManager {
 
     public static double getPlayerAttackSpeed(UUID playerUUID) {
         return PLAYER_ATTACK_SPEED_MAP.getOrDefault(playerUUID, 4.0);
+    }
+
+    /**
+     * 获取不含模组修正的攻击速度
+     * <p>
+     * 临时移除模组修正器，读取基础值，再恢复。
+     * 用于电能释放等不应受模组攻击速度修正影响的计算。
+     */
+    public static double getBaseAttackSpeed(Player player) {
+        AttributeInstance attribute = player.getAttribute(Attributes.ATTACK_SPEED);
+        if (attribute == null) {
+            return 4.0;
+        }
+        // 收集模组修正器
+        List<AttributeModifier> modModifiers = new ArrayList<>();
+        for (AttributeModifier modifier : attribute.getModifiers()) {
+            if (modifier.getName().startsWith(ModifierHelper.MOD_PREFIX)) {
+                modModifiers.add(modifier);
+            }
+        }
+        // 临时移除模组修正器
+        for (AttributeModifier modifier : modModifiers) {
+            attribute.removeModifier(modifier);
+        }
+        // 读取不含模组修正的值
+        double baseValue = attribute.getValue();
+        // 恢复模组修正器
+        for (AttributeModifier modifier : modModifiers) {
+            attribute.addTransientModifier(modifier);
+        }
+        return baseValue;
     }
 
     public static void clearAllData() {

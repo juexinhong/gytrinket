@@ -46,6 +46,10 @@ public class DamageManager {
 
     @SubscribeEvent(priority = EventPriority.HIGH)
     public static void onLivingAttack(LivingAttackEvent event) {
+        if (event.isCanceled()) {
+            return;
+        }
+
         LivingEntity attackedEntity = event.getEntity();
         DamageSource source = event.getSource();
 

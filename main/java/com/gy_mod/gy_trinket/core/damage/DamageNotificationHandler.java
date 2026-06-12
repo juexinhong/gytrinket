@@ -14,7 +14,7 @@ public class DamageNotificationHandler implements DamageHandler {
 
     @Override
     public void handle(DamageContext context) {
-        if (context.getAttackedEntity().isInvulnerable()) {
+        if (InvincibilityMarkerManager.hasMarker(context.getAttackedEntity())) {
             return;
         }
 

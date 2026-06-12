@@ -266,6 +266,35 @@ public class NetworkHandler {
             ConfigReorderMessage::decode,
             ConfigReorderMessage::handle
         );
+        INSTANCE.registerMessage(
+            messageId++,
+            AttackStateMessage.class,
+            AttackStateMessage::encode,
+            AttackStateMessage::decode,
+            AttackStateMessage::handle
+        );
+        INSTANCE.registerMessage(
+            messageId++,
+            ChargedAttackMessage.class,
+            ChargedAttackMessage::encode,
+            ChargedAttackMessage::decode,
+            ChargedAttackMessage::handle
+        );
+        INSTANCE.registerMessage(
+            messageId++,
+            SyncChargedAttackMessage.class,
+            SyncChargedAttackMessage::encode,
+            SyncChargedAttackMessage::decode,
+            SyncChargedAttackMessage::handle
+        );
+
+        INSTANCE.registerMessage(
+            messageId++,
+            SyncBurstFiringMessage.class,
+            SyncBurstFiringMessage::encode,
+            SyncBurstFiringMessage::decode,
+            SyncBurstFiringMessage::handle
+        );
     }
     
     public static class ShieldParticlePacket {
@@ -274,13 +303,13 @@ public class NetworkHandler {
         private final double originOffsetX, originOffsetY, originOffsetZ;
         private final double offsetX, offsetY, offsetZ;
         private final double dirX, dirY, dirZ;
-        private final long delayMs;
+        private final int delayTicks;
         
         public ShieldParticlePacket(int entityId,
                                    double originOffsetX, double originOffsetY, double originOffsetZ,
                                    double offsetX, double offsetY, double offsetZ,
                                    double dirX, double dirY, double dirZ,
-                                   long delayMs) {
+                                   int delayTicks) {
             this.entityId = entityId;
             this.originOffsetX = originOffsetX;
             this.originOffsetY = originOffsetY;
@@ -291,7 +320,7 @@ public class NetworkHandler {
             this.dirX = dirX;
             this.dirY = dirY;
             this.dirZ = dirZ;
-            this.delayMs = delayMs;
+            this.delayTicks = delayTicks;
         }
         
         public ShieldParticlePacket(FriendlyByteBuf buf) {
@@ -305,7 +334,7 @@ public class NetworkHandler {
             this.dirX = buf.readDouble();
             this.dirY = buf.readDouble();
             this.dirZ = buf.readDouble();
-            this.delayMs = buf.readLong();
+            this.delayTicks = buf.readVarInt();
         }
         
         public void toBytes(FriendlyByteBuf buf) {
@@ -319,14 +348,14 @@ public class NetworkHandler {
             buf.writeDouble(dirX);
             buf.writeDouble(dirY);
             buf.writeDouble(dirZ);
-            buf.writeLong(delayMs);
+            buf.writeVarInt(delayTicks);
         }
         
         public void handle(Supplier<NetworkEvent.Context> context) {
             context.get().enqueueWork(() -> {
                 DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> {
-                    if (delayMs > 0) {
-                        ShieldParticlePacket.handleShieldParticleWithDelayOnClient(entityId, originOffsetX, originOffsetY, originOffsetZ, offsetX, offsetY, offsetZ, dirX, dirY, dirZ, delayMs);
+                    if (delayTicks > 0) {
+                        ShieldParticlePacket.handleShieldParticleWithDelayOnClient(entityId, originOffsetX, originOffsetY, originOffsetZ, offsetX, offsetY, offsetZ, dirX, dirY, dirZ, delayTicks);
                     } else {
                         ShieldParticlePacket.handleShieldParticleOnClient(entityId, originOffsetX, originOffsetY, originOffsetZ, offsetX, offsetY, offsetZ, dirX, dirY, dirZ);
                     }
@@ -347,9 +376,9 @@ public class NetworkHandler {
                                                                double originOffsetX, double originOffsetY, double originOffsetZ,
                                                                double offsetX, double offsetY, double offsetZ,
                                                                double dirX, double dirY, double dirZ,
-                                                               long delayMs) {
+                                                               int delayTicks) {
             com.gy_mod.gy_trinket.client.effect.particle.ShieldParticleTimerManager.getInstance()
-                .addPendingParticle(entityId, originOffsetX, originOffsetY, originOffsetZ, offsetX, offsetY, offsetZ, dirX, dirY, dirZ, delayMs);
+                .addPendingParticle(entityId, originOffsetX, originOffsetY, originOffsetZ, offsetX, offsetY, offsetZ, dirX, dirY, dirZ, delayTicks);
         }
     }
     
@@ -357,7 +386,7 @@ public class NetworkHandler {
                                                  double x, double y, double z,
                                                  double dirX, double dirY, double dirZ,
                                                  double originX, double originY, double originZ,
-                                                 long delayMs) {
+                                                 int delayTicks) {
         // 计算偏移量：从实体脚底到球心的偏移
         double originOffsetX = originX - trackedEntity.getX();
         double originOffsetY = originY - trackedEntity.getY();
@@ -368,7 +397,7 @@ public class NetworkHandler {
         double offsetZ = z - originZ;
         
         INSTANCE.send(PacketDistributor.PLAYER.with(() -> player), 
-            new ShieldParticlePacket(trackedEntity.getId(), originOffsetX, originOffsetY, originOffsetZ, offsetX, offsetY, offsetZ, dirX, dirY, dirZ, delayMs));
+            new ShieldParticlePacket(trackedEntity.getId(), originOffsetX, originOffsetY, originOffsetZ, offsetX, offsetY, offsetZ, dirX, dirY, dirZ, delayTicks));
     }
 
     public static class RequestAttributesMessage {
@@ -712,7 +741,7 @@ public class NetworkHandler {
             context.enqueueWork(() -> {
                 var player = context.getSender();
                 if (player != null) {
-                    com.gy_mod.gy_trinket.core.electric_discharge.ElectricDischargeManager.releaseElectric(player);
+                    com.gy_mod.gy_trinket.core.attack_mode.electric_discharge.ElectricDischargeManager.releaseElectric(player);
                 }
             });
 
@@ -725,7 +754,7 @@ public class NetworkHandler {
 
         public LightningRenderMessage() {}
 
-        public LightningRenderMessage(List<com.gy_mod.gy_trinket.core.electric_discharge.ElectricDischargeManager.LightningSegment> segments) {
+        public LightningRenderMessage(List<com.gy_mod.gy_trinket.core.attack_mode.electric_discharge.ElectricDischargeManager.LightningSegment> segments) {
             this.segments = new ArrayList<>();
             for (var segment : segments) {
                 this.segments.add(new double[] {
@@ -771,18 +800,18 @@ public class NetworkHandler {
         }
 
         private static void handleLightningRenderOnClient(List<double[]> segments) {
-            List<com.gy_mod.gy_trinket.core.electric_discharge.ElectricDischargeManager.LightningSegment> lightningSegments = new ArrayList<>();
+            List<com.gy_mod.gy_trinket.core.attack_mode.electric_discharge.ElectricDischargeManager.LightningSegment> lightningSegments = new ArrayList<>();
             for (double[] segment : segments) {
-                lightningSegments.add(new com.gy_mod.gy_trinket.core.electric_discharge.ElectricDischargeManager.LightningSegment(
+                lightningSegments.add(new com.gy_mod.gy_trinket.core.attack_mode.electric_discharge.ElectricDischargeManager.LightningSegment(
                     new net.minecraft.world.phys.Vec3(segment[0], segment[1], segment[2]),
                     new net.minecraft.world.phys.Vec3(segment[3], segment[4], segment[5])
                 ));
             }
-            com.gy_mod.gy_trinket.core.electric_discharge.client.LightningRenderManager.addLightning(lightningSegments);
+            com.gy_mod.gy_trinket.core.attack_mode.electric_discharge.client.LightningRenderManager.addLightning(lightningSegments);
         }
     }
 
-    public static void sendLightningToAll(net.minecraft.server.level.ServerLevel level, List<com.gy_mod.gy_trinket.core.electric_discharge.ElectricDischargeManager.LightningSegment> segments) {
+    public static void sendLightningToAll(net.minecraft.server.level.ServerLevel level, List<com.gy_mod.gy_trinket.core.attack_mode.electric_discharge.ElectricDischargeManager.LightningSegment> segments) {
         INSTANCE.send(PacketDistributor.ALL.noArg(), new LightningRenderMessage(segments));
     }
 
@@ -916,7 +945,7 @@ public class NetworkHandler {
             NetworkEvent.Context context = ctx.get();
             context.enqueueWork(() -> {
                 DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> {
-                    com.gy_mod.gy_trinket.client.burst_fire.BurstFireClientHandler.handleSyncComboCooldownOnClient(msg.inCooldown, msg.remainingTicks);
+                    com.gy_mod.gy_trinket.client.attack_mode.burst_fire.BurstFireClientHandler.handleSyncComboCooldownOnClient(msg.inCooldown, msg.remainingTicks);
                 });
             });
             context.setPacketHandled(true);
@@ -949,7 +978,7 @@ public class NetworkHandler {
             NetworkEvent.Context context = ctx.get();
             context.enqueueWork(() -> {
                 DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> {
-                    com.gy_mod.gy_trinket.client.burst_fire.BurstFireClientHandler.handleSyncAttackStrengthOnClient(msg.reflectToFull);
+                    com.gy_mod.gy_trinket.client.attack_mode.burst_fire.BurstFireClientHandler.handleSyncAttackStrengthOnClient(msg.reflectToFull);
                 });
             });
             context.setPacketHandled(true);
@@ -975,7 +1004,7 @@ public class NetworkHandler {
             context.enqueueWork(() -> {
                 var player = context.getSender();
                 if (player != null) {
-                    com.gy_mod.gy_trinket.core.assault.AssaultManager.triggerAssault(player);
+                    com.gy_mod.gy_trinket.core.attack_mode.assault.AssaultManager.triggerAssault(player);
                 }
             });
 
@@ -1711,5 +1740,188 @@ public class NetworkHandler {
             });
             context.setPacketHandled(true);
         }
+    }
+
+    /**
+     * 攻击状态同步消息（客户端 -> 服务端）
+     * 同步玩家左键状态：PRESSED/HELD/RELEASED
+     */
+    public static class AttackStateMessage {
+        private int stateOrdinal;
+        private int holdTicks;
+
+        public AttackStateMessage() {}
+
+        public AttackStateMessage(int stateOrdinal, int holdTicks) {
+            this.stateOrdinal = stateOrdinal;
+            this.holdTicks = holdTicks;
+        }
+
+        public static void encode(AttackStateMessage msg, FriendlyByteBuf buf) {
+            buf.writeVarInt(msg.stateOrdinal);
+            buf.writeVarInt(msg.holdTicks);
+        }
+
+        public static AttackStateMessage decode(FriendlyByteBuf buf) {
+            return new AttackStateMessage(buf.readVarInt(), buf.readVarInt());
+        }
+
+        public static void handle(AttackStateMessage msg, Supplier<NetworkEvent.Context> ctx) {
+            NetworkEvent.Context context = ctx.get();
+            context.enqueueWork(() -> {
+                var player = context.getSender();
+                if (player != null) {
+                    com.gy_mod.gy_trinket.core.attack_mode.AttackStateManager.updatePlayerState(
+                        player.getUUID(), msg.stateOrdinal, msg.holdTicks);
+                }
+            });
+            context.setPacketHandled(true);
+        }
+    }
+
+    /**
+     * 充能攻击消息（客户端 -> 服务端）
+     * action: 0=开始充能, 1=更新充能, 2=释放攻击
+     */
+    public static class ChargedAttackMessage {
+        private int action;
+
+        public ChargedAttackMessage() {}
+
+        public ChargedAttackMessage(int action) {
+            this.action = action;
+        }
+
+        public static void encode(ChargedAttackMessage msg, FriendlyByteBuf buf) {
+            buf.writeVarInt(msg.action);
+        }
+
+        public static ChargedAttackMessage decode(FriendlyByteBuf buf) {
+            return new ChargedAttackMessage(buf.readVarInt());
+        }
+
+        public static void handle(ChargedAttackMessage msg, Supplier<NetworkEvent.Context> ctx) {
+            NetworkEvent.Context context = ctx.get();
+            context.enqueueWork(() -> {
+                var player = context.getSender();
+                if (player == null) return;
+
+                java.util.UUID uuid = player.getUUID();
+
+                if (!com.gy_mod.gy_trinket.core.attack_mode.charged_attack.ChargedAttackManager.hasChargedAttack(player)) {
+                    return;
+                }
+
+                switch (msg.action) {
+                    case 0 -> {
+                        // 客户端请求开始充能 - 直接开始（常态禁用由 AttackModeManager 处理）
+                        com.gy_mod.gy_trinket.core.attack_mode.charged_attack.ChargedAttackManager.startCharging(uuid);
+                    }
+                    case 1 -> {
+                        // 更新充能（服务端独立计算，此处仅确认状态）
+                        com.gy_mod.gy_trinket.core.attack_mode.charged_attack.ChargedAttackManager.updateCharging(uuid, player);
+                    }
+                    case 2 -> {
+                        // 释放攻击（releaseCharge内部已将充能值存入Tracker）
+                        com.gy_mod.gy_trinket.core.attack_mode.charged_attack.ChargedAttackManager.releaseCharge(uuid);
+                        // 充能释放后的点射触发在 AttackModeManager.onPlayerAttack 中处理
+                        // 同步0到客户端，清空HUD显示
+                        sendChargedAttackSyncToPlayer(player, 0);
+                    }
+                    case 3 -> {
+                        // 取消充能（无目标释放，直接清空）
+                        com.gy_mod.gy_trinket.core.attack_mode.charged_attack.ChargedAttackManager.cancelCharging(uuid);
+                        com.gy_mod.gy_trinket.core.attack_mode.charged_attack.ChargedAttackDamageTracker.removePlayer(uuid);
+                        // 同步0到客户端，清空HUD显示
+                        sendChargedAttackSyncToPlayer(player, 0);
+                    }
+                }
+            });
+            context.setPacketHandled(true);
+        }
+    }
+
+    /**
+     * 充能攻击同步消息（服务端 -> 客户端）
+     * 通知客户端充能攻击释放结果
+     */
+    public static class SyncChargedAttackMessage {
+        private double chargeValue;
+
+        public SyncChargedAttackMessage() {}
+
+        public SyncChargedAttackMessage(double chargeValue) {
+            this.chargeValue = chargeValue;
+        }
+
+        public static void encode(SyncChargedAttackMessage msg, FriendlyByteBuf buf) {
+            buf.writeDouble(msg.chargeValue);
+        }
+
+        public static SyncChargedAttackMessage decode(FriendlyByteBuf buf) {
+            return new SyncChargedAttackMessage(buf.readDouble());
+        }
+
+        public static void handle(SyncChargedAttackMessage msg, Supplier<NetworkEvent.Context> ctx) {
+            NetworkEvent.Context context = ctx.get();
+            context.enqueueWork(() -> {
+                net.minecraftforge.fml.DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> {
+                    handleSyncChargedAttackOnClient(msg.chargeValue);
+                });
+            });
+            context.setPacketHandled(true);
+        }
+
+        private static void handleSyncChargedAttackOnClient(double chargeValue) {
+            // 客户端收到充能值同步，存储到HUD渲染器
+            com.gy_mod.gy_trinket.client.attack_mode.charged_attack.ChargedAttackHudRenderer.setChargeValue(chargeValue);
+        }
+    }
+
+    public static void sendChargedAttackReleaseToPlayer(ServerPlayer player, double chargeValue) {
+        INSTANCE.send(PacketDistributor.PLAYER.with(() -> player),
+            new SyncChargedAttackMessage(chargeValue));
+    }
+
+    public static void sendChargedAttackSyncToPlayer(ServerPlayer player, double chargeValue) {
+        INSTANCE.send(PacketDistributor.PLAYER.with(() -> player),
+            new SyncChargedAttackMessage(chargeValue));
+    }
+
+    /**
+     * 点射进行中状态同步消息（服务端 -> 客户端）
+     * 通知客户端玩家是否处于点射进行中状态
+     */
+    public static class SyncBurstFiringMessage {
+        private boolean isBurstFiring;
+
+        public SyncBurstFiringMessage() {}
+
+        public SyncBurstFiringMessage(boolean isBurstFiring) {
+            this.isBurstFiring = isBurstFiring;
+        }
+
+        public static void encode(SyncBurstFiringMessage msg, FriendlyByteBuf buf) {
+            buf.writeBoolean(msg.isBurstFiring);
+        }
+
+        public static SyncBurstFiringMessage decode(FriendlyByteBuf buf) {
+            return new SyncBurstFiringMessage(buf.readBoolean());
+        }
+
+        public static void handle(SyncBurstFiringMessage msg, Supplier<NetworkEvent.Context> ctx) {
+            NetworkEvent.Context context = ctx.get();
+            context.enqueueWork(() -> {
+                net.minecraftforge.fml.DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> {
+                    com.gy_mod.gy_trinket.client.attack_mode.burst_fire.BurstFireClientHandler.handleSyncBurstFiringOnClient(msg.isBurstFiring);
+                });
+            });
+            context.setPacketHandled(true);
+        }
+    }
+
+    public static void sendBurstFiringToPlayer(ServerPlayer player, boolean isBurstFiring) {
+        INSTANCE.send(PacketDistributor.PLAYER.with(() -> player),
+            new SyncBurstFiringMessage(isBurstFiring));
     }
 }

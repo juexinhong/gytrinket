@@ -1,4 +1,4 @@
-package com.gy_mod.gy_trinket.core.electric_discharge;
+package com.gy_mod.gy_trinket.core.attack_mode.electric_discharge;
 
 import com.gy_mod.gy_trinket.Config;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
@@ -8,6 +8,7 @@ import com.gy_mod.gy_trinket.core.disable.DisableSystem;
 import com.gy_mod.gy_trinket.core.hostile_target.HostileTargetManager;
 import com.gy_mod.gy_trinket.core.ignite.IIgniteSource;
 import com.gy_mod.gy_trinket.core.ignite.IgniteManager;
+import com.gy_mod.gy_trinket.core.modifier.player.attack.AttackSpeedManager;
 import com.gy_mod.gy_trinket.core.shield.ShieldManager;
 import com.gy_mod.gy_trinket.core.shield_transfer.ShieldTransferManager;
 import com.gy_mod.gy_trinket.damage.ModDamageTypes;
@@ -19,7 +20,6 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
-import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.AABB;
@@ -105,7 +105,8 @@ public class ElectricDischargeManager {
         }
 
         // 计算护盾自伤（受攻击速度影响，攻击速度越快，伤害越低）
-        double attackSpeed = player.getAttributeValue(Attributes.ATTACK_SPEED);
+        // 使用不含模组修正的基础攻击速度
+        double attackSpeed = AttackSpeedManager.getBaseAttackSpeed(player);
         double attackSpeedMultiplier = attackSpeed;
         if (attackSpeedMultiplier < 0.01) {
             attackSpeedMultiplier = 0.01;
@@ -234,7 +235,8 @@ public class ElectricDischargeManager {
 
                 // 计算灼烧充能
                 float baseBurnCharge = (float) Config.getElectricDischargeBurnCharge();
-                double attackSpeedBase = target.attacker.getAttributeValue(Attributes.ATTACK_SPEED);
+                // 计算灼烧充能（使用不含模组修正的基础攻击速度）
+                double attackSpeedBase = AttackSpeedManager.getBaseAttackSpeed(target.attacker);
                 double attackSpeedMultiplier = attackSpeedBase;
                 if (attackSpeedMultiplier < 0.01) {
                     attackSpeedMultiplier = 0.01;

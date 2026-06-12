@@ -31,13 +31,18 @@ public class DamageReductionModifier implements IShieldCooldownModifier {
         float multiplierValue = (float) AttributeManager.getPlayerAttribute(context.getPlayerUUID(), "shield_hit_cooldown_extend_multiplier");
         float finalMultiplier = (float) AttributeManager.getPlayerAttribute(context.getPlayerUUID(), "shield_hit_cooldown_extend_final_multiplier");
 
+        // 伤害<=1时，冷却延长值-10，但不低于10（原值<10时取原值，不可为负）
+        if (reducedDamage <= 1.0f) {
+            cooldownExtend = Math.max(cooldownExtend < 5 ? cooldownExtend : 5, cooldownExtend - 35);
+        }
+
         if (cooldownExtend == 0) {
             state.reset();
             return;
         }
 
         float multiplier = multiplierValue - 1;
-        float multiplierResult = 1.0f + reducedDamage * multiplier;
+        float multiplierResult = 1.0f + Math.max(0, reducedDamage - 1) * multiplier;
         if (multiplierResult < 1.0f) {
             multiplierResult = 1.0f;
         }

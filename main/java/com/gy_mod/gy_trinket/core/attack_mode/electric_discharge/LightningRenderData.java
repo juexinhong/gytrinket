@@ -1,4 +1,4 @@
-package com.gy_mod.gy_trinket.core.electric_discharge;
+package com.gy_mod.gy_trinket.core.attack_mode.electric_discharge;
 
 import java.util.List;
 

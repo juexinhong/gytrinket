@@ -1,7 +1,7 @@
 package com.gy_mod.gy_trinket.client;
 
 import com.gy_mod.gy_trinket.blocks.ModBlockEntities;
-import com.gy_mod.gy_trinket.core.electric_discharge.client.LightningRenderManager;
+import com.gy_mod.gy_trinket.core.attack_mode.electric_discharge.client.LightningRenderManager;
 import com.gy_mod.gy_trinket.client.effect.particle.ShieldParticleRenderEvent;
 import com.gy_mod.gy_trinket.client.effect.particle.ShieldParticleTickEvent;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.ModEntities;
@@ -33,7 +33,7 @@ public class ModClient {
         MinecraftForge.EVENT_BUS.addListener(LightningRenderManager::onRenderLevelLast);
         ShieldParticleRenderEvent.init();
         ShieldParticleTickEvent.init();
-        com.gy_mod.gy_trinket.client.burst_fire.BurstFireClientHandler.init();
+        com.gy_mod.gy_trinket.client.attack_mode.burst_fire.BurstFireClientHandler.init();
     }
 
     @SubscribeEvent

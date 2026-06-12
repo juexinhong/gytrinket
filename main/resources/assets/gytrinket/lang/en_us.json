@@ -159,6 +159,10 @@
 
   "tooltip.gytrinket.assault": "Assault",
   "tooltip.gytrinket.assault_effect": "Hold left click to auto-attack. Attack speed gradually increases. Takes self-damage (increases with attack speed)",
+  "tooltip.gytrinket.charged_attack": "Charged Attack",
+  "tooltip.gytrinket.charged_attack_effect": "Hold left click to charge, release to attack. Charge has no cap but is limited by drag. Damage = current damage + charge value",
+  "tooltip.gytrinket.charged_shield": "Charged Shield",
+  "tooltip.gytrinket.charged_shield_effect": "While charging, gain dynamic shield effect and radius bonus (%s%% of charge, max %s%%). Fades quickly after releasing",
 
   "item.gytrinket.light_point_core": "Light Point Core",
   "item.gytrinket.guardian": "Guardian Frame",
@@ -197,6 +201,7 @@
   "item.gytrinket.construct_frame": "Construct Frame",
   "item.gytrinket.movement_frame": "Movement Frame",
   "item.gytrinket.life_frame": "Life Frame",
+  "item.gytrinket.attack_frame": "Attack Frame",
   "item.gytrinket.shield_receiver": "Shield Receiver",
   
   "item.gytrinket.shield_amplifier_module": "Shield Value Boost Module",
@@ -232,6 +237,8 @@
   "item.gytrinket.fast_shooting_module": "Fast Shooting Module",
   "item.gytrinket.burst_fire_module": "Burst Fire Module",
   "item.gytrinket.assault_module": "Assault Module",
+  "item.gytrinket.charged_attack_module": "Charged Attack Module",
+  "item.gytrinket.charged_shield_module": "Charged Shield Module",
   
   "item.gytrinket.thrust_boost_module": "Thrust Boost Module",
   "item.gytrinket.aerodynamic_framework_module": "Aerodynamic Framework Module",
@@ -281,6 +288,7 @@
   "item.gytrinket.particle_stream": "Particle Stream",
   "item.gytrinket.overclock": "Overclock",
   "item.gytrinket.star_spear": "Star Spear",
+  "item.gytrinket.focus_core": "Focus Core",
   "item.gytrinket.thruster": "Thruster",
   "item.gytrinket.aerodynamic_design_draft": "Aerodynamic Draft",
   "item.gytrinket.coordinate": "Coordinate",
@@ -557,6 +565,12 @@
   
   "item.gytrinket.life_frame.tooltip": "Material used to craft special modules",
   "item.gytrinket.life_frame.tooltip_effect": "No special function, only used as crafting material",
+  
+  "item.gytrinket.attack_frame.tooltip": "Material used to craft attack modules",
+  "item.gytrinket.attack_frame.tooltip_effect": "No special function, only used as crafting material",
+  
+  "item.gytrinket.focus_core.tooltip": "Material used to craft charged modules",
+  "item.gytrinket.focus_core.tooltip_effect": "No special function, only used as crafting material",
   
   "item.gytrinket.statue.tooltip": "Exclusive material used to craft Colossus Module",
   "item.gytrinket.statue.tooltip_effect": "No special function, only used as crafting material",

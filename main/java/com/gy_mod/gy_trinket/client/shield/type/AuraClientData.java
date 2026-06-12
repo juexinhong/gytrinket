@@ -17,6 +17,10 @@ public class AuraClientData {
     private static int fadeOutTicks = 0;
     private static final int FADE_OUT_DURATION = 20;
 
+    // 超时机制：如果超过此tick数未收到damaging=true的同步包，自动认为停止伤害
+    private static int damagingConfirmTicks = 0;
+    private static final int DAMAGING_CONFIRM_TIMEOUT = 10;
+
     private static final double ALPHA_LERP_SPEED = 0.15;
     private static final double SIZE_LERP_SPEED = 0.15;
 
@@ -30,6 +34,7 @@ public class AuraClientData {
         damaging = value;
         if (value) {
             fadeOutTicks = 0;
+            damagingConfirmTicks = 0;
         }
     }
 
@@ -44,6 +49,14 @@ public class AuraClientData {
     @SubscribeEvent
     public static void onClientTick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
+
+        // 超时检测：如果damaging为true但长时间未收到确认包，自动设为false
+        if (damaging) {
+            damagingConfirmTicks++;
+            if (damagingConfirmTicks >= DAMAGING_CONFIRM_TIMEOUT) {
+                damaging = false;
+            }
+        }
 
         double targetAlpha;
         if (damaging) {
@@ -69,7 +82,7 @@ public class AuraClientData {
 
         double baseRadius = Config.AURA_RADIUS.get();
         double effectiveRadius = baseRadius * shieldEffectRadius;
-        double targetSize = effectiveRadius * 2.0;
+        double targetSize = effectiveRadius * 2.0 * (4.0 / 3.0); // 补偿材质内容缩小至3/4
 
         double sizeDiff = targetSize - displaySize;
         if (Math.abs(sizeDiff) > 0.01) {
@@ -88,5 +101,6 @@ public class AuraClientData {
         displayAlpha = 0;
         displaySize = 0;
         fadeOutTicks = 0;
+        damagingConfirmTicks = 0;
     }
 }

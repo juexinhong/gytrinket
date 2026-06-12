@@ -1,6 +1,7 @@
 package com.gy_mod.gy_trinket.core.entity.construct.drone.behavior;
 
 import com.gy_mod.gy_trinket.Config;
+import com.gy_mod.gy_trinket.core.damage.InvincibilityMarkerManager;
 import com.gy_mod.gy_trinket.core.disable.DisableSystem;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneConstructEntity;
 import com.gy_mod.gy_trinket.core.hostile_target.HostileTargetManager;
@@ -59,8 +60,7 @@ public class NearDeathExplosionBehavior implements IDroneSpecialBehavior {
         int invincibleDuration = Config.NEAR_DEATH_EXPLOSION_INVINCIBLE_DURATION.get();
         double initialSpeed = Config.NEAR_DEATH_EXPLOSION_INITIAL_SPEED.get();
 
-        drone.setInvulnerable(true);
-        drone.invulnerableTime = invincibleDuration;
+        InvincibilityMarkerManager.addMarker(drone, invincibleDuration);
         drone.setExploding(true);
 
         CompoundTag data = drone.getPersistentData();

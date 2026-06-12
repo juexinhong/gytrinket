@@ -195,20 +195,20 @@ public class ShieldIdleParticleEvent {
      * @param dirY         方向向量Y
      * @param dirZ         方向向量Z
      * @param reverseOrder 是否反向生成（外→中心）
-     * @param baseDelayMs  基础延迟（毫秒）
+     * @param baseDelayTicks  基础延迟（游戏刻）
      */
     private static void generateHexParticles(ServerPlayer player,
                                               double originX, double originY, double originZ,
                                               double dirX, double dirY, double dirZ,
-                                              boolean reverseOrder, long baseDelayMs) {
-        // 正序时中心粒子最先出现（baseDelayMs），反序时中心粒子最后出现（延迟最大）
+                                              boolean reverseOrder, int baseDelayTicks) {
+        // 正序时中心粒子最先出现（baseDelayTicks），反序时中心粒子最后出现（延迟最大）
         double particleX = originX + dirX * RADIUS;
         double particleY = originY + dirY * RADIUS;
         double particleZ = originZ + dirZ * RADIUS;
 
         if (!reverseOrder) {
             NetworkHandler.sendShieldParticleToPlayer(player, player, particleX, particleY, particleZ,
-                    dirX, dirY, dirZ, originX, originY, originZ, baseDelayMs);
+                    dirX, dirY, dirZ, originX, originY, originZ, baseDelayTicks);
         }
 
         // 计算与方向向量垂直的法线向量，用于构建六边形平面
@@ -263,12 +263,12 @@ public class ShieldIdleParticleEvent {
             // 每圈偏移30度，使六边形交错排列
             double offsetAngle = circle * Math.PI / 6;
 
-            // 计算延迟：正序时内圈先出，反序时外圈先出
-            long delayMs;
+            // 计算延迟：中心0，一圈2，二圈和三圈4
+            int delayTicks;
             if (reverseOrder) {
-                delayMs = idx * 100;
+                delayTicks = idx == 0 ? 2 : 4;
             } else {
-                delayMs = circle * 100;
+                delayTicks = circle == 0 ? 2 : 4;
             }
 
             for (double hexAngle : hexagonAngles) {
@@ -299,14 +299,14 @@ public class ShieldIdleParticleEvent {
                 double pointZ = originZ + pointDir[2] * RADIUS;
 
                 NetworkHandler.sendShieldParticleToPlayer(player, player, pointX, pointY, pointZ,
-                        pointDir[0], pointDir[1], pointDir[2], originX, originY, originZ, baseDelayMs + delayMs);
+                        pointDir[0], pointDir[1], pointDir[2], originX, originY, originZ, baseDelayTicks + delayTicks);
             }
         }
 
-        // 反序时中心粒子最后出现（3圈后，延迟300ms）
+        // 反序时中心粒子最后出现（3圈后，延迟6tick）
         if (reverseOrder) {
             NetworkHandler.sendShieldParticleToPlayer(player, player, particleX, particleY, particleZ,
-                    dirX, dirY, dirZ, originX, originY, originZ, baseDelayMs + 300);
+                    dirX, dirY, dirZ, originX, originY, originZ, baseDelayTicks + 6);
         }
     }
 }

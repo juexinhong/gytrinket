@@ -1,4 +1,4 @@
-package com.gy_mod.gy_trinket.core.assault;
+package com.gy_mod.gy_trinket.core.attack_mode.assault;
 
 import com.gy_mod.gy_trinket.gytrinket;
 import net.minecraft.world.entity.LivingEntity;

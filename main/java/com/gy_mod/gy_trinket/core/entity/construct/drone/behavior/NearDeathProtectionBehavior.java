@@ -1,6 +1,7 @@
 package com.gy_mod.gy_trinket.core.entity.construct.drone.behavior;
 
 import com.gy_mod.gy_trinket.Config;
+import com.gy_mod.gy_trinket.core.damage.InvincibilityMarkerManager;
 import com.gy_mod.gy_trinket.core.disable.DisableSystem;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneConstructEntity;
 import com.gy_mod.gy_trinket.storage.PlayerStore;
@@ -49,8 +50,7 @@ public class NearDeathProtectionBehavior implements IDroneSpecialBehavior {
         int invincibleDuration = Config.NEAR_DEATH_PROTECTION_INVINCIBLE_DURATION.get();
         int cooldownDuration = Config.NEAR_DEATH_PROTECTION_COOLDOWN.get();
 
-        drone.setInvulnerable(true);
-        drone.invulnerableTime = invincibleDuration;
+        InvincibilityMarkerManager.addMarker(drone, invincibleDuration);
 
         data.putInt(TAG_INVINCIBLE_TIMER, invincibleDuration);
         data.putInt(TAG_PROTECTION_COOLDOWN, cooldownDuration);
@@ -68,8 +68,7 @@ public class NearDeathProtectionBehavior implements IDroneSpecialBehavior {
                 timer--;
                 data.putInt(TAG_INVINCIBLE_TIMER, timer);
                 if (timer <= 0) {
-                    drone.setInvulnerable(false);
-                    drone.invulnerableTime = 0;
+                    InvincibilityMarkerManager.removeMarker(drone);
                     data.remove(TAG_INVINCIBLE_TIMER);
                 }
             }

@@ -6,6 +6,7 @@ import com.gy_mod.gy_trinket.core.entity.construct.drone.behavior.IDroneSpecialB
 import com.gy_mod.gy_trinket.core.entity.construct.drone.behavior.DroneSpecialBehaviorManager;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.behavior.PursuitBehavior;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.behavior.FormationBehavior;
+import com.gy_mod.gy_trinket.core.explosion.SimulatedExplosion;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
@@ -501,24 +502,19 @@ public class DroneConstructEntity extends PathfinderMob implements GeoEntity {
 
         net.minecraft.world.entity.player.Player playerOwner = owner instanceof net.minecraft.world.entity.player.Player ? (net.minecraft.world.entity.player.Player) owner : null;
 
-        AABB area = new AABB(
-                pos.x - radius, pos.y - radius, pos.z - radius,
-                pos.x + radius, pos.y + radius, pos.z + radius
+        SimulatedExplosion.execute(
+                this.level(),
+                pos,
+                radius,
+                damage,
+                damageSource,
+                entity -> entity != this && entity.isAlive()
+                        && !(entity instanceof net.minecraft.world.entity.player.Player)
+                        && entity instanceof net.minecraft.world.entity.Mob
+                        && com.gy_mod.gy_trinket.core.hostile_target.HostileTargetManager.shouldAttackPlayer(entity, playerOwner),
+                false,
+                playerOwner
         );
-
-        List<LivingEntity> entities = this.level().getEntitiesOfClass(LivingEntity.class, area,
-                entity -> {
-                    if (entity == this || !entity.isAlive()) return false;
-                    if (entity instanceof net.minecraft.world.entity.player.Player) return false;
-                    if (!(entity instanceof net.minecraft.world.entity.Mob)) return false;
-                    return com.gy_mod.gy_trinket.core.hostile_target.HostileTargetManager.shouldAttackPlayer(entity, playerOwner);
-                });
-
-        for (LivingEntity target : entities) {
-            if (target.distanceTo(this) <= radius) {
-                target.hurt(damageSource, damage);
-            }
-        }
 
         if (this.level() instanceof net.minecraft.server.level.ServerLevel serverLevel) {
             serverLevel.sendParticles(ParticleTypes.EXPLOSION_EMITTER,

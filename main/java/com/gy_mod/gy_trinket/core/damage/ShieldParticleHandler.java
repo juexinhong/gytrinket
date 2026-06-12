@@ -142,7 +142,7 @@ public class ShieldParticleHandler implements DamageHandler {
             
             double offsetAngle = circle * Math.PI / 6;
             
-            long delayMs = circle * 100;
+            int delayTicks = circle == 0 ? 2 : 4;
             
             for (double hexAngle : hexagonAngles) {
                 double angle = hexAngle + offsetAngle;
@@ -167,7 +167,7 @@ public class ShieldParticleHandler implements DamageHandler {
                 double pointY = originY + pointDir[1] * radius;
                 double pointZ = originZ + pointDir[2] * radius;
                 
-                NetworkHandler.sendShieldParticleToPlayer(shieldOwner, attackedEntity, pointX, pointY, pointZ, pointDir[0], pointDir[1], pointDir[2], originX, originY, originZ, delayMs);
+                NetworkHandler.sendShieldParticleToPlayer(shieldOwner, attackedEntity, pointX, pointY, pointZ, pointDir[0], pointDir[1], pointDir[2], originX, originY, originZ, delayTicks);
             }
         }
     }

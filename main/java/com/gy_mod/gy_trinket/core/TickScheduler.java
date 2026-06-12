@@ -1,6 +1,6 @@
 package com.gy_mod.gy_trinket.core;
 
-import com.gy_mod.gy_trinket.core.electric_discharge.ElectricDischargeManager;
+import com.gy_mod.gy_trinket.core.attack_mode.electric_discharge.ElectricDischargeManager;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructManager;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneConstructTypes;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneManager;

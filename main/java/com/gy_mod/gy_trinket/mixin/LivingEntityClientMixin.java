@@ -1,5 +1,8 @@
 package com.gy_mod.gy_trinket.mixin;
 
+import com.gy_mod.gy_trinket.client.MixinBridge;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
@@ -36,11 +39,21 @@ public class LivingEntityClientMixin {
     @Inject(method = "handleDamageEvent", at = @At("HEAD"))
     private void gytrinket$captureState(DamageSource source, CallbackInfo ci) {
         gytrinket$currentDamageSource = source;
+        LivingEntity self = (LivingEntity) (Object) this;
+        boolean isLocalPlayer = self instanceof LocalPlayer;
         if (source.is(NO_HURT_EFFECT)) {
-            LivingEntity self = (LivingEntity) (Object) this;
             gytrinket$savedHurtTime = self.hurtTime;
             gytrinket$savedHurtDuration = self.hurtDuration;
             gytrinket$savedWalkSpeed = self.walkAnimation.speed();
+            // 仅对本地玩家抑制镜头摇晃
+            if (isLocalPlayer) {
+                MixinBridge.setSuppressBobHurt(true);
+            }
+        } else {
+            // 正常伤害恢复镜头摇晃
+            if (isLocalPlayer) {
+                MixinBridge.setSuppressBobHurt(false);
+            }
         }
     }
 

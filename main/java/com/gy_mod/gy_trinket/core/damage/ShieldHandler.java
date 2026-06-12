@@ -7,7 +7,6 @@ import com.gy_mod.gy_trinket.core.shield.type.ShieldTypeManager;
 import com.gy_mod.gy_trinket.core.shield_transfer.ShieldTransferManager;
 import com.gy_mod.gy_trinket.damage.ModDamageTypes;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageType;
 import net.minecraft.world.entity.LivingEntity;
@@ -25,7 +24,7 @@ public class ShieldHandler implements DamageHandler {
         UUID shieldOwnerUUID = shieldOwner.getUUID();
         LivingEntity attackedEntity = context.getAttackedEntity();
 
-        if (attackedEntity.isInvulnerable()) {
+        if (InvincibilityMarkerManager.hasMarker(attackedEntity)) {
             context.setCanceled(true);
             return;
         }
@@ -67,9 +66,9 @@ public class ShieldHandler implements DamageHandler {
             }
             context.setCanceled(true);
             
-            // 当承受护盾自伤或协议护盾自伤时，不施加无敌状态
+            // 当承受护盾自伤或协议护盾自伤时，不施加无敌标记
             if (!isShieldSelfDamage) {
-                setInvulnerableTemporarily(attackedEntity, Config.SHIELD_BLOCK_INVULNERABLE_TICKS.get());
+                InvincibilityMarkerManager.addMarker(attackedEntity, Config.SHIELD_BLOCK_INVULNERABLE_TICKS.get());
             }
         } else {
             float remainingDamage = (float) (originalDamage - currentShield);
@@ -83,37 +82,6 @@ public class ShieldHandler implements DamageHandler {
 
         if (!isShieldSelfDamage) {
             ShieldTypeManager.processReflectAfterShieldDamage(shieldOwner, attackedEntity);
-        }
-    }
-
-    /**
-     * 临时设置实体为无敌状态
-     * @param entity 目标实体
-     * @param ticks 无敌持续时间（刻）
-     */
-    private void setInvulnerableTemporarily(LivingEntity entity, int ticks) {
-        if (entity.isInvulnerable()) {
-            return;
-        }
-        
-        entity.setInvulnerable(true);
-        
-        if (!entity.level().isClientSide()) {
-            MinecraftServer server = entity.level().getServer();
-            if (server != null) {
-                new Thread(() -> {
-                    try {
-                        Thread.sleep((long) ticks * 50L);
-                        server.execute(() -> {
-                            if (entity.isAlive()) {
-                                entity.setInvulnerable(false);
-                            }
-                        });
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                    }
-                }).start();
-            }
         }
     }
 

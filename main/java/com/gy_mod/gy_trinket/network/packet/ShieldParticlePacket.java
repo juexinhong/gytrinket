@@ -11,11 +11,13 @@ public class ShieldParticlePacket {
     private final double originOffsetX, originOffsetY, originOffsetZ;
     private final double offsetX, offsetY, offsetZ;
     private final double dirX, dirY, dirZ;
+    private final int delayTicks;
     
     public ShieldParticlePacket(int entityId,
                                double originOffsetX, double originOffsetY, double originOffsetZ,
                                double offsetX, double offsetY, double offsetZ,
-                               double dirX, double dirY, double dirZ) {
+                               double dirX, double dirY, double dirZ,
+                               int delayTicks) {
         this.entityId = entityId;
         this.originOffsetX = originOffsetX;
         this.originOffsetY = originOffsetY;
@@ -26,6 +28,7 @@ public class ShieldParticlePacket {
         this.dirX = dirX;
         this.dirY = dirY;
         this.dirZ = dirZ;
+        this.delayTicks = delayTicks;
     }
     
     public ShieldParticlePacket(FriendlyByteBuf buf) {
@@ -39,6 +42,7 @@ public class ShieldParticlePacket {
         this.dirX = buf.readDouble();
         this.dirY = buf.readDouble();
         this.dirZ = buf.readDouble();
+        this.delayTicks = buf.readVarInt();
     }
     
     public void toBytes(FriendlyByteBuf buf) {
@@ -52,12 +56,18 @@ public class ShieldParticlePacket {
         buf.writeDouble(dirX);
         buf.writeDouble(dirY);
         buf.writeDouble(dirZ);
+        buf.writeVarInt(delayTicks);
     }
     
     public void handle(Supplier<NetworkEvent.Context> context) {
         context.get().enqueueWork(() -> {
-            com.gy_mod.gy_trinket.client.effect.particle.ShieldParticleRenderManager.getInstance()
-                .addParticle(entityId, originOffsetX, originOffsetY, originOffsetZ, offsetX, offsetY, offsetZ, dirX, dirY, dirZ);
+            if (delayTicks > 0) {
+                com.gy_mod.gy_trinket.client.effect.particle.ShieldParticleTimerManager.getInstance()
+                    .addPendingParticle(entityId, originOffsetX, originOffsetY, originOffsetZ, offsetX, offsetY, offsetZ, dirX, dirY, dirZ, delayTicks);
+            } else {
+                com.gy_mod.gy_trinket.client.effect.particle.ShieldParticleRenderManager.getInstance()
+                    .addParticle(entityId, originOffsetX, originOffsetY, originOffsetZ, offsetX, offsetY, offsetZ, dirX, dirY, dirZ);
+            }
         });
         context.get().setPacketHandled(true);
     }

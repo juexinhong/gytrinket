@@ -1,7 +1,7 @@
-package com.gy_mod.gy_trinket.core.electric_discharge.client;
+package com.gy_mod.gy_trinket.core.attack_mode.electric_discharge.client;
 
-import com.gy_mod.gy_trinket.core.electric_discharge.ElectricDischargeManager;
-import com.gy_mod.gy_trinket.core.electric_discharge.LightningRenderData;
+import com.gy_mod.gy_trinket.core.attack_mode.electric_discharge.ElectricDischargeManager;
+import com.gy_mod.gy_trinket.core.attack_mode.electric_discharge.LightningRenderData;
 import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.*;

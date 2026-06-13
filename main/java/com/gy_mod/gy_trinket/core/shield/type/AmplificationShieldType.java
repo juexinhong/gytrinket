@@ -24,14 +24,15 @@ import java.util.*;
  * 2. 每5刻检测玩家或被保护实体周围的威胁实体（敌对生物、危险物）
  * 3. 每个威胁实体额外增加50%攻击伤害加成
  * 4. 攻击伤害加成上限为100%
+ * 5. 当有护盾值时，提供移动速度独立乘区加成（受护盾效果影响，不受威胁数量影响）
  * <p>
  * 属性影响：
- * - shield_effect 属性组：影响基础加成和上限
+ * - shield_effect 属性组：影响基础加成、上限和移动速度加成
  * - shield_effect_radius 属性组：影响检测半径
  * <p>
  * 护盾移植支持：
  * - 当护盾移植时，在被保护实体位置检测威胁
- * - 攻击伤害修饰符直接施加在被保护实体上
+ * - 攻击伤害和移动速度修饰符直接施加在被保护实体上
  */
 public class AmplificationShieldType implements IShieldType {
 
@@ -46,9 +47,15 @@ public class AmplificationShieldType implements IShieldType {
     
     /** 攻击伤害修饰符UUID */
     private static final UUID ATTACK_DAMAGE_MODIFIER_UUID = UUID.fromString("f5a6b7c8-d9e0-1234-5678-9abcdef01234");
-    
+
     /** 攻击伤害修饰符名称 */
     private static final String ATTACK_DAMAGE_MODIFIER_NAME = "amplification_shield_attack_damage_modifier";
+
+    /** 移动速度修饰符UUID */
+    private static final UUID MOVEMENT_SPEED_MODIFIER_UUID = UUID.fromString("a1b2c3d4-e5f6-7890-abcd-ef0123456789");
+
+    /** 移动速度修饰符名称 */
+    private static final String MOVEMENT_SPEED_MODIFIER_NAME = "amplification_shield_movement_speed_modifier";
     
     /** 获取基础增幅值 */
     private static double getBaseAmplification() {
@@ -88,10 +95,12 @@ public class AmplificationShieldType implements IShieldType {
     public void onRemoved(Player player) {
         UUID playerUUID = player.getUUID();
         removeAttackDamageModifier(player);
+        removeMovementSpeedModifier(player);
         
         // 移除被保护实体上的修饰符
         for (LivingEntity protectedEntity : ShieldTransferManager.getProtectedEntities(playerUUID, player.level())) {
             removeAttackDamageModifier(protectedEntity);
+            removeMovementSpeedModifier(protectedEntity);
         }
         
         TRACKED_THREAT_ENTITIES.remove(playerUUID);
@@ -116,8 +125,10 @@ public class AmplificationShieldType implements IShieldType {
         if (currentShield <= 0) {
             // 无护盾时清理所有修饰符
             removeAttackDamageModifier(player);
+            removeMovementSpeedModifier(player);
             for (LivingEntity protectedEntity : ShieldTransferManager.getProtectedEntities(playerUUID, player.level())) {
                 removeAttackDamageModifier(protectedEntity);
+                removeMovementSpeedModifier(protectedEntity);
             }
             TRACKED_THREAT_ENTITIES.remove(playerUUID);
             return;
@@ -176,8 +187,9 @@ public class AmplificationShieldType implements IShieldType {
     }
 
     /**
-     * 更新攻击伤害加成
-     * 基础加成 + 威胁加成，不超过上限
+     * 更新攻击伤害加成和移动速度加成
+     * 攻击伤害：基础加成 + 威胁加成，不超过上限
+     * 移动速度：基础加成 × 护盾效果（不受威胁数量影响）
      * 直接给生效的实体（玩家或被保护实体）施加修饰符
      */
     private void updateAttackDamageBonus(Player player) {
@@ -197,20 +209,25 @@ public class AmplificationShieldType implements IShieldType {
         double totalBonus = baseBonus * (1 + threatBonus);
         totalBonus = Math.min(totalBonus, maxBonus);
 
+        // 计算移动速度加成（受护盾效果影响，不受威胁数量影响）
+        double movementSpeedBonus = Config.getAmplificationMovementSpeedBonus() * shieldEffect;
+
         // 获取需要施加修饰符的实体
         List<LivingEntity> targetEntities = new ArrayList<>();
         
         if (!ShieldTransferManager.shouldProtectPlayer(player)) {
             targetEntities.addAll(ShieldTransferManager.getProtectedEntities(playerUUID, player.level()));
             removeAttackDamageModifier(player);
+            removeMovementSpeedModifier(player);
         } else {
             targetEntities.add(player);
         }
         
-        // 给目标实体施加攻击伤害修饰符
+        // 给目标实体施加攻击伤害和移动速度修饰符
         for (LivingEntity targetEntity : targetEntities) {
             if (targetEntity != null && targetEntity.isAlive()) {
                 addAttackDamageModifier(targetEntity, totalBonus);
+                addMovementSpeedModifier(targetEntity, movementSpeedBonus);
             }
         }
     }
@@ -250,6 +267,41 @@ public class AmplificationShieldType implements IShieldType {
         }
 
         attribute.removeModifier(ATTACK_DAMAGE_MODIFIER_UUID);
+    }
+
+    /**
+     * 给实体添加移动速度修饰符
+     * @param entity 目标实体
+     * @param bonus 加成值（独立乘区，如0.2表示+20%）
+     */
+    private void addMovementSpeedModifier(LivingEntity entity, double bonus) {
+        AttributeInstance attribute = entity.getAttribute(Attributes.MOVEMENT_SPEED);
+        if (attribute == null) {
+            return;
+        }
+
+        removeMovementSpeedModifier(entity);
+
+        AttributeModifier modifier = new AttributeModifier(
+            MOVEMENT_SPEED_MODIFIER_UUID,
+            MOVEMENT_SPEED_MODIFIER_NAME,
+            bonus,
+            AttributeModifier.Operation.MULTIPLY_TOTAL
+        );
+        attribute.addTransientModifier(modifier);
+    }
+
+    /**
+     * 移除实体的移动速度修饰符
+     * @param entity 目标实体
+     */
+    private void removeMovementSpeedModifier(LivingEntity entity) {
+        AttributeInstance attribute = entity.getAttribute(Attributes.MOVEMENT_SPEED);
+        if (attribute == null) {
+            return;
+        }
+
+        attribute.removeModifier(MOVEMENT_SPEED_MODIFIER_UUID);
     }
 
     /**

@@ -199,7 +199,9 @@ public class QuickEquipEvent {
                 || Config.isBinaryProtocolItem(item)
                 || Config.isWeaponizedShieldItem(item)
                 || Config.isConversionItem(item)
-                || Config.isAssaultItem(item);
+                || Config.isAssaultItem(item)
+                || Config.isChargedAttackItem(item)
+                || Config.isChargedShieldItem(item);
     }
 
     private static boolean hasSameItemInStore(ItemStackHandler handler, Item item) {

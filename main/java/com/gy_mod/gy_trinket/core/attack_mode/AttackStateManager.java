@@ -3,7 +3,6 @@ package com.gy_mod.gy_trinket.core.attack_mode;
 import com.gy_mod.gy_trinket.gytrinket;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;

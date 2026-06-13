@@ -74,9 +74,13 @@ public class ShieldHandler implements DamageHandler {
                 InvincibilityMarkerManager.addMarker(attackedEntity, Config.SHIELD_BLOCK_INVULNERABLE_TICKS.get());
             }
         } else {
-            float remainingDamage = (float) (originalDamage - currentShield);
             setCurrentShieldForEntity(shieldOwner, shieldOwnerUUID, 0);
-            context.setCurrentDamage(remainingDamage);
+            context.setCanceled(true);
+
+            // 当承受护盾自伤或协议护盾自伤时，不施加无敌标记
+            if (!isShieldSelfDamage) {
+                InvincibilityMarkerManager.addMarker(attackedEntity, Config.SHIELD_BLOCK_INVULNERABLE_TICKS.get());
+            }
         }
 
         if (!isShieldSelfDamage) {

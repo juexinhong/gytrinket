@@ -234,34 +234,16 @@ public class AttackModeManager {
         // 标记本tick玩家进行了攻击（用于挥空检测）
         PLAYER_ATTACKED_THIS_TICK.add(uuid);
 
-        // ===== 充能期间禁用正常攻击 =====
-        // 目的：禁止开始充能的第一次攻击造成伤害（那次攻击只是触发充能的信号）
-        // 未在充能中时允许正常攻击通过
-        // 注意：释放充能后 isCharging 为 false，但 chargeValue > 0，仍需进入此逻辑块处理
+        // ===== 充能释放攻击的特效触发 =====
+        // 客户端 InteractionKeyMappingTriggered 已从根源上阻止充能期间的攻击输入，
+        // 服务端不再需要禁用攻击逻辑。此处仅处理充能释放攻击（chargeValue > 0）的特效触发。
         double chargeValue = ChargedAttackDamageTracker.getChargeValue(uuid);
-        if (modes.hasChargedAttack && (ChargedAttackManager.isCharging(player) || chargeValue > 0)) {
-            boolean isAutoAttacking = BurstFireManager.isInBurstFireState(player);
-
-            if (chargeValue > 0) {
-                // 充能释放攻击：允许通过
-                // 触发电能释放
-                triggerElectricDischarge(player);
-                // 点射+充能 / 三合一：充能释放后触发点射
-                if (canBurstFireTriggerFromChargedRelease(combo)) {
-                    PENDING_BURST_FROM_CHARGED.put(uuid, true);
-                }
-            } else if (isAutoAttacking) {
-                // 点射自动攻击：允许通过
-                // 点射+强袭：点射自动攻击触发强袭
-                if (doesBurstFireAutoAttackTriggerAssault(combo)) {
-                    AssaultManager.triggerAssault(player);
-                }
-                // 电能释放
-                triggerElectricDischarge(player);
-            } else {
-                // 常态禁用：取消攻击
-                event.setCanceled(true);
-                return;
+        if (modes.hasChargedAttack && chargeValue > 0) {
+            // 充能释放攻击：触发电能释放
+            triggerElectricDischarge(player);
+            // 点射+充能 / 三合一：充能释放后触发点射
+            if (canBurstFireTriggerFromChargedRelease(combo)) {
+                PENDING_BURST_FROM_CHARGED.put(uuid, true);
             }
             return;
         }

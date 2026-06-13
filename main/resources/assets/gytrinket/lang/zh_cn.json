@@ -80,6 +80,10 @@
   "tooltip.gytrinket.attr.commander_damage": "指挥官伤害",
   "tooltip.gytrinket.attr.commander_damage_percent": "指挥官伤害百分比",
   "tooltip.gytrinket.attr.commander_damage_independent": "指挥官伤害独立乘区",
+  "tooltip.gytrinket.attr.explosion_damage_percent": "爆炸伤害百分比",
+  "tooltip.gytrinket.attr.explosion_damage_independent": "爆炸伤害独立乘区",
+  "tooltip.gytrinket.attr.explosion_radius_percent": "爆炸半径百分比",
+  "tooltip.gytrinket.attr.explosion_radius_independent": "爆炸半径独立乘区",
   "tooltip.gytrinket.shield_type.none": "无",
   "tooltip.gytrinket.shield_type.aura": "光环",
   "tooltip.gytrinket.shield_type.reflect": "反射",
@@ -89,25 +93,12 @@
   "tooltip.gytrinket.shield_type.none_desc": "可以额外叠加同类型护盾的属性",
   "tooltip.gytrinket.shield_type.aura_desc": "灼烧附近的敌人，并点燃。(若点燃没有另外说明，默认%.1f/s伤害，持续%d秒)",
   "tooltip.gytrinket.shield_type.reflect_desc": "反射命中你的弹射物。反射的弹射物速度提高%d%%，伤害受护盾效果影响",
-  "tooltip.gytrinket.shield_type.amplification_desc": "增加%d%%攻击伤害。周围有敌人时提升增幅量。上限%d%%。护盾效果会同时提供基础量和上限",
+  "tooltip.gytrinket.shield_type.amplification_desc": "增加%d%%攻击伤害。周围有敌人时提升增幅量。上限%d%%。护盾效果会同时提供基础量和上限。有护盾时提供%d%%移动速度（受护盾效果影响）",
   "tooltip.gytrinket.shield_type.warp_desc": "护盾破裂时，向朝向方向传送。传送起点和终点会发生爆炸，造成%.1f的爆炸伤害",
   "tooltip.gytrinket.shield_type.siphon_desc": "每%d刻对周围的敌人造成%.1f点伤害，并恢复造成伤害量%d%%的护盾值。(伤害量会在敌人之间平均分配) 虹吸攻击时，持续增加护盾效果和护盾效果半径，最高%d%%。没有目标则会快速消退。",
   
-  "tooltip.gytrinket.adaptive_armor_enabled": "适应性装甲启用",
-  "tooltip.gytrinket.adaptive_armor_effect": "受到攻击产生装甲叠层。每点装甲叠层提供伤害减免",
-  "tooltip.gytrinket.adaptive_armor_bond": "联结",
-  "tooltip.gytrinket.adaptive_armor_bond_effect": "装甲叠层额外提供护盾效果和恢复效率属性",
-  
-  "tooltip.gytrinket.electric_discharge": "电能释放",
-  "tooltip.gytrinket.electric_discharge_effect": "玩家攻击产生电弧灼烧附近敌人，攻击速度越慢，电弧越长伤害越高",
-  
-  "tooltip.gytrinket.efficiency": "效率",
-  "tooltip.gytrinket.efficiency_effect": "玩家不处于攻击冷却时，提供%s%%独立乘区护盾冷却缩减和恢复效率属性",
-  
   "tooltip.gytrinket.barrier_effect": "护盾受到超出%d点的伤害时，将伤害限制在%d",
-  
-  "tooltip.gytrinket.regen_shield": "再生护盾",
-  "tooltip.gytrinket.regen_shield_effect": "启用护盾自然恢复。当有护盾值时，玩家生命再生效率为%d%%，护盾再生效率为%d%%。当没有护盾值时，再生效率为100%%",
+
   
   "tooltip.gytrinket.reflect_damage": "反射护盾",
   "tooltip.gytrinket.reflect_damage_effect": "护盾受到攻击时，向攻击来源处发射灼烧粒子。灼烧敌人并点燃",
@@ -115,17 +106,43 @@
   "tooltip.gytrinket.explosive_shield": "易爆护盾",
   "tooltip.gytrinket.explosive_shield_effect": "护盾破裂时，对周围敌人造成%.1f点爆炸伤害",
   
-  "tooltip.gytrinket.shield_transfer": "护盾移植",
-  "tooltip.gytrinket.shield_transfer_effect": "护盾不再保护你，而是保护你的构造体（可以使用护盾接收器来额外保护其他实体）。每保护一个实体，护盾效果和护盾效果半径降低%.1f%%",
-  
-  "tooltip.gytrinket.binary_protocol": "二原协议",
-  "tooltip.gytrinket.binary_protocol_effect": "护盾受到伤害时，玩家替护盾承受%d%%伤害（或相反）",
+  "tooltip.gytrinket.electric_discharge": "电能释放",
+  "tooltip.gytrinket.electric_discharge_effect": "玩家攻击产生电弧灼烧附近敌人，攻击速度越慢，电弧越长伤害越高",
   
   "tooltip.gytrinket.weaponized_shield": "武器化护盾",
   "tooltip.gytrinket.weaponized_shield_effect": "有护盾时，对周围敌人施加%d%%易伤（受护盾效果属性影响）",
 
+  "tooltip.gytrinket.adaptive_armor_enabled": "适应性装甲启用",
+  "tooltip.gytrinket.adaptive_armor_effect": "受到攻击产生装甲叠层。每点装甲叠层提供伤害减免",
+  "tooltip.gytrinket.adaptive_armor_bond": "联结",
+  "tooltip.gytrinket.adaptive_armor_bond_effect": "装甲叠层额外提供护盾效果和恢复效率属性",
+  
+  "tooltip.gytrinket.regen_shield": "再生护盾",
+  "tooltip.gytrinket.regen_shield_effect": "启用护盾自然恢复。当有护盾值时，玩家生命再生效率为%d%%，护盾再生效率为%d%%。当没有护盾值时，再生效率为100%%",
+  
+  "tooltip.gytrinket.efficiency": "效率",
+  "tooltip.gytrinket.efficiency_effect": "玩家不处于攻击冷却时，提供%s%%独立乘区护盾冷却缩减和恢复效率属性",
+  
+  "tooltip.gytrinket.binary_protocol": "二原协议",
+  "tooltip.gytrinket.binary_protocol_effect": "护盾受到伤害时，玩家替护盾承受%d%%伤害（或相反）",
+  
+  "tooltip.gytrinket.assault": "强袭",
+  "tooltip.gytrinket.assault_effect": "按住左键自动攻击，攻击速度逐渐提高。并受到自伤（随攻击速度提高而提高）",
+
+  "tooltip.gytrinket.charged_attack": "充能攻击",
+  "tooltip.gytrinket.charged_attack_effect": "按住左键充能，松开释放攻击。充能无上限但受阻力制衡，伤害=当前伤害+充能值",
+  
+  "tooltip.gytrinket.precision_construct": "精妙构造",
+  "tooltip.gytrinket.precision_construct_effect": "玩家每级提供%.2f%%独立乘区构建速度属性",
+
+  "tooltip.gytrinket.shield_transfer": "护盾移植",
+  "tooltip.gytrinket.shield_transfer_effect": "护盾不再保护你，而是保护你的构造体（可以使用护盾接收器来额外保护其他实体）。每保护一个实体，护盾效果和护盾效果半径降低%.1f%%",
+  
   "tooltip.gytrinket.near_death_protection": "宽限协议",
   "tooltip.gytrinket.near_death_protection_effect": "无人机免疫一次死亡，恢复1点生命并无敌%.1f秒。冷却%.1f秒（每个无人机独立计算）",
+
+  "tooltip.gytrinket.advanced_engineering": "高等工程",
+  "tooltip.gytrinket.advanced_engineering_effect": "玩家每级提供%.1f%%独立乘区无人机生命和无人机伤害属性",
 
   "tooltip.gytrinket.near_death_explosion": "最终指令",
   "tooltip.gytrinket.near_death_explosion_effect": "无人机死亡时，恢复1点生命并无敌%.1f秒。期间移出阵列并冲向敌人自爆（爆炸伤害=最大生命×速度×%.1f，半径%.1f格）。无敌时间结束后强制自爆",
@@ -145,22 +162,12 @@
   "tooltip.gytrinket.arc_barrier": "弧形屏障",
   "tooltip.gytrinket.arc_barrier_effect": "当防御无人机在玩家与伤害源之间时，无人机会拦截伤害。位置偏差阈值：%.1f格",
 
-  "tooltip.gytrinket.reshaping": "重塑",
-  "tooltip.gytrinket.reshaping_effect": "防御无人机每秒恢复%.1f%%最大生命值。防御无人机死亡时生成装甲碎片。吸收装甲碎片获得%.1f%%伤害减免，持续%.1f秒",
-
   "tooltip.gytrinket.counter_pulse": "反制脉冲",
   "tooltip.gytrinket.counter_pulse_effect": "防御无人机每%.1f秒触发一次反制脉冲，对%.1f格内的敌人造成%.1f点爆炸伤害。未触发时持续充能（每%d刻充1层，最大%d层）。受到伤害时立即触发，无视冷却",
 
-  "tooltip.gytrinket.precision_construct": "精妙构造",
-  "tooltip.gytrinket.precision_construct_effect": "玩家每级提供%.2f%%独立乘区构建速度属性",
+  "tooltip.gytrinket.reshaping": "重塑",
+  "tooltip.gytrinket.reshaping_effect": "防御无人机每秒恢复%.1f%%最大生命值。防御无人机死亡时生成装甲碎片。吸收装甲碎片获得%.1f%%伤害减免，持续%.1f秒",
 
-  "tooltip.gytrinket.advanced_engineering": "高等工程",
-  "tooltip.gytrinket.advanced_engineering_effect": "玩家每级提供%.1f%%独立乘区无人机生命和无人机伤害属性",
-
-  "tooltip.gytrinket.assault": "强袭",
-  "tooltip.gytrinket.assault_effect": "按住左键自动攻击，攻击速度逐渐提高。并受到自伤（随攻击速度提高而提高）",
-  "tooltip.gytrinket.charged_attack": "充能攻击",
-  "tooltip.gytrinket.charged_attack_effect": "按住左键充能，松开释放攻击。充能无上限但受阻力制衡，伤害=当前伤害+充能值",
   "tooltip.gytrinket.charged_shield": "充能护盾",
   "tooltip.gytrinket.charged_shield_effect": "充能时获得动态护盾效果和护盾效果半径加成（充能值的%s%%，上限%s%%）。停止充能后快速消退",
 
@@ -237,8 +244,8 @@
   "item.gytrinket.fast_shooting_module": "快速射击模块",
   "item.gytrinket.burst_fire_module": "点射模块",
   "item.gytrinket.assault_module": "强袭模块",
+
   "item.gytrinket.charged_attack_module": "充能攻击模块",
-  "item.gytrinket.charged_shield_module": "充能护盾模块",
   
   "item.gytrinket.thrust_boost_module": "推进改良模块",
   "item.gytrinket.aerodynamic_framework_module": "流线构型模块",
@@ -261,11 +268,13 @@
   "item.gytrinket.arc_barrier_module": "弧形屏障模块",
   "item.gytrinket.reshaping_module": "重塑模块",
 
-  "item.gytrinket.near_death_protection_module": "濒死保护模块",
-  "item.gytrinket.near_death_explosion_module": "濒死自爆模块",
+  "item.gytrinket.near_death_protection_module": "宽限协议模块",
+  "item.gytrinket.near_death_explosion_module": "最后指令模块",
 
   "item.gytrinket.commander_module": "指挥官模块",
   
+    "item.gytrinket.charged_shield_module": "充能护盾模块",
+
   "item.gytrinket.beam": "光束",
   "item.gytrinket.barrier": "屏障",
   "item.gytrinket.ultimate_shield": "至高之盾",

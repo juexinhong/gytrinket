@@ -352,7 +352,8 @@ public class TooltipHandler {
                 } else if (type.equals("amplification")) {
                     formattedDesc = String.format(descTooltip.getString(),
                         (int)(Config.getAmplificationBaseAmplification() * 100),
-                        (int)(Config.getAmplificationMaxAmplification() * 100));
+                        (int)(Config.getAmplificationMaxAmplification() * 100),
+                        (int)(Config.getAmplificationMovementSpeedBonus() * 100));
                 } else if (type.equals("warp")) {
                     formattedDesc = String.format(descTooltip.getString(),
                         Config.getWarpShieldExplosionDamage());

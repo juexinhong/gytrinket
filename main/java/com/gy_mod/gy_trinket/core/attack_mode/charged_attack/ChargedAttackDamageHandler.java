@@ -12,12 +12,11 @@ import net.minecraftforge.fml.common.Mod;
 
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 充能攻击伤害处理
  * <p>
- * 1. 攻击禁用由 AttackModeManager 常态禁用统一处理（HIGHEST优先级）
+ * 1. 充能期间的攻击禁用由客户端 InteractionKeyMappingTriggered 从根源上阻止
  * 2. 充能释放攻击通过 AttackEntityEvent 精确识别（chargeValue > 0）
  * 3. 在 LivingHurtEvent 中增强伤害
  * 4. 只影响这一次攻击，后续连击不受充能影响
@@ -33,7 +32,7 @@ public class ChargedAttackDamageHandler {
     /**
      * 充能释放攻击标记
      * <p>
-     * AttackModeManager 已在 HIGHEST 优先级处理常态禁用，
+     * 客户端 InteractionKeyMappingTriggered 已从根源上阻止充能期间的攻击输入，
      * 此处仅标记充能释放攻击（chargeValue > 0）用于伤害增强。
      */
     @SubscribeEvent(priority = EventPriority.HIGH)

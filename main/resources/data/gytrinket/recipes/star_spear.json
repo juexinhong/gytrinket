@@ -1,21 +1,21 @@
-﻿{
+{
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
-    "R": {
-      "item": "minecraft:redstone"
+    "A": {
+      "item": "minecraft:amethyst_shard"
+    },
+    "Q": {
+      "item": "minecraft:quartz"
     },
     "D": {
       "item": "minecraft:diamond"
-    },
-    "N": {
-      "item": "minecraft:nether_star"
     }
   },
   "pattern": [
-    " R ",
-    " D ",
-    "RNR"
+    "A Q",
+    " QA",
+    "QAD"
   ],
   "result": {
     "item": "gytrinket:star_spear",

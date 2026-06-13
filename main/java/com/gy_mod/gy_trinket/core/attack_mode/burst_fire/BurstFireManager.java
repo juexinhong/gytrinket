@@ -101,9 +101,6 @@ public class BurstFireManager {
             return;
         }
 
-        // 移除目标无敌时间，确保所有攻击都能命中
-        target.invulnerableTime = 0;
-
         // 检查是否正在进行自动攻击
         boolean isAutoAttack = IS_AUTO_ATTACKING.getOrDefault(playerUUID, false);
 
@@ -122,6 +119,9 @@ public class BurstFireManager {
             if (!canTriggerFromNormal && !fromChargedRelease) {
                 return; // 当前组合不允许点射自主触发，也没有充能释放触发标记
             }
+
+            // 确认点射会触发，移除目标无敌时间
+            target.invulnerableTime = 0;
 
             // 初次攻击命中目标，记录目标信息
             CURRENT_TARGETS.put(playerUUID, target);

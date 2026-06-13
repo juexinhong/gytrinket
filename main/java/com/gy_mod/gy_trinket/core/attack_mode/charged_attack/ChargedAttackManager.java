@@ -114,7 +114,6 @@ public class ChargedAttackManager {
         }
         data.charging = true;
         data.chargeValue = 0;
-        data.hasReflectedOnce = false;
     }
 
     /**
@@ -127,17 +126,9 @@ public class ChargedAttackManager {
             return;
         }
 
-        float attackStrength = player.getAttackStrengthScale(0.0F);
-
-        // 充能期间首次攻击强度低于0.5时，反射为1
-        if (!data.hasReflectedOnce && attackStrength < 0.5F) {
-            reflectAttackStrengthToFull(player);
-            data.hasReflectedOnce = true;
-            attackStrength = 1.0F;
-        }
-
-        // 攻击强度小于1时暂停充能
-        if (attackStrength < 1.0F) {
+        // 攻击强度小于1时暂停充能（如挖掘方块时攻击强度被消耗）
+        // 正常充能时攻击输入在客户端被取消，攻击强度不会被消耗，此处检查不会触发
+        if (player.getAttackStrengthScale(0.0F) < 1.0F) {
             return;
         }
 
@@ -145,19 +136,6 @@ public class ChargedAttackManager {
         double chargeRate = calculateChargeRate(player);
         double increment = calculateChargeIncrement(data.chargeValue, chargeRate, player);
         data.chargeValue += increment;
-    }
-
-    /**
-     * 使用反射设置玩家攻击强度为满
-     */
-    private static void reflectAttackStrengthToFull(Player player) {
-        try {
-            java.lang.reflect.Field field = net.minecraft.world.entity.LivingEntity.class.getDeclaredField("attackStrengthTicker");
-            field.setAccessible(true);
-            field.setInt(player, 10);
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            gytrinket.LOGGER.warn("Failed to reflect attack strength to full", e);
-        }
     }
 
     /**
@@ -264,15 +242,12 @@ public class ChargedAttackManager {
     private static class ChargedAttackData {
         boolean charging;
         double chargeValue;
-        // 充能期间是否已完成首次反射（攻击强度首次低于0.5时反射为1）
-        boolean hasReflectedOnce;
         // 同步计时器（每3 tick同步一次充能值到客户端）
         int syncTickCounter;
 
         ChargedAttackData() {
             this.charging = false;
             this.chargeValue = 0;
-            this.hasReflectedOnce = false;
             this.syncTickCounter = 0;
         }
     }

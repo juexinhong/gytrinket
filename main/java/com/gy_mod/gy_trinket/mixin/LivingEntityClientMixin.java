@@ -1,7 +1,6 @@
 package com.gy_mod.gy_trinket.mixin;
 
 import com.gy_mod.gy_trinket.client.MixinBridge;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;

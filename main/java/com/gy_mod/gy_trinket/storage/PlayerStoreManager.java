@@ -1,8 +1,6 @@
 package com.gy_mod.gy_trinket.storage;
 
-import com.gy_mod.gy_trinket.gytrinket;
 import com.gy_mod.gy_trinket.storage.datacenter.PlayerDataCenter;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 
 import java.util.UUID;

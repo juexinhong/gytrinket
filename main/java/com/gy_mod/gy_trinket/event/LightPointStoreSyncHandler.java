@@ -4,7 +4,6 @@ import com.gy_mod.gy_trinket.core.shield.ShieldData;
 import com.gy_mod.gy_trinket.core.shield.type.IShieldType;
 import com.gy_mod.gy_trinket.core.shield.type.ShieldTypeManager;
 import com.gy_mod.gy_trinket.network.NetworkHandler;
-import com.gy_mod.gy_trinket.storage.PlayerStore;
 import com.gy_mod.gy_trinket.storage.PlayerStoreManager;
 import com.gy_mod.gy_trinket.storage.datacenter.PlayerDataCenter;
 import net.minecraft.nbt.CompoundTag;

@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " O ",
+    "ODO",
+    " O "
+  ],
+  "key": {
+    "O": {
+      "item": "minecraft:obsidian"
+    },
+    "D": {
+      "item": "gytrinket:drone_part"
+    }
+  },
+  "result": {
+    "id": "gytrinket:defense_drone_part",
+    "count": 1
+  }
+}

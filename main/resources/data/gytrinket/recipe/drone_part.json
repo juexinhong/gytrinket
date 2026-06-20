@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " # ",
+    "$%$",
+    " # "
+  ],
+  "key": {
+    "#": { "item": "minecraft:copper_ingot" },
+    "$": { "item": "minecraft:glowstone_dust" },
+    "%": { "item": "minecraft:diamond" }
+  },
+  "result": {
+    "id": "gytrinket:drone_part",
+    "count": 1
+  }
+}

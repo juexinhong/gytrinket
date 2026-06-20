@@ -1,0 +1,22 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "WED"
+  ],
+  "key": {
+    "W": {
+      "item": "minecraft:ghast_tear"
+    },
+    "E": {
+      "item": "minecraft:end_rod"
+    },
+    "D": {
+      "item": "minecraft:diamond"
+    }
+  },
+  "result": {
+    "id": "gytrinket:bond",
+    "count": 1
+  }
+}

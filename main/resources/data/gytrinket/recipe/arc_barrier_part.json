@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " % ",
+    "%#%"
+  ],
+  "key": {
+    "#": { "item": "gytrinket:defense_drone_part" },
+    "%": { "item": "minecraft:obsidian" }
+  },
+  "result": {
+    "id": "gytrinket:arc_barrier_part",
+    "count": 1
+  }
+}

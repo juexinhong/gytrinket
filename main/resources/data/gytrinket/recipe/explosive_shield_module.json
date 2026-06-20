@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " B ",
+    "ADA",
+    " E "
+  ],
+  "key": {
+    "A": {
+      "item": "minecraft:string"
+    },
+    "B": {
+      "item": "gytrinket:modular_framework"
+    },
+    "D": {
+      "item": "minecraft:tnt"
+    },
+    "E": {
+      "item": "minecraft:blue_wool"
+    }
+  },
+  "result": {
+    "id": "gytrinket:explosive_shield_module",
+    "count": 1
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "gytrinket:item/electric_energy_release_module"
+  }
+}

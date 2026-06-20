@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " I ",
+    " S ",
+    " D "
+  ],
+  "key": {
+    "I": {
+      "item": "gytrinket:shield_gy"
+    },
+    "S": {
+      "item": "minecraft:slime_ball"
+    },
+    "D": {
+      "item": "gytrinket:drone_part"
+    }
+  },
+  "result": {
+    "id": "gytrinket:shield_transfer_part",
+    "count": 1
+  }
+}

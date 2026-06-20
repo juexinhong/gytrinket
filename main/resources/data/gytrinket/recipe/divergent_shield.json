@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "BBB",
+    "BSB",
+    "BBB"
+  ],
+  "key": {
+    "B": {
+      "item": "minecraft:bone_meal"
+    },
+    "S": {
+      "item": "gytrinket:shield_gy"
+    }
+  },
+  "result": {
+    "id": "gytrinket:divergent_shield",
+    "count": 1
+  }
+}

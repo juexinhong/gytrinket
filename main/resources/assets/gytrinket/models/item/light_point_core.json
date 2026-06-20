@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "gytrinket:item/light_point_core_block_gy"
+  },
+  "render_type": "translucent"
+}

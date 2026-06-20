@@ -1,0 +1,33 @@
+{
+  "parent": "minecraft:story/root",
+  "criteria": {
+    "has_drone_module": {
+      "conditions": {
+        "items": [
+          {
+            "items": "gytrinket:drone_module"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "display": {
+    "description": {
+      "translate": "advancements.gytrinket.story.obtain_drone_module.description"
+    },
+    "icon": {
+      "count": 1,
+      "id": "gytrinket:drone_module"
+    },
+    "title": {
+      "translate": "advancements.gytrinket.story.obtain_drone_module.title"
+    }
+  },
+  "requirements": [
+    [
+      "has_drone_module"
+    ]
+  ],
+  "sends_telemetry_event": true
+}

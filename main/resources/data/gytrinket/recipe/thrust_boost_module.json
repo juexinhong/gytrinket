@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " M ",
+    "LTL",
+    " B "
+  ],
+  "key": {
+    "M": {
+      "item": "gytrinket:movement_frame"
+    },
+    "L": {
+      "item": "minecraft:string"
+    },
+    "T": {
+      "item": "gytrinket:thruster"
+    },
+    "B": {
+      "item": "minecraft:blue_wool"
+    }
+  },
+  "result": {
+    "id": "gytrinket:thrust_boost_module",
+    "count": 1
+  }
+}

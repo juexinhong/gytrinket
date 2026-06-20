@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " RR",
+    "RCE",
+    " RR"
+  ],
+  "key": {
+    "R": {
+      "item": "minecraft:cobblestone"
+    },
+    "C": {
+      "item": "minecraft:redstone"
+    },
+    "E": {
+      "item": "minecraft:dispenser"
+    }
+  },
+  "result": {
+    "id": "gytrinket:thruster",
+    "count": 1
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "$%$",
+    "%#%"
+  ],
+  "key": {
+    "#": { "item": "gytrinket:drone_part" },
+    "$": { "item": "minecraft:redstone_block" },
+    "%": { "item": "minecraft:glowstone_dust" }
+  },
+  "result": {
+    "id": "gytrinket:assault_drone_part",
+    "count": 1
+  }
+}

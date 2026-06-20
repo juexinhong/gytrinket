@@ -1,0 +1,23 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "ABA",
+    "BXB",
+    "ABA"
+  ],
+  "key": {
+    "A": {
+      "item": "minecraft:redstone_block"
+    },
+    "B": {
+      "item": "minecraft:gold_ingot"
+    },
+    "X": {
+      "item": "minecraft:glass_pane"
+    }
+  },
+  "result": {
+    "id": "gytrinket:life_frame",
+    "count": 1
+  }
+}

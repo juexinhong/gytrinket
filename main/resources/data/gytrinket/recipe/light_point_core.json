@@ -1,0 +1,30 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "#": {
+      "item": "minecraft:diamond_block"
+    },
+    "X": {
+      "item": "minecraft:redstone_lamp"
+    },
+    "Y": {
+      "item": "minecraft:redstone_block"
+    },
+    "Z": {
+      "item": "minecraft:lapis_block"
+    },
+    "Q": {
+      "item": "minecraft:iron_block"
+    }
+  },
+  "pattern": [
+    "QXQ",
+    "QYQ",
+    "Z#Z"
+  ],
+  "result": {
+    "id": "gytrinket:light_point_core",
+    "count": 1
+  }
+}

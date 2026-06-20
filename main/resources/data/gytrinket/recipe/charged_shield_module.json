@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "O": {
+      "item": "minecraft:obsidian"
+    },
+    "G": {
+      "item": "minecraft:glowstone_dust"
+    }
+  },
+  "pattern": [
+    "OOO",
+    "OGO",
+    "OOO"
+  ],
+  "result": {
+    "id": "gytrinket:charged_shield_module",
+    "count": 1
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " C ",
+    "SPS",
+    " W "
+  ],
+  "key": {
+    "S": {
+      "item": "minecraft:string"
+    },
+    "C": {
+      "item": "gytrinket:construct_frame"
+    },
+    "P": {
+      "item": "gytrinket:shield_transfer_part"
+    },
+    "W": {
+      "item": "minecraft:blue_wool"
+    }
+  },
+  "result": {
+    "id": "gytrinket:shield_transfer_module",
+    "count": 1
+  }
+}

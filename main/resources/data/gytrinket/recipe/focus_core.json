@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "O": {
+      "item": "minecraft:obsidian"
+    },
+    "A": {
+      "item": "minecraft:amethyst_shard"
+    }
+  },
+  "pattern": [
+    "OAO",
+    "AOA",
+    "OAO"
+  ],
+  "result": {
+    "id": "gytrinket:focus_core",
+    "count": 1
+  }
+}

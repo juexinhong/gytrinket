@@ -1,0 +1,25 @@
+{
+  "animations": {
+    "idle": {
+      "keyframes": [
+        {
+          "time": 0,
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        {
+          "time": 20,
+          "rotation": {
+            "x": 360,
+            "y": 360,
+            "z": 360
+          }
+        }
+      ],
+      "loop": true
+    }
+  }
+}

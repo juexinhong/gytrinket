@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "S": {
+      "item": "minecraft:string"
+    },
+    "F": {
+      "item": "gytrinket:attack_frame"
+    },
+    "G": {
+      "item": "gytrinket:overclock"
+    },
+    "W": {
+      "item": "minecraft:blue_wool"
+    }
+  },
+  "pattern": [
+    " F ",
+    "SGS",
+    " W "
+  ],
+  "result": {
+    "id": "gytrinket:burst_fire_module",
+    "count": 1
+  }
+}

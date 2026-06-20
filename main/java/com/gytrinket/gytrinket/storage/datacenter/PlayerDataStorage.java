@@ -1,0 +1,75 @@
+package com.gytrinket.gytrinket.storage.datacenter;
+
+import com.gytrinket.gytrinket.gytrinket;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.world.level.saveddata.SavedData;
+
+import javax.annotation.Nullable;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+
+public class PlayerDataStorage extends SavedData {
+
+    private static final String DATA_NAME = "gytrinket_player_data";
+
+    private final Map<UUID, CompoundTag> playerDataMap = new HashMap<>();
+
+    private static final SavedData.Factory<PlayerDataStorage> FACTORY = new SavedData.Factory<>(
+        PlayerDataStorage::new,
+        PlayerDataStorage::load
+    );
+
+    public PlayerDataStorage() {}
+
+    public static PlayerDataStorage load(CompoundTag rootTag, HolderLookup.Provider lookupProvider) {
+        PlayerDataStorage storage = new PlayerDataStorage();
+        CompoundTag playersTag = rootTag.getCompound("players");
+        for (String key : playersTag.getAllKeys()) {
+            try {
+                UUID uuid = UUID.fromString(key);
+                storage.playerDataMap.put(uuid, playersTag.getCompound(key));
+            } catch (IllegalArgumentException e) {
+                gytrinket.LOGGER.warn("无法解析玩家UUID: {}", key);
+            }
+        }
+        gytrinket.LOGGER.debug("从SavedData加载了 {} 个玩家的持久化数据", storage.playerDataMap.size());
+        return storage;
+    }
+
+    @Override
+    public CompoundTag save(CompoundTag rootTag, HolderLookup.Provider registries) {
+        CompoundTag playersTag = new CompoundTag();
+        for (Map.Entry<UUID, CompoundTag> entry : playerDataMap.entrySet()) {
+            playersTag.put(entry.getKey().toString(), entry.getValue());
+        }
+        rootTag.put("players", playersTag);
+        return rootTag;
+    }
+
+    public void putPlayerData(UUID playerUUID, CompoundTag data) {
+        playerDataMap.put(playerUUID, data);
+        setDirty();
+    }
+
+    @Nullable
+    public CompoundTag getPlayerData(UUID playerUUID) {
+        return playerDataMap.get(playerUUID);
+    }
+
+    public void removePlayerData(UUID playerUUID) {
+        playerDataMap.remove(playerUUID);
+        setDirty();
+    }
+
+    public boolean hasPlayerData(UUID playerUUID) {
+        return playerDataMap.containsKey(playerUUID);
+    }
+
+    public static PlayerDataStorage get(MinecraftServer server) {
+        return server.overworld().getDataStorage()
+                .computeIfAbsent(FACTORY, DATA_NAME);
+    }
+}

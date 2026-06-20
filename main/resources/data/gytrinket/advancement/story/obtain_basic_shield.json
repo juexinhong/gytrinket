@@ -1,0 +1,36 @@
+{
+  "parent": "minecraft:story/root",
+  "criteria": {
+    "has_basic_shield": {
+      "conditions": {
+        "items": [
+          {
+            "items": "gytrinket:shield_gy"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "display": {
+    "announce_to_chat": true,
+    "description": {
+      "translate": "advancements.gytrinket.story.obtain_basic_shield.description"
+    },
+    "frame": "task",
+    "hidden": false,
+    "icon": {
+      "id": "gytrinket:shield_gy"
+    },
+    "show_toast": true,
+    "title": {
+      "translate": "advancements.gytrinket.story.obtain_basic_shield.title"
+    }
+  },
+  "requirements": [
+    [
+      "has_basic_shield"
+    ]
+  ],
+  "sends_telemetry_event": true
+}

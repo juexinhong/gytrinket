@@ -1,0 +1,17 @@
+{
+  "required": true,
+  "package": "com.gytrinket.gytrinket.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "refmap": "gytrinket.refmap.json",
+  "minVersion": "0.8",
+  "client": [
+    "LivingEntityClientMixin",
+    "GameRendererMixin"
+  ],
+  "mixins": [
+    "LivingEntityMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

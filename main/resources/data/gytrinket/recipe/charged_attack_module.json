@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "F": {
+      "item": "gytrinket:attack_frame"
+    },
+    "C": {
+      "item": "gytrinket:focus_core"
+    },
+    "S": {
+      "item": "minecraft:string"
+    },
+    "W": {
+      "item": "minecraft:blue_wool"
+    }
+  },
+  "pattern": [
+    " F ",
+    "SCS",
+    " W "
+  ],
+  "result": {
+    "id": "gytrinket:charged_attack_module",
+    "count": 1
+  }
+}

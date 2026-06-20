@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " B ",
+    "ACA",
+    " D "
+  ],
+  "key": {
+    "A": {
+      "item": "minecraft:string"
+    },
+    "B": {
+      "item": "gytrinket:life_frame"
+    },
+    "C": {
+      "item": "gytrinket:statue"
+    },
+    "D": {
+      "item": "minecraft:blue_wool"
+    }
+  },
+  "result": {
+    "id": "gytrinket:colossus_module",
+    "count": 1
+  }
+}

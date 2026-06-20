@@ -1,0 +1,23 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "CTC",
+    "TGT"
+  ],
+  "key": {
+    "C": {
+      "item": "gytrinket:clock"
+    },
+    "T": {
+      "item": "minecraft:iron_ingot"
+    },
+    "G": {
+      "item": "minecraft:ghast_tear"
+    }
+  },
+  "result": {
+    "id": "gytrinket:gear",
+    "count": 1
+  }
+}

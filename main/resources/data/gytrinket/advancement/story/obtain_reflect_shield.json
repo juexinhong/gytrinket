@@ -1,0 +1,33 @@
+{
+  "parent": "minecraft:story/root",
+  "criteria": {
+    "has_reflect_shield": {
+      "conditions": {
+        "items": [
+          {
+            "items": "gytrinket:shield_reflect"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "display": {
+    "description": {
+      "translate": "advancements.gytrinket.story.obtain_reflect_shield.description"
+    },
+    "icon": {
+      "count": 1,
+      "id": "gytrinket:shield_reflect"
+    },
+    "title": {
+      "translate": "advancements.gytrinket.story.obtain_reflect_shield.title"
+    }
+  },
+  "requirements": [
+    [
+      "has_reflect_shield"
+    ]
+  ],
+  "sends_telemetry_event": true
+}

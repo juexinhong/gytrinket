@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " M ",
+    "LDL",
+    " B "
+  ],
+  "key": {
+    "M": {
+      "item": "gytrinket:movement_frame"
+    },
+    "L": {
+      "item": "minecraft:string"
+    },
+    "D": {
+      "item": "gytrinket:aerodynamic_design_draft"
+    },
+    "B": {
+      "item": "minecraft:blue_wool"
+    }
+  },
+  "result": {
+    "id": "gytrinket:aerodynamic_framework_module",
+    "count": 1
+  }
+}

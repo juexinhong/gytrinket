@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " B ",
+    "ADA",
+    " E "
+  ],
+  "key": {
+    "A": {
+      "item": "minecraft:string"
+    },
+    "B": {
+      "item": "gytrinket:modular_framework"
+    },
+    "D": {
+      "item": "gytrinket:adaptive_armor"
+    },
+    "E": {
+      "item": "minecraft:blue_wool"
+    }
+  },
+  "result": {
+    "id": "gytrinket:adaptive_armor_module",
+    "count": 1
+  }
+}

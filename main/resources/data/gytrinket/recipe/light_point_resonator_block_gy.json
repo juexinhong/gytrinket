@@ -1,0 +1,23 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "#": {
+      "item": "minecraft:redstone_lamp"
+    },
+    "X": {
+      "item": "minecraft:lapis_lazuli"
+    },
+    "Y": {
+      "item": "minecraft:blaze_powder"
+    }
+  },
+  "pattern": [
+    "YXY",
+    "X#X",
+    "YXY"
+  ],
+  "result": {
+    "id": "gytrinket:light_point_resonator_block_gy"
+  }
+}

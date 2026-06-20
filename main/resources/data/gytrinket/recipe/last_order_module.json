@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " % ",
+    "#@#",
+    " * "
+  ],
+  "key": {
+    "#": { "item": "minecraft:string" },
+    "%": { "item": "gytrinket:construct_frame" },
+    "@": { "item": "gytrinket:last_order_part" },
+    "*": { "item": "minecraft:blue_wool" }
+  },
+  "result": {
+    "id": "gytrinket:last_order_module",
+    "count": 1
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " T ",
+    "RDR",
+    " L "
+  ],
+  "key": {
+    "D": { "item": "gytrinket:drone_part" },
+    "T": { "item": "minecraft:tnt" },
+    "R": { "item": "minecraft:redstone" },
+    "L": { "item": "minecraft:lever" }
+  },
+  "result": {
+    "id": "gytrinket:last_order_part",
+    "count": 1
+  }
+}

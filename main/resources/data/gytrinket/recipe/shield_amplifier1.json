@@ -1,0 +1,20 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "III",
+    "ISI",
+    "III"
+  ],
+  "key": {
+    "I": {
+      "item": "minecraft:iron_ingot"
+    },
+    "S": {
+      "item": "gytrinket:shield_amplifier"
+    }
+  },
+  "result": {
+    "id": "gytrinket:shield_amplifier1",
+    "count": 1
+  }
+}

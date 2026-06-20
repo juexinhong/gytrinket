@@ -1,0 +1,278 @@
+package com.gytrinket.gytrinket.core.attack_mode.charged_attack;
+
+import com.gytrinket.gytrinket.Config;
+import com.gytrinket.gytrinket.core.attack_mode.AttackStateManager;
+import com.gytrinket.gytrinket.core.grudge.GrudgeManager;
+import com.gytrinket.gytrinket.gytrinket;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.neoforge.event.tick.PlayerTickEvent;
+
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+
+/**
+ * 充能攻击管理器 - 服务端核心逻辑
+ * <p>
+ * 充能攻击系统：
+ * 1. 需要光点核心中有指定物品才能启用
+ * 2. 生效时禁用玩家正常攻击行为
+ * 3. 按住左键时进行充能，充能无上限但有阻力制衡
+ * 4. 松开左键释放攻击，伤害 = 玩家当前伤害 * (1 + 充能值)
+ * 5. 只影响释放时的这一次攻击，后续连击不受影响
+ * <p>
+ * 跨系统交互通过 AttackModeManager 策略管理：
+ * - 充能期间强袭触发由管理器处理
+ * - 充能释放后触发点射由管理器处理
+ */
+@EventBusSubscriber(modid = gytrinket.MODID)
+public class ChargedAttackManager {
+
+    // 玩家充能数据
+    private static final Map<UUID, ChargedAttackData> PLAYER_CHARGE_DATA = new ConcurrentHashMap<>();
+
+    // 拥有充能攻击能力的玩家集合
+    private static final Set<UUID> PLAYER_HAS_CHARGED_ATTACK = new java.util.concurrent.CopyOnWriteArraySet<>();
+
+    private ChargedAttackManager() {}
+
+    /**
+     * 判断玩家是否拥有充能攻击能力
+     */
+    public static boolean hasChargedAttack(Player player) {
+        return PLAYER_HAS_CHARGED_ATTACK.contains(player.getUUID());
+    }
+
+    /**
+     * 设置玩家是否拥有充能攻击能力
+     */
+    public static void setHasChargedAttack(UUID playerUUID, boolean has) {
+        if (has) {
+            PLAYER_HAS_CHARGED_ATTACK.add(playerUUID);
+        } else {
+            PLAYER_HAS_CHARGED_ATTACK.remove(playerUUID);
+            PLAYER_CHARGE_DATA.remove(playerUUID);
+        }
+    }
+
+    /**
+     * 玩家是否正在充能中
+     */
+    public static boolean isCharging(Player player) {
+        ChargedAttackData data = PLAYER_CHARGE_DATA.get(player.getUUID());
+        return data != null && data.charging;
+    }
+
+    /**
+     * 获取玩家当前充能值
+     */
+    public static double getChargeValue(Player player) {
+        ChargedAttackData data = PLAYER_CHARGE_DATA.get(player.getUUID());
+        return data != null ? data.chargeValue : 0;
+    }
+
+    /**
+     * 计算充能速率
+     * 充能速率仅受攻击速度影响，不受攻击伤害影响
+     */
+    public static double calculateChargeRate(Player player) {
+        double baseRate = Config.getChargedAttackBaseChargeRate();
+        double attackSpeed = player.getAttributeValue(Attributes.ATTACK_SPEED);
+        double speedMultiplier = attackSpeed * Config.getChargedAttackSpeedScaleFactor();
+
+        return baseRate * speedMultiplier;
+    }
+
+    /**
+     * 计算带阻力的充能增量
+     * 阻力阈值仅受攻击速度影响，不受攻击伤害影响
+     */
+    public static double calculateChargeIncrement(double currentCharge, double baseRate, Player player) {
+        double dragCoeff = Config.getChargedAttackDragCoefficient();
+        double attackSpeed = player.getAttributeValue(Attributes.ATTACK_SPEED);
+        double dragThreshold = attackSpeed * Config.getChargedAttackDragThresholdFactor();
+        double dragFactor = 1.0 - dragCoeff * currentCharge / (currentCharge + dragThreshold);
+        return baseRate * Math.max(dragFactor, 0.01);
+    }
+
+    /**
+     * 开始充能
+     * 如果已经在充能中，不重置充能值（幂等操作）
+     */
+    public static void startCharging(UUID playerUUID) {
+        ChargedAttackData data = PLAYER_CHARGE_DATA.computeIfAbsent(playerUUID, k -> new ChargedAttackData());
+        if (data.charging) {
+            // 已经在充能中，不重置
+            return;
+        }
+        data.charging = true;
+        data.chargeValue = 0;
+    }
+
+    /**
+     * 更新充能值（每tick调用）
+     * 强袭触发已移至 AttackModeManager，此处仅处理充能计算
+     */
+    public static void updateCharging(UUID playerUUID, Player player) {
+        ChargedAttackData data = PLAYER_CHARGE_DATA.get(playerUUID);
+        if (data == null || !data.charging) {
+            return;
+        }
+
+        // 攻击强度小于1时暂停充能（如挖掘方块时攻击强度被消耗）
+        // 正常充能时攻击输入在客户端被取消，攻击强度不会被消耗，此处检查不会触发。
+        if (player.getAttackStrengthScale(0.0F) < 1.0F) {
+            return;
+        }
+
+        // 计算充能增量
+        double chargeRate = calculateChargeRate(player);
+
+        // 添加积怨充能速率（也受阻力影响）
+        double grudgeRate = GrudgeManager.getTotalGrudgeChargeRate(playerUUID);
+        chargeRate += grudgeRate;
+
+        double increment = calculateChargeIncrement(data.chargeValue, chargeRate, player);
+        data.chargeValue += increment;
+    }
+
+    /**
+     * 释放充能攻击，返回充能值
+     * 不立即清零充能值，改为标记释放状态，由tick进行快速消退
+     */
+    public static double releaseCharge(UUID playerUUID) {
+        ChargedAttackData data = PLAYER_CHARGE_DATA.get(playerUUID);
+        if (data == null || !data.charging) {
+            return 0;
+        }
+
+        double chargeValue = data.chargeValue;
+        data.charging = false;
+        data.releasing = true;
+
+        // 存储充能值到Tracker
+        ChargedAttackDamageTracker.setChargeValue(playerUUID, chargeValue);
+
+        return chargeValue;
+    }
+
+    /**
+     * 取消充能（不释放攻击）
+     */
+    public static void cancelCharging(UUID playerUUID) {
+        ChargedAttackData data = PLAYER_CHARGE_DATA.get(playerUUID);
+        if (data != null) {
+            data.charging = false;
+            data.chargeValue = 0;
+        }
+    }
+
+    @SubscribeEvent
+    public static void onPlayerTick(PlayerTickEvent.Post event) {
+        if (!(event.getEntity() instanceof ServerPlayer player)) {
+            return;
+        }
+
+        UUID uuid = player.getUUID();
+
+        if (!hasChargedAttack(player)) {
+            return;
+        }
+
+        ChargedAttackData data = PLAYER_CHARGE_DATA.get(uuid);
+        if (data == null) {
+            return;
+        }
+
+        if (data.charging) {
+            // 检查玩家是否仍然按住左键
+            if (AttackStateManager.isPlayerHeld(player)) {
+                // 持续充能
+                updateCharging(uuid, player);
+
+                // 每3 tick同步充能值到客户端
+                data.syncTickCounter++;
+                if (data.syncTickCounter >= 3) {
+                    data.syncTickCounter = 0;
+                    com.gytrinket.gytrinket.network.NetworkHandler.sendChargedAttackSyncToPlayer(player, data.chargeValue);
+                }
+            } else if (AttackStateManager.isPlayerReleased(player)) {
+                // 松开左键 - 释放充能攻击
+                double chargeValue = releaseCharge(uuid);
+                if (chargeValue > 0) {
+                    // 通知客户端释放攻击
+                    com.gytrinket.gytrinket.network.NetworkHandler.sendChargedAttackSyncToPlayer(player, chargeValue);
+                }
+            }
+        } else if (data.releasing) {
+            // 释放后快速消退：每刻消退 1 + 当前值的30%
+            double decay = 1.0 + data.chargeValue * 0.3;
+            data.chargeValue -= decay;
+
+            if (data.chargeValue <= 0) {
+                data.chargeValue = 0;
+                data.releasing = false;
+                // 同步0到客户端，清空HUD显示
+                com.gytrinket.gytrinket.network.NetworkHandler.sendChargedAttackSyncToPlayer(player, 0);
+            } else {
+                // 同步消退中的充能值到客户端
+                data.syncTickCounter++;
+                if (data.syncTickCounter >= 3) {
+                    data.syncTickCounter = 0;
+                    com.gytrinket.gytrinket.network.NetworkHandler.sendChargedAttackSyncToPlayer(player, data.chargeValue);
+                }
+            }
+
+            // 同步消退中的充能值到Tracker，供伤害处理使用
+            ChargedAttackDamageTracker.setChargeValue(uuid, data.chargeValue);
+        }
+    }
+
+    @SubscribeEvent
+    public static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
+        if (!(event.getEntity() instanceof ServerPlayer player)) {
+            return;
+        }
+        UUID uuid = player.getUUID();
+        PLAYER_CHARGE_DATA.remove(uuid);
+        PLAYER_HAS_CHARGED_ATTACK.remove(uuid);
+        ChargedAttackDamageTracker.removePlayer(uuid);
+    }
+
+    @SubscribeEvent
+    public static void onPlayerRespawn(PlayerEvent.PlayerRespawnEvent event) {
+        if (!(event.getEntity() instanceof ServerPlayer player)) {
+            return;
+        }
+        UUID uuid = player.getUUID();
+        PLAYER_CHARGE_DATA.remove(uuid);
+        ChargedAttackDamageTracker.removePlayer(uuid);
+    }
+
+    public static void clearAllData() {
+        PLAYER_CHARGE_DATA.clear();
+        PLAYER_HAS_CHARGED_ATTACK.clear();
+        ChargedAttackDamageTracker.clearAll();
+    }
+
+    private static class ChargedAttackData {
+        boolean charging;
+        boolean releasing;
+        double chargeValue;
+        // 同步计时器（每3 tick同步一次充能值到客户端）
+        int syncTickCounter;
+
+        ChargedAttackData() {
+            this.charging = false;
+            this.releasing = false;
+            this.chargeValue = 0;
+            this.syncTickCounter = 0;
+        }
+    }
+}

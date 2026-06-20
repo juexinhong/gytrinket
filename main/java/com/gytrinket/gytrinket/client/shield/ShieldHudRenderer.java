@@ -10,7 +10,6 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
-import net.neoforged.neoforge.client.gui.GuiLayerManager;
 
 public class ShieldHudRenderer {
     private static ShieldHudRenderer instance;
@@ -196,19 +195,10 @@ public class ShieldHudRenderer {
         int screenWidth = mc.getWindow().getGuiScaledWidth();
         int screenHeight = mc.getWindow().getGuiScaledHeight();
 
-        net.minecraft.client.gui.Gui gui = mc.gui;
-        float maxHealth = player.getMaxHealth();
-        float absorb = player.getAbsorptionAmount();
-        int healthRows = Mth.ceil((maxHealth + absorb) / 2.0F / 10.0F);
-        int rowHeight = Math.max(10 - (healthRows - 2), 3);
-
-        int addedByHealth = healthRows * rowHeight;
-        if (rowHeight != 10) addedByHealth += 10 - rowHeight;
-
-        int leftHeight = 49;
-
+        // 护盾 HUD 紧贴在生命条下方（生命条底部 Y = screenHeight - 39）
+        // 生命条多排心时向上扩展，底部位置不变，护盾 HUD 不会偏移
         int left = screenWidth / 2 - 92 + Config.HUD_VANILLA_OFFSET_X.get();
-        int top = screenHeight - leftHeight + addedByHealth - 1 + Config.HUD_VANILLA_OFFSET_Y.get();
+        int top = screenHeight - 40 + Config.HUD_VANILLA_OFFSET_Y.get();
 
         float scale = Config.VANILLA_STYLE_HUD_SCALE.get().floatValue();
 

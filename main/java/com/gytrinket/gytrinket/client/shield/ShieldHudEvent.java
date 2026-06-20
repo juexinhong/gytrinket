@@ -20,8 +20,7 @@ public class ShieldHudEvent {
         if (Minecraft.getInstance().screen != null) return;
 
         if (Config.VANILLA_STYLE_HUD.get()) {
-            // 生存模式：PLAYER_HEALTH 图层会触发
-            // 创造模式：PLAYER_HEALTH 不会触发，使用 HOTBAR 作为备选（创造和生存都会渲染）
+            // 只在 PLAYER_HEALTH 图层渲染后触发一次，避免重复渲染
             boolean isHealthLayer = event.getName().equals(VanillaGuiLayers.PLAYER_HEALTH);
             boolean isHotbarLayer = event.getName().equals(VanillaGuiLayers.HOTBAR);
 
@@ -33,7 +32,7 @@ public class ShieldHudEvent {
                 ShieldHudRenderer.getInstance().render(event.getGuiGraphics());
             }
 
-            // 在帧结束时重置标记（EXPERIENCE_LEVEL是最后渲染的图层之一）
+            // 在帧结束时重置标记
             if (event.getName().equals(VanillaGuiLayers.EXPERIENCE_LEVEL)) {
                 renderedThisFrame = false;
             }

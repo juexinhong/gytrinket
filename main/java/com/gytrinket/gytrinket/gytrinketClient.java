@@ -11,6 +11,7 @@ import net.neoforged.neoforge.client.gui.ConfigurationScreen;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 
 // This class will not load on dedicated servers. Accessing client side code from here is safe.
+// 注意：实际的客户端事件注册（渲染器、按键、粒子等）在 client.ModClient 中处理
 @Mod(value = gytrinket.MODID, dist = Dist.CLIENT)
 // You can use EventBusSubscriber to automatically register all static methods in the class annotated with @SubscribeEvent
 @EventBusSubscriber(modid = gytrinket.MODID, value = Dist.CLIENT)

@@ -3,6 +3,7 @@ package com.gytrinket.gytrinket.core.shield.type;
 import com.gytrinket.gytrinket.Config;
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
 import com.gytrinket.gytrinket.core.shield.ShieldManager;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
@@ -10,6 +11,7 @@ import net.minecraft.world.entity.projectile.Arrow;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.entity.projectile.ThrownPotion;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.neoforge.event.entity.EntityInvulnerabilityCheckEvent;
 import net.neoforged.neoforge.event.entity.ProjectileImpactEvent;
 import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
 import net.neoforged.neoforge.event.level.ExplosionEvent;
@@ -130,6 +132,11 @@ public class ReflectShieldType implements IShieldType {
         }
 
         if (projectile.getOwner() == player) {
+            return;
+        }
+
+        // 跳过已反射的弹射物，防止二次反射
+        if (REFLECTED_PROJECTILES.containsKey(projectile.getId())) {
             return;
         }
 
@@ -272,6 +279,32 @@ public class ReflectShieldType implements IShieldType {
 
     @Override
     public void onTick(Player player) {
+    }
+
+    /**
+     * 处理免疫判定事件
+     * - 当反射弹射物击中免疫该伤害类型的实体时（如烈焰人免疫火焰），
+     *   强制绕过免疫判定，使伤害流程继续到 LivingIncomingDamageEvent，
+     *   以便 onLivingAttack 能将伤害类型转换为爆炸伤害
+     */
+    @SubscribeEvent
+    public static void onInvulnerabilityCheck(EntityInvulnerabilityCheckEvent event) {
+        if (!event.isInvulnerable()) {
+            return;
+        }
+
+        DamageSource source = event.getSource();
+        Entity directEntity = source.getDirectEntity();
+        if (!(directEntity instanceof Projectile projectile)) {
+            return;
+        }
+
+        if (!REFLECTED_PROJECTILES.containsKey(projectile.getId())) {
+            return;
+        }
+
+        // 反射弹射物：绕过目标实体的伤害类型免疫
+        event.setInvulnerable(false);
     }
 
     /**

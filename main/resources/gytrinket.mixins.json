@@ -6,10 +6,13 @@
   "minVersion": "0.8",
   "client": [
     "LivingEntityClientMixin",
-    "GameRendererMixin"
+    "GameRendererMixin",
+    "MinecraftClientMixin",
+    "ParticleEngineAccessor"
   ],
   "mixins": [
-    "LivingEntityMixin"
+    "LivingEntityMixin",
+    "PlayerMixin"
   ],
   "injectors": {
     "defaultRequire": 1

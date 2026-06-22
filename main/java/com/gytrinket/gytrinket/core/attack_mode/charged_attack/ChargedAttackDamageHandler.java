@@ -3,9 +3,11 @@ package com.gytrinket.gytrinket.core.attack_mode.charged_attack;
 import com.gytrinket.gytrinket.gytrinket;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.common.ItemAbilities;
 import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
 
 import java.util.UUID;
@@ -13,10 +15,11 @@ import java.util.UUID;
 /**
  * 充能攻击伤害处理
  * <p>
- * 1. 充能期间的攻击禁用由客户端 InteractionKeyMappingTriggered 从根源上阻止
+ * 1. 充能期间的攻击禁用由客户端 Mixin 从根源上阻止
  * 2. 充能释放后，每次攻击都可以消耗当前充能值获得伤害加成
  * 3. 充能值随tick快速消退，自然处理衰减
  * 4. 首次释放攻击全额生效（充能值尚未消退）
+ * 5. 横扫伤害额外受充能值加成（每点+10%，最高100%）
  */
 @EventBusSubscriber(modid = gytrinket.MODID)
 public class ChargedAttackDamageHandler {
@@ -52,6 +55,16 @@ public class ChargedAttackDamageHandler {
 
         // 充能值乘算加成：最终伤害 = 原始伤害 * (1 + 充能值)
         float newDamage = event.getNewDamage() * (1.0F + (float) chargeValue);
+
+        // 横扫伤害额外加成：剑类物品对横扫目标（非主要攻击目标）额外提升横扫伤害
+        // 通过 PlayerMixin 记录的主要攻击目标来区分直接攻击和横扫目标
+        ItemStack mainHandItem = player.getMainHandItem();
+        if (mainHandItem.canPerformAction(ItemAbilities.SWORD_SWEEP)
+                && ChargedAttackSweepHandler.isSweepTarget(playerUUID, target)) {
+            float sweepMultiplier = ChargedAttackSweepHandler.getSweepDamageMultiplier(chargeValue);
+            newDamage *= sweepMultiplier;
+        }
+
         event.setNewDamage(newDamage);
     }
 }

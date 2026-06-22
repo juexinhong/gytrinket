@@ -7,6 +7,7 @@ import com.gytrinket.gytrinket.core.shield.cooldown.ShieldCooldownManager;
 import com.gytrinket.gytrinket.core.shield.ShieldManager;
 import com.gytrinket.gytrinket.core.upgrade.UpgradeData;
 import com.gytrinket.gytrinket.core.upgrade.UpgradeManager;
+import com.gytrinket.gytrinket.network.packet.ChargedSweepParticlePacket;
 import com.gytrinket.gytrinket.network.packet.ShieldParticlePacket;
 import com.gytrinket.gytrinket.storage.PlayerStore;
 import com.gytrinket.gytrinket.storage.PlayerStoreManager;
@@ -81,6 +82,7 @@ public class NetworkHandler {
         registrar.playToClient(ResponseConfigDataPayload.TYPE, ResponseConfigDataPayload.STREAM_CODEC, ResponseConfigDataPayload::handle);
         registrar.playToClient(SyncChargedAttackPayload.TYPE, SyncChargedAttackPayload.STREAM_CODEC, SyncChargedAttackPayload::handle);
         registrar.playToClient(SyncBurstFiringPayload.TYPE, SyncBurstFiringPayload.STREAM_CODEC, SyncBurstFiringPayload::handle);
+        registrar.playToClient(ChargedSweepParticlePacket.TYPE, ChargedSweepParticlePacket.STREAM_CODEC, ChargedSweepParticlePacket::handle);
     }
 
     // ======================== Helper send methods ========================
@@ -97,7 +99,7 @@ public class NetworkHandler {
         double offsetY = y - originY;
         double offsetZ = z - originZ;
 
-        PacketDistributor.sendToPlayer(player,
+        PacketDistributor.sendToPlayersTrackingEntityAndSelf(player,
             new ShieldParticlePacket(trackedEntity.getId(), originOffsetX, originOffsetY, originOffsetZ, offsetX, offsetY, offsetZ, dirX, dirY, dirZ, delayTicks));
     }
 
@@ -118,11 +120,11 @@ public class NetworkHandler {
     }
 
     public static void sendAuraParticlesToPlayer(ServerPlayer player, double x, double y, double z, double radius) {
-        PacketDistributor.sendToPlayer(player, new AuraParticlePayload(x, y, z, radius));
+        PacketDistributor.sendToPlayersTrackingEntityAndSelf(player, new AuraParticlePayload(x, y, z, radius));
     }
 
     public static void sendReflectParticlesToPlayer(ServerPlayer player, double x, double y, double z, double radius, double dirX, double dirY, double dirZ) {
-        PacketDistributor.sendToPlayer(player, new ReflectParticlePayload(x, y, z, radius, dirX, dirY, dirZ));
+        PacketDistributor.sendToPlayersTrackingEntityAndSelf(player, new ReflectParticlePayload(x, y, z, radius, dirX, dirY, dirZ));
     }
 
     public static void sendLightningToAll(net.minecraft.server.level.ServerLevel level, List<com.gytrinket.gytrinket.core.attack_mode.electric_discharge.ElectricDischargeManager.LightningSegment> segments) {
@@ -151,7 +153,7 @@ public class NetworkHandler {
 
     public static void sendSiphonParticlesToPlayer(ServerPlayer player, double targetX, double targetY, double targetZ, double targetHeight,
                                                     double playerHeadX, double playerHeadY, double playerHeadZ) {
-        PacketDistributor.sendToPlayer(player,
+        PacketDistributor.sendToPlayersTrackingEntityAndSelf(player,
             new SiphonParticlePayload(targetX, targetY, targetZ, targetHeight, playerHeadX, playerHeadY, playerHeadZ));
     }
 

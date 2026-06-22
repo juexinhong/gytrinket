@@ -2,7 +2,7 @@ package com.gytrinket.gytrinket.core.damage;
 
 import com.gytrinket.gytrinket.gytrinket;
 import net.minecraft.world.entity.LivingEntity;
-import net.neoforged.neoforge.event.tick.LevelTickEvent;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -40,14 +40,16 @@ public class InvincibilityMarkerManager {
     }
 
     /**
-     * 监听世界刻事件
+     * 监听服务端刻事件
      * <p>
      * 每刻更新所有标记的剩余时间，到期自动移除。
+     * 使用 ServerTickEvent 而非 LevelTickEvent，避免多维度下每维度各递减一次
+     * 导致无敌时间缩短为 1/N（N为已加载维度数量）。
      * </p>
      */
     @SubscribeEvent
-    public static void onLevelTick(LevelTickEvent.Post event) {
-        if (event.getLevel().isClientSide) {
+    public static void onServerTick(ServerTickEvent.Post event) {
+        if (MARKER_DATA.isEmpty()) {
             return;
         }
 

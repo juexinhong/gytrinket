@@ -2,6 +2,7 @@ package com.gytrinket.gytrinket.event;
 
 import com.gytrinket.gytrinket.Config;
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
+import com.gytrinket.gytrinket.core.level.ModLevelManager;
 import com.gytrinket.gytrinket.gytrinket;
 import com.gytrinket.gytrinket.storage.PlayerStore;
 import com.gytrinket.gytrinket.storage.PlayerStoreManager;
@@ -23,12 +24,6 @@ import java.util.Set;
 
 @EventBusSubscriber(modid = gytrinket.MODID)
 public class QuickEquipEvent {
-
-    private static final int SHIELD_SWAP_EXP_LEVEL = 5;
-
-    private static int getShieldSwapRequiredLevel() {
-        return Math.max(1, (int) Math.ceil(SHIELD_SWAP_EXP_LEVEL * Config.getQuickEquipExpLevelMultiplier()));
-    }
 
     private QuickEquipEvent() {}
 
@@ -88,16 +83,15 @@ public class QuickEquipEvent {
         boolean newIsCompatible = newShieldTypes.stream().allMatch(Config::isShieldTypeCompatible);
 
         if (!newIsCompatible) {
-            int requiredLevel = getShieldSwapRequiredLevel();
-            if (player.experienceLevel < requiredLevel) {
-                player.sendSystemMessage(Component.translatable("message.gytrinket.quick_equip.not_enough_level", requiredLevel));
+            int cost = Config.getQuickEquipUpgradePointsCost();
+            if (ModLevelManager.getUpgradePoints(player.getUUID()) < cost) {
+                player.sendSystemMessage(Component.translatable("message.gytrinket.quick_equip.not_enough_points"));
                 return;
             }
 
             transferItemsToPlayer(player, handler, shieldSlots);
 
-            int expCost = calculateExpCost(requiredLevel);
-            player.giveExperiencePoints(-expCost);
+            ModLevelManager.consumeUpgradePoints(player.getUUID(), cost);
 
             addToStore(handler, stack);
             player.sendSystemMessage(Component.translatable("message.gytrinket.quick_equip.shield_swapped"));
@@ -113,16 +107,15 @@ public class QuickEquipEvent {
             }
 
             if (!incompatibleSlots.isEmpty()) {
-                int requiredLevel = getShieldSwapRequiredLevel();
-                if (player.experienceLevel < requiredLevel) {
-                    player.sendSystemMessage(Component.translatable("message.gytrinket.quick_equip.not_enough_level", requiredLevel));
+                int cost = Config.getQuickEquipUpgradePointsCost();
+                if (ModLevelManager.getUpgradePoints(player.getUUID()) < cost) {
+                    player.sendSystemMessage(Component.translatable("message.gytrinket.quick_equip.not_enough_points"));
                     return;
                 }
 
                 transferItemsToPlayer(player, handler, incompatibleSlots);
 
-                int expCost = calculateExpCost(requiredLevel);
-                player.giveExperiencePoints(-expCost);
+                ModLevelManager.consumeUpgradePoints(player.getUUID(), cost);
             }
 
             if (!hasEmptySlot(handler)) {
@@ -146,14 +139,13 @@ public class QuickEquipEvent {
         }
 
         int uniqueItemsCount = countUniqueItems(handler);
-        int requiredLevel = Math.max(1, (int) Math.ceil(uniqueItemsCount * Config.getQuickEquipExpLevelMultiplier()));
-        if (player.experienceLevel < requiredLevel) {
-            player.sendSystemMessage(Component.translatable("message.gytrinket.quick_equip.not_enough_level", requiredLevel));
+        int cost = Config.getQuickEquipUpgradePointsCost();
+        if (ModLevelManager.getUpgradePoints(player.getUUID()) < cost) {
+            player.sendSystemMessage(Component.translatable("message.gytrinket.quick_equip.not_enough_points"));
             return;
         }
 
-        int expToDeduct = calculateExpCost(requiredLevel);
-        player.giveExperiencePoints(-expToDeduct);
+        ModLevelManager.consumeUpgradePoints(player.getUUID(), cost);
 
         addToStore(handler, stack);
         player.sendSystemMessage(Component.translatable("message.gytrinket.quick_equip.success"));
@@ -244,16 +236,6 @@ public class QuickEquipEvent {
             }
         }
         return uniqueItems.size();
-    }
-
-    private static int calculateExpCost(int level) {
-        if (level <= 16) {
-            return level * level + 6 * level;
-        } else if (level <= 31) {
-            return (int) (2.5 * level * level - 40.5 * level + 360);
-        } else {
-            return (int) (4.5 * level * level - 162.5 * level + 2220);
-        }
     }
 
     private static void addToStore(ItemStackHandler handler, ItemStack stack) {

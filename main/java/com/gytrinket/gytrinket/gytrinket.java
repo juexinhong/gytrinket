@@ -59,6 +59,7 @@ public class gytrinket {
         NeoForge.EVENT_BUS.register(ReflectShieldType.class);
 
         modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
+        modContainer.registerConfig(ModConfig.Type.CLIENT, ClientConfig.SPEC);
 
         modEventBus.addListener(this::setup);
         modEventBus.addListener(this::registerEntityAttributes);

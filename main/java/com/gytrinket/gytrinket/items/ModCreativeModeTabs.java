@@ -98,6 +98,7 @@ public class ModCreativeModeTabs {
 
                         // 再生物品
                         output.accept(ModItems.REGEN_MODULE.get());
+                        output.accept(ModItems.QUICK_RECONSTRUCTION_MODULE.get());
                         output.accept(ModItems.REGEN_SHIELD_MODULE.get());
 
                         // 协同物品

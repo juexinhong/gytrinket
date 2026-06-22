@@ -6,7 +6,8 @@ import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
-import net.neoforged.neoforge.event.tick.LevelTickEvent;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import net.neoforged.neoforge.server.ServerLifecycleHooks;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 
@@ -34,8 +35,6 @@ public class IgniteManager {
 
     /** 实体点燃数据映射（目标UUID -> 点燃数据列表） */
     private static final Map<UUID, List<IgniteData>> ENTITY_IGNITE_DATA = new HashMap<>();
-    /** 上次处理的游戏刻（用于防止同一刻重复处理） */
-    private static long lastProcessedTick = -1;
 
     /**
      * 对目标施加点燃
@@ -181,23 +180,16 @@ public class IgniteManager {
     }
 
     /**
-     * 世界刻事件处理（处理所有实体）
-     * 使用 LevelTickEvent 确保使用正确的 level.getGameTime()
+     * 服务器刻事件处理（处理所有实体）
+     * 使用 ServerTickEvent 避免多维度下重复处理
      */
     @SubscribeEvent
-    public static void onLevelTick(LevelTickEvent.Post event) {
+    public static void onServerTick(ServerTickEvent.Post event) {
+        if (ServerLifecycleHooks.getCurrentServer() == null) {
+            return;
+        }
 
-        if (event.getLevel().isClientSide) {
-            return;
-        }
-        
-        long currentTick = event.getLevel().getGameTime();
-        
-        // 确保每个游戏刻只处理一次
-        if (currentTick == lastProcessedTick) {
-            return;
-        }
-        lastProcessedTick = currentTick;
+        long currentTick = ServerLifecycleHooks.getCurrentServer().overworld().getGameTime();
 
         for (UUID uuid : new HashSet<>(ENTITY_IGNITE_DATA.keySet())) {
             processIgniteTick(uuid, currentTick);

@@ -2,6 +2,7 @@ package com.gytrinket.gytrinket.event;
 
 import com.gytrinket.gytrinket.Config;
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
+import com.gytrinket.gytrinket.core.level.ModLevelManager;
 import com.gytrinket.gytrinket.gytrinket;
 import com.gytrinket.gytrinket.storage.PlayerStore;
 import com.gytrinket.gytrinket.storage.PlayerStoreManager;
@@ -37,7 +38,7 @@ public class AdvancedEngineeringEventHandler {
             return;
         }
 
-        int level = Math.max(0, player.experienceLevel);
+        int level = Math.max(0, ModLevelManager.getModLevel(playerUUID));
         double bonus = level * Config.ADVANCED_ENGINEERING_BONUS_PER_LEVEL.get();
 
         AttributeManager.setDynamicAttribute(playerUUID, NAMESPACE, "drone_health_independent", bonus);

@@ -1,7 +1,6 @@
 package com.gytrinket.gytrinket.core.shield.cooldown;
 
 import com.gytrinket.gytrinket.core.attack_cooldown.AttackCooldownModifier;
-import com.gytrinket.gytrinket.core.attack_cooldown.AttackCooldownEfficiencyModifier;
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
 import com.gytrinket.gytrinket.core.shield.ShieldManager;
 import com.gytrinket.gytrinket.event.AttributeDynamicChangeEvent;
@@ -12,7 +11,6 @@ import com.gytrinket.gytrinket.gytrinket;
 import com.gytrinket.gytrinket.network.NetworkHandler;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
-import net.neoforged.neoforge.event.tick.LevelTickEvent;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -37,7 +35,6 @@ public class ShieldCooldownManager {
     static {
         registerModifier(new DamageReductionModifier());
         registerModifier(new AttackCooldownModifier());
-        registerModifier(new AttackCooldownEfficiencyModifier());
     }
 
     public static void registerModifier(IShieldCooldownModifier modifier) {

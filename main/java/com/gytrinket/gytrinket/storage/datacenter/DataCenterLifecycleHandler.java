@@ -11,6 +11,8 @@ import com.gytrinket.gytrinket.core.shield_transfer.ShieldTransferManager;
 import com.gytrinket.gytrinket.gytrinket;
 import com.gytrinket.gytrinket.storage.PlayerStore;
 import com.gytrinket.gytrinket.storage.PlayerStoreManager;
+import com.gytrinket.gytrinket.core.level.ModLevelDataSlot;
+import com.gytrinket.gytrinket.core.level.ModLevelManager;
 import com.gytrinket.gytrinket.core.upgrade.UpgradeDataSlot;
 import com.gytrinket.gytrinket.storage.datacenter.slot.HealthDataSlot;
 import com.gytrinket.gytrinket.storage.datacenter.slot.LightPointStoreSlot;
@@ -49,6 +51,7 @@ public class DataCenterLifecycleHandler {
 
         PlayerDataCenter.registerSlot(new LightPointStoreSlot());
         PlayerDataCenter.registerSlot(new UpgradeDataSlot());
+        PlayerDataCenter.registerSlot(new ModLevelDataSlot());
         PlayerDataCenter.registerSlot(new ShieldTypeSlot());
         PlayerDataCenter.registerSlot(new ShieldDataSlot());
         PlayerDataCenter.registerSlot(new HealthDataSlot());
@@ -170,6 +173,9 @@ public class DataCenterLifecycleHandler {
         }
 
         gytrinket.LOGGER.info("困难模式：玩家 {} 死亡，光点核心物品已清空", player.getUUID());
+
+        ModLevelManager.resetData(player.getUUID());
+        gytrinket.LOGGER.info("困难模式：玩家 {} 死亡，光点等级已重置", player.getUUID());
     }
 
     // ===== 构造体/无人机数据保存/加载（使用Attachment替代SavedData） =====

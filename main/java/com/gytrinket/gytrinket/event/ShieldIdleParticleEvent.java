@@ -1,6 +1,6 @@
 package com.gytrinket.gytrinket.event;
 
-import com.gytrinket.gytrinket.Config;
+import com.gytrinket.gytrinket.ClientConfig;
 import com.gytrinket.gytrinket.core.shield.ShieldManager;
 import com.gytrinket.gytrinket.gytrinket;
 import com.gytrinket.gytrinket.network.NetworkHandler;
@@ -52,7 +52,7 @@ public class ShieldIdleParticleEvent {
      * 供伤害系统无方向伤害时调用
      */
     public static void triggerIdleParticles(ServerPlayer player) {
-        if (!Config.SHIELD_IDLE_PARTICLE_ENABLED.get()) {
+        if (!ClientConfig.isLoaded() || !ClientConfig.SHIELD_IDLE_PARTICLE_ENABLED.get()) {
             return;
         }
         resetIdleTimer(player.getUUID());
@@ -64,7 +64,7 @@ public class ShieldIdleParticleEvent {
      */
     @SubscribeEvent
     public static void onServerTick(ServerTickEvent.Post event) {
-        if (!Config.SHIELD_IDLE_PARTICLE_ENABLED.get()) {
+        if (!ClientConfig.isLoaded() || !ClientConfig.SHIELD_IDLE_PARTICLE_ENABLED.get()) {
             return;
         }
 

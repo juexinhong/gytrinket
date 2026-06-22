@@ -237,6 +237,7 @@
   "item.gytrinket.core_armor_module": "Core Armor Module",
 
   "item.gytrinket.regen_module": "Regeneration Module",
+  "item.gytrinket.quick_reconstruction_module": "Quick Reconstruction Module",
   "item.gytrinket.regen_shield_module": "Shield Regen Module",
 
   "item.gytrinket.efficiency_module": "Efficiency Module",
@@ -367,6 +368,7 @@
   "message.gytrinket.quick_equip.already_exists": "Same item already exists in Light Point Core",
   "message.gytrinket.quick_equip.core_full": "Light Point Core is full",
   "message.gytrinket.quick_equip.not_enough_level": "Not enough experience levels, need level %d",
+  "message.gytrinket.quick_equip.not_enough_points": "Not enough upgrade points",
   "message.gytrinket.quick_equip.success": "Equipped to Light Point Core",
   "message.gytrinket.quick_equip.shield_swapped": "Shield swapped in Light Point Core",
 
@@ -402,5 +404,12 @@
   "screen.gytrinket.back": "Back",
   "screen.gytrinket.add_item_prompt": "Item ID (e.g. minecraft:diamond):",
   "screen.gytrinket.no_attributes_registered": "No attributes registered",
-  "screen.gytrinket.reorder_hint": "Drop to reorder"
+  "screen.gytrinket.reorder_hint": "Drop to reorder",
+
+  "screen.gytrinket.light_point_level": "Light Point Level",
+  "screen.gytrinket.light_point_exp": "Light Point Exp",
+  "screen.gytrinket.upgrade_points": "Upgrade Points",
+
+  "command.gytrinket.resetlevel.success": "Light Point Level has been reset",
+  "command.gytrinket.resetlevel.not_player": "This command can only be executed by a player"
 }

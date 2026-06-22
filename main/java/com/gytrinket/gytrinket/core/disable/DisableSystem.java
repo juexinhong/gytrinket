@@ -112,12 +112,17 @@ public class DisableSystem {
                 if (disabledItems.contains(itemId)) continue;
                 Set<String> deps = ITEM_DEPENDENCIES.get(itemId);
                 if (deps == null) continue;
+                // OR逻辑：只有当所有依赖都未装备（不存在或被禁用）时才禁用
+                boolean anyDepAvailable = false;
                 for (String dep : deps) {
-                    if (!storeItemIds.contains(dep) || disabledItems.contains(dep)) {
-                        disabledItems.add(itemId);
-                        changed = true;
+                    if (storeItemIds.contains(dep) && !disabledItems.contains(dep)) {
+                        anyDepAvailable = true;
                         break;
                     }
+                }
+                if (!anyDepAvailable) {
+                    disabledItems.add(itemId);
+                    changed = true;
                 }
             }
         }

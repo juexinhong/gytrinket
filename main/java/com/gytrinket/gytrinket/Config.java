@@ -241,11 +241,10 @@ public class Config {
     public static final ModConfigSpec.ConfigValue<List<? extends String>> UPGRADE_PATHS;
 
     // ===== 33. 快速装备 (quick_equip) =====
-    public static final ModConfigSpec.DoubleValue QUICK_EQUIP_EXP_LEVEL_MULTIPLIER;
+    public static final ModConfigSpec.IntValue QUICK_EQUIP_UPGRADE_POINTS_COST;
 
     // ===== 34. 其他通用设置 =====
     public static final ModConfigSpec.ConfigValue<Boolean> HARDCORE_MODE_ENABLED;
-    public static final ModConfigSpec.ConfigValue<Boolean> SHIELD_IDLE_PARTICLE_ENABLED;
     public static final ModConfigSpec.IntValue SHIELD_BLOCK_INVULNERABLE_TICKS;
     public static final ModConfigSpec.DoubleValue IGNITE_DEFAULT_DAMAGE;
     public static final ModConfigSpec.IntValue IGNITE_DEFAULT_DURATION;
@@ -253,18 +252,6 @@ public class Config {
     public static final ModConfigSpec.ConfigValue<Boolean> NATURAL_RECOVERY_PLAYER_HEALTH_ENABLED;
     public static final ModConfigSpec.DoubleValue NATURAL_RECOVERY_SHIELD;
     public static final ModConfigSpec.DoubleValue NATURAL_RECOVERY_ATTACK_COOLDOWN_PENALTY;
-    public static final ModConfigSpec.ConfigValue<Boolean> VANILLA_STYLE_HUD;
-    public static final ModConfigSpec.DoubleValue VANILLA_STYLE_HUD_SCALE;
-    public static final ModConfigSpec.DoubleValue HUD_VANILLA_COOLDOWN_ALPHA;
-    public static final ModConfigSpec.IntValue HUD_DEFAULT_OFFSET_X;
-    public static final ModConfigSpec.IntValue HUD_DEFAULT_OFFSET_Y;
-    public static final ModConfigSpec.IntValue HUD_DEFAULT_BAR_WIDTH;
-    public static final ModConfigSpec.IntValue HUD_DEFAULT_BAR_HEIGHT;
-    public static final ModConfigSpec.IntValue HUD_DEFAULT_COOLDOWN_HEIGHT;
-    public static final ModConfigSpec.IntValue HUD_VANILLA_OFFSET_X;
-    public static final ModConfigSpec.IntValue HUD_VANILLA_OFFSET_Y;
-    public static final ModConfigSpec.IntValue HUD_VANILLA_TEXT_OFFSET_X;
-    public static final ModConfigSpec.IntValue HUD_VANILLA_TEXT_OFFSET_Y;
 
     static final ModConfigSpec SPEC;
 
@@ -444,6 +431,8 @@ public class Config {
 
                 "gytrinket:grudge_module|player_health_percent=0.05|attack_damage_percent=0.05|movement_speed_independent=-0.1",
 
+                "gytrinket:quick_reconstruction_module|recovery_efficiency_percent=1.0|player_health=10|coating=2",
+
                 "minecraft:command_block|shield_effect_percent=1.0|shield_cooldown_reduction_percent=0.8|shield_damage_reduction=-0.9|shield_self_damage_reduction=-0.9|player_health_percent=1|attack_speed_percent=1|attack_damage_percent=1|knockback_resistance=1|player_knockback_percent=1|movement_speed_percent=0.5|player_damage_reduction=-0.9|player_self_damage_reduction=-0.9|recovery_efficiency=0.5"
             ),
             s -> true
@@ -509,14 +498,17 @@ public class Config {
             "没有写则默认不禁用任何物品",
             "示例：gytrinket:item_a|gytrinket:item_b,gytrinket:item_c"
         ).defineListAllowEmpty("itemDisableTargets",
-            List.of("gytrinket:assault_drone_module|gytrinket:defense_drone_module"),
+            List.of(
+                "gytrinket:assault_drone_module|gytrinket:defense_drone_module",
+                "gytrinket:quick_reconstruction_module|gytrinket:shield_gy,gytrinket:shield_gy1,gytrinket:shield_gy2,gytrinket:shield_gy3,gytrinket:shield_aura_ring,gytrinket:shield_aura_ring1,gytrinket:shield_aura_ring2,gytrinket:shield_aura_ring3,gytrinket:shield_siphon,gytrinket:shield_siphon1,gytrinket:shield_siphon2,gytrinket:shield_siphon3,gytrinket:shield_reflect,gytrinket:shield_reflect1,gytrinket:shield_reflect2,gytrinket:shield_reflect3,gytrinket:shield_amplifier,gytrinket:shield_amplifier1,gytrinket:shield_amplifier2,gytrinket:shield_amplifier3,gytrinket:shield_warp,gytrinket:shield_warp1,gytrinket:shield_warp2,gytrinket:shield_warp3,gytrinket:shield_amplifier_module,gytrinket:barrier_shield_module,gytrinket:reflect_shield_module,gytrinket:ultimate_shield_module,gytrinket:shield_cooldown_reduction_module,gytrinket:shield_quick_charge_module,gytrinket:explosive_shield_module,gytrinket:shield_effect_boost_module,gytrinket:divergent_shield_module,gytrinket:focused_shield_module,gytrinket:weaponized_shield_module,gytrinket:regen_shield_module,gytrinket:shield_transfer_module,gytrinket:charged_shield_module,gytrinket:electric_energy_release_module"
+            ),
             s -> true);
 
         ITEM_DEPENDENCIES_CONFIG = BUILDER.comment(
             "物品依赖配置",
             "格式：物品ID|依赖物品ID1,依赖物品ID2",
-            "该物品需要所有依赖物品都存在且未被禁用才能生效",
-            "当任一依赖物品被禁用或不存在时，该物品也会被禁用",
+            "该物品需要至少一个依赖物品存在且未被禁用才能生效",
+            "当所有依赖物品都被禁用或不存在时，该物品也会被禁用",
             "没有写则默认不依赖任何物品",
             "示例：gytrinket:assault_drone_module|gytrinket:drone_module"
         ).defineListAllowEmpty("itemDependencies",
@@ -1541,12 +1533,11 @@ public class Config {
         // ===== 33. 快速装备 =====
         BUILDER.comment("快速装备配置").push("quick_equip");
 
-        QUICK_EQUIP_EXP_LEVEL_MULTIPLIER = BUILDER.comment(
-            "快速装备经验需求倍率",
-            "直接乘在需要的经验等级上",
-            "例如：倍率为2时，光点核心内已有1个物品，再装备时需求等级为1×2=2级",
-            "默认1.0（无加成）"
-        ).defineInRange("expLevelMultiplier", 1.0, 0.0, 100.0);
+        QUICK_EQUIP_UPGRADE_POINTS_COST = BUILDER.comment(
+            "快速装备每次消耗的升级点数量",
+            "每次触发快速装备时消耗的升级点数量",
+            "默认1"
+        ).defineInRange("upgradePointsCost", 1, 0, 100);
 
         BUILDER.pop();
 
@@ -1561,18 +1552,12 @@ public class Config {
 
         BUILDER.pop();
 
-        BUILDER.comment("护盾待机粒子配置").push("shield_idle_particle");
-
-        SHIELD_IDLE_PARTICLE_ENABLED = BUILDER.comment(
-            "是否启用护盾待机粒子特效",
-            "启用后，当玩家拥有护盾时，每隔一定时间在玩家两侧生成护盾粒子",
-            "默认不启用"
-        ).define("enabled", false);
+        BUILDER.comment("护盾格挡配置").push("shield_block");
 
         SHIELD_BLOCK_INVULNERABLE_TICKS = BUILDER.comment(
             "护盾格挡时施加的无敌状态持续时间（刻）",
             "当护盾完全吸收伤害时，被攻击者获得短暂无敌帧",
-            "默认6刻（0.3秒）"
+            "默认10刻（0.5秒）"
         ).defineInRange("blockInvulnerableTicks", 10, 0, 100);
 
         BUILDER.pop();
@@ -1594,90 +1579,6 @@ public class Config {
         NATURAL_RECOVERY_PLAYER_HEALTH = BUILDER.comment("玩家基础生命恢复速度（%/秒）").defineInRange("naturalRecoveryPlayerHealth", 0.02, 0.0, 10.0);
         NATURAL_RECOVERY_SHIELD = BUILDER.comment("护盾基础恢复速度（%/秒，0为禁用）").defineInRange("naturalRecoveryShield", 0.0, 0.0, 10.0);
         NATURAL_RECOVERY_ATTACK_COOLDOWN_PENALTY = BUILDER.comment("攻击冷却期间恢复惩罚系数（0-1，越低恢复越少）").defineInRange("naturalRecoveryAttackCooldownPenalty", 0.8, 0.0, 1.0);
-
-        BUILDER.pop();
-
-        BUILDER.comment("护盾HUD配置").push("shield_hud");
-
-        VANILLA_STYLE_HUD = BUILDER.comment(
-            "是否使用原版样式HUD",
-            "启用后，护盾将使用纹理渲染在原版生命条位置，而非默认的纯色长条",
-            "在原版生命条上渲染边描,注意只是模拟而不是真正意义上的描边",
-            "护盾值减少时，纹理从右往左消失",
-            "冷却条以深蓝50%透明度独立叠加渲染",
-            "数值在纹理上方居中显示"
-        ).define("vanillaStyle", true);
-
-        BUILDER.comment("默认样式HUD配置").push("default_style");
-
-        HUD_DEFAULT_OFFSET_X = BUILDER.comment(
-            "默认样式HUD的X偏移量",
-            "基于屏幕中心，0为居中，正数向右，负数向左",
-            "默认0"
-        ).defineInRange("offsetX", 0, -500, 500);
-
-        HUD_DEFAULT_OFFSET_Y = BUILDER.comment(
-            "默认样式HUD的Y偏移量",
-            "基于屏幕顶部，默认6",
-            "默认6"
-        ).defineInRange("offsetY", 6, 0, 500);
-
-        HUD_DEFAULT_BAR_WIDTH = BUILDER.comment(
-            "默认样式护盾条宽度（像素）",
-            "默认150"
-        ).defineInRange("barWidth", 150, 10, 500);
-
-        HUD_DEFAULT_BAR_HEIGHT = BUILDER.comment(
-            "默认样式护盾条高度（像素）",
-            "默认5"
-        ).defineInRange("barHeight", 5, 1, 50);
-
-        HUD_DEFAULT_COOLDOWN_HEIGHT = BUILDER.comment(
-            "默认样式冷却条高度（像素）",
-            "默认2"
-        ).defineInRange("cooldownHeight", 2, 1, 50);
-
-        BUILDER.pop();
-
-        BUILDER.comment("原版样式HUD配置").push("vanilla_style");
-
-        VANILLA_STYLE_HUD_SCALE = BUILDER.comment(
-            "原版样式HUD的缩放比例",
-            "1.0为原始大小，0.5为缩小一半，2.0为放大两倍",
-            "默认1.0"
-        ).defineInRange("scale", 1.0, 0.1, 3.0);
-
-        HUD_VANILLA_OFFSET_X = BUILDER.comment(
-            "原版样式HUD的X偏移量",
-            "基于原版生命条位置，0为默认对齐，正数向右，负数向左",
-            "默认0"
-        ).defineInRange("offsetX", 0, -500, 500);
-
-        HUD_VANILLA_OFFSET_Y = BUILDER.comment(
-            "原版样式HUD的Y偏移量",
-            "基于原版生命条位置，0为默认对齐，正数向下，负数向上",
-            "默认0"
-        ).defineInRange("offsetY", 0, -500, 500);
-
-        HUD_VANILLA_COOLDOWN_ALPHA = BUILDER.comment(
-            "原版样式冷却条的透明度",
-            "0.0为完全透明，1.0为完全不透明",
-            "默认0.5（50%透明度）"
-        ).defineInRange("cooldownAlpha", 0.7, 0.0, 1.0);
-
-        HUD_VANILLA_TEXT_OFFSET_X = BUILDER.comment(
-            "原版样式护盾值文本的X偏移量",
-            "基于纹理左侧，0为左对齐，正数向右，负数向左",
-            "默认0"
-        ).defineInRange("textOffsetX", -85, -500, 500);
-
-        HUD_VANILLA_TEXT_OFFSET_Y = BUILDER.comment(
-            "原版样式护盾值文本的Y偏移量",
-            "基于纹理上方，0为默认位置，正数向下，负数向上",
-            "默认0"
-        ).defineInRange("textOffsetY", 13, -500, 500);
-
-        BUILDER.pop();
 
         BUILDER.pop();
 
@@ -1799,6 +1700,9 @@ public class Config {
 
     @SubscribeEvent
     static void onLoad(final ModConfigEvent event) {
+        if (!event.getConfig().getSpec().equals(SPEC)) {
+            return;
+        }
         if (initialized) {
             gytrinket.LOGGER.info("配置已初始化，跳过重复加载");
             return;
@@ -2215,8 +2119,8 @@ public class Config {
         return GRUDGE_MOVEMENT_SPEED_PENALTY.get();
     }
 
-    public static double getQuickEquipExpLevelMultiplier() {
-        return QUICK_EQUIP_EXP_LEVEL_MULTIPLIER.get();
+    public static int getQuickEquipUpgradePointsCost() {
+        return QUICK_EQUIP_UPGRADE_POINTS_COST.get();
     }
 
     public static boolean isHardcoreModeEnabled() {

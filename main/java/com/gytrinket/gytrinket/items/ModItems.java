@@ -89,6 +89,7 @@ public class ModItems {
 
     // 再生物品
     public static final DeferredItem<Item> REGEN_MODULE = ITEMS.registerSimpleItem("regen_module", new Item.Properties()); // 再生模块
+    public static final DeferredItem<Item> QUICK_RECONSTRUCTION_MODULE = ITEMS.registerSimpleItem("quick_reconstruction_module", new Item.Properties()); // 快速重构模块
     public static final DeferredItem<Item> REGEN_SHIELD_MODULE = ITEMS.registerSimpleItem("regen_shield_module", new Item.Properties()); // 护盾再生模块
 
     // 协同物品

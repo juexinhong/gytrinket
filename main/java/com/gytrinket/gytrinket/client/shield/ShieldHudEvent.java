@@ -1,6 +1,6 @@
 package com.gytrinket.gytrinket.client.shield;
 
-import com.gytrinket.gytrinket.Config;
+import com.gytrinket.gytrinket.ClientConfig;
 import com.gytrinket.gytrinket.gytrinket;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.player.Player;
@@ -19,7 +19,7 @@ public class ShieldHudEvent {
     public static void onRenderGameOverlay(RenderGuiLayerEvent.Post event) {
         if (Minecraft.getInstance().screen != null) return;
 
-        if (Config.VANILLA_STYLE_HUD.get()) {
+        if (ClientConfig.VANILLA_STYLE_HUD.get()) {
             // 只在 PLAYER_HEALTH 图层渲染后触发一次，避免重复渲染
             boolean isHealthLayer = event.getName().equals(VanillaGuiLayers.PLAYER_HEALTH);
             boolean isHotbarLayer = event.getName().equals(VanillaGuiLayers.HOTBAR);

@@ -5,6 +5,7 @@ import com.gytrinket.gytrinket.core.attribute.AttributeManager;
 import com.gytrinket.gytrinket.core.attribute.ItemAttributeConfig;
 import com.gytrinket.gytrinket.core.shield.cooldown.ShieldCooldownManager;
 import com.gytrinket.gytrinket.core.shield.ShieldManager;
+import com.gytrinket.gytrinket.core.level.ModLevelManager;
 import com.gytrinket.gytrinket.core.upgrade.UpgradeData;
 import com.gytrinket.gytrinket.core.upgrade.UpgradeManager;
 import com.gytrinket.gytrinket.network.packet.ChargedSweepParticlePacket;
@@ -200,8 +201,11 @@ public class NetworkHandler {
         }
         UpgradeData upgradeData = UpgradeManager.getUpgradeData(player.getUUID());
         CompoundTag upgradeTag = upgradeData.save();
+        int modLevel = ModLevelManager.getModLevel(player.getUUID());
+        int upgradeExp = ModLevelManager.getUpgradeExp(player.getUUID());
+        int upgradePoints = ModLevelManager.getUpgradePoints(player.getUUID());
         PacketDistributor.sendToPlayer(player,
-            new ResponsePanelDataPayload(attributes, items, slotCount, upgradeTag, upgradeTargets));
+            new ResponsePanelDataPayload(attributes, items, slotCount, upgradeTag, upgradeTargets, modLevel, upgradeExp, upgradePoints));
     }
 
     private static void sendConfigDataToPlayer(ServerPlayer player) {
@@ -736,7 +740,8 @@ public class NetworkHandler {
 
     // --- ResponsePanelDataPayload (S->C, complex) ---
     public record ResponsePanelDataPayload(Map<String, Double> attributes, ListTag items, int slotCount,
-                                            CompoundTag upgradeData, ListTag upgradeTargets) implements CustomPacketPayload {
+                                            CompoundTag upgradeData, ListTag upgradeTargets,
+                                            int modLevel, int upgradeExp, int upgradePoints) implements CustomPacketPayload {
         public static final Type<ResponsePanelDataPayload> TYPE = new Type<>(
             ResourceLocation.fromNamespaceAndPath("gytrinket", "response_panel_data"));
 
@@ -755,7 +760,10 @@ public class NetworkHandler {
                 int slotCount = tag != null ? tag.getInt("slotCount") : 0;
                 CompoundTag upgradeData = tag != null ? tag.getCompound("upgradeData") : new CompoundTag();
                 ListTag upgradeTargets = tag != null ? tag.getList("upgradeTargets", 10) : new ListTag();
-                return new ResponsePanelDataPayload(attributes, items, slotCount, upgradeData, upgradeTargets);
+                int modLevel = tag != null ? tag.getInt("modLevel") : 0;
+                int upgradeExp = tag != null ? tag.getInt("upgradeExp") : 0;
+                int upgradePoints = tag != null ? tag.getInt("upgradePoints") : 0;
+                return new ResponsePanelDataPayload(attributes, items, slotCount, upgradeData, upgradeTargets, modLevel, upgradeExp, upgradePoints);
             }
 
             @Override
@@ -770,6 +778,9 @@ public class NetworkHandler {
                 tag.putInt("slotCount", msg.slotCount);
                 tag.put("upgradeData", msg.upgradeData);
                 tag.put("upgradeTargets", msg.upgradeTargets);
+                tag.putInt("modLevel", msg.modLevel);
+                tag.putInt("upgradeExp", msg.upgradeExp);
+                tag.putInt("upgradePoints", msg.upgradePoints);
                 buf.writeNbt(tag);
             }
         };

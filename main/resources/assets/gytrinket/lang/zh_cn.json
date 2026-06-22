@@ -240,6 +240,7 @@
   "item.gytrinket.core_armor_module": "核心装甲模块",
   
   "item.gytrinket.regen_module": "再生模块",
+  "item.gytrinket.quick_reconstruction_module": "快速重构模块",
   "item.gytrinket.regen_shield_module": "护盾再生模块",
   
   "item.gytrinket.efficiency_module": "效率模块",
@@ -278,8 +279,8 @@
 
   "item.gytrinket.commander_module": "指挥官模块",
   
-    "item.gytrinket.charged_shield_module": "充能护盾模块",
-    "item.gytrinket.grudge_module": "积怨模块",
+  "item.gytrinket.charged_shield_module": "充能护盾模块",
+  "item.gytrinket.grudge_module": "积怨模块",
 
   "item.gytrinket.beam": "光束",
   "item.gytrinket.barrier": "屏障",
@@ -372,6 +373,7 @@
   "message.gytrinket.quick_equip.already_exists": "光点核心中已有同名物品",
   "message.gytrinket.quick_equip.core_full": "光点核心已满",
   "message.gytrinket.quick_equip.not_enough_level": "经验等级不足，需要%d级",
+  "message.gytrinket.quick_equip.not_enough_points": "升级点不足",
   "message.gytrinket.quick_equip.success": "已装备到光点核心",
   "message.gytrinket.quick_equip.shield_swapped": "已替换护盾到光点核心",
 
@@ -407,5 +409,12 @@
   "screen.gytrinket.back": "返回",
   "screen.gytrinket.add_item_prompt": "物品ID (例如 minecraft:diamond):",
   "screen.gytrinket.no_attributes_registered": "没有已注册的属性",
-  "screen.gytrinket.reorder_hint": "拖拽到目标位置释放"
+  "screen.gytrinket.reorder_hint": "拖拽到目标位置释放",
+
+  "screen.gytrinket.light_point_level": "光点等级",
+  "screen.gytrinket.light_point_exp": "光点经验",
+  "screen.gytrinket.upgrade_points": "升级点",
+
+  "command.gytrinket.resetlevel.success": "光点等级已重置",
+  "command.gytrinket.resetlevel.not_player": "该指令只能由玩家执行"
 }

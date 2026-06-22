@@ -1,6 +1,6 @@
 package com.gytrinket.gytrinket.client.shield;
 
-import com.gytrinket.gytrinket.Config;
+import com.gytrinket.gytrinket.ClientConfig;
 import com.mojang.blaze3d.platform.Window;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -59,7 +59,7 @@ public class ShieldHudRenderer {
 
         if (minecraft.player == null || minecraft.screen != null) return;
 
-        boolean vanillaStyle = Config.VANILLA_STYLE_HUD.get();
+        boolean vanillaStyle = ClientConfig.VANILLA_STYLE_HUD.get();
         float shieldLerpSpeed = vanillaStyle ? VANILLA_LERP_SPEED : LERP_SPEED;
         float cooldownLerpSpeed = vanillaStyle ? VANILLA_COOLDOWN_LERP_SPEED : LERP_SPEED;
 
@@ -76,8 +76,8 @@ public class ShieldHudRenderer {
             } else {
                 Window window = minecraft.getWindow();
                 int screenWidth = window.getGuiScaledWidth();
-                int hudX = screenWidth / 2 + Config.HUD_DEFAULT_OFFSET_X.get();
-                int hudY = Config.HUD_DEFAULT_OFFSET_Y.get();
+                int hudX = screenWidth / 2 + ClientConfig.HUD_DEFAULT_OFFSET_X.get();
+                int hudY = ClientConfig.HUD_DEFAULT_OFFSET_Y.get();
                 drawShieldHUD(guiGraphics, hudX, hudY);
             }
         }
@@ -127,9 +127,9 @@ public class ShieldHudRenderer {
         Minecraft mc = Minecraft.getInstance();
         Font font = mc.font;
 
-        int barWidth = Config.HUD_DEFAULT_BAR_WIDTH.get();
-        int barHeight = Config.HUD_DEFAULT_BAR_HEIGHT.get();
-        int cooldownHeight = Config.HUD_DEFAULT_COOLDOWN_HEIGHT.get();
+        int barWidth = ClientConfig.HUD_DEFAULT_BAR_WIDTH.get();
+        int barHeight = ClientConfig.HUD_DEFAULT_BAR_HEIGHT.get();
+        int cooldownHeight = ClientConfig.HUD_DEFAULT_COOLDOWN_HEIGHT.get();
 
         String shieldText = String.format("%.1f / %.1f", displayShield, maxShield);
         int textWidth = (int) (font.width(shieldText) * TEXT_SCALE);
@@ -197,10 +197,10 @@ public class ShieldHudRenderer {
 
         // 护盾 HUD 紧贴在生命条下方（生命条底部 Y = screenHeight - 39）
         // 生命条多排心时向上扩展，底部位置不变，护盾 HUD 不会偏移
-        int left = screenWidth / 2 - 92 + Config.HUD_VANILLA_OFFSET_X.get();
-        int top = screenHeight - 40 + Config.HUD_VANILLA_OFFSET_Y.get();
+        int left = screenWidth / 2 - 92 + ClientConfig.HUD_VANILLA_OFFSET_X.get();
+        int top = screenHeight - 40 + ClientConfig.HUD_VANILLA_OFFSET_Y.get();
 
-        float scale = Config.VANILLA_STYLE_HUD_SCALE.get().floatValue();
+        float scale = ClientConfig.VANILLA_STYLE_HUD_SCALE.get().floatValue();
 
         if (maxShield > 0) {
             PoseStack poseStack = guiGraphics.pose();
@@ -219,7 +219,7 @@ public class ShieldHudRenderer {
                 int cooldownVisibleWidth = Mth.clamp((int) (TEXTURE_WIDTH * displayCooldownRatio), 0, TEXTURE_WIDTH);
 
                 if (cooldownVisibleWidth > 0) {
-                    float alpha = Config.HUD_VANILLA_COOLDOWN_ALPHA.get().floatValue();
+                    float alpha = ClientConfig.HUD_VANILLA_COOLDOWN_ALPHA.get().floatValue();
                     RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, alpha);
                     guiGraphics.blit(SHIELD_COOLDOWN_TEXTURE, 0, 0, 0, 0, cooldownVisibleWidth, TEXTURE_HEIGHT, TEXTURE_WIDTH, TEXTURE_HEIGHT);
                     RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
@@ -233,8 +233,8 @@ public class ShieldHudRenderer {
             String shieldText = String.format("%.1f / %.1f", displayShieldCapped, maxShieldCapped);
             int textWidth = font.width(shieldText);
             int scaledTextureWidth = (int) (TEXTURE_WIDTH * scale);
-            int textX = left + scaledTextureWidth - textWidth + Config.HUD_VANILLA_TEXT_OFFSET_X.get();
-            int textY = top - font.lineHeight - 2 + Config.HUD_VANILLA_TEXT_OFFSET_Y.get();
+            int textX = left + scaledTextureWidth - textWidth + ClientConfig.HUD_VANILLA_TEXT_OFFSET_X.get();
+            int textY = top - font.lineHeight - 2 + ClientConfig.HUD_VANILLA_TEXT_OFFSET_Y.get();
             guiGraphics.drawString(font, shieldText, textX, textY, 0xFF5599FF, false);
         }
     }

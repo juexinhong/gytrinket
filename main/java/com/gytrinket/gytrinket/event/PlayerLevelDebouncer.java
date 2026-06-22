@@ -2,10 +2,10 @@ package com.gytrinket.gytrinket.event;
 
 import com.gytrinket.gytrinket.core.TickScheduler;
 import com.gytrinket.gytrinket.core.entity.construct.ConstructAttributeApplier;
+import com.gytrinket.gytrinket.core.level.ModLevelChangeEvent;
 import com.gytrinket.gytrinket.gytrinket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.neoforge.event.entity.player.PlayerXpEvent;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.server.ServerLifecycleHooks;
@@ -26,12 +26,8 @@ public class PlayerLevelDebouncer {
     private PlayerLevelDebouncer() {}
 
     @SubscribeEvent
-    public static void onLevelChange(PlayerXpEvent.LevelChange event) {
-        if (!(event.getEntity() instanceof ServerPlayer player)) {
-            return;
-        }
-
-        UUID uuid = player.getUUID();
+    public static void onModLevelChange(ModLevelChangeEvent event) {
+        UUID uuid = event.getPlayerUUID();
         PENDING_CHANGES.put(uuid, TickScheduler.getCurrentTick() + DEBOUNCE_TICKS);
         DIRTY_PLAYERS.add(uuid);
 

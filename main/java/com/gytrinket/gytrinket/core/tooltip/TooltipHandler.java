@@ -5,6 +5,8 @@ import com.gytrinket.gytrinket.core.entity.construct.ConstructManager;
 import com.gytrinket.gytrinket.core.entity.construct.ConstructType;
 import com.gytrinket.gytrinket.core.entity.construct.drone.DroneBullet;
 import com.gytrinket.gytrinket.core.entity.construct.drone.DroneConstructTypes;
+import com.gytrinket.gytrinket.core.entity.construct.swarm.SwarmConstructTypes;
+import com.gytrinket.gytrinket.core.entity.construct.wingman.WingmanConstructTypes;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
@@ -114,6 +116,20 @@ public class TooltipHandler {
                 Config.NEAR_DEATH_EXPLOSION_COEFFICIENT.get(),
                 Config.NEAR_DEATH_EXPLOSION_RADIUS.get()
             }
+        ));
+
+        // 自毁装置
+        rules.add(new TooltipConfig(
+            Config.SELF_DESTRUCT_ITEMS,
+            "self_destruct", "self_destruct_effect",
+            ChatFormatting.RED
+        ));
+
+        // 督战者
+        rules.add(new TooltipConfig(
+            Config.TASKMASTER_ITEMS,
+            "taskmaster", "taskmaster_effect",
+            ChatFormatting.GOLD
         ));
 
         // 追击阵列
@@ -397,6 +413,16 @@ public class TooltipHandler {
             addTooltip(event, "defense_drone_module", ChatFormatting.BLUE);
         }
 
+        if (Config.WINGMAN_MODULE_ITEMS.get().contains(itemId)) {
+            addTooltip(event, "wingman_module", ChatFormatting.GRAY);
+            addWingmanModuleDescTooltip(event);
+        }
+
+        if (Config.SWARM_MODULE_ITEMS.get().contains(itemId)) {
+            addTooltip(event, "mothership_body", ChatFormatting.GRAY);
+            addMothershipBodyDescTooltip(event);
+        }
+
         if (Config.BARRIER_ITEMS.get().contains(itemId)) {
             addTooltip(event, "barrier", ChatFormatting.DARK_PURPLE);
             addFormattedTooltip(event, "barrier_effect", ChatFormatting.DARK_PURPLE,
@@ -420,6 +446,59 @@ public class TooltipHandler {
                 double attackSpeed = 1.0 / Config.ORBIT_ATTACK_INTERVAL.get();
                 formattedText = String.format(formattedText,
                     maxCount, (int) maxHealth, DroneBullet.getBaseDamage(), attackSpeed);
+                event.getToolTip().add(Component.literal(formattedText).withStyle(ChatFormatting.GRAY));
+            } catch (Exception e) {
+                event.getToolTip().add(tooltip.withStyle(ChatFormatting.GRAY));
+            }
+        }
+    }
+
+    /**
+     * 僚机模块描述工具提示（需要特殊的动态参数计算）
+     */
+    private static void addWingmanModuleDescTooltip(ItemTooltipEvent event) {
+        String translationKey = TOOLTIP_PREFIX + "wingman_module_desc";
+        MutableComponent tooltip = Component.translatable(translationKey);
+
+        if (!isDefaultTranslation(tooltip, translationKey)) {
+            String formattedText = tooltip.getString();
+            try {
+                ConstructType wingmanType = ConstructManager.getInstance().getConstructType(WingmanConstructTypes.WINGMAN);
+                int maxCount = wingmanType != null ? wingmanType.getMaxCount() : Config.getWingmanMaxCount();
+                double maxHealth = wingmanType != null ? wingmanType.getMaxHealth() : Config.getWingmanBaseHealth();
+                int explosiveCount = Config.getWingmanExplosiveCount();
+                double explosiveDamage = Config.getWingmanExplosiveDamage();
+                double explosionDamage = Config.getWingmanExplosionDamage();
+                double explosionRadius = Config.getWingmanExplosionRadius();
+                double attackSpeed = 1.0 / Config.getWingmanAttackInterval();
+                formattedText = String.format(formattedText,
+                    maxCount, (int) maxHealth, explosiveCount, explosiveDamage,
+                    explosionDamage, explosionRadius, attackSpeed);
+                event.getToolTip().add(Component.literal(formattedText).withStyle(ChatFormatting.GRAY));
+            } catch (Exception e) {
+                event.getToolTip().add(tooltip.withStyle(ChatFormatting.GRAY));
+            }
+        }
+    }
+
+    /**
+     * 母舰机身描述工具提示（需要特殊的动态参数计算）
+     */
+    private static void addMothershipBodyDescTooltip(ItemTooltipEvent event) {
+        String translationKey = TOOLTIP_PREFIX + "mothership_body_desc";
+        MutableComponent tooltip = Component.translatable(translationKey);
+
+        if (!isDefaultTranslation(tooltip, translationKey)) {
+            String formattedText = tooltip.getString();
+            try {
+                ConstructType swarmType = ConstructManager.getInstance().getConstructType(SwarmConstructTypes.SWARM);
+                int maxCount = swarmType != null ? swarmType.getMaxCount() : Config.getSwarmMaxCount();
+                double maxHealth = swarmType != null ? swarmType.getMaxHealth() : Config.getSwarmBaseHealth();
+                double damage = Config.getSwarmBaseDamage();
+                double attackSpeed = 1.0 / Config.getSwarmAttackInterval();
+                double attackRange = Config.getSwarmAttackRange();
+                formattedText = String.format(formattedText,
+                    maxCount, maxHealth, damage, attackSpeed, attackRange);
                 event.getToolTip().add(Component.literal(formattedText).withStyle(ChatFormatting.GRAY));
             } catch (Exception e) {
                 event.getToolTip().add(tooltip.withStyle(ChatFormatting.GRAY));

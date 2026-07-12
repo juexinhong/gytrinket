@@ -5,6 +5,7 @@ import net.minecraft.world.entity.player.Player;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 /**
@@ -57,6 +58,9 @@ public class ConstructManager {
     private final Map<UUID, Map<String, ConstructBuilder>> playerBuilders = new ConcurrentHashMap<>();
 
     private final Set<UUID> buildingDisabledPlayers = ConcurrentHashMap.newKeySet();
+
+    /** 构造体类型构建条件检查器：类型ID -> 检查函数（玩家是否满足该类型的构建条件） */
+    private final Map<String, Predicate<Player>> buildConditionCheckers = new ConcurrentHashMap<>();
 
     private ConstructManager() {}
 
@@ -160,6 +164,30 @@ public class ConstructManager {
     /** 获取所有已注册的构造体类型 */
     public Collection<ConstructType> getAllConstructTypes() {
         return constructTypes.values();
+    }
+
+    /**
+     * 注册构造体类型的构建条件检查器
+     *
+     * @param constructId 构造体类型ID
+     * @param checker     检查函数，返回true表示玩家满足该类型的构建条件
+     */
+    public void registerBuildConditionChecker(String constructId, Predicate<Player> checker) {
+        buildConditionCheckers.put(constructId, checker);
+    }
+
+    /**
+     * 检查玩家是否满足指定构造体类型的构建条件
+     * <p>
+     * 如果该类型没有注册检查器，默认返回false（不可构建）
+     *
+     * @param player      玩家
+     * @param constructId 构造体类型ID
+     * @return 如果玩家满足构建条件返回true
+     */
+    public boolean canPlayerBuildConstruct(Player player, String constructId) {
+        Predicate<Player> checker = buildConditionCheckers.get(constructId);
+        return checker != null && checker.test(player);
     }
 
     /**

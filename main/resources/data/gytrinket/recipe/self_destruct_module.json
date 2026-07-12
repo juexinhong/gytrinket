@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " # ",
+    "X@X",
+    " * "
+  ],
+  "key": {
+    "#": { "item": "gytrinket:construct_frame" },
+    "X": { "item": "minecraft:string" },
+    "@": { "item": "minecraft:tnt" },
+    "*": { "item": "minecraft:blue_wool" }
+  },
+  "result": {
+    "id": "gytrinket:self_destruct_module",
+    "count": 1
+  }
+}

@@ -129,7 +129,17 @@
       "gytrinket:defense_drone_part",
       "gytrinket:counter_pulse_part",
       "gytrinket:arc_barrier_part",
-      "gytrinket:reshaping_part"
+      "gytrinket:reshaping_part",
+      "gytrinket:shield_siphon",
+      "gytrinket:shield_siphon1",
+      "gytrinket:shield_siphon2",
+      "gytrinket:shield_siphon3",
+      "gytrinket:quick_reconstruction_module",
+      "gytrinket:self_destruct_module",
+      "gytrinket:taskmaster_module",
+      "gytrinket:taskmaster_part",
+      "gytrinket:grudge_module",
+      "gytrinket:mothership_body"
     ]
   }
 }

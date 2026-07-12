@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " A ",
+    "ABA",
+    " A "
+  ],
+  "key": {
+    "A": { "item": "minecraft:copper_ingot" },
+    "B": { "item": "minecraft:ender_eye" }
+  },
+  "result": {
+    "id": "gytrinket:taskmaster_part",
+    "count": 1
+  }
+}

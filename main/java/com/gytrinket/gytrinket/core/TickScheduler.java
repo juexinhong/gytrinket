@@ -6,6 +6,10 @@ import com.gytrinket.gytrinket.core.entity.construct.drone.DroneConstructTypes;
 import com.gytrinket.gytrinket.core.entity.construct.drone.DroneManager;
 import com.gytrinket.gytrinket.core.entity.construct.drone.CommanderManager;
 import com.gytrinket.gytrinket.core.entity.construct.drone.behavior.FormationBehavior;
+import com.gytrinket.gytrinket.core.entity.construct.wingman.WingmanConstructTypes;
+import com.gytrinket.gytrinket.core.entity.construct.wingman.WingmanManager;
+import com.gytrinket.gytrinket.core.entity.construct.swarm.SwarmConstructTypes;
+import com.gytrinket.gytrinket.core.entity.construct.swarm.SwarmManager;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.MinecraftServer;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
@@ -75,7 +79,25 @@ public class TickScheduler {
                             }
                         }
 
-                        // 3. 指挥官任命逻辑
+                        // 3. 检查是否需要继续尝试构建僚机
+                        if (WingmanManager.getInstance().canBuildWingmanInternal(player)) {
+                            if (!ConstructManager.getInstance().isBuilding(player, WingmanConstructTypes.WINGMAN)) {
+                                if (ConstructManager.getInstance().canCreateConstruct(player, WingmanConstructTypes.WINGMAN)) {
+                                    WingmanManager.getInstance().startBuildingWingman(player);
+                                }
+                            }
+                        }
+
+                        // 4. 检查是否需要继续尝试构建蜂群
+                        if (SwarmManager.getInstance().canBuildSwarmInternal(player)) {
+                            if (!ConstructManager.getInstance().isBuilding(player, SwarmConstructTypes.SWARM)) {
+                                if (ConstructManager.getInstance().canCreateConstruct(player, SwarmConstructTypes.SWARM)) {
+                                    SwarmManager.getInstance().startBuildingSwarm(player);
+                                }
+                            }
+                        }
+
+                        // 5. 指挥官任命逻辑
                         CommanderManager.getInstance().tick(player);
                     }
                 }

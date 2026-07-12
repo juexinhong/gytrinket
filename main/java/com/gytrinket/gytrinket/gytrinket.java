@@ -18,6 +18,9 @@ import com.gytrinket.gytrinket.core.entity.construct.drone.behavior.NearDeathPro
 import com.gytrinket.gytrinket.core.entity.construct.drone.behavior.NearDeathExplosionBehavior;
 import com.gytrinket.gytrinket.core.entity.construct.drone.behavior.ReshapingBehavior;
 import com.gytrinket.gytrinket.core.entity.construct.drone.behavior.CounterPulseBehavior;
+import com.gytrinket.gytrinket.core.entity.construct.drone.behavior.SelfDestructBehavior;
+import com.gytrinket.gytrinket.core.entity.construct.swarm.SwarmRegistry;
+import com.gytrinket.gytrinket.core.entity.construct.wingman.WingmanRegistry;
 import com.gytrinket.gytrinket.core.shield.type.ReflectShieldType;
 import com.gytrinket.gytrinket.core.shield.type.ShieldTypeManager;
 import com.gytrinket.gytrinket.event.LightPointStoreEventHandler;
@@ -82,6 +85,12 @@ public class gytrinket {
         // 注册无人机构造体类型
         ConstructTypeRegistry.register(new DroneRegistry());
 
+        // 注册僚机构造体类型
+        ConstructTypeRegistry.register(new WingmanRegistry());
+
+        // 注册蜂群构造体类型
+        ConstructTypeRegistry.register(new SwarmRegistry());
+
         ConstructTypeRegistry.executeRegistries();
 
         ConstructAttributeRegistry.registerDefaults();
@@ -90,9 +99,12 @@ public class gytrinket {
         DroneSpecialBehaviorManager.getInstance().registerBehavior(new NearDeathExplosionBehavior());
         DroneSpecialBehaviorManager.getInstance().registerBehavior(new ReshapingBehavior());
         DroneSpecialBehaviorManager.getInstance().registerBehavior(new CounterPulseBehavior());
+        DroneSpecialBehaviorManager.getInstance().registerBehavior(new SelfDestructBehavior());
     }
 
     private void registerEntityAttributes(EntityAttributeCreationEvent event) {
         event.put(ModEntities.DRONE_CONSTRUCT.get(), com.gytrinket.gytrinket.core.entity.construct.drone.DroneConstructEntity.createAttributes().build());
+        event.put(ModEntities.WINGMAN_CONSTRUCT.get(), com.gytrinket.gytrinket.core.entity.construct.wingman.WingmanConstructEntity.createAttributes().build());
+        event.put(ModEntities.SWARM_CONSTRUCT.get(), com.gytrinket.gytrinket.core.entity.construct.swarm.SwarmConstructEntity.createAttributes().build());
     }
 }

@@ -31,6 +31,12 @@ public class ConstructData {
     /** 最大生命值 */
     private double maxHealth;
 
+    /**
+     * 生命值比例（0~1），用于在退出待机/重登恢复时按比例恢复生命值。
+     * 独立于 {@link #health} 存储，避免被 {@link #setHealth} 的 maxHealth 截断。
+     */
+    private double healthRatio = 1.0;
+
     /** 是否处于激活状态 */
     private boolean active;
 
@@ -104,6 +110,16 @@ public class ConstructData {
         if (this.health > maxHealth) {
             this.health = maxHealth;
         }
+    }
+
+    /** 获取生命值比例（0~1），用于退出待机/重登恢复时按比例恢复生命值 */
+    public double getHealthRatio() {
+        return healthRatio;
+    }
+
+    /** 设置生命值比例（自动截断到 [0, 1] 范围） */
+    public void setHealthRatio(double healthRatio) {
+        this.healthRatio = Math.max(0.0, Math.min(1.0, healthRatio));
     }
 
     /** 检查是否激活 */
@@ -181,6 +197,7 @@ public class ConstructData {
         tag.putUUID("entityUUID", entityUUID);
         tag.putDouble("health", health);
         tag.putDouble("maxHealth", maxHealth);
+        tag.putDouble("healthRatio", healthRatio);
         tag.putBoolean("active", active);
         tag.putLong("createdTime", createdTime);
         if (dimension != null) {
@@ -193,6 +210,30 @@ public class ConstructData {
     }
 
     /**
+     * 加载公共字段到已构造的实例（供子类静态 loadFromNBT 调用，避免重复代码）。
+     * <p>
+     * 加载 health、active、createdTime、healthRatio（含旧存档回退）、dimension 等公共字段。
+     * 子类只需在 loadFromNBT 中创建实例后调用此方法，再加载自己的特有字段。
+     */
+    protected static void loadCommonFields(ConstructData data, CompoundTag tag) {
+        data.setHealth(tag.getDouble("health"));
+        data.setActive(tag.getBoolean("active"));
+        data.createdTime = tag.getLong("createdTime");
+        if (tag.contains("healthRatio")) {
+            data.setHealthRatio(tag.getDouble("healthRatio"));
+        } else {
+            // 兼容旧存档：从 health 和 maxHealth 推算比例
+            double h = tag.getDouble("health");
+            double m = tag.getDouble("maxHealth");
+            data.setHealthRatio(m > 0 ? h / m : 1.0);
+        }
+        if (tag.contains("dimension")) {
+            data.setSavedPos(tag.getDouble("posX"), tag.getDouble("posY"), tag.getDouble("posZ"));
+            data.setDimension(tag.getString("dimension"));
+        }
+    }
+
+    /**
      * 从 NBT 加载
      * @param tag NBT 标签
      * @return 加载的构造体数据
@@ -202,15 +243,7 @@ public class ConstructData {
         UUID entityUUID = tag.getUUID("entityUUID");
         double maxHealth = tag.getDouble("maxHealth");
         ConstructData data = new ConstructData(constructId, entityUUID, maxHealth);
-        data.health = tag.getDouble("health");
-        data.active = tag.getBoolean("active");
-        data.createdTime = tag.getLong("createdTime");
-        if (tag.contains("dimension")) {
-            data.posX = tag.getDouble("posX");
-            data.posY = tag.getDouble("posY");
-            data.posZ = tag.getDouble("posZ");
-            data.dimension = tag.getString("dimension");
-        }
+        loadCommonFields(data, tag);
         return data;
     }
 }

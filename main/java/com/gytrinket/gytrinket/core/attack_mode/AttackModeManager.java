@@ -5,6 +5,7 @@ import com.gytrinket.gytrinket.core.attack_mode.burst_fire.BurstFireManager;
 import com.gytrinket.gytrinket.core.attack_mode.charged_attack.ChargedAttackDamageTracker;
 import com.gytrinket.gytrinket.core.attack_mode.charged_attack.ChargedAttackManager;
 import com.gytrinket.gytrinket.core.attack_mode.electric_discharge.ElectricDischargeManager;
+import com.gytrinket.gytrinket.core.taskmaster.TaskmasterManager;
 import com.gytrinket.gytrinket.gytrinket;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
@@ -227,6 +228,12 @@ public class AttackModeManager {
             return;
         }
 
+        // 督战者禁用玩家攻击
+        if (TaskmasterManager.hasTaskmaster(player)) {
+            event.setCanceled(true);
+            return;
+        }
+
         UUID uuid = player.getUUID();
         PlayerAttackModes modes = getPlayerModes(uuid);
         AttackModeCombo combo = getCombo(uuid);
@@ -371,6 +378,11 @@ public class AttackModeManager {
      * 则判定为挥空，触发电能释放。
      */
     private static void handleSwingDetection(ServerPlayer player) {
+        // 督战者禁用玩家攻击，不处理挥空检测
+        if (TaskmasterManager.hasTaskmaster(player)) {
+            return;
+        }
+
         UUID uuid = player.getUUID();
         float currentStrength = player.getAttackStrengthScale(0.0F);
         Float previousStrength = PREVIOUS_ATTACK_STRENGTH.get(uuid);

@@ -1,21 +1,15 @@
 package com.gytrinket.gytrinket.core.entity.construct.drone;
 
+import com.gytrinket.gytrinket.core.entity.construct.AbstractConstruct;
 import com.gytrinket.gytrinket.core.entity.construct.ConstructManager;
-import com.gytrinket.gytrinket.core.entity.construct.ConstructType;
-import com.gytrinket.gytrinket.core.entity.construct.IConstruct;
 import com.gytrinket.gytrinket.core.entity.construct.drone.behavior.IDroneBehavior;
 import com.gytrinket.gytrinket.core.entity.construct.drone.effect.IDroneEffect;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 
 /**
  * 无人机构建体
@@ -26,7 +20,8 @@ import java.util.UUID;
  * 层级结构：
  * <ul>
  *   <li>构造体 (IConstruct)</li>
- *   <li>   └── 无人机构建体 (DroneConstruct) ← 具体实现</li>
+ *   <li>   └── {@link AbstractConstruct}（通用字段与生命周期）</li>
+ *   <li>       └── 无人机构建体 (DroneConstruct) ← 具体实现</li>
  * </ul>
  * <p>
  * 无人机通过以下方式扩展功能：
@@ -35,82 +30,17 @@ import java.util.UUID;
  *   <li>效果修饰 (IDroneEffect)：突击/防御，附加额外能力</li>
  * </ul>
  */
-public class DroneConstruct implements IConstruct {
-    private final String constructId;
-    private final LivingEntity owner;
-    private final double maxHealth;
-    private double health;
-    private boolean active;
-    private UUID droneEntityUUID;
+public class DroneConstruct extends AbstractConstruct {
 
     private DroneArrayType arrayType;
     private final List<IDroneEffect> effects = new ArrayList<>();
     private boolean commander = false;
 
-    public DroneConstruct(String constructId, DroneArrayType arrayType, List<IDroneEffect> effects, LivingEntity owner, double maxHealth) {
-        this.constructId = constructId;
+    public DroneConstruct(String constructId, DroneArrayType arrayType, List<IDroneEffect> effects,
+                          net.minecraft.world.entity.LivingEntity owner, double maxHealth) {
+        super(constructId, owner, maxHealth);
         this.arrayType = arrayType;
         this.effects.addAll(effects);
-        this.owner = owner;
-        this.maxHealth = maxHealth;
-        this.health = maxHealth;
-        this.active = true;
-    }
-
-    @Override
-    public String getConstructId() {
-        return constructId;
-    }
-
-    @Override
-    public ConstructType getConstructType() {
-        return ConstructManager.getInstance().getConstructType(constructId);
-    }
-
-    @Override
-    public Entity getEntity() {
-        if (droneEntityUUID == null || owner == null) {
-            return null;
-        }
-        Level level = owner.level();
-        AABB searchBox = new AABB(-1000, -1000, -1000, 1000, 1000, 1000);
-        List<Entity> entities = level.getEntities(null, searchBox);
-        for (Entity entity : entities) {
-            if (entity.getUUID().equals(droneEntityUUID)) {
-                return entity;
-            }
-        }
-        return null;
-    }
-
-    @Override
-    public double getHealth() {
-        return health;
-    }
-
-    @Override
-    public void setHealth(double health) {
-        this.health = Math.max(0, Math.min(health, maxHealth));
-    }
-
-    @Override
-    public double getMaxHealth() {
-        return maxHealth;
-    }
-
-    @Override
-    public boolean isActive() {
-        return active;
-    }
-
-    @Override
-    public void activate() {
-        this.active = true;
-    }
-
-    @Override
-    public void deactivate() {
-        this.active = false;
     }
 
     /**
@@ -121,11 +51,7 @@ public class DroneConstruct implements IConstruct {
     }
 
     @Override
-    public void tick() {
-        // 行为逻辑已在 DroneConstructEntity 中实现
-    }
-
-    private void spawnDroneEntity() {
+    protected void spawnEntity() {
         Level level = owner.level();
         if (level.isClientSide) {
             return;
@@ -149,43 +75,10 @@ public class DroneConstruct implements IConstruct {
         drone.setHealth(drone.getMaxHealth());
 
         level.addFreshEntity(drone);
-        droneEntityUUID = drone.getUUID();
+        entityUUID = drone.getUUID();
 
         // 注册到构造体管理器
         ConstructManager.getInstance().registerConstructEntity(owner.getUUID(), constructId, drone);
-    }
-
-    @Override
-    public void onCreated() {
-        spawnDroneEntity();
-    }
-
-    @Override
-    public void onDestroyed() {
-        if (droneEntityUUID != null && owner != null) {
-            Level level = owner.level();
-            AABB searchBox = new AABB(-1000, -1000, -1000, 1000, 1000, 1000);
-            List<Entity> entities = level.getEntities(null, searchBox);
-            for (Entity entity : entities) {
-                if (entity.getUUID().equals(droneEntityUUID)) {
-                    entity.discard();
-                    break;
-                }
-            }
-        }
-    }
-
-    @Override
-    public boolean canBeCreated() {
-        return owner != null && owner.isAlive();
-    }
-
-    @Override
-    public void onBuildProgress(int progress, int total) {
-    }
-
-    public UUID getEntityUUID() {
-        return droneEntityUUID;
     }
 
     public DroneArrayType getArrayType() {
@@ -213,10 +106,6 @@ public class DroneConstruct implements IConstruct {
         return false;
     }
 
-    public LivingEntity getOwner() {
-        return owner;
-    }
-
     public boolean isAssaultDrone() {
         return hasEffect("突击");
     }
@@ -225,13 +114,17 @@ public class DroneConstruct implements IConstruct {
         return hasEffect("防御");
     }
 
+    public boolean isCommander() {
+        return commander;
+    }
+
+    public void setCommander(boolean commander) {
+        this.commander = commander;
+    }
+
     @Override
     public Set<String> getCurrentTags() {
-        Set<String> allTags = new HashSet<>();
-        ConstructType type = getConstructType();
-        if (type != null) {
-            allTags.addAll(type.getTags());
-        }
+        Set<String> allTags = super.getCurrentTags();
         for (IDroneEffect effect : effects) {
             allTags.add(effect.getTagId());
         }
@@ -239,13 +132,5 @@ public class DroneConstruct implements IConstruct {
             allTags.add("commander");
         }
         return allTags;
-    }
-
-    public boolean isCommander() {
-        return commander;
-    }
-
-    public void setCommander(boolean commander) {
-        this.commander = commander;
     }
 }

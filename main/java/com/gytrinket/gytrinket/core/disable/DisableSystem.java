@@ -1,6 +1,7 @@
 package com.gytrinket.gytrinket.core.disable;
 
 import com.gytrinket.gytrinket.Config;
+import com.gytrinket.gytrinket.core.body.BodyTypeManager;
 import com.gytrinket.gytrinket.core.shield.type.ShieldTypeManager;
 import com.gytrinket.gytrinket.gytrinket;
 import com.gytrinket.gytrinket.storage.PlayerStore;
@@ -81,6 +82,9 @@ public class DisableSystem {
 
         Set<String> shieldDisabled = ShieldTypeManager.updateShieldTypes(playerUUID, disabledItems);
         disabledItems.addAll(shieldDisabled);
+
+        Set<String> bodyDisabled = BodyTypeManager.updateBodyTypes(playerUUID, disabledItems);
+        disabledItems.addAll(bodyDisabled);
 
         propagateDependencies(storeItemIds, disabledItems);
 

@@ -23,6 +23,7 @@ public class ModCreativeModeTabs {
 
                         // 机身物品
                         output.accept(ModItems.GUARDIAN.get());
+                        output.accept(ModItems.SWARM_MODULE.get());
 
                         // 基础护盾物品
                         output.accept(ModItems.SHIELD_GY.get());
@@ -121,6 +122,8 @@ public class ModCreativeModeTabs {
 
                         // 构造体物品
                         output.accept(ModItems.PRECISION_CONSTRUCT_MODULE.get());
+                        output.accept(ModItems.SELF_DESTRUCT_MODULE.get());
+                        output.accept(ModItems.TASKMASTER_MODULE.get());
                         output.accept(ModItems.SHIELD_TRANSFER_MODULE.get());
 
                         // 无人机构建物品
@@ -139,6 +142,9 @@ public class ModCreativeModeTabs {
                         output.accept(ModItems.COUNTER_PULSE_MODULE.get());
                         output.accept(ModItems.ARC_BARRIER_MODULE.get());
                         output.accept(ModItems.RESHAPING_MODULE.get());
+
+                        // 僚机物品
+                        output.accept(ModItems.WINGMAN_MODULE.get());
 
                         // 超越模块
                         output.accept(ModItems.CHARGED_SHIELD_MODULE.get());
@@ -172,6 +178,7 @@ public class ModCreativeModeTabs {
                         output.accept(ModItems.AERODYNAMIC_DESIGN_DRAFT.get());
                         output.accept(ModItems.COORDINATE.get());
                         output.accept(ModItems.PRECISION_CONSTRUCT_PART.get());
+                        output.accept(ModItems.TASKMASTER_PART.get());
                         output.accept(ModItems.SHIELD_TRANSFER_PART.get());
                         output.accept(ModItems.DRONE_PART.get());
                         output.accept(ModItems.WIDE_PROTOCOL.get());

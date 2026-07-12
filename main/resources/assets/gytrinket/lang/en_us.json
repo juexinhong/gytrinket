@@ -8,6 +8,10 @@
   "category.gytrinket.gameplay": "Light Point Trinket",
   "tooltip.gytrinket.drone_module": "Drone Construction Material",
   "tooltip.gytrinket.drone_module_desc": "Allows building drone constructs\nMax Count: %d  Health: %d  Damage: %.1f  Attack Speed: %.0f/s\nDrone is a Standard Construct",
+  "tooltip.gytrinket.wingman_module": "Wingman",
+  "tooltip.gytrinket.wingman_module_desc": "Allows building wingman constructs\nMax Count: %d  Health: %d  Explosives: ×%d  Bullet Dmg: %.1f  Explosion: %.1f/Radius: %.1f  Attack Speed: %.0f/s\nWingman is an Advanced Construct",
+  "tooltip.gytrinket.mothership_body": "Mothership Body",
+  "tooltip.gytrinket.mothership_body_desc": "Allows building swarm constructs\nMax Count: %d  Health: %.1f  Damage: %.2f  Attack Speed: %.1f/s  Range: %.1f\nSwarm is a Basic Construct\nMothership: +1 max count per 4 light point levels",
   "tooltip.gytrinket.assault_drone_module": "Assault Drone Construction Material",
   "tooltip.gytrinket.defense_drone_module": "Defense Drone Construction Material",
   "tooltip.gytrinket.adaptive_armor": "Adaptive Armor Enabled Item",
@@ -87,6 +91,20 @@
   "tooltip.gytrinket.attr.explosion_damage_independent": "Explosion Damage Independent Multiplier",
   "tooltip.gytrinket.attr.explosion_radius_percent": "Explosion Radius Percentage",
   "tooltip.gytrinket.attr.explosion_radius_independent": "Explosion Radius Independent Multiplier",
+  "tooltip.gytrinket.attr.wingman_count": "Wingman Count",
+  "tooltip.gytrinket.attr.wingman_count_percent": "Wingman Count %",
+  "tooltip.gytrinket.attr.wingman_count_independent": "Wingman Count Independent",
+  "tooltip.gytrinket.attr.wingman_health": "Wingman Health",
+  "tooltip.gytrinket.attr.wingman_health_percent": "Wingman Health %",
+  "tooltip.gytrinket.attr.wingman_health_independent": "Wingman Health Independent",
+  "tooltip.gytrinket.attr.wingman_damage": "Wingman Damage",
+  "tooltip.gytrinket.attr.wingman_damage_percent": "Wingman Damage %",
+  "tooltip.gytrinket.attr.wingman_damage_independent": "Wingman Damage Independent",
+  "tooltip.gytrinket.attr.wingman_attack_speed_percent": "Wingman Attack Speed %",
+  "tooltip.gytrinket.attr.wingman_attack_speed_independent": "Wingman Attack Speed Independent",
+  "tooltip.gytrinket.attr.construct_standard_non_weapon_count_percent": "Standard Non-Weapon Construct Count %",
+  "tooltip.gytrinket.attr.construct_basic_non_weapon_count_percent": "Basic Non-Weapon Construct Count %",
+  "tooltip.gytrinket.attr.swarm_count_mothership": "Swarm Count (Mothership)",
   "tooltip.gytrinket.shield_type.none": "None",
   "tooltip.gytrinket.shield_type.aura": "Aura",
   "tooltip.gytrinket.shield_type.reflect": "Reflect",
@@ -136,6 +154,12 @@
 
   "tooltip.gytrinket.near_death_explosion": "Near-Death Explosion",
   "tooltip.gytrinket.near_death_explosion_effect": "When drone is about to die, prevents death, restores 1 health and grants invulnerability for %.1f seconds. Leaves formation and charges at enemies to self-destruct (damage = max health × speed × %.1f, radius %.1f blocks). Forced self-destruct when invulnerability ends",
+
+  "tooltip.gytrinket.self_destruct": "Self-Destruct",
+  "tooltip.gytrinket.self_destruct_effect": "Constructs explode when destroyed. Explosion power scales with the construct's max health",
+
+  "tooltip.gytrinket.taskmaster": "Taskmaster",
+  "tooltip.gytrinket.taskmaster_effect": "Gain x%% construct build speed, -x%% independent movement speed. x=2×(standard limit+advanced limit). Disables attack modes",
 
   "tooltip.gytrinket.pursuit_array": "Pursuit Array",
   "tooltip.gytrinket.pursuit_array_effect": "Upgrades drones to assault drones and unlocks Pursuit Array (press Tab to switch arrays). Drones in Pursuit Array have increased attack speed",
@@ -256,6 +280,8 @@
   "item.gytrinket.flash_module": "Flash Module",
 
   "item.gytrinket.precision_construct_module": "Precision Construct Module",
+    "item.gytrinket.self_destruct_module": "Self-Destruct Module",
+  "item.gytrinket.taskmaster_module": "Taskmaster Module",
   "item.gytrinket.shield_transfer_module": "Shield Transfer Module",
 
   "item.gytrinket.drone_module": "Drone Module",
@@ -271,6 +297,10 @@
   "item.gytrinket.counter_pulse_module": "Counter Pulse Module",
   "item.gytrinket.arc_barrier_module": "Arc Barrier Module",
   "item.gytrinket.reshaping_module": "Reshaping Module",
+
+  "item.gytrinket.wingman_module": "Wingman Module",
+
+  "item.gytrinket.mothership_body": "Mothership Body",
 
   "item.gytrinket.near_death_protection_module": "Near-Death Protection Module",
   "item.gytrinket.near_death_explosion_module": "Near-Death Explosion Module",
@@ -304,6 +334,7 @@
   "item.gytrinket.aerodynamic_design_draft": "Aerodynamic Draft",
   "item.gytrinket.coordinate": "Coordinate",
   "item.gytrinket.precision_construct_part": "Precision Construct Part",
+  "item.gytrinket.taskmaster_part": "Taskmaster Part",
   "item.gytrinket.shield_transfer_part": "Shield Transfer Part",
   "item.gytrinket.drone_part": "Drone Part",
   "item.gytrinket.wide_protocol": "Wide Protocol",

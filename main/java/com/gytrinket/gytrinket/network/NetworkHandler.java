@@ -84,6 +84,7 @@ public class NetworkHandler {
         registrar.playToClient(SyncChargedAttackPayload.TYPE, SyncChargedAttackPayload.STREAM_CODEC, SyncChargedAttackPayload::handle);
         registrar.playToClient(SyncBurstFiringPayload.TYPE, SyncBurstFiringPayload.STREAM_CODEC, SyncBurstFiringPayload::handle);
         registrar.playToClient(ChargedSweepParticlePacket.TYPE, ChargedSweepParticlePacket.STREAM_CODEC, ChargedSweepParticlePacket::handle);
+        registrar.playToClient(SwarmEnergyWavePayload.TYPE, SwarmEnergyWavePayload.STREAM_CODEC, SwarmEnergyWavePayload::handle);
     }
 
     // ======================== Helper send methods ========================
@@ -130,6 +131,14 @@ public class NetworkHandler {
 
     public static void sendLightningToAll(net.minecraft.server.level.ServerLevel level, List<com.gytrinket.gytrinket.core.attack_mode.electric_discharge.ElectricDischargeManager.LightningSegment> segments) {
         PacketDistributor.sendToAllPlayers(LightningRenderPayload.fromSegments(segments));
+    }
+
+    public static void sendLightningToAll(net.minecraft.server.level.ServerLevel level, List<com.gytrinket.gytrinket.core.attack_mode.electric_discharge.ElectricDischargeManager.LightningSegment> segments, int duration, float maxWidth) {
+        PacketDistributor.sendToAllPlayers(LightningRenderPayload.fromSegments(segments, duration, maxWidth));
+    }
+
+    public static void sendSwarmEnergyWaveToAll(net.minecraft.server.level.ServerLevel level, int entityId, Vec3 position, Vec3 direction, boolean isRepair) {
+        PacketDistributor.sendToAllPlayers(new SwarmEnergyWavePayload(entityId, position.x, position.y, position.z, direction.x, direction.y, direction.z, isRepair));
     }
 
     public static void sendExplosiveShieldFlashToAll(net.minecraft.server.level.ServerLevel level, net.minecraft.world.entity.Entity entity) {
@@ -481,22 +490,29 @@ public class NetworkHandler {
         }
     }
 
-    // --- LightningRenderPayload (S->C, List<double[]>) ---
-    public record LightningRenderPayload(List<double[]> segments) implements CustomPacketPayload {
+    // --- LightningRenderPayload (S->C, List<double[]> + duration + maxWidth) ---
+    public record LightningRenderPayload(List<double[]> segments, int duration, float maxWidth) implements CustomPacketPayload {
         public static final Type<LightningRenderPayload> TYPE = new Type<>(
             ResourceLocation.fromNamespaceAndPath("gytrinket", "lightning_render"));
 
+        /** 兼容旧调用：使用默认 duration=8, maxWidth=-1（自动计算） */
         public static LightningRenderPayload fromSegments(List<com.gytrinket.gytrinket.core.attack_mode.electric_discharge.ElectricDischargeManager.LightningSegment> segments) {
+            return fromSegments(segments, 8, -1.0f);
+        }
+
+        public static LightningRenderPayload fromSegments(List<com.gytrinket.gytrinket.core.attack_mode.electric_discharge.ElectricDischargeManager.LightningSegment> segments, int duration, float maxWidth) {
             return new LightningRenderPayload(segments.stream().map(segment -> new double[] {
                 segment.start().x, segment.start().y, segment.start().z,
                 segment.end().x, segment.end().y, segment.end().z
-            }).toList());
+            }).toList(), duration, maxWidth);
         }
 
         public static final StreamCodec<RegistryFriendlyByteBuf, LightningRenderPayload> STREAM_CODEC = new StreamCodec<>() {
             @Override
             public LightningRenderPayload decode(RegistryFriendlyByteBuf buf) {
                 int size = buf.readInt();
+                int duration = buf.readInt();
+                float maxWidth = buf.readFloat();
                 List<double[]> segments = new ArrayList<>();
                 for (int i = 0; i < size; i++) {
                     double[] segment = new double[6];
@@ -505,12 +521,14 @@ public class NetworkHandler {
                     }
                     segments.add(segment);
                 }
-                return new LightningRenderPayload(segments);
+                return new LightningRenderPayload(segments, duration, maxWidth);
             }
 
             @Override
             public void encode(RegistryFriendlyByteBuf buf, LightningRenderPayload msg) {
                 buf.writeInt(msg.segments.size());
+                buf.writeInt(msg.duration);
+                buf.writeFloat(msg.maxWidth);
                 for (double[] segment : msg.segments) {
                     for (double value : segment) {
                         buf.writeDouble(value);
@@ -531,7 +549,51 @@ public class NetworkHandler {
                         new Vec3(segment[3], segment[4], segment[5])
                     ));
                 }
-                com.gytrinket.gytrinket.core.attack_mode.electric_discharge.client.LightningRenderManager.addLightning(lightningSegments);
+                com.gytrinket.gytrinket.core.attack_mode.electric_discharge.client.LightningRenderManager.addLightning(lightningSegments, payload.duration, payload.maxWidth);
+            });
+        }
+    }
+
+    // --- SwarmEnergyWavePayload (S->C, varint + 7 doubles + boolean) ---
+    public record SwarmEnergyWavePayload(int entityId, double x, double y, double z, double dirX, double dirY, double dirZ, boolean isRepair) implements CustomPacketPayload {
+        public static final Type<SwarmEnergyWavePayload> TYPE = new Type<>(
+            ResourceLocation.fromNamespaceAndPath("gytrinket", "swarm_energy_wave"));
+
+        public static final StreamCodec<RegistryFriendlyByteBuf, SwarmEnergyWavePayload> STREAM_CODEC = new StreamCodec<>() {
+            @Override
+            public SwarmEnergyWavePayload decode(RegistryFriendlyByteBuf buf) {
+                return new SwarmEnergyWavePayload(
+                    buf.readVarInt(),
+                    buf.readDouble(), buf.readDouble(), buf.readDouble(),
+                    buf.readDouble(), buf.readDouble(), buf.readDouble(),
+                    buf.readBoolean()
+                );
+            }
+
+            @Override
+            public void encode(RegistryFriendlyByteBuf buf, SwarmEnergyWavePayload msg) {
+                buf.writeVarInt(msg.entityId);
+                buf.writeDouble(msg.x);
+                buf.writeDouble(msg.y);
+                buf.writeDouble(msg.z);
+                buf.writeDouble(msg.dirX);
+                buf.writeDouble(msg.dirY);
+                buf.writeDouble(msg.dirZ);
+                buf.writeBoolean(msg.isRepair);
+            }
+        };
+
+        @Override
+        public Type<? extends CustomPacketPayload> type() { return TYPE; }
+
+        public static void handle(SwarmEnergyWavePayload payload, IPayloadContext context) {
+            context.enqueueWork(() -> {
+                com.gytrinket.gytrinket.core.entity.construct.swarm.client.EnergyWaveRenderManager.addWave(
+                    payload.entityId,
+                    payload.x, payload.y, payload.z,
+                    payload.dirX, payload.dirY, payload.dirZ,
+                    payload.isRepair
+                );
             });
         }
     }

@@ -1,6 +1,5 @@
 package com.gytrinket.gytrinket.core.entity.construct.drone;
 
-import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
@@ -118,8 +117,6 @@ public class DroneBeamProjectile extends Entity implements GeoEntity {
                 return;
             }
             this.checkCollision();
-        } else {
-            this.spawnParticles();
         }
     }
 
@@ -347,31 +344,6 @@ public class DroneBeamProjectile extends Entity implements GeoEntity {
 
     public UUID getShooterUUID() {
         return this.ownerUUID;
-    }
-
-    private void spawnParticles() {
-        Vec3 lookVec = this.getLookAngle();
-        Vec3 beamStart = this.position().add(this.startOffset);
-
-        double particleStartOffset = 8.0D;
-        double particleEndOffset = BEAM_LENGTH;
-        double particleRange = particleEndOffset - particleStartOffset;
-
-        int particleCount = 4;
-        for (int i = 0; i < particleCount; i++) {
-            double progress = (double) i / (particleCount - 1.0D);
-            Vec3 particlePos = beamStart.add(lookVec.scale(particleStartOffset + particleRange * progress));
-
-            this.level().addParticle(
-                    ParticleTypes.END_ROD,
-                    particlePos.x + (this.random.nextDouble() - 0.5D) * BEAM_WIDTH,
-                    particlePos.y + (this.random.nextDouble() - 0.5D) * BEAM_HEIGHT,
-                    particlePos.z + (this.random.nextDouble() - 0.5D) * BEAM_WIDTH,
-                    0.0D,
-                    0.0D,
-                    0.0D
-            );
-        }
     }
 
     @Override

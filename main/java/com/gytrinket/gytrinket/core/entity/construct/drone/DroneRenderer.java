@@ -21,7 +21,7 @@ import software.bernie.geckolib.renderer.layer.GeoRenderLayer;
 public class DroneRenderer extends GeoEntityRenderer<DroneConstructEntity> {
     public DroneRenderer(EntityRendererProvider.Context context) {
         super(context, new DroneModel());
-        withScale(0.8F, 0.8F);
+        withScale(1.0F, 1.0F);
 
         addRenderLayer(new GeoRenderLayer<DroneConstructEntity>(this) {
             @Override

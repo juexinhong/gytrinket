@@ -36,8 +36,7 @@ import java.util.stream.Collectors;
  * </ul>
  */
 public class ElectricDischargeManager {
-    /** 搜索敌对目标的半径 */
-    private static final double SEARCH_RADIUS = 6.0;
+
     /** 最大目标数量 */
     private static final int MAX_TARGETS = 6;
 

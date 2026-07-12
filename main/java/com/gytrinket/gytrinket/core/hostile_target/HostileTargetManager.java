@@ -1,7 +1,7 @@
 package com.gytrinket.gytrinket.core.hostile_target;
 
 import com.gytrinket.gytrinket.Config;
-import com.gytrinket.gytrinket.core.entity.construct.drone.DroneConstructEntity;
+import com.gytrinket.gytrinket.core.entity.construct.IConstructEntity;
 import com.gytrinket.gytrinket.core.shield_transfer.ShieldTransferManager;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
@@ -27,14 +27,13 @@ import java.util.concurrent.ConcurrentHashMap;
  *   <li>敌对实体：MONSTER类别的生物（如僵尸、骷髅）</li>
  *   <li>仇恨实体：以玩家为攻击目标的生物</li>
  *   <li>危险实体：配置文件中定义的危险实体（如箭矢、烈焰弹）</li>
- *   <li>玩家标记实体：被玩家攻击过的实体（持续5秒）</li>
+ *   <li>玩家标记实体：被玩家攻击过的实体（持续时间由配置决定）</li>
  * </ul>
  */
 @EventBusSubscriber(modid = com.gytrinket.gytrinket.gytrinket.MODID)
 public class HostileTargetManager {
 
     private static final Map<UUID, Map<UUID, Long>> PLAYER_MARKED_ENTITIES = new ConcurrentHashMap<>();
-    private static final long MARK_DURATION_TICKS = 100;
 
     @SubscribeEvent
     public static void onPlayerAttack(AttackEntityEvent event) {
@@ -49,7 +48,7 @@ public class HostileTargetManager {
     }
 
     private static void markEntity(UUID playerUUID, UUID targetUUID) {
-        long expireTime = getCurrentTick() + MARK_DURATION_TICKS;
+        long expireTime = getCurrentTick() + Config.getHostileTargetMarkDuration();
         
         PLAYER_MARKED_ENTITIES.computeIfAbsent(playerUUID, k -> new ConcurrentHashMap<>())
             .put(targetUUID, expireTime);
@@ -174,7 +173,7 @@ public class HostileTargetManager {
      *   <li>对玩家或玩家保护的实体有仇恨（最高优先级）</li>
      *   <li>是敌对实体（MONSTER类别）</li>
      *   <li>是配置中的危险实体</li>
-     *   <li>被玩家攻击过的实体（持续5秒）</li>
+     *   <li>被玩家攻击过的实体（持续时间由配置决定）</li>
      * </ol>
      * 
      * @param entity 待判断的实体
@@ -278,8 +277,8 @@ public class HostileTargetManager {
         if (playerUUID == null) {
             return false;
         }
-        if (entity instanceof DroneConstructEntity drone) {
-            UUID ownerUUID = drone.getOwnerUUID();
+        if (entity instanceof IConstructEntity construct) {
+            UUID ownerUUID = construct.getOwnerUUID();
             return ownerUUID != null && ownerUUID.equals(playerUUID);
         }
         return false;

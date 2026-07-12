@@ -6,6 +6,8 @@ import com.gytrinket.gytrinket.core.disable.DisableSystem;
 import com.gytrinket.gytrinket.gytrinket;
 import com.gytrinket.gytrinket.core.TickScheduler;
 import com.gytrinket.gytrinket.core.entity.construct.ConstructManager;
+import com.gytrinket.gytrinket.core.entity.construct.swarm.SwarmConstructEntity;
+import com.gytrinket.gytrinket.core.entity.construct.swarm.SwarmConstructTypes;
 import com.gytrinket.gytrinket.core.shield_transfer.event.PlayerConstructListChangedEvent;
 import com.gytrinket.gytrinket.core.shield_transfer.event.ShieldTransferRebuiltEvent;
 import com.gytrinket.gytrinket.event.PlayerAttributesCalculatedEvent;
@@ -42,9 +44,26 @@ public class ShieldTransferManager {
 
     private ShieldTransferManager() {}
 
+    /**
+     * 判定构造体是否应被护盾移植保护。
+     * 排除基础类构造体；蜂群按内部等阶判定（仅标准/高阶受保护）。
+     */
+    private static boolean shouldProtectConstruct(LivingEntity entity) {
+        if (entity instanceof SwarmConstructEntity swarm) {
+            // 蜂群：仅内部等阶为标准/高阶时受保护
+            return swarm.getTier() >= SwarmConstructTypes.TIER_STANDARD;
+        }
+        // 其他构造体（无人机/僚机等均为标准阶或以上）：受保护
+        return true;
+    }
+
     public static void transferShieldToEntity(Player owner, LivingEntity target) {
         if (target == null || !target.isAlive()) {
             gytrinket.LOGGER.warn("尝试将护盾转移给无效实体");
+            return;
+        }
+
+        if (!shouldProtectConstruct(target)) {
             return;
         }
 

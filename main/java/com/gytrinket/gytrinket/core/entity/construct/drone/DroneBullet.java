@@ -132,10 +132,7 @@ public class DroneBullet extends ThrowableItemProjectile implements GeoEntity {
             this.discard();
         }
 
-        // 客户端粒子
-        if (this.level().isClientSide) {
-            this.level().addParticle(ParticleTypes.SMOKE, this.getX(), this.getY(), this.getZ(), 0.0D, 0.0D, 0.0D);
-        }
+
     }
 
     /**

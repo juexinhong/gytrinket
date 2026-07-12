@@ -8,6 +8,10 @@
   "category.gytrinket.gameplay": "光点饰品",
   "tooltip.gytrinket.drone_module": "无人机",
   "tooltip.gytrinket.drone_module_desc": "允许构建无人机构造体\n上限%d  生命%d  伤害%.1f  攻速%.0f/s\n无人机是标准构造体",
+  "tooltip.gytrinket.wingman_module": "僚机",
+  "tooltip.gytrinket.wingman_module_desc": "允许构建僚机构造体\n上限%d  生命%d  爆破弹×%d  弹伤%.1f  爆炸%.1f/半径%.1f  攻速%.0f/s\n僚机是高阶构造体",
+  "tooltip.gytrinket.mothership_body": "母舰机身",
+  "tooltip.gytrinket.mothership_body_desc": "允许构建蜂群构造体\n上限%d  生命%.1f  伤害%.2f  攻速%.1f/s  攻击范围%.1f\n蜂群是基础构造体\n母舰：每4级光点等级+1上限",
   "tooltip.gytrinket.assault_drone_module": "突击无人机",
   "tooltip.gytrinket.defense_drone_module": "防御无人机",
   "tooltip.gytrinket.adaptive_armor": "适应性装甲",
@@ -87,6 +91,20 @@
   "tooltip.gytrinket.attr.explosion_damage_independent": "爆炸伤害独立乘区",
   "tooltip.gytrinket.attr.explosion_radius_percent": "爆炸半径百分比",
   "tooltip.gytrinket.attr.explosion_radius_independent": "爆炸半径独立乘区",
+  "tooltip.gytrinket.attr.wingman_count": "僚机数量",
+  "tooltip.gytrinket.attr.wingman_count_percent": "僚机数量百分比",
+  "tooltip.gytrinket.attr.wingman_count_independent": "僚机数量独立乘区",
+  "tooltip.gytrinket.attr.wingman_health": "僚机生命",
+  "tooltip.gytrinket.attr.wingman_health_percent": "僚机生命百分比",
+  "tooltip.gytrinket.attr.wingman_health_independent": "僚机生命独立乘区",
+  "tooltip.gytrinket.attr.wingman_damage": "僚机伤害",
+  "tooltip.gytrinket.attr.wingman_damage_percent": "僚机伤害百分比",
+  "tooltip.gytrinket.attr.wingman_damage_independent": "僚机伤害独立乘区",
+  "tooltip.gytrinket.attr.wingman_attack_speed_percent": "僚机攻击速度百分比",
+  "tooltip.gytrinket.attr.wingman_attack_speed_independent": "僚机攻击速度独立乘区",
+  "tooltip.gytrinket.attr.construct_standard_non_weapon_count_percent": "标准非武器构造体数量百分比",
+  "tooltip.gytrinket.attr.construct_basic_non_weapon_count_percent": "基础非武器构造体数量百分比",
+  "tooltip.gytrinket.attr.swarm_count_mothership": "蜂群数量（母舰）",
   "tooltip.gytrinket.shield_type.none": "无",
   "tooltip.gytrinket.shield_type.aura": "光环",
   "tooltip.gytrinket.shield_type.reflect": "反射",
@@ -137,6 +155,12 @@
   
   "tooltip.gytrinket.precision_construct": "精妙构造",
   "tooltip.gytrinket.precision_construct_effect": "玩家每级提供%.2f%%独立乘区构建速度属性",
+  
+  "tooltip.gytrinket.self_destruct": "自毁装置",
+  "tooltip.gytrinket.self_destruct_effect": "构造体被摧毁时产生爆炸。爆炸威力与构造体的最大生命值相关",
+
+  "tooltip.gytrinket.taskmaster": "督战者",
+  "tooltip.gytrinket.taskmaster_effect": "获得x%%构造体构建速度，-x%%独立乘区移动速度。x=2×(标准构造体上限+高阶构造体上限)。禁用攻击模式",
 
   "tooltip.gytrinket.shield_transfer": "护盾移植",
   "tooltip.gytrinket.shield_transfer_effect": "护盾不再保护你，而是保护你的构造体（可以使用护盾接收器来额外保护其他实体）。每保护一个实体，护盾效果和护盾效果半径降低%.1f%%",
@@ -176,6 +200,7 @@
   "tooltip.gytrinket.grudge": "积怨",
   "tooltip.gytrinket.grudge_effect": "充能期间每点损失的生命或护盾值转化为%s充能速率。始终快速消退（每tick消退%s+当前值%s%%）。退出充能立即清除。充能时-15%移速",
 
+  "block.gytrinket.light_point_core": "光点核心",
   "item.gytrinket.light_point_core": "光点核心",
   "item.gytrinket.guardian": "哨卫机身",
   
@@ -258,6 +283,8 @@
   "item.gytrinket.flash_module": "闪现模块",
   
   "item.gytrinket.precision_construct_module": "精密构造模块",
+    "item.gytrinket.self_destruct_module": "自毁装置模块",
+  "item.gytrinket.taskmaster_module": "督战者模块",
   "item.gytrinket.shield_transfer_module": "护盾移植模块",
   
   "item.gytrinket.drone_module": "无人机模块",
@@ -273,6 +300,10 @@
   "item.gytrinket.counter_pulse_module": "反制脉冲模块",
   "item.gytrinket.arc_barrier_module": "弧形屏障模块",
   "item.gytrinket.reshaping_module": "重塑模块",
+
+  "item.gytrinket.wingman_module": "僚机模块",
+
+  "item.gytrinket.mothership_body": "母舰机身",
 
   "item.gytrinket.near_death_protection_module": "宽限协议模块",
   "item.gytrinket.near_death_explosion_module": "最后指令模块",
@@ -309,6 +340,7 @@
   "item.gytrinket.aerodynamic_design_draft": "流线设计稿",
   "item.gytrinket.coordinate": "坐标",
   "item.gytrinket.precision_construct_part": "精密构造零件",
+  "item.gytrinket.taskmaster_part": "督战者零件",
   "item.gytrinket.shield_transfer_part": "护盾移植零件",
   "item.gytrinket.drone_part": "无人机零件",
   "item.gytrinket.wide_protocol": "宽限协议",

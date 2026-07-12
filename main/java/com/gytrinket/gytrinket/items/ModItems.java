@@ -14,6 +14,7 @@ public class ModItems {
 
     // 机身物品
     public static final DeferredItem<Item> GUARDIAN = ITEMS.registerSimpleItem("guardian", new Item.Properties()); // 哨卫机身
+    public static final DeferredItem<Item> SWARM_MODULE = ITEMS.registerSimpleItem("mothership_body", new Item.Properties()); // 母舰机身
 
     // 基础护盾物品
     public static final DeferredItem<Item> SHIELD_GY = ITEMS.registerSimpleItem("shield_gy", new Item.Properties()); // 基础护盾
@@ -113,6 +114,8 @@ public class ModItems {
     // 构造体物品
     public static final DeferredItem<Item> PRECISION_CONSTRUCT_MODULE = ITEMS.registerSimpleItem("precision_construct_module", new Item.Properties()); // 精密构造模块
     public static final DeferredItem<Item> SHIELD_TRANSFER_MODULE = ITEMS.registerSimpleItem("shield_transfer_module", new Item.Properties()); // 护盾移植模块
+    public static final DeferredItem<Item> SELF_DESTRUCT_MODULE = ITEMS.registerSimpleItem("self_destruct_module", new Item.Properties()); // 自毁装置模块
+    public static final DeferredItem<Item> TASKMASTER_MODULE = ITEMS.registerSimpleItem("taskmaster_module", new Item.Properties()); // 督战者模块
 
     // 无人机构建物品
     public static final DeferredItem<Item> DRONE_MODULE = ITEMS.registerSimpleItem("drone_module", new Item.Properties()); // 无人机模块
@@ -130,6 +133,9 @@ public class ModItems {
     public static final DeferredItem<Item> COUNTER_PULSE_MODULE = ITEMS.registerSimpleItem("counter_pulse_module", new Item.Properties()); // 反制脉冲模块
     public static final DeferredItem<Item> ARC_BARRIER_MODULE = ITEMS.registerSimpleItem("arc_barrier_module", new Item.Properties()); // 弧形屏障模块
     public static final DeferredItem<Item> RESHAPING_MODULE = ITEMS.registerSimpleItem("reshaping_module", new Item.Properties()); // 重塑模块
+
+    // 僚机物品
+    public static final DeferredItem<Item> WINGMAN_MODULE = ITEMS.registerSimpleItem("wingman_module", new Item.Properties()); // 僚机模块
 
     // 超越模块
     public static final DeferredItem<Item> CHARGED_SHIELD_MODULE = ITEMS.registerSimpleItem("charged_shield_module", new Item.Properties()); // 充能护盾模块
@@ -175,4 +181,7 @@ public class ModItems {
     public static final DeferredItem<Item> COUNTER_PULSE_PART = ITEMS.registerSimpleItem("counter_pulse_part", new Item.Properties()); // 反制脉冲零件
     public static final DeferredItem<Item> ARC_BARRIER_PART = ITEMS.registerSimpleItem("arc_barrier_part", new Item.Properties()); // 弧形屏障零件
     public static final DeferredItem<Item> RESHAPING_PART = ITEMS.registerSimpleItem("reshaping_part", new Item.Properties()); // 重塑零件
+
+    // 督战者零件
+    public static final DeferredItem<Item> TASKMASTER_PART = ITEMS.registerSimpleItem("taskmaster_part", new Item.Properties()); // 督战者零件
 }

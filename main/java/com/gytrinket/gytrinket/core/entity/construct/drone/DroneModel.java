@@ -33,12 +33,6 @@ public class DroneModel extends GeoModel<DroneConstructEntity> {
 
     @Override
     public ResourceLocation getAnimationResource(DroneConstructEntity entity) {
-        if (entity.isAssaultDrone()) {
-            return ResourceLocation.fromNamespaceAndPath("gytrinket", "animations/assaultdrone.animation.json");
-        } else if (entity.isDefenseDrone()) {
-            return ResourceLocation.fromNamespaceAndPath("gytrinket", "animations/drone.animation.json");
-        } else {
-            return ResourceLocation.fromNamespaceAndPath("gytrinket", "animations/drone.animation.json");
-        }
+        return null;
     }
 }

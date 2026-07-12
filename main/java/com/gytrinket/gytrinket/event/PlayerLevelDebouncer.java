@@ -2,6 +2,7 @@ package com.gytrinket.gytrinket.event;
 
 import com.gytrinket.gytrinket.core.TickScheduler;
 import com.gytrinket.gytrinket.core.entity.construct.ConstructAttributeApplier;
+import com.gytrinket.gytrinket.core.entity.construct.swarm.MothershipManager;
 import com.gytrinket.gytrinket.core.level.ModLevelChangeEvent;
 import com.gytrinket.gytrinket.gytrinket;
 import net.minecraft.server.MinecraftServer;
@@ -65,6 +66,7 @@ public class PlayerLevelDebouncer {
 
             AdvancedEngineeringEventHandler.applyEngineeringBonus(player);
             PrecisionConstructEventHandler.applyPrecisionConstructBonus(player);
+            MothershipManager.applyMothershipBonus(player);
             ConstructAttributeApplier.refreshForPlayer(uuid, player);
         }
     }

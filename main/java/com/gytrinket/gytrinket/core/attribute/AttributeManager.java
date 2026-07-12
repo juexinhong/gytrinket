@@ -126,7 +126,7 @@ public class AttributeManager {
 
     private static double calculateFinalAttributeValue(double staticValue, double dynamicValue, AttributeType type) {
         return switch (type) {
-            case BASE -> staticValue;
+            case BASE -> staticValue + dynamicValue;
             case PERCENT -> staticValue + dynamicValue;
             case INDEPENDENT_MULTIPLY -> staticValue * dynamicValue;
         };
@@ -235,11 +235,6 @@ public class AttributeManager {
         AttributeDefinition def = ATTRIBUTE_DEFINITIONS.get(attributeName);
         if (def == null) {
             gytrinket.LOGGER.warn("尝试设置未注册的动态属性: {}", attributeName);
-            return;
-        }
-
-        if (def.getType() == AttributeType.BASE) {
-            gytrinket.LOGGER.warn("底数类型属性不支持动态属性: {}", attributeName);
             return;
         }
 

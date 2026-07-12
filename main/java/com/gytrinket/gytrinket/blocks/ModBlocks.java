@@ -16,7 +16,8 @@ public class ModBlocks {
     // 注册光点核心方块
     public static final DeferredBlock<Block> LIGHT_POINT_CORE = BLOCKS.register("light_point_core",
             () -> new LightPointCoreBlock(BlockBehaviour.Properties.of()
-                    .strength(0.5f)
+                    .strength(3.0f, 6.0f)          // 深板岩级别：destroyTime=3.0, explosionResistance=6.0
+                    .requiresCorrectToolForDrops()  // 需要正确工具（铁镐及以上）才掉落
                     .noOcclusion()
                     .lightLevel(state -> 15)));
 }

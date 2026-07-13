@@ -3,6 +3,7 @@ package com.gy_mod.gy_trinket.network;
 import com.gy_mod.gy_trinket.Config;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
 import com.gy_mod.gy_trinket.core.attribute.ItemAttributeConfig;
+import com.gy_mod.gy_trinket.core.level.ModLevelManager;
 import com.gy_mod.gy_trinket.core.shield.cooldown.ShieldCooldownManager;
 import com.gy_mod.gy_trinket.core.shield.ShieldManager;
 import com.gy_mod.gy_trinket.core.upgrade.UpgradeData;
@@ -114,6 +115,14 @@ public class NetworkHandler {
             LightningRenderMessage::encode,
             LightningRenderMessage::decode,
             LightningRenderMessage::handle
+        );
+
+        INSTANCE.registerMessage(
+            messageId++,
+            SwarmEnergyWavePacket.class,
+            SwarmEnergyWavePacket::encode,
+            SwarmEnergyWavePacket::decode,
+            SwarmEnergyWavePacket::handle
         );
 
         INSTANCE.registerMessage(
@@ -294,6 +303,22 @@ public class NetworkHandler {
             SyncBurstFiringMessage::encode,
             SyncBurstFiringMessage::decode,
             SyncBurstFiringMessage::handle
+        );
+
+        INSTANCE.registerMessage(
+            messageId++,
+            ToggleExecuteMessage.class,
+            ToggleExecuteMessage::encode,
+            ToggleExecuteMessage::decode,
+            ToggleExecuteMessage::handle
+        );
+
+        INSTANCE.registerMessage(
+            messageId++,
+            ChargedSweepParticleMessage.class,
+            ChargedSweepParticleMessage::encode,
+            ChargedSweepParticleMessage::decode,
+            ChargedSweepParticleMessage::handle
         );
     }
     
@@ -815,6 +840,61 @@ public class NetworkHandler {
         INSTANCE.send(PacketDistributor.ALL.noArg(), new LightningRenderMessage(segments));
     }
 
+    /**
+     * 发送蜂群能量波渲染包给所有玩家
+     */
+    public static void sendSwarmEnergyWaveToAll(net.minecraft.server.level.ServerLevel level, int entityId, net.minecraft.world.phys.Vec3 pos, net.minecraft.world.phys.Vec3 direction, boolean isRepair) {
+        com.gy_mod.gy_trinket.core.entity.construct.swarm.client.EnergyWaveRenderManager.addWave(
+            entityId, pos.x, pos.y, pos.z, direction.x, direction.y, direction.z, isRepair
+        );
+        // 服务端广播给所有客户端
+        INSTANCE.send(PacketDistributor.ALL.noArg(), new SwarmEnergyWavePacket(entityId, pos.x, pos.y, pos.z, direction.x, direction.y, direction.z, isRepair));
+    }
+
+    public static class SwarmEnergyWavePacket {
+        private int entityId;
+        private double x, y, z;
+        private double dirX, dirY, dirZ;
+        private boolean isRepair;
+
+        public SwarmEnergyWavePacket() {}
+
+        public SwarmEnergyWavePacket(int entityId, double x, double y, double z, double dirX, double dirY, double dirZ, boolean isRepair) {
+            this.entityId = entityId;
+            this.x = x; this.y = y; this.z = z;
+            this.dirX = dirX; this.dirY = dirY; this.dirZ = dirZ;
+            this.isRepair = isRepair;
+        }
+
+        public static void encode(SwarmEnergyWavePacket msg, FriendlyByteBuf buf) {
+            buf.writeInt(msg.entityId);
+            buf.writeDouble(msg.x); buf.writeDouble(msg.y); buf.writeDouble(msg.z);
+            buf.writeDouble(msg.dirX); buf.writeDouble(msg.dirY); buf.writeDouble(msg.dirZ);
+            buf.writeBoolean(msg.isRepair);
+        }
+
+        public static SwarmEnergyWavePacket decode(FriendlyByteBuf buf) {
+            return new SwarmEnergyWavePacket(
+                buf.readInt(),
+                buf.readDouble(), buf.readDouble(), buf.readDouble(),
+                buf.readDouble(), buf.readDouble(), buf.readDouble(),
+                buf.readBoolean()
+            );
+        }
+
+        public static void handle(SwarmEnergyWavePacket msg, Supplier<NetworkEvent.Context> contextSupplier) {
+            NetworkEvent.Context context = contextSupplier.get();
+            context.enqueueWork(() -> {
+                DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> {
+                    com.gy_mod.gy_trinket.core.entity.construct.swarm.client.EnergyWaveRenderManager.addWave(
+                        msg.entityId, msg.x, msg.y, msg.z, msg.dirX, msg.dirY, msg.dirZ, msg.isRepair
+                    );
+                });
+            });
+            context.setPacketHandled(true);
+        }
+    }
+
     public static class ExplosiveShieldFlashPacket {
         private double x;
         private double y;
@@ -1138,16 +1218,23 @@ public class NetworkHandler {
         public int slotCount;
         public CompoundTag upgradeData;
         public ListTag upgradeTargets;
+        public int modLevel;
+        public int upgradeExp;
+        public int upgradePoints;
 
         public ResponsePanelDataMessage() {}
 
         public ResponsePanelDataMessage(Map<String, Double> attributes, ListTag items, int slotCount,
-                                         CompoundTag upgradeData, ListTag upgradeTargets) {
+                                         CompoundTag upgradeData, ListTag upgradeTargets,
+                                         int modLevel, int upgradeExp, int upgradePoints) {
             this.attributes = attributes;
             this.items = items;
             this.slotCount = slotCount;
             this.upgradeData = upgradeData;
             this.upgradeTargets = upgradeTargets;
+            this.modLevel = modLevel;
+            this.upgradeExp = upgradeExp;
+            this.upgradePoints = upgradePoints;
         }
 
         public static void encode(ResponsePanelDataMessage msg, FriendlyByteBuf buf) {
@@ -1161,6 +1248,9 @@ public class NetworkHandler {
             tag.putInt("slotCount", msg.slotCount);
             tag.put("upgradeData", msg.upgradeData);
             tag.put("upgradeTargets", msg.upgradeTargets);
+            tag.putInt("modLevel", msg.modLevel);
+            tag.putInt("upgradeExp", msg.upgradeExp);
+            tag.putInt("upgradePoints", msg.upgradePoints);
             buf.writeNbt(tag);
         }
 
@@ -1177,7 +1267,10 @@ public class NetworkHandler {
             int slotCount = tag != null ? tag.getInt("slotCount") : 0;
             CompoundTag upgradeData = tag != null ? tag.getCompound("upgradeData") : new CompoundTag();
             ListTag upgradeTargets = tag != null ? tag.getList("upgradeTargets", 10) : new ListTag();
-            return new ResponsePanelDataMessage(attributes, items, slotCount, upgradeData, upgradeTargets);
+            int modLevel = tag != null ? tag.getInt("modLevel") : 0;
+            int upgradeExp = tag != null ? tag.getInt("upgradeExp") : 0;
+            int upgradePoints = tag != null ? tag.getInt("upgradePoints") : 0;
+            return new ResponsePanelDataMessage(attributes, items, slotCount, upgradeData, upgradeTargets, modLevel, upgradeExp, upgradePoints);
         }
 
         public static void handle(ResponsePanelDataMessage msg, Supplier<NetworkEvent.Context> ctx) {
@@ -1394,8 +1487,11 @@ public class NetworkHandler {
         }
         UpgradeData upgradeData = UpgradeManager.getUpgradeData(player.getUUID());
         CompoundTag upgradeTag = upgradeData.save();
+        int modLevel = ModLevelManager.getModLevel(player.getUUID());
+        int upgradeExp = ModLevelManager.getUpgradeExp(player.getUUID());
+        int upgradePoints = ModLevelManager.getUpgradePoints(player.getUUID());
         INSTANCE.send(PacketDistributor.PLAYER.with(() -> player),
-            new ResponsePanelDataMessage(attributes, items, slotCount, upgradeTag, upgradeTargets));
+            new ResponsePanelDataMessage(attributes, items, slotCount, upgradeTag, upgradeTargets, modLevel, upgradeExp, upgradePoints));
     }
 
     private static void sendConfigDataToPlayer(net.minecraft.server.level.ServerPlayer player) {
@@ -1847,40 +1943,45 @@ public class NetworkHandler {
      */
     public static class SyncChargedAttackMessage {
         private double chargeValue;
+        private double chargedDamage;
 
         public SyncChargedAttackMessage() {}
 
-        public SyncChargedAttackMessage(double chargeValue) {
+        public SyncChargedAttackMessage(double chargeValue, double chargedDamage) {
             this.chargeValue = chargeValue;
+            this.chargedDamage = chargedDamage;
         }
 
         public static void encode(SyncChargedAttackMessage msg, FriendlyByteBuf buf) {
             buf.writeDouble(msg.chargeValue);
+            buf.writeDouble(msg.chargedDamage);
         }
 
         public static SyncChargedAttackMessage decode(FriendlyByteBuf buf) {
-            return new SyncChargedAttackMessage(buf.readDouble());
+            return new SyncChargedAttackMessage(buf.readDouble(), buf.readDouble());
         }
 
         public static void handle(SyncChargedAttackMessage msg, Supplier<NetworkEvent.Context> ctx) {
             NetworkEvent.Context context = ctx.get();
             context.enqueueWork(() -> {
                 net.minecraftforge.fml.DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> {
-                    handleSyncChargedAttackOnClient(msg.chargeValue);
+                    handleSyncChargedAttackOnClient(msg.chargeValue, msg.chargedDamage);
                 });
             });
             context.setPacketHandled(true);
         }
 
-        private static void handleSyncChargedAttackOnClient(double chargeValue) {
+        private static void handleSyncChargedAttackOnClient(double chargeValue, double chargedDamage) {
             // 客户端收到充能值同步，存储到HUD渲染器
-            com.gy_mod.gy_trinket.client.attack_mode.charged_attack.ChargedAttackHudRenderer.setChargeValue(chargeValue);
+            com.gy_mod.gy_trinket.client.attack_mode.charged_attack.ChargedAttackHudRenderer.setChargeValue(chargeValue, chargedDamage);
         }
     }
 
     public static void sendChargedAttackSyncToPlayer(ServerPlayer player, double chargeValue) {
+        double attackDamage = player.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE);
+        double chargedDamage = attackDamage * (1.0 + chargeValue);
         INSTANCE.send(PacketDistributor.PLAYER.with(() -> player),
-            new SyncChargedAttackMessage(chargeValue));
+            new SyncChargedAttackMessage(chargeValue, chargedDamage));
     }
 
     /**
@@ -1918,5 +2019,116 @@ public class NetworkHandler {
     public static void sendBurstFiringToPlayer(ServerPlayer player, boolean isBurstFiring) {
         INSTANCE.send(PacketDistributor.PLAYER.with(() -> player),
             new SyncBurstFiringMessage(isBurstFiring));
+    }
+
+    public static class ToggleExecuteMessage {
+        public ToggleExecuteMessage() {}
+
+        public static void encode(ToggleExecuteMessage msg, FriendlyByteBuf buf) {}
+
+        public static ToggleExecuteMessage decode(FriendlyByteBuf buf) {
+            return new ToggleExecuteMessage();
+        }
+
+        public static void handle(ToggleExecuteMessage msg, Supplier<NetworkEvent.Context> ctx) {
+            NetworkEvent.Context context = ctx.get();
+
+            context.enqueueWork(() -> {
+                var player = context.getSender();
+                if (player != null) {
+                    boolean newState = com.gy_mod.gy_trinket.core.execute.ExecuteToggleManager.toggle(player.getUUID());
+                    player.displayClientMessage(
+                        net.minecraft.network.chat.Component.translatable(
+                            newState ? "message.gytrinket.execute_enabled" : "message.gytrinket.execute_disabled"
+                        ), true
+                    );
+                }
+            });
+
+            context.setPacketHandled(true);
+        }
+    }
+
+    /**
+     * S->C: 充能横扫粒子渲染数据包
+     * 服务端 sweepAttack() 只在服务端被调用，客户端无法直接获取渲染数据。
+     * 通过此网络包将渲染数据发送到客户端。
+     */
+    public static class ChargedSweepParticleMessage {
+        private final double x;
+        private final double y;
+        private final double z;
+        private final float yaw;
+        private final float pitch;
+        private final float scale;
+        private final long gameTime;
+        private final int lifetime;
+
+        public ChargedSweepParticleMessage(double x, double y, double z,
+                                           float yaw, float pitch, float scale,
+                                           long gameTime, int lifetime) {
+            this.x = x;
+            this.y = y;
+            this.z = z;
+            this.yaw = yaw;
+            this.pitch = pitch;
+            this.scale = scale;
+            this.gameTime = gameTime;
+            this.lifetime = lifetime;
+        }
+
+        public ChargedSweepParticleMessage(FriendlyByteBuf buf) {
+            this.x = buf.readDouble();
+            this.y = buf.readDouble();
+            this.z = buf.readDouble();
+            this.yaw = buf.readFloat();
+            this.pitch = buf.readFloat();
+            this.scale = buf.readFloat();
+            this.gameTime = buf.readVarLong();
+            this.lifetime = buf.readVarInt();
+        }
+
+        public static void encode(ChargedSweepParticleMessage msg, FriendlyByteBuf buf) {
+            buf.writeDouble(msg.x);
+            buf.writeDouble(msg.y);
+            buf.writeDouble(msg.z);
+            buf.writeFloat(msg.yaw);
+            buf.writeFloat(msg.pitch);
+            buf.writeFloat(msg.scale);
+            buf.writeVarLong(msg.gameTime);
+            buf.writeVarInt(msg.lifetime);
+        }
+
+        public static ChargedSweepParticleMessage decode(FriendlyByteBuf buf) {
+            return new ChargedSweepParticleMessage(buf);
+        }
+
+        public static void handle(ChargedSweepParticleMessage msg, Supplier<NetworkEvent.Context> ctx) {
+            NetworkEvent.Context context = ctx.get();
+            context.enqueueWork(() -> {
+                DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> {
+                    com.gy_mod.gy_trinket.client.attack_mode.charged_attack.ChargedSweepRenderer.addSweep(
+                        new com.gy_mod.gy_trinket.client.attack_mode.charged_attack.ChargedSweepRenderData(
+                            msg.x, msg.y, msg.z,
+                            msg.yaw, msg.pitch,
+                            msg.scale,
+                            msg.gameTime, msg.lifetime
+                        )
+                    );
+                });
+            });
+            context.setPacketHandled(true);
+        }
+    }
+
+    /**
+     * 发送充能横扫粒子渲染数据包给所有可见此玩家的客户端
+     */
+    public static void sendChargedSweepParticleToAll(ServerPlayer player,
+                                                      double x, double y, double z,
+                                                      float yaw, float pitch, float scale,
+                                                      long gameTime, int lifetime) {
+        INSTANCE.send(PacketDistributor.PLAYER.with(() -> player),
+            new ChargedSweepParticleMessage(x, y, z, yaw, pitch, scale, gameTime, lifetime));
     }
 }

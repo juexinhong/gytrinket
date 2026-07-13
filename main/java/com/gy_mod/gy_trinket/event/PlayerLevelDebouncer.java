@@ -2,10 +2,11 @@ package com.gy_mod.gy_trinket.event;
 
 import com.gy_mod.gy_trinket.core.TickScheduler;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructAttributeApplier;
+import com.gy_mod.gy_trinket.core.entity.construct.swarm.MothershipManager;
+import com.gy_mod.gy_trinket.core.level.ModLevelChangeEvent;
 import com.gy_mod.gy_trinket.gytrinket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.event.entity.player.PlayerXpEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.server.ServerLifecycleHooks;
@@ -26,12 +27,8 @@ public class PlayerLevelDebouncer {
     private PlayerLevelDebouncer() {}
 
     @SubscribeEvent
-    public static void onLevelChange(PlayerXpEvent.LevelChange event) {
-        if (!(event.getEntity() instanceof ServerPlayer player)) {
-            return;
-        }
-
-        UUID uuid = player.getUUID();
+    public static void onModLevelChange(ModLevelChangeEvent event) {
+        UUID uuid = event.getPlayerUUID();
         PENDING_CHANGES.put(uuid, TickScheduler.getCurrentTick() + DEBOUNCE_TICKS);
         DIRTY_PLAYERS.add(uuid);
 
@@ -69,6 +66,7 @@ public class PlayerLevelDebouncer {
 
             AdvancedEngineeringEventHandler.applyEngineeringBonus(player);
             PrecisionConstructEventHandler.applyPrecisionConstructBonus(player);
+            MothershipManager.applyMothershipBonus(player);
             ConstructAttributeApplier.refreshForPlayer(uuid, player);
         }
     }

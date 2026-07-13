@@ -51,7 +51,7 @@ public class AttackModeClientUtil {
                 continue;
             }
 
-            AABB entityBox = entity.getBoundingBox().inflate(0.3);
+            AABB entityBox = entity.getBoundingBox().inflate(0.5);
             var clipResult = entityBox.clip(eyePos, endPos);
             if (clipResult.isPresent()) {
                 double distance = eyePos.distanceTo(clipResult.get());

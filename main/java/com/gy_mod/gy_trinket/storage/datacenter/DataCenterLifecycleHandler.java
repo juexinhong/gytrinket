@@ -15,6 +15,7 @@ import com.gy_mod.gy_trinket.core.upgrade.UpgradeDataSlot;
 import com.gy_mod.gy_trinket.storage.datacenter.slot.HealthDataSlot;
 import com.gy_mod.gy_trinket.storage.datacenter.slot.LightPointStoreSlot;
 import com.gy_mod.gy_trinket.storage.datacenter.slot.ShieldDataSlot;
+import com.gy_mod.gy_trinket.storage.datacenter.slot.ModLevelDataSlot;
 import com.gy_mod.gy_trinket.storage.datacenter.slot.ShieldTypeSlot;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -53,6 +54,7 @@ public class DataCenterLifecycleHandler {
         PlayerDataCenter.registerSlot(new ShieldTypeSlot());
         PlayerDataCenter.registerSlot(new ShieldDataSlot());
         PlayerDataCenter.registerSlot(new HealthDataSlot());
+        PlayerDataCenter.registerSlot(new ModLevelDataSlot());
 
         gytrinket.LOGGER.info("PlayerDataCenter 数据槽注册完成");
     }
@@ -193,9 +195,9 @@ public class DataCenterLifecycleHandler {
         ListTag constructsList = new ListTag();
 
         if (isStandby) {
-            List<DroneConstructData> backupList = dam.getStandbyBackup(playerUUID);
+            List<ConstructData> backupList = dam.getStandbyBackup(playerUUID, DroneConstructTypes.DRONE);
             if (backupList != null) {
-                for (DroneConstructData data : backupList) {
+                for (ConstructData data : backupList) {
                     CompoundTag constructTag = new CompoundTag();
                     constructTag.putString("typeId", data.getConstructId());
                     constructTag.put("data", data.saveToNBT());
@@ -213,13 +215,17 @@ public class DataCenterLifecycleHandler {
                     if (entity.level() != player.level()) continue;
                     if (entity.distanceTo(player) > MAX_SAVE_DISTANCE) continue;
 
-                    if (entity instanceof net.minecraft.world.entity.LivingEntity livingEntity) {
-                        data.setHealth(livingEntity.getHealth());
-                    }
                     if (entity instanceof DroneConstructEntity droneEntity && data instanceof DroneConstructData droneData) {
+                        // 保存生命值比例，避免加载时因属性修饰符导致比例丢失
+                        double currentMaxHealth = droneEntity.getMaxHealth();
+                        float currentHealth = droneEntity.getHealth();
+                        droneData.setHealthRatio(currentMaxHealth > 0 ? currentHealth / currentMaxHealth : 1.0);
+                        droneData.setMaxHealth(droneEntity.getBaseMaxHealth());
                         droneData.setHasAssaultModule(droneEntity.hasEffectTag(DroneConstructEntity.DroneEffectTag.ASSAULT));
                         droneData.setHasDefenseModule(droneEntity.hasEffectTag(DroneConstructEntity.DroneEffectTag.DEFENSE));
                         droneData.setArrayType(DroneArrayManager.getInstance().getPlayerArrayType(player));
+                    } else if (entity instanceof net.minecraft.world.entity.LivingEntity livingEntity) {
+                        data.setHealth(livingEntity.getHealth());
                     }
                     data.setSavedPos(entity.getX(), entity.getY(), entity.getZ());
                     data.setDimension(entity.level().dimension().location().toString());
@@ -301,14 +307,14 @@ public class DataCenterLifecycleHandler {
             }
 
             if (isStandby) {
-                List<DroneConstructData> backupList = new ArrayList<>();
+                List<ConstructData> backupList = new ArrayList<>();
                 for (ConstructData data : allData) {
                     cm.addConstruct(player, data);
                     if (data instanceof DroneConstructData droneData) {
                         backupList.add(droneData);
                     }
                 }
-                dam.setStandbyBackup(playerUUID, backupList);
+                dam.setStandbyBackup(playerUUID, DroneConstructTypes.DRONE, backupList);
                 cm.setBuildingDisabled(player, true);
             } else {
                 for (ConstructData data : allData) {
@@ -344,6 +350,11 @@ public class DataCenterLifecycleHandler {
         droneEntity.setOwnerUUID(player.getUUID());
         droneEntity.setArrayType(arrayType);
 
+        // 恢复基础最大生命值
+        droneEntity.setBaseMaxHealth(data.getMaxHealth());
+        droneEntity.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH).setBaseValue(data.getMaxHealth());
+
+        // addEffectTag 内部会调用 applyAttributeModifiers，无需单独调用 refreshConstructAttributes
         if (data.hasAssaultModule()) {
             droneEntity.addEffectTag(DroneConstructEntity.DroneEffectTag.ASSAULT);
         }
@@ -351,7 +362,15 @@ public class DataCenterLifecycleHandler {
             droneEntity.addEffectTag(DroneConstructEntity.DroneEffectTag.DEFENSE);
         }
 
-        droneEntity.setHealth((float) data.getHealth());
+        // 如果没有任何模块标签，需要手动刷新属性
+        if (!data.hasAssaultModule() && !data.hasDefenseModule()) {
+            droneEntity.refreshConstructAttributes();
+        }
+
+        // 属性修饰器应用完毕后，用保存的生命值比例恢复当前生命值
+        float healthRatio = (float) data.getHealthRatio();
+        float newMaxHealth = droneEntity.getMaxHealth();
+        droneEntity.setHealth(newMaxHealth * healthRatio);
         serverLevel.addFreshEntity(droneEntity);
 
         data.setEntityUUID(droneEntity.getUUID());

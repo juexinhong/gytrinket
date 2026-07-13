@@ -39,7 +39,13 @@ public class DroneManager {
     /** 玩家拥有的模块缓存：玩家UUID -> 是否拥有指挥官模块 */
     private static final Set<UUID> PLAYER_HAS_COMMANDER_MODULE = new HashSet<>();
 
-    private DroneManager() {}
+    private DroneManager() {
+        // 注册无人机构建条件检查器
+        ConstructManager.getInstance().registerBuildConditionChecker(
+                DroneConstructTypes.DRONE,
+                player -> PLAYER_CAN_BUILD_DRONE.contains(player.getUUID())
+        );
+    }
 
     public static DroneManager getInstance() {
         return INSTANCE;

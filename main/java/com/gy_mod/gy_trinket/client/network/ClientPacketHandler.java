@@ -54,12 +54,15 @@ public final class ClientPacketHandler {
         }
 
         if (currentScreen instanceof PlayerPanelScreen ps) {
-            ps.updateData(msg.attributes, msg.items, msg.slotCount, msg.upgradeData, msg.upgradeTargets);
+            ps.updateData(msg.attributes, msg.items, msg.slotCount, msg.upgradeData, msg.upgradeTargets,
+                    msg.modLevel, msg.upgradeExp, msg.upgradePoints);
         } else if (panelScreen != null) {
-            panelScreen.updateData(msg.attributes, msg.items, msg.slotCount, msg.upgradeData, msg.upgradeTargets);
+            panelScreen.updateData(msg.attributes, msg.items, msg.slotCount, msg.upgradeData, msg.upgradeTargets,
+                    msg.modLevel, msg.upgradeExp, msg.upgradePoints);
         } else {
             mc.setScreen(new PlayerPanelScreen(
-                msg.attributes, msg.items, msg.slotCount, msg.upgradeData, msg.upgradeTargets));
+                msg.attributes, msg.items, msg.slotCount, msg.upgradeData, msg.upgradeTargets,
+                msg.modLevel, msg.upgradeExp, msg.upgradePoints));
         }
     }
 

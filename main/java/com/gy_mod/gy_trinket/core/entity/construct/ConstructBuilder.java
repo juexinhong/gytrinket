@@ -31,7 +31,7 @@ public class ConstructBuilder {
         }
         progress += increment;
 
-        if (progress >= constructType.getBuildTime()) {
+        if (progress >= getEffectiveBuildTime()) {
             completed = true;
             onBuildComplete();
             return true;
@@ -62,6 +62,14 @@ public class ConstructBuilder {
     }
 
     public int getTotal() {
+        return getEffectiveBuildTime();
+    }
+
+    /**
+     * 获取实际构建所需时间（tick），可由子类重写以应用动态修正。
+     * 默认返回构造体类型的基础构建时间。
+     */
+    protected int getEffectiveBuildTime() {
         return constructType.getBuildTime();
     }
 

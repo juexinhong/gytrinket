@@ -133,14 +133,15 @@ public class Config {
     public static final ForgeConfigSpec.DoubleValue ASSAULT_ATTACK_SPEED_PER_STACK;
     public static final ForgeConfigSpec.IntValue ASSAULT_DURATION_TICKS;
     public static final ForgeConfigSpec.DoubleValue ASSAULT_SELF_DAMAGE_PER_STACK;
+    public static final ForgeConfigSpec.DoubleValue ASSAULT_MOVEMENT_SPEED_PENALTY;
 
     // ===== 18. 充能攻击 (charged_attack) =====
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> CHARGED_ATTACK_ITEMS;
     public static final ForgeConfigSpec.DoubleValue CHARGED_ATTACK_BASE_CHARGE_RATE;
-    public static final ForgeConfigSpec.DoubleValue CHARGED_ATTACK_DAMAGE_SCALE_FACTOR;
     public static final ForgeConfigSpec.DoubleValue CHARGED_ATTACK_SPEED_SCALE_FACTOR;
     public static final ForgeConfigSpec.DoubleValue CHARGED_ATTACK_DRAG_COEFFICIENT;
     public static final ForgeConfigSpec.DoubleValue CHARGED_ATTACK_DRAG_THRESHOLD_FACTOR;
+    public static final ForgeConfigSpec.DoubleValue CHARGED_ATTACK_MOVEMENT_SPEED_PENALTY;
 
     // ===== 19. 精密构造 (precision_construct) =====
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> PRECISION_CONSTRUCT_ITEMS;
@@ -154,10 +155,17 @@ public class Config {
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> DRONE_MODULE_ITEMS;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> ASSAULT_DRONE_MODULE_ITEMS;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> PURSUIT_ARRAY_REQUIRED_ITEMS;
+    public static final ForgeConfigSpec.DoubleValue DRONE_BASE_HEALTH;
+    public static final ForgeConfigSpec.DoubleValue DRONE_BASE_DAMAGE;
+    public static final ForgeConfigSpec.IntValue DRONE_MAX_COUNT;
+    public static final ForgeConfigSpec.DoubleValue DRONE_FOLLOW_RANGE;
     public static final ForgeConfigSpec.DoubleValue ORBIT_ATTACK_INTERVAL;
     public static final ForgeConfigSpec.DoubleValue ORBIT_ATTACK_RANGE;
     public static final ForgeConfigSpec.DoubleValue PURSUIT_ATTACK_INTERVAL;
     public static final ForgeConfigSpec.DoubleValue PURSUIT_ATTACK_RANGE;
+
+    // ===== 21.5 无人机斩杀机制 (drone_execute) =====
+    public static final ForgeConfigSpec.BooleanValue DRONE_EXECUTE_ENABLED;
 
     // ===== 22. 宽限协议 (near_death_protection) =====
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> NEAR_DEATH_PROTECTION_ITEMS;
@@ -189,6 +197,33 @@ public class Config {
     public static final ForgeConfigSpec.IntValue COMMANDER_APPOINT_DELAY;
     public static final ForgeConfigSpec.DoubleValue COMMANDER_VULNERABILITY;
 
+    // ===== 僚机 (wingman) =====
+    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> WINGMAN_MODULE_ITEMS;
+    public static final ForgeConfigSpec.DoubleValue WINGMAN_BASE_HEALTH;
+    public static final ForgeConfigSpec.IntValue WINGMAN_MAX_COUNT;
+    public static final ForgeConfigSpec.DoubleValue WINGMAN_ATTACK_INTERVAL;
+    public static final ForgeConfigSpec.DoubleValue WINGMAN_ATTACK_RANGE;
+    public static final ForgeConfigSpec.IntValue WINGMAN_EXPLOSIVE_COUNT;
+    public static final ForgeConfigSpec.DoubleValue WINGMAN_EXPLOSIVE_DAMAGE;
+
+    // ===== 蜂群 =====
+    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> SWARM_MODULE_ITEMS;
+    public static final ForgeConfigSpec.DoubleValue SWARM_BASE_HEALTH;
+    public static final ForgeConfigSpec.DoubleValue SWARM_BASE_DAMAGE;
+    public static final ForgeConfigSpec.IntValue SWARM_MAX_COUNT;
+    public static final ForgeConfigSpec.IntValue SWARM_COUNT_LIMIT;
+    public static final ForgeConfigSpec.IntValue SWARM_BUILD_TIME;
+    public static final ForgeConfigSpec.DoubleValue SWARM_MOVE_SPEED;
+    public static final ForgeConfigSpec.DoubleValue SWARM_SEARCH_RANGE;
+    public static final ForgeConfigSpec.DoubleValue SWARM_ATTACK_RANGE;
+    public static final ForgeConfigSpec.DoubleValue SWARM_ATTACK_INTERVAL;
+    public static final ForgeConfigSpec.DoubleValue SWARM_VULNERABILITY_VALUE;
+    public static final ForgeConfigSpec.DoubleValue SWARM_SHIELD_REPAIR_MULTIPLIER;
+    public static final ForgeConfigSpec.DoubleValue SWARM_TIER_UPGRADE_CHANCE_STANDARD;
+    public static final ForgeConfigSpec.DoubleValue SWARM_TIER_UPGRADE_CHANCE_ADVANCED;
+    public static final ForgeConfigSpec.DoubleValue WINGMAN_EXPLOSION_DAMAGE;
+    public static final ForgeConfigSpec.DoubleValue WINGMAN_EXPLOSION_RADIUS;
+
     // ===== 27. 守卫阵列/防御无人机 (guard_array) =====
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> DEFENSE_DRONE_MODULE_ITEMS;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> GUARD_ARRAY_REQUIRED_ITEMS;
@@ -213,18 +248,42 @@ public class Config {
     public static final ForgeConfigSpec.DoubleValue RESHAPING_BASE_DAMAGE_REDUCTION;
     public static final ForgeConfigSpec.IntValue RESHAPING_DAMAGE_REDUCTION_DURATION;
 
+    // ===== 机身类型系统 (body_types) =====
+    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> BODY_ITEMS_CONFIG;
+
+    // ===== 督战者系统 (taskmaster) =====
+    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> TASKMASTER_ITEMS;
+
+    // ===== 30b. 自毁装置 (self_destruct) =====
+    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> SELF_DESTRUCT_ITEMS;
+    public static final ForgeConfigSpec.DoubleValue SELF_DESTRUCT_BASE_DAMAGE;
+    public static final ForgeConfigSpec.DoubleValue SELF_DESTRUCT_BASE_RADIUS;
+    public static final ForgeConfigSpec.DoubleValue SELF_DESTRUCT_DAMAGE_PER_MAX_HEALTH;
+    public static final ForgeConfigSpec.DoubleValue SELF_DESTRUCT_RADIUS_PER_MAX_HEALTH;
+
     // ===== 31. 充能护盾 (charged_shield) =====
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> CHARGED_SHIELD_ITEMS;
     public static final ForgeConfigSpec.DoubleValue CHARGED_SHIELD_CHARGE_RATIO;
     public static final ForgeConfigSpec.DoubleValue CHARGED_SHIELD_MAX_BONUS;
     public static final ForgeConfigSpec.DoubleValue CHARGED_SHIELD_DECAY_RATE;
+    public static final ForgeConfigSpec.DoubleValue CHARGED_SHIELD_MOVEMENT_SPEED_PENALTY;
+
+    // ===== 35. 积怨 (grudge) =====
+    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> GRUDGE_ITEMS;
+    public static final ForgeConfigSpec.DoubleValue GRUDGE_CONVERSION_RATIO;
+    public static final ForgeConfigSpec.DoubleValue GRUDGE_FADE_BASE;
+    public static final ForgeConfigSpec.DoubleValue GRUDGE_FADE_PERCENT;
+    public static final ForgeConfigSpec.DoubleValue GRUDGE_MOVEMENT_SPEED_PENALTY;
 
     // ===== 32. 升级系统 (upgrade_system) =====
     public static final ForgeConfigSpec.ConfigValue<Boolean> UPGRADE_SYSTEM_ENABLED;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> UPGRADE_PATHS;
 
     // ===== 33. 快速装备 (quick_equip) =====
-    public static final ForgeConfigSpec.DoubleValue QUICK_EQUIP_EXP_LEVEL_MULTIPLIER;
+    public static final ForgeConfigSpec.IntValue QUICK_EQUIP_UPGRADE_POINTS_COST;
+
+    // ===== 33b. 敌对目标 (hostile_target) =====
+    public static final ForgeConfigSpec.IntValue HOSTILE_TARGET_MARK_DURATION;
 
     // ===== 34. 其他通用设置 =====
     public static final ForgeConfigSpec.ConfigValue<Boolean> HARDCORE_MODE_ENABLED;
@@ -340,7 +399,10 @@ public class Config {
             "explosion_damage_percent:PERCENT:explosion_damage," +
             "explosion_damage_independent:INDEPENDENT_MULTIPLY:explosion_damage," +
             "explosion_radius_percent:PERCENT:explosion_radius," +
-            "explosion_radius_independent:INDEPENDENT_MULTIPLY:explosion_radius"
+            "explosion_radius_independent:INDEPENDENT_MULTIPLY:explosion_radius," +
+            "construct_standard_non_weapon_count_percent:PERCENT:construct_standard_non_weapon_count," +
+            "construct_basic_non_weapon_count_percent:PERCENT:construct_basic_non_weapon_count," +
+            "swarm_count_mothership:BASE:swarm_count_mothership"
         );
 
         ITEM_ATTRIBUTES_CONFIG = BUILDER.comment(
@@ -425,6 +487,15 @@ public class Config {
 
                 "gytrinket:guardian|shield_effect_percent=0.10|shield_effect_radius=0.25|shield_damage_reduction=-0.1|attack_speed_percent=-0.1",
 
+                "gytrinket:self_destruct_module|",
+                "gytrinket:taskmaster_module|construct_standard_non_weapon_count_percent=1|construct_basic_non_weapon_count_percent=1|construct_advanced_count=1",
+
+                "gytrinket:mothership_body|shield_percent=0.15|player_health_percent=0.15|movement_speed_percent=0.4|knockback_resistance=0.2",
+
+                "gytrinket:grudge_module|player_health_percent=0.05|attack_damage_percent=0.05|movement_speed_independent=-0.1",
+
+                "gytrinket:quick_reconstruction_module|recovery_efficiency_percent=1.0|player_health=10|coating=2",
+
                 "minecraft:command_block|shield_effect_percent=1.0|shield_cooldown_reduction_percent=0.8|shield_damage_reduction=-0.9|shield_self_damage_reduction=-0.9|player_health_percent=1|attack_speed_percent=1|attack_damage_percent=1|knockback_resistance=1|player_knockback_percent=1|movement_speed_percent=0.5|player_damage_reduction=-0.9|player_self_damage_reduction=-0.9|recovery_efficiency=0.5"
             ),
             s -> true
@@ -480,6 +551,24 @@ public class Config {
 
         BUILDER.pop();
 
+        // ===== 机身类型系统 =====
+        BUILDER.comment("机身类型配置").push("body_types");
+
+        BODY_ITEMS_CONFIG = BUILDER.comment(
+            "机身物品配置",
+            "格式：物品ID",
+            "列在此处的物品为机身物品，玩家光点核心中只生效第一个",
+            "示例：gytrinket:guardian"
+        ).defineListAllowEmpty("bodyItems",
+            List.of(
+                "gytrinket:guardian",
+                "gytrinket:mothership_body"
+            ),
+            s -> true
+        );
+
+        BUILDER.pop();
+
         // ===== 禁用系统 =====
         BUILDER.comment("禁用系统配置").push("disable_system");
 
@@ -490,7 +579,10 @@ public class Config {
             "没有写则默认不禁用任何物品",
             "示例：gytrinket:item_a|gytrinket:item_b,gytrinket:item_c"
         ).defineListAllowEmpty("itemDisableTargets",
-            List.of("gytrinket:assault_drone_module|gytrinket:defense_drone_module"),
+            List.of(
+                "gytrinket:assault_drone_module|gytrinket:defense_drone_module",
+                "gytrinket:quick_reconstruction_module|gytrinket:shield_gy,gytrinket:shield_gy1,gytrinket:shield_gy2,gytrinket:shield_gy3,gytrinket:shield_aura_ring,gytrinket:shield_aura_ring1,gytrinket:shield_aura_ring2,gytrinket:shield_aura_ring3,gytrinket:shield_siphon,gytrinket:shield_siphon1,gytrinket:shield_siphon2,gytrinket:shield_siphon3,gytrinket:shield_reflect,gytrinket:shield_reflect1,gytrinket:shield_reflect2,gytrinket:shield_reflect3,gytrinket:shield_amplifier,gytrinket:shield_amplifier1,gytrinket:shield_amplifier2,gytrinket:shield_amplifier3,gytrinket:shield_warp,gytrinket:shield_warp1,gytrinket:shield_warp2,gytrinket:shield_warp3,gytrinket:shield_amplifier_module,gytrinket:barrier_shield_module,gytrinket:reflect_shield_module,gytrinket:ultimate_shield_module,gytrinket:shield_cooldown_reduction_module,gytrinket:shield_quick_charge_module,gytrinket:explosive_shield_module,gytrinket:shield_effect_boost_module,gytrinket:divergent_shield_module,gytrinket:focused_shield_module,gytrinket:weaponized_shield_module,gytrinket:regen_shield_module,gytrinket:shield_transfer_module,gytrinket:charged_shield_module,gytrinket:electric_energy_release_module"
+            ),
             s -> true);
 
         ITEM_DEPENDENCIES_CONFIG = BUILDER.comment(
@@ -511,7 +603,9 @@ public class Config {
             "gytrinket:arc_barrier_module|gytrinket:defense_drone_module",
             "gytrinket:reshaping_module|gytrinket:defense_drone_module",
             "gytrinket:counter_pulse_module|gytrinket:defense_drone_module",
-            "gytrinket:charged_shield_module|gytrinket:charged_attack_module"
+            "gytrinket:self_destruct_module|gytrinket:drone_module",
+            "gytrinket:charged_shield_module|gytrinket:charged_attack_module",
+            "gytrinket:grudge_module|gytrinket:charged_attack_module"
             ),
             s -> true);
 
@@ -619,7 +713,7 @@ public class Config {
             "跃传护盾爆炸基础伤害",
             "护盾破裂时产生的爆炸基础伤害值",
             "该值会受护盾效果属性组影响"
-        ).defineInRange("warpShieldExplosionDamage", 7.5, 0.0, 50.0);
+        ).defineInRange("warpShieldExplosionDamage", 7.5, 0.0, 100.0);
 
         WARP_SHIELD_EXPLOSION_RADIUS = BUILDER.comment(
             "跃传护盾爆炸半径（格）",
@@ -926,6 +1020,13 @@ public class Config {
             "范围：0.01 ~ 10.0"
         ).defineInRange("selfDamagePerStack", 0.05, 0.01, 10.0);
 
+        ASSAULT_MOVEMENT_SPEED_PENALTY = BUILDER.comment(
+            "强袭期间的移动速度独立乘区惩罚",
+            "处于强袭时（按住左键期间）施加的减速比例",
+            "默认-0.6（即-60%，独立乘区）",
+            "范围：-0.99 ~ 0.0"
+        ).defineInRange("movementSpeedPenalty", -0.6, -0.99, 0.0);
+
         BUILDER.pop();
 
         // ===== 18. 充能攻击 =====
@@ -943,17 +1044,10 @@ public class Config {
 
         CHARGED_ATTACK_BASE_CHARGE_RATE = BUILDER.comment(
             "充能攻击基础充能速率（每tick充能值）",
-            "实际充能速率 = 基础速率 * (攻击伤害加成) * (攻击速度加成)",
+            "实际充能速率 = 基础速率 * (攻击速度加成)",
             "默认0.5",
             "范围：0.01 ~ 10.0"
         ).defineInRange("baseChargeRate", 0.05, 0.0, 10.0);
-
-        CHARGED_ATTACK_DAMAGE_SCALE_FACTOR = BUILDER.comment(
-            "攻击伤害对充能速率的影响系数",
-            "充能速率额外乘区 = 攻击伤害 * 此系数",
-            "默认1.0",
-            "范围：0.0 ~ 1.0"
-        ).defineInRange("damageScaleFactor", 1.0, 0.0, 10.0);
 
         CHARGED_ATTACK_SPEED_SCALE_FACTOR = BUILDER.comment(
             "攻击速度对充能速率的影响系数",
@@ -972,11 +1066,18 @@ public class Config {
 
         CHARGED_ATTACK_DRAG_THRESHOLD_FACTOR = BUILDER.comment(
             "充能阻力阈值修正系数",
-            "动态阈值 = 玩家攻击伤害 * 攻击速度 * 此系数",
+            "动态阈值 = 玩家攻击速度 * 此系数",
             "阈值越大，阻力效果越晚显现，充能前期增长越快",
             "默认1.0",
             "范围：0.1 ~ 10.0"
         ).defineInRange("dragThresholdFactor", 5.0, 0.1, 100.0);
+
+        CHARGED_ATTACK_MOVEMENT_SPEED_PENALTY = BUILDER.comment(
+            "充能期间的移动速度独立乘区惩罚",
+            "处于充能状态时施加的减速比例",
+            "默认-0.2（即-20%，独立乘区）",
+            "范围：-0.99 ~ 0.0"
+        ).defineInRange("movementSpeedPenalty", -0.2, -0.99, 0.0);
 
         BUILDER.pop();
 
@@ -1054,6 +1155,22 @@ public class Config {
             s -> true
         );
 
+        DRONE_BASE_HEALTH = BUILDER.comment(
+            "无人机基础最大生命值"
+        ).defineInRange("droneBaseHealth", 5.0, 1.0, 1000.0);
+
+        DRONE_BASE_DAMAGE = BUILDER.comment(
+            "无人机基础伤害（每颗子弹）"
+        ).defineInRange("droneBaseDamage", 0.3, 0.01, 100.0);
+
+        DRONE_MAX_COUNT = BUILDER.comment(
+            "无人机最大数量"
+        ).defineInRange("droneMaxCount", 3, 1, 20);
+
+        DRONE_FOLLOW_RANGE = BUILDER.comment(
+            "无人机跟随范围（格）"
+        ).defineInRange("droneFollowRange", 16.0, 4.0, 64.0);
+
         ORBIT_ATTACK_INTERVAL = BUILDER.comment(
             "环绕阵列攻击间隔（秒）"
         ).defineInRange("orbitAttackInterval", 0.5, 0.05, 10.0);
@@ -1069,6 +1186,17 @@ public class Config {
         PURSUIT_ATTACK_RANGE = BUILDER.comment(
             "追击阵列攻击范围（格）"
         ).defineInRange("pursuitAttackRange", 20.0, 1.0, 64.0);
+
+        BUILDER.pop();
+
+        // ===== 21.5 无人机斩杀机制 =====
+        BUILDER.comment("无人机斩杀机制配置").push("drone_execute");
+
+        DRONE_EXECUTE_ENABLED = BUILDER.comment(
+            "是否启用无人机斩杀机制",
+            "启用时：当目标生命值低于无人机伤害，伤害归属玩家（爆炸伤害源）",
+            "禁用时：伤害量不变，但伤害源不归属玩家（不会触发玩家的击杀效果）"
+        ).define("droneExecuteEnabled", true);
 
         BUILDER.pop();
 
@@ -1213,6 +1341,122 @@ public class Config {
             "指挥官无人机每次攻击命中时施加的易伤值（可叠加）",
             "0.01 = 1%易伤"
         ).defineInRange("commanderVulnerability", 0.01, 0.001, 1.0);
+
+        BUILDER.pop();
+
+        // ===== 僚机 =====
+        BUILDER.comment("僚机构造体配置").push("wingman");
+
+        WINGMAN_MODULE_ITEMS = BUILDER.comment(
+            "僚机构建物品",
+            "格式：物品ID",
+            "示例：gytrinket:wingman_module"
+        ).defineListAllowEmpty("wingmanModuleItems",
+            java.util.List.of("gytrinket:wingman_module"),
+            s -> true
+        );
+
+        WINGMAN_BASE_HEALTH = BUILDER.comment(
+            "僚机基础生命值"
+        ).defineInRange("wingmanBaseHealth", 24.0, 1.0, 1000.0);
+
+        WINGMAN_MAX_COUNT = BUILDER.comment(
+            "僚机最大数量"
+        ).defineInRange("wingmanMaxCount", 1, 1, 20);
+
+        WINGMAN_ATTACK_INTERVAL = BUILDER.comment(
+            "僚机攻击间隔（秒）"
+        ).defineInRange("wingmanAttackInterval", 1.0, 0.05, 100.0);
+
+        WINGMAN_ATTACK_RANGE = BUILDER.comment(
+            "僚机攻击范围（格）"
+        ).defineInRange("wingmanAttackRange", 20.0, 1.0, 64.0);
+
+        WINGMAN_EXPLOSIVE_COUNT = BUILDER.comment(
+            "每次攻击发射的爆破弹数量"
+        ).defineInRange("wingmanExplosiveCount", 3, 1, 20);
+
+        WINGMAN_EXPLOSIVE_DAMAGE = BUILDER.comment(
+            "爆破弹基础伤害"
+        ).defineInRange("wingmanExplosiveDamage", 0.5, 0.01, 100.0);
+
+        WINGMAN_EXPLOSION_DAMAGE = BUILDER.comment(
+            "爆破弹爆炸伤害"
+        ).defineInRange("wingmanExplosionDamage", 0.5, 0.01, 100.0);
+
+        WINGMAN_EXPLOSION_RADIUS = BUILDER.comment(
+            "爆破弹爆炸半径（格）"
+        ).defineInRange("wingmanExplosionRadius", 2.0, 0.1, 10.0);
+
+        BUILDER.pop();
+
+        // ===== 蜂群 =====
+        BUILDER.comment("蜂群构造体配置").push("swarm");
+
+        SWARM_MODULE_ITEMS = BUILDER.comment(
+            "蜂群构建物品",
+            "格式：物品ID",
+            "示例：gytrinket:mothership_body"
+        ).defineListAllowEmpty("swarmModuleItems",
+            java.util.List.of("gytrinket:mothership_body"),
+            s -> true
+        );
+
+        SWARM_BASE_HEALTH = BUILDER.comment(
+            "蜂群基础生命值"
+        ).defineInRange("swarmBaseHealth", 1.6, 0.1, 1000.0);
+
+        SWARM_BASE_DAMAGE = BUILDER.comment(
+            "蜂群基础攻击伤害"
+        ).defineInRange("swarmBaseDamage", 0.08, 0.01, 100.0);
+
+        SWARM_MAX_COUNT = BUILDER.comment(
+            "蜂群最大数量"
+        ).defineInRange("swarmMaxCount", 3, 1, 100);
+
+        SWARM_COUNT_LIMIT = BUILDER.comment(
+            "蜂群数量极限值",
+            "当蜂群数量超过此值时，",
+            "不再增加蜂群数量上限，而是提升每只蜂群的基础属性和易伤值",
+            "确保实际效果基本等价于原本没有蜂群极限值的效果",
+            "设为0表示不限制"
+        ).defineInRange("swarmCountLimit", 35, 0, 100);
+
+        SWARM_BUILD_TIME = BUILDER.comment(
+            "蜂群构建时间（tick）"
+        ).defineInRange("swarmBuildTime", 60, 1, 6000);
+
+        SWARM_MOVE_SPEED = BUILDER.comment(
+            "蜂群移动速度"
+        ).defineInRange("swarmMoveSpeed", 0.2, 0.01, 10.0);
+
+        SWARM_SEARCH_RANGE = BUILDER.comment(
+            "蜂群索敌范围（格）"
+        ).defineInRange("swarmSearchRange", 16.0, 1.0, 64.0);
+
+        SWARM_ATTACK_RANGE = BUILDER.comment(
+            "蜂群攻击范围（格）"
+        ).defineInRange("swarmAttackRange", 3.0, 0.5, 32.0);
+
+        SWARM_ATTACK_INTERVAL = BUILDER.comment(
+            "蜂群攻击间隔（秒）"
+        ).defineInRange("swarmAttackInterval", 1.5, 0.05, 100.0);
+
+        SWARM_VULNERABILITY_VALUE = BUILDER.comment(
+            "蜂群电弧施加的易伤值"
+        ).defineInRange("swarmVulnerabilityValue", 0.1, 0.0, 10.0);
+
+        SWARM_SHIELD_REPAIR_MULTIPLIER = BUILDER.comment(
+            "蜂群护盾修复转化倍率"
+        ).defineInRange("swarmShieldRepairMultiplier", 5.0, 0.0, 100.0);
+
+        SWARM_TIER_UPGRADE_CHANCE_STANDARD = BUILDER.comment(
+            "蜂群升阶为标准的概率"
+        ).defineInRange("swarmTierUpgradeChanceStandard", 0.15, 0.0, 1.0);
+
+        SWARM_TIER_UPGRADE_CHANCE_ADVANCED = BUILDER.comment(
+            "蜂群升阶为高阶的概率"
+        ).defineInRange("swarmTierUpgradeChanceAdvanced", 0.05, 0.0, 1.0);
 
         BUILDER.pop();
 
@@ -1389,6 +1633,101 @@ public class Config {
             "范围：0.005 ~ 0.5"
         ).defineInRange("decayRate", 0.08, 0.005, 0.5);
 
+        CHARGED_SHIELD_MOVEMENT_SPEED_PENALTY = BUILDER.comment(
+            "充能护盾模块附加的移动速度独立乘区惩罚",
+            "充能期间若拥有充能护盾模块，额外施加的减速比例",
+            "默认-0.15（即-15%，独立乘区）",
+            "范围：-0.99 ~ 0.0"
+        ).defineInRange("movementSpeedPenalty", -0.15, -0.99, 0.0);
+
+        BUILDER.pop();
+
+        // ===== 督战者 =====
+        BUILDER.comment("督战者系统配置").push("taskmaster");
+
+        TASKMASTER_ITEMS = BUILDER.comment(
+            "督战者前置物品",
+            "格式：物品ID，玩家光点核心中需包含至少一个指定物品才能激活督战者",
+            "示例：gytrinket:taskmaster_module"
+        ).defineListAllowEmpty("taskmasterItems",
+            java.util.List.of("gytrinket:taskmaster_module"),
+            s -> true
+        );
+
+        BUILDER.pop();
+
+        // ===== 自毁装置 =====
+        BUILDER.comment("自毁装置系统配置").push("self_destruct");
+
+        SELF_DESTRUCT_ITEMS = BUILDER.comment(
+            "自毁装置前置物品",
+            "格式：物品ID，玩家光点核心中需包含至少一个指定物品才能激活自毁装置",
+            "示例：gytrinket:self_destruct_module"
+        ).defineListAllowEmpty("selfDestructItems",
+            java.util.List.of("gytrinket:self_destruct_module"),
+            s -> true
+        );
+
+        SELF_DESTRUCT_BASE_DAMAGE = BUILDER.comment(
+            "自毁爆炸基础伤害"
+        ).defineInRange("baseDamage", 1.0, 0.0, 1000.0);
+
+        SELF_DESTRUCT_BASE_RADIUS = BUILDER.comment(
+            "自毁爆炸基础半径（格）"
+        ).defineInRange("baseRadius", 1.0, 0.0, 100.0);
+
+        SELF_DESTRUCT_DAMAGE_PER_MAX_HEALTH = BUILDER.comment(
+            "每点最大生命值增加的自毁爆炸伤害"
+        ).defineInRange("damagePerMaxHealth", 1.0, 0.0, 100.0);
+
+        SELF_DESTRUCT_RADIUS_PER_MAX_HEALTH = BUILDER.comment(
+            "每点最大生命值增加的自毁爆炸半径（格）"
+        ).defineInRange("radiusPerMaxHealth", 0.3, 0.0, 10.0);
+
+        BUILDER.pop();
+
+        // ===== 35. 积怨 =====
+        BUILDER.comment("积怨系统配置").push("grudge");
+
+        GRUDGE_ITEMS = BUILDER.comment(
+            "积怨模块物品",
+            "放入光点核心后，玩家充能期间损失生命或护盾值时，转化为临时充能速率",
+            "该物品依赖充能攻击模块",
+            "格式：物品ID",
+            "示例：gytrinket:grudge_module"
+        ).defineListAllowEmpty("grudgeItems",
+            java.util.List.of("gytrinket:grudge_module"),
+            s -> true);
+
+        GRUDGE_CONVERSION_RATIO = BUILDER.comment(
+            "积怨转化比率",
+            "每点损失的生命或护盾值转化为多少充能速率",
+            "默认0.05（即1:0.05）",
+            "范围：0.001 ~ 1.0"
+        ).defineInRange("conversionRatio", 0.2, 0.001, 1.0);
+
+        GRUDGE_FADE_BASE = BUILDER.comment(
+            "积怨消退基础速率",
+            "消退时每tick固定减少的充能速率",
+            "默认1.0",
+            "范围：0.0 ~ 10.0"
+        ).defineInRange("fadeBase", 0.00001, 0.0, 10.0);
+
+        GRUDGE_FADE_PERCENT = BUILDER.comment(
+            "积怨消退百分比",
+            "消退时每tick额外减少当前值的百分比",
+            "消退速度 = fadeBase + 当前值 * fadePercent",
+            "默认0.08（即8%）",
+            "范围：0.0 ~ 1.0"
+        ).defineInRange("fadePercent", 0.02, 0.0, 1.0);
+
+        GRUDGE_MOVEMENT_SPEED_PENALTY = BUILDER.comment(
+            "积怨模块附加的移动速度独立乘区惩罚",
+            "充能期间若拥有积怨模块，额外施加的减速比例",
+            "默认-0.15（即-15%，独立乘区）",
+            "范围：-0.99 ~ 0.0"
+        ).defineInRange("movementSpeedPenalty", -0.15, -0.99, 0.0);
+
         BUILDER.pop();
 
         // ===== 32. 升级系统 =====
@@ -1436,12 +1775,22 @@ public class Config {
         // ===== 33. 快速装备 =====
         BUILDER.comment("快速装备配置").push("quick_equip");
 
-        QUICK_EQUIP_EXP_LEVEL_MULTIPLIER = BUILDER.comment(
-            "快速装备经验需求倍率",
-            "直接乘在需要的经验等级上",
-            "例如：倍率为2时，光点核心内已有1个物品，再装备时需求等级为1×2=2级",
-            "默认1.0（无加成）"
-        ).defineInRange("expLevelMultiplier", 1.0, 0.0, 100.0);
+        QUICK_EQUIP_UPGRADE_POINTS_COST = BUILDER.comment(
+            "快速装备每次消耗的升级点数量",
+            "每次触发快速装备时消耗的升级点数量",
+            "默认1"
+        ).defineInRange("upgradePointsCost", 1, 0, 100);
+
+        BUILDER.pop();
+
+        // ===== 敌对目标系统 =====
+        BUILDER.comment("敌对目标系统配置").push("hostile_target");
+
+        HOSTILE_TARGET_MARK_DURATION = BUILDER.comment(
+            "玩家攻击标记持续时间（tick）",
+            "被玩家攻击过的实体会被标记为威胁，持续此时间后标记失效",
+            "20 tick = 1秒，默认100 tick = 5秒"
+        ).defineInRange("markDuration", 100, 1, 10000);
 
         BUILDER.pop();
 
@@ -1581,9 +1930,14 @@ public class Config {
 
     private static final Map<String, Boolean> SHIELD_TYPE_COMPATIBILITY = new HashMap<>();
     private static final Map<Item, List<String>> ITEM_SHIELD_TYPES = new HashMap<>();
+    private static final Set<Item> BODY_ITEM_SET = new HashSet<>();
+    private static final Set<Item> TASKMASTER_ITEM_SET = new HashSet<>();
+    private static final Set<Item> SELF_DESTRUCT_ITEM_SET = new HashSet<>();
     private static final Set<Item> DRONE_MODULE_ITEM_SET = new HashSet<>();
     private static final Set<Item> ASSAULT_DRONE_MODULE_ITEM_SET = new HashSet<>();
     private static final Set<Item> DEFENSE_DRONE_MODULE_ITEM_SET = new HashSet<>();
+    private static final Set<Item> WINGMAN_MODULE_ITEM_SET = new HashSet<>();
+    private static final Set<Item> SWARM_MODULE_ITEM_SET = new HashSet<>();
     private static final Set<Item> ADAPTIVE_ARMOR_ITEM_SET = new HashSet<>();
     private static final Set<Item> ADAPTIVE_ARMOR_SHIELD_EFFECT_ITEM_SET = new HashSet<>();
     private static final Set<Item> BARRIER_ITEM_SET = new HashSet<>();
@@ -1606,6 +1960,12 @@ public class Config {
     private static final Set<Item> ASSAULT_ITEM_SET = new HashSet<>();
     private static final Set<Item> CHARGED_ATTACK_ITEM_SET = new HashSet<>();
     private static final Set<Item> CHARGED_SHIELD_ITEM_SET = new HashSet<>();
+    private static final Set<Item> GRUDGE_ITEM_SET = new HashSet<>();
+    private static final Set<Item> PRECISION_CONSTRUCT_ITEM_SET = new HashSet<>();
+    private static final Set<Item> ADVANCED_ENGINEERING_ITEM_SET = new HashSet<>();
+    private static final Set<Item> PURSUIT_ARRAY_ITEM_SET = new HashSet<>();
+    private static final Set<Item> FORMATION_ARRAY_ITEM_SET = new HashSet<>();
+    private static final Set<Item> GUARD_ARRAY_ITEM_SET = new HashSet<>();
 
     public static List<String> getItemShieldTypes(ResourceLocation itemId) {
         Item item = ForgeRegistries.ITEMS.getValue(itemId);
@@ -1617,6 +1977,14 @@ public class Config {
 
     public static boolean isShieldTypeCompatible(String typeName) {
         return SHIELD_TYPE_COMPATIBILITY.getOrDefault(typeName, true);
+    }
+
+    public static boolean isBodyItem(Item item) {
+        return BODY_ITEM_SET.contains(item);
+    }
+
+    public static boolean isTaskmasterItem(Item item) {
+        return TASKMASTER_ITEM_SET.contains(item);
     }
 
     public static void saveItemAttributesConfig() {
@@ -1688,6 +2056,9 @@ public class Config {
 
     @SubscribeEvent
     static void onLoad(final ModConfigEvent event) {
+        if (event.getConfig().getSpec() != SPEC) {
+            return;
+        }
         if (initialized) {
             gytrinket.LOGGER.info("配置已初始化，跳过重复加载");
             return;
@@ -1752,6 +2123,9 @@ public class Config {
 
         ShieldTypeManager.init();
 
+        // 加载机身物品配置
+        loadItemSet(BODY_ITEM_SET, BODY_ITEMS_CONFIG.get(), "机身物品");
+
         DisableSystem.loadConfig();
 
         loadItemSet(ADAPTIVE_ARMOR_ITEM_SET, ADAPTIVE_ARMOR_ITEMS.get(), "适应性装甲启用");
@@ -1770,13 +2144,23 @@ public class Config {
         loadItemSet(DRONE_MODULE_ITEM_SET, DRONE_MODULE_ITEMS.get(), "基础无人机构建");
         loadItemSet(ASSAULT_DRONE_MODULE_ITEM_SET, ASSAULT_DRONE_MODULE_ITEMS.get(), "突击无人机构建");
         loadItemSet(COMMANDER_ITEM_SET, COMMANDER_REQUIRED_ITEMS.get(), "指挥官前置");
+        loadItemSet(TASKMASTER_ITEM_SET, TASKMASTER_ITEMS.get(), "督战者前置");
+        loadItemSet(SELF_DESTRUCT_ITEM_SET, SELF_DESTRUCT_ITEMS.get(), "自毁装置前置");
         loadItemSet(DEFENSE_DRONE_MODULE_ITEM_SET, DEFENSE_DRONE_MODULE_ITEMS.get(), "防御无人机构建");
+        loadItemSet(WINGMAN_MODULE_ITEM_SET, WINGMAN_MODULE_ITEMS.get(), "僚机构建");
+        loadItemSet(SWARM_MODULE_ITEM_SET, SWARM_MODULE_ITEMS.get(), "蜂群构建");
         loadItemSet(ARC_BARRIER_ITEM_SET, ARC_BARRIER_ITEMS.get(), "弧形屏障启用");
         loadItemSet(RESHAPING_ITEM_SET, RESHAPING_ITEMS.get(), "重塑启用");
         loadItemSet(COUNTER_PULSE_ITEM_SET, COUNTER_PULSE_ITEMS.get(), "反制脉冲启用");
         loadItemSet(ASSAULT_ITEM_SET, ASSAULT_ITEMS.get(), "强袭模块");
         loadItemSet(CHARGED_ATTACK_ITEM_SET, CHARGED_ATTACK_ITEMS.get(), "充能攻击模块");
         loadItemSet(CHARGED_SHIELD_ITEM_SET, CHARGED_SHIELD_ITEMS.get(), "充能护盾模块");
+        loadItemSet(GRUDGE_ITEM_SET, GRUDGE_ITEMS.get(), "积怨模块");
+        loadItemSet(PRECISION_CONSTRUCT_ITEM_SET, PRECISION_CONSTRUCT_ITEMS.get(), "精密构造前置");
+        loadItemSet(ADVANCED_ENGINEERING_ITEM_SET, ADVANCED_ENGINEERING_ITEMS.get(), "高等工程前置");
+        loadItemSet(PURSUIT_ARRAY_ITEM_SET, PURSUIT_ARRAY_REQUIRED_ITEMS.get(), "追击阵列前置");
+        loadItemSet(FORMATION_ARRAY_ITEM_SET, FORMATION_ARRAY_REQUIRED_ITEMS.get(), "编队阵列前置");
+        loadItemSet(GUARD_ARRAY_ITEM_SET, GUARD_ARRAY_REQUIRED_ITEMS.get(), "守卫阵列前置");
 
         DANGEROUS_ENTITY_SET.clear();
         List<? extends String> dangerousEntities = DANGEROUS_ENTITIES.get();
@@ -1842,8 +2226,116 @@ public class Config {
         return ASSAULT_DRONE_MODULE_ITEM_SET.contains(item);
     }
 
+    public static double getDroneBaseHealth() {
+        return DRONE_BASE_HEALTH.get();
+    }
+
+    public static double getDroneBaseDamage() {
+        return DRONE_BASE_DAMAGE.get();
+    }
+
+    public static int getDroneMaxCount() {
+        return DRONE_MAX_COUNT.get();
+    }
+
+    public static double getDroneFollowRange() {
+        return DRONE_FOLLOW_RANGE.get();
+    }
+
     public static boolean isDefenseDroneModuleItem(Item item) {
         return DEFENSE_DRONE_MODULE_ITEM_SET.contains(item);
+    }
+
+    public static boolean isWingmanModuleItem(Item item) {
+        return WINGMAN_MODULE_ITEM_SET.contains(item);
+    }
+
+    public static boolean isSwarmModuleItem(Item item) {
+        return SWARM_MODULE_ITEM_SET.contains(item);
+    }
+
+    public static double getSwarmBaseHealth() {
+        return SWARM_BASE_HEALTH.get();
+    }
+
+    public static double getSwarmBaseDamage() {
+        return SWARM_BASE_DAMAGE.get();
+    }
+
+    public static int getSwarmMaxCount() {
+        return SWARM_MAX_COUNT.get();
+    }
+
+    public static int getSwarmCountLimit() {
+        return SWARM_COUNT_LIMIT.get();
+    }
+
+    public static int getSwarmBuildTime() {
+        return SWARM_BUILD_TIME.get();
+    }
+
+    public static double getSwarmMoveSpeed() {
+        return SWARM_MOVE_SPEED.get();
+    }
+
+    public static double getSwarmSearchRange() {
+        return SWARM_SEARCH_RANGE.get();
+    }
+
+    public static double getSwarmAttackRange() {
+        return SWARM_ATTACK_RANGE.get();
+    }
+
+    public static double getSwarmAttackInterval() {
+        return SWARM_ATTACK_INTERVAL.get();
+    }
+
+    public static double getSwarmVulnerabilityValue() {
+        return SWARM_VULNERABILITY_VALUE.get();
+    }
+
+    public static double getSwarmShieldRepairMultiplier() {
+        return SWARM_SHIELD_REPAIR_MULTIPLIER.get();
+    }
+
+    public static double getSwarmTierUpgradeChanceStandard() {
+        return SWARM_TIER_UPGRADE_CHANCE_STANDARD.get();
+    }
+
+    public static double getSwarmTierUpgradeChanceAdvanced() {
+        return SWARM_TIER_UPGRADE_CHANCE_ADVANCED.get();
+    }
+
+    public static double getWingmanBaseHealth() {
+        return WINGMAN_BASE_HEALTH.get();
+    }
+
+    public static int getWingmanMaxCount() {
+        return WINGMAN_MAX_COUNT.get();
+    }
+
+    public static double getWingmanAttackInterval() {
+        return WINGMAN_ATTACK_INTERVAL.get();
+    }
+
+    public static Double getWingmanAttackRange() {
+        return WINGMAN_ATTACK_RANGE.get();
+    }
+
+    public static int getWingmanExplosiveCount() {
+        return WINGMAN_EXPLOSIVE_COUNT.get();
+    }
+
+    public static double getWingmanExplosiveDamage() {
+        return WINGMAN_EXPLOSIVE_DAMAGE.get();
+    }
+
+    public static double getWingmanExplosionDamage() {
+        return WINGMAN_EXPLOSION_DAMAGE.get();
+    }
+
+    public static double getWingmanExplosionRadius() {
+        return WINGMAN_EXPLOSION_RADIUS.get();
     }
 
     public static boolean isNearDeathProtectionItem(Item item) {
@@ -1856,6 +2348,10 @@ public class Config {
 
     public static boolean isCommanderItem(Item item) {
         return COMMANDER_ITEM_SET.contains(item);
+    }
+
+    public static boolean isSelfDestructItem(Item item) {
+        return SELF_DESTRUCT_ITEM_SET.contains(item);
     }
 
     public static boolean isAdaptiveArmorItem(Item item) {
@@ -1994,16 +2490,16 @@ public class Config {
         return ASSAULT_SELF_DAMAGE_PER_STACK.get();
     }
 
+    public static double getAssaultMovementSpeedPenalty() {
+        return ASSAULT_MOVEMENT_SPEED_PENALTY.get();
+    }
+
     public static boolean isChargedAttackItem(Item item) {
         return CHARGED_ATTACK_ITEM_SET.contains(item);
     }
 
     public static double getChargedAttackBaseChargeRate() {
         return CHARGED_ATTACK_BASE_CHARGE_RATE.get();
-    }
-
-    public static double getChargedAttackDamageScaleFactor() {
-        return CHARGED_ATTACK_DAMAGE_SCALE_FACTOR.get();
     }
 
     public static double getChargedAttackSpeedScaleFactor() {
@@ -2016,6 +2512,10 @@ public class Config {
 
     public static double getChargedAttackDragThresholdFactor() {
         return CHARGED_ATTACK_DRAG_THRESHOLD_FACTOR.get();
+    }
+
+    public static double getChargedAttackMovementSpeedPenalty() {
+        return CHARGED_ATTACK_MOVEMENT_SPEED_PENALTY.get();
     }
 
     public static boolean isChargedShieldItem(Item item) {
@@ -2034,8 +2534,56 @@ public class Config {
         return CHARGED_SHIELD_DECAY_RATE.get();
     }
 
-    public static double getQuickEquipExpLevelMultiplier() {
-        return QUICK_EQUIP_EXP_LEVEL_MULTIPLIER.get();
+    public static double getChargedShieldMovementSpeedPenalty() {
+        return CHARGED_SHIELD_MOVEMENT_SPEED_PENALTY.get();
+    }
+
+    public static boolean isGrudgeItem(Item item) {
+        return GRUDGE_ITEM_SET.contains(item);
+    }
+
+    public static double getGrudgeConversionRatio() {
+        return GRUDGE_CONVERSION_RATIO.get();
+    }
+
+    public static double getGrudgeFadeBase() {
+        return GRUDGE_FADE_BASE.get();
+    }
+
+    public static double getGrudgeFadePercent() {
+        return GRUDGE_FADE_PERCENT.get();
+    }
+
+    public static double getGrudgeMovementSpeedPenalty() {
+        return GRUDGE_MOVEMENT_SPEED_PENALTY.get();
+    }
+
+    public static int getQuickEquipUpgradePointsCost() {
+        return QUICK_EQUIP_UPGRADE_POINTS_COST.get();
+    }
+
+    public static int getHostileTargetMarkDuration() {
+        return HOSTILE_TARGET_MARK_DURATION.get();
+    }
+
+    public static boolean isPrecisionConstructItem(Item item) {
+        return PRECISION_CONSTRUCT_ITEM_SET.contains(item);
+    }
+
+    public static boolean isAdvancedEngineeringItem(Item item) {
+        return ADVANCED_ENGINEERING_ITEM_SET.contains(item);
+    }
+
+    public static boolean isPursuitArrayItem(Item item) {
+        return PURSUIT_ARRAY_ITEM_SET.contains(item);
+    }
+
+    public static boolean isFormationArrayItem(Item item) {
+        return FORMATION_ARRAY_ITEM_SET.contains(item);
+    }
+
+    public static boolean isGuardArrayItem(Item item) {
+        return GUARD_ARRAY_ITEM_SET.contains(item);
     }
 
     public static boolean isHardcoreModeEnabled() {

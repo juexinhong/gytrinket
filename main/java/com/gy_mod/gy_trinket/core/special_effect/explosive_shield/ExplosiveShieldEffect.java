@@ -4,6 +4,7 @@ import com.gy_mod.gy_trinket.Config;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
 import com.gy_mod.gy_trinket.core.disable.DisableSystem;
 import com.gy_mod.gy_trinket.core.explosion.SimulatedExplosion;
+import com.gy_mod.gy_trinket.core.hostile_target.HostileTargetManager;
 import com.gy_mod.gy_trinket.core.shield_transfer.ShieldTransferManager;
 import com.gy_mod.gy_trinket.event.ShieldBreakEvent;
 import com.gy_mod.gy_trinket.gytrinket;
@@ -64,7 +65,8 @@ public class ExplosiveShieldEffect {
                     radius,
                     damage,
                     damageSource,
-                    entity -> entity instanceof Mob mob && !mob.isDeadOrDying(),
+                    entity -> entity instanceof Mob mob && !mob.isDeadOrDying()
+                            && HostileTargetManager.shouldAttackPlayer(mob, player),
                     false,
                     player
             );

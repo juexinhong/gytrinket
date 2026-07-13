@@ -116,7 +116,7 @@ public class AdaptiveArmorManager {
         List<ArmorLayerBatch> batches = PLAYER_ARMOR_LAYERS.get(player.getUUID());
         if (batches == null) return 0;
 
-        return batches.stream().mapToDouble(batch -> batch.layers).sum();
+        return new ArrayList<>(batches).stream().mapToDouble(batch -> batch.layers).sum();
     }
 
     /**

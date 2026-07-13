@@ -2,6 +2,9 @@
   "creative_tab.gytrinket": "光点饰品",
   "key.gytrinket.show_attributes": "显示光点核心属性",
   "key.gytrinket.switch_array": "切换无人机阵列",
+  "key.gytrinket.toggle_execute": "切换斩杀归属",
+  "message.gytrinket.execute_enabled": "斩杀归属：已启用",
+  "message.gytrinket.execute_disabled": "斩杀归属：已禁用",
   "category.gytrinket.gameplay": "光点饰品",
   "tooltip.gytrinket.drone_module": "无人机",
   "tooltip.gytrinket.drone_module_desc": "允许构建无人机构造体\n上限%d  生命%d  伤害%.1f  攻速%.0f/s\n无人机是标准构造体",
@@ -127,10 +130,10 @@
   "tooltip.gytrinket.binary_protocol_effect": "护盾受到伤害时，玩家替护盾承受%d%%伤害（或相反）",
   
   "tooltip.gytrinket.assault": "强袭",
-  "tooltip.gytrinket.assault_effect": "按住左键自动攻击，攻击速度逐渐提高。并受到自伤（随攻击速度提高而提高）",
+  "tooltip.gytrinket.assault_effect": "按住左键自动攻击，攻击速度逐渐提高。并受到自伤（随攻击速度提高而提高）。处于强袭时-60%移速",
 
   "tooltip.gytrinket.charged_attack": "充能攻击",
-  "tooltip.gytrinket.charged_attack_effect": "按住左键充能，松开释放攻击。充能无上限但受阻力制衡，伤害=当前伤害+充能值",
+  "tooltip.gytrinket.charged_attack_effect": "按住左键充能，松开释放攻击。充能无上限但受阻力制衡，伤害=当前伤害+充能值。充能时-20%移速",
   
   "tooltip.gytrinket.precision_construct": "精妙构造",
   "tooltip.gytrinket.precision_construct_effect": "玩家每级提供%.2f%%独立乘区构建速度属性",
@@ -169,7 +172,9 @@
   "tooltip.gytrinket.reshaping_effect": "防御无人机每秒恢复%.1f%%最大生命值。防御无人机死亡时生成装甲碎片。吸收装甲碎片获得%.1f%%伤害减免，持续%.1f秒",
 
   "tooltip.gytrinket.charged_shield": "充能护盾",
-  "tooltip.gytrinket.charged_shield_effect": "充能时获得动态护盾效果和护盾效果半径加成（充能值的%s%%，上限%s%%）。停止充能后快速消退",
+  "tooltip.gytrinket.charged_shield_effect": "充能时获得动态护盾效果和护盾效果半径加成（充能值的%s%%，上限%s%%）。停止充能后快速消退。充能时-15%移速",
+  "tooltip.gytrinket.grudge": "积怨",
+  "tooltip.gytrinket.grudge_effect": "充能期间每点损失的生命或护盾值转化为%s充能速率。始终快速消退（每tick消退%s+当前值%s%%）。退出充能立即清除。充能时-15%移速",
 
   "item.gytrinket.light_point_core": "光点核心",
   "item.gytrinket.guardian": "哨卫机身",
@@ -274,6 +279,7 @@
   "item.gytrinket.commander_module": "指挥官模块",
   
     "item.gytrinket.charged_shield_module": "充能护盾模块",
+    "item.gytrinket.grudge_module": "积怨模块",
 
   "item.gytrinket.beam": "光束",
   "item.gytrinket.barrier": "屏障",
@@ -401,5 +407,47 @@
   "screen.gytrinket.back": "返回",
   "screen.gytrinket.add_item_prompt": "物品ID (例如 minecraft:diamond):",
   "screen.gytrinket.no_attributes_registered": "没有已注册的属性",
-  "screen.gytrinket.reorder_hint": "拖拽到目标位置释放"
+  "screen.gytrinket.reorder_hint": "拖拽到目标位置释放",
+
+  "tooltip.gytrinket.wingman_module": "僚机",
+  "tooltip.gytrinket.wingman_module_desc": "允许构建僚机构造体\n上限%d  生命%d  爆破弹×%d  弹伤%.1f  爆炸%.1f/半径%.1f  攻速%.0f/s\n僚机是高阶构造体",
+  "tooltip.gytrinket.mothership_body": "母舰机身",
+  "tooltip.gytrinket.mothership_body_desc": "允许构建蜂群构造体\n上限%d  生命%.1f  伤害%.2f  攻速%.1f/s  攻击范围%.1f\n蜂群是基础构造体\n母舰：每4级光点等级+1上限",
+
+  "tooltip.gytrinket.attr.wingman_count": "僚机数量",
+  "tooltip.gytrinket.attr.wingman_count_percent": "僚机数量百分比",
+  "tooltip.gytrinket.attr.wingman_count_independent": "僚机数量独立乘区",
+  "tooltip.gytrinket.attr.wingman_health": "僚机生命",
+  "tooltip.gytrinket.attr.wingman_health_percent": "僚机生命百分比",
+  "tooltip.gytrinket.attr.wingman_health_independent": "僚机生命独立乘区",
+  "tooltip.gytrinket.attr.wingman_damage": "僚机伤害",
+  "tooltip.gytrinket.attr.wingman_damage_percent": "僚机伤害百分比",
+  "tooltip.gytrinket.attr.wingman_damage_independent": "僚机伤害独立乘区",
+  "tooltip.gytrinket.attr.wingman_attack_speed_percent": "僚机攻击速度百分比",
+  "tooltip.gytrinket.attr.wingman_attack_speed_independent": "僚机攻击速度独立乘区",
+  "tooltip.gytrinket.attr.construct_standard_non_weapon_count_percent": "标准非武器构造体数量百分比",
+  "tooltip.gytrinket.attr.construct_basic_non_weapon_count_percent": "基础非武器构造体数量百分比",
+  "tooltip.gytrinket.attr.swarm_count_mothership": "蜂群数量（母舰）",
+
+  "tooltip.gytrinket.self_destruct": "自毁装置",
+  "tooltip.gytrinket.self_destruct_effect": "构造体被摧毁时产生爆炸。爆炸威力与构造体的最大生命值相关",
+  "tooltip.gytrinket.taskmaster": "督战者",
+  "tooltip.gytrinket.taskmaster_effect": "获得x%%构造体构建速度，-x%%独立乘区移动速度。x=2×(标准构造体上限+高阶构造体上限)。禁用攻击模式",
+
+  "item.gytrinket.self_destruct_module": "自毁装置模块",
+  "item.gytrinket.taskmaster_module": "督战者模块",
+  "item.gytrinket.wingman_module": "僚机模块",
+  "item.gytrinket.mothership_body": "母舰机身",
+  "item.gytrinket.quick_reconstruction_module": "快速重构模块",
+
+  "block.gytrinket.light_point_core": "光点核心",
+
+  "screen.gytrinket.light_point_level": "光点等级",
+  "screen.gytrinket.light_point_exp": "光点经验",
+  "screen.gytrinket.upgrade_points": "升级点",
+
+  "command.gytrinket.resetlevel.success": "光点等级已重置",
+  "command.gytrinket.resetlevel.not_player": "该指令只能由玩家执行",
+
+  "message.gytrinket.quick_equip.not_enough_points": "升级点不足"
 }

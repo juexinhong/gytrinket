@@ -285,7 +285,7 @@ public class GuardBehavior implements IDroneBehavior {
         Vec3 targetPos = target.position().add(0, target.getEyeHeight() * 0.5, 0);
         Vec3 direction = targetPos.subtract(dronePos).normalize();
 
-        float damage = DroneBullet.BASE_DAMAGE;
+        float damage = DroneBullet.getBaseDamage();
         float cooldown = getConfigAttackInterval() * 20.0f;
 
         if (drone instanceof DroneConstructEntity droneEntity) {

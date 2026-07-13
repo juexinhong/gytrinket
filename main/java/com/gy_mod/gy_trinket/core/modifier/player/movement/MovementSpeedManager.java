@@ -1,5 +1,6 @@
 package com.gy_mod.gy_trinket.core.modifier.player.movement;
 
+import com.gy_mod.gy_trinket.core.attack_mode.AttackSpeedPenaltyManager;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
 import com.gy_mod.gy_trinket.core.modifier.ModifierHelper;
 import com.gy_mod.gy_trinket.event.PlayerAttributesCalculatedEvent;
@@ -55,6 +56,9 @@ public class MovementSpeedManager {
             AttributeModifier modifier = new AttributeModifier(MODIFIER_UUID, MODIFIER_NAME, totalMultiplier - 1, AttributeModifier.Operation.MULTIPLY_TOTAL);
             attribute.addTransientModifier(modifier);
         }
+
+        // 通知 AttackSpeedPenaltyManager 重新添加攻击惩罚修改器
+        AttackSpeedPenaltyManager.markForceRefresh(playerUUID);
 
         PLAYER_MOVEMENT_SPEED_MAP.put(playerUUID, player.getAttributeValue(Attributes.MOVEMENT_SPEED));
     }

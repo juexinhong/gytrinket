@@ -7,12 +7,19 @@ public class LightningRenderData {
     private final long startTime;
     private final int duration;
     private final double totalLength;
+    /** 自定义最大宽度，若 > 0 则覆盖 LightningRenderManager 的自动计算。 */
+    private final float maxWidthOverride;
 
     public LightningRenderData(List<ElectricDischargeManager.LightningSegment> segments, long startTime, int duration, double totalLength) {
+        this(segments, startTime, duration, totalLength, -1.0f);
+    }
+
+    public LightningRenderData(List<ElectricDischargeManager.LightningSegment> segments, long startTime, int duration, double totalLength, float maxWidthOverride) {
         this.segments = segments;
         this.startTime = startTime;
         this.duration = duration;
         this.totalLength = totalLength;
+        this.maxWidthOverride = maxWidthOverride;
     }
 
     public List<ElectricDischargeManager.LightningSegment> getSegments() {
@@ -29,6 +36,11 @@ public class LightningRenderData {
 
     public double getTotalLength() {
         return totalLength;
+    }
+
+    /** 若 > 0，表示使用此值作为最大宽度而非自动计算。 */
+    public float getMaxWidthOverride() {
+        return maxWidthOverride;
     }
 
     public boolean isExpired(long currentTime) {

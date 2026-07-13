@@ -127,7 +127,11 @@ public class BurnManager {
         float finalDamage = Math.max(MIN_BURN_DAMAGE, burnData.getAccumulatedDamage());
         Entity primaryInitiator = burnData.getPrimaryInitiator();
 
-        applyBurnDamage(target, finalDamage, primaryInitiator);
+        // 不足以斩杀时不归属攻击者，足够斩杀时根据斩杀归属开关决定
+        boolean canKill = finalDamage >= target.getHealth();
+        Entity initiator = canKill && isExecuteAttributionEnabled(primaryInitiator) ? primaryInitiator : null;
+
+        applyBurnDamage(target, finalDamage, initiator);
 
         burnData.reset();
     }
@@ -136,9 +140,29 @@ public class BurnManager {
         float finalDamage = burnData.getAccumulatedDamageOrMin();
         Entity primaryInitiator = burnData.getPrimaryInitiator();
 
-        applyBurnDamage(target, finalDamage, primaryInitiator);
+        // 斩杀时根据斩杀归属开关决定是否归属攻击者
+        Entity initiator = isExecuteAttributionEnabled(primaryInitiator) ? primaryInitiator : null;
+        applyBurnDamage(target, finalDamage, initiator);
 
         burnData.reset();
+    }
+
+    /**
+     * 判断斩杀归属是否启用
+     * 如果 primaryInitiator 是玩家，检查该玩家的斩杀归属开关
+     * 如果 primaryInitiator 是无人机的附属实体，检查其归属玩家的斩杀归属开关
+     */
+    private static boolean isExecuteAttributionEnabled(Entity initiator) {
+        if (initiator instanceof net.minecraft.world.entity.player.Player player) {
+            return com.gy_mod.gy_trinket.core.execute.ExecuteToggleManager.isExecuteEnabled(player);
+        }
+        if (initiator instanceof com.gy_mod.gy_trinket.core.entity.construct.drone.DroneConstructEntity drone) {
+            net.minecraft.world.entity.Entity owner = drone.getOwner();
+            if (owner instanceof net.minecraft.world.entity.player.Player player) {
+                return com.gy_mod.gy_trinket.core.execute.ExecuteToggleManager.isExecuteEnabled(player);
+            }
+        }
+        return true;
     }
 
     private static boolean canKillTarget(BurnData burnData, LivingEntity target) {

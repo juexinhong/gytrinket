@@ -31,6 +31,12 @@ public class ConstructData {
     /** 最大生命值 */
     private double maxHealth;
 
+    /**
+     * 生命值比例（0~1），用于在退出待机/重登恢复时按比例恢复生命值。
+     * 独立于 {@link #health} 存储，避免被 {@link #setHealth} 的 maxHealth 截断。
+     */
+    private double healthRatio = 1.0;
+
     /** 是否处于激活状态 */
     private boolean active;
 
@@ -104,6 +110,16 @@ public class ConstructData {
         if (this.health > maxHealth) {
             this.health = maxHealth;
         }
+    }
+
+    /** 获取生命值比例（0~1），用于退出待机/重登恢复时按比例恢复生命值 */
+    public double getHealthRatio() {
+        return healthRatio;
+    }
+
+    /** 设置生命值比例（自动截断到 [0, 1] 范围） */
+    public void setHealthRatio(double healthRatio) {
+        this.healthRatio = Math.max(0.0, Math.min(1.0, healthRatio));
     }
 
     /** 检查是否激活 */

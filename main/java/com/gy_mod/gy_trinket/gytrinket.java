@@ -12,6 +12,8 @@ import com.gy_mod.gy_trinket.core.damage_last.LastDamageManager;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructTypeRegistry;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructAttributeRegistry;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneRegistry;
+import com.gy_mod.gy_trinket.core.entity.construct.wingman.WingmanRegistry;
+import com.gy_mod.gy_trinket.core.entity.construct.swarm.SwarmRegistry;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.ModEntities;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.behavior.DroneSpecialBehaviorManager;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.behavior.NearDeathProtectionBehavior;
@@ -58,6 +60,7 @@ public class gytrinket {
         MinecraftForge.EVENT_BUS.register(ReflectShieldType.class);
 
         context.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
+        context.registerConfig(ModConfig.Type.CLIENT, ClientConfig.SPEC);
 
         modEventBus.addListener(this::setup);
         modEventBus.addListener(this::registerEntityAttributes);
@@ -81,6 +84,10 @@ public class gytrinket {
         
         // 注册无人机构造体类型
         ConstructTypeRegistry.register(new DroneRegistry());
+        // 注册僚机构造体类型
+        ConstructTypeRegistry.register(new WingmanRegistry());
+        // 注册蜂群构造体类型
+        ConstructTypeRegistry.register(new SwarmRegistry());
         
         ConstructTypeRegistry.executeRegistries();
 
@@ -90,9 +97,11 @@ public class gytrinket {
         DroneSpecialBehaviorManager.getInstance().registerBehavior(new NearDeathExplosionBehavior());
         DroneSpecialBehaviorManager.getInstance().registerBehavior(new ReshapingBehavior());
         DroneSpecialBehaviorManager.getInstance().registerBehavior(new CounterPulseBehavior());
+        DroneSpecialBehaviorManager.getInstance().registerBehavior(new com.gy_mod.gy_trinket.core.entity.construct.drone.behavior.SelfDestructBehavior());
     }
 
     private void registerEntityAttributes(EntityAttributeCreationEvent event) {
         event.put(ModEntities.DRONE_CONSTRUCT.get(), com.gy_mod.gy_trinket.core.entity.construct.drone.DroneConstructEntity.createAttributes().build());
+        event.put(ModEntities.SWARM_CONSTRUCT.get(), com.gy_mod.gy_trinket.core.entity.construct.swarm.SwarmConstructEntity.createAttributes().build());
     }
 }

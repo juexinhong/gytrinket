@@ -1,6 +1,7 @@
 package com.gy_mod.gy_trinket.core.hostile_target;
 
 import com.gy_mod.gy_trinket.Config;
+import com.gy_mod.gy_trinket.core.entity.construct.IConstructEntity;
 import com.gy_mod.gy_trinket.core.shield_transfer.ShieldTransferManager;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
@@ -33,7 +34,6 @@ import java.util.concurrent.ConcurrentHashMap;
 public class HostileTargetManager {
 
     private static final Map<UUID, Map<UUID, Long>> PLAYER_MARKED_ENTITIES = new ConcurrentHashMap<>();
-    private static final long MARK_DURATION_TICKS = 100;
 
     @SubscribeEvent
     public static void onPlayerAttack(AttackEntityEvent event) {
@@ -48,7 +48,7 @@ public class HostileTargetManager {
     }
 
     private static void markEntity(UUID playerUUID, UUID targetUUID) {
-        long expireTime = getCurrentTick() + MARK_DURATION_TICKS;
+        long expireTime = getCurrentTick() + Config.getHostileTargetMarkDuration();
         
         PLAYER_MARKED_ENTITIES.computeIfAbsent(playerUUID, k -> new ConcurrentHashMap<>())
             .put(targetUUID, expireTime);
@@ -199,6 +199,11 @@ public class HostileTargetManager {
         if (isEntityProtectedByPlayer(entity, player)) {
             return false;
         }
+
+        // 检查是否是归属玩家的实体（如无人机等构造体）
+        if (isEntityOwnedByPlayer(entity, player)) {
+            return false;
+        }
         
         // 对玩家有仇恨的实体（最高优先级）
         if (isHostileToPlayer(entity, player)) {
@@ -247,6 +252,36 @@ public class HostileTargetManager {
         
         UUID ownerUUID = ShieldTransferManager.getShieldOwnerUUID((net.minecraft.world.entity.LivingEntity) entity);
         return ownerUUID != null && ownerUUID.equals(player.getUUID());
+    }
+
+    /**
+     * 判断实体是否归属该玩家
+     * <p>
+     * 归属玩家的实体（如无人机等构造体）不应被视为威胁。
+     *
+     * @param entity 待判断的实体
+     * @param player 玩家
+     * @return 是否归属该玩家
+     */
+    public static boolean isEntityOwnedByPlayer(Entity entity, Player player) {
+        if (player == null) {
+            return false;
+        }
+        return isEntityOwnedByPlayer(entity, player.getUUID());
+    }
+
+    /**
+     * 判断实体是否归属指定UUID的玩家
+     */
+    public static boolean isEntityOwnedByPlayer(Entity entity, UUID playerUUID) {
+        if (playerUUID == null) {
+            return false;
+        }
+        if (entity instanceof IConstructEntity construct) {
+            UUID ownerUUID = construct.getOwnerUUID();
+            return ownerUUID != null && ownerUUID.equals(playerUUID);
+        }
+        return false;
     }
 
     /**

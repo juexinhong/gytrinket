@@ -2,6 +2,7 @@ package com.gy_mod.gy_trinket.event;
 
 import com.gy_mod.gy_trinket.Config;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
+import com.gy_mod.gy_trinket.core.level.ModLevelManager;
 import com.gy_mod.gy_trinket.gytrinket;
 import com.gy_mod.gy_trinket.storage.PlayerStore;
 import com.gy_mod.gy_trinket.storage.PlayerStoreManager;
@@ -23,12 +24,6 @@ import java.util.Set;
 
 @Mod.EventBusSubscriber(modid = gytrinket.MODID)
 public class QuickEquipEvent {
-
-    private static final int SHIELD_SWAP_EXP_LEVEL = 5;
-
-    private static int getShieldSwapRequiredLevel() {
-        return Math.max(1, (int) Math.ceil(SHIELD_SWAP_EXP_LEVEL * Config.getQuickEquipExpLevelMultiplier()));
-    }
 
     private QuickEquipEvent() {}
 
@@ -88,16 +83,15 @@ public class QuickEquipEvent {
         boolean newIsCompatible = newShieldTypes.stream().allMatch(Config::isShieldTypeCompatible);
 
         if (!newIsCompatible) {
-            int requiredLevel = getShieldSwapRequiredLevel();
-            if (player.experienceLevel < requiredLevel) {
-                player.sendSystemMessage(Component.translatable("message.gytrinket.quick_equip.not_enough_level", requiredLevel));
+            int cost = Config.getQuickEquipUpgradePointsCost();
+            if (ModLevelManager.getUpgradePoints(player.getUUID()) < cost) {
+                player.sendSystemMessage(Component.translatable("message.gytrinket.quick_equip.not_enough_points"));
                 return;
             }
 
             transferItemsToPlayer(player, handler, shieldSlots);
 
-            int expCost = calculateExpCost(requiredLevel);
-            player.giveExperiencePoints(-expCost);
+            ModLevelManager.consumeUpgradePoints(player.getUUID(), cost);
 
             addToStore(handler, stack);
             player.sendSystemMessage(Component.translatable("message.gytrinket.quick_equip.shield_swapped"));
@@ -113,16 +107,15 @@ public class QuickEquipEvent {
             }
 
             if (!incompatibleSlots.isEmpty()) {
-                int requiredLevel = getShieldSwapRequiredLevel();
-                if (player.experienceLevel < requiredLevel) {
-                    player.sendSystemMessage(Component.translatable("message.gytrinket.quick_equip.not_enough_level", requiredLevel));
+                int cost = Config.getQuickEquipUpgradePointsCost();
+                if (ModLevelManager.getUpgradePoints(player.getUUID()) < cost) {
+                    player.sendSystemMessage(Component.translatable("message.gytrinket.quick_equip.not_enough_points"));
                     return;
                 }
 
                 transferItemsToPlayer(player, handler, incompatibleSlots);
 
-                int expCost = calculateExpCost(requiredLevel);
-                player.giveExperiencePoints(-expCost);
+                ModLevelManager.consumeUpgradePoints(player.getUUID(), cost);
             }
 
             if (!hasEmptySlot(handler)) {
@@ -145,15 +138,13 @@ public class QuickEquipEvent {
             return;
         }
 
-        int uniqueItemsCount = countUniqueItems(handler);
-        int requiredLevel = Math.max(1, (int) Math.ceil(uniqueItemsCount * Config.getQuickEquipExpLevelMultiplier()));
-        if (player.experienceLevel < requiredLevel) {
-            player.sendSystemMessage(Component.translatable("message.gytrinket.quick_equip.not_enough_level", requiredLevel));
+        int cost = Config.getQuickEquipUpgradePointsCost();
+        if (ModLevelManager.getUpgradePoints(player.getUUID()) < cost) {
+            player.sendSystemMessage(Component.translatable("message.gytrinket.quick_equip.not_enough_points"));
             return;
         }
 
-        int expToDeduct = calculateExpCost(requiredLevel);
-        player.giveExperiencePoints(-expToDeduct);
+        ModLevelManager.consumeUpgradePoints(player.getUUID(), cost);
 
         addToStore(handler, stack);
         player.sendSystemMessage(Component.translatable("message.gytrinket.quick_equip.success"));
@@ -201,7 +192,19 @@ public class QuickEquipEvent {
                 || Config.isConversionItem(item)
                 || Config.isAssaultItem(item)
                 || Config.isChargedAttackItem(item)
-                || Config.isChargedShieldItem(item);
+                || Config.isChargedShieldItem(item)
+                || Config.isNearDeathExplosionItem(item)
+                || Config.isNearDeathProtectionItem(item)
+                || Config.isCommanderItem(item)
+                || Config.isArcBarrierItem(item)
+                || Config.isReshapingItem(item)
+                || Config.isCounterPulseItem(item)
+                || Config.isGrudgeItem(item)
+                || Config.isPrecisionConstructItem(item)
+                || Config.isAdvancedEngineeringItem(item)
+                || Config.isPursuitArrayItem(item)
+                || Config.isFormationArrayItem(item)
+                || Config.isGuardArrayItem(item);
     }
 
     private static boolean hasSameItemInStore(ItemStackHandler handler, Item item) {
@@ -232,16 +235,6 @@ public class QuickEquipEvent {
             }
         }
         return uniqueItems.size();
-    }
-
-    private static int calculateExpCost(int level) {
-        if (level <= 16) {
-            return level * level + 6 * level;
-        } else if (level <= 31) {
-            return (int) (2.5 * level * level - 40.5 * level + 360);
-        } else {
-            return (int) (4.5 * level * level - 162.5 * level + 2220);
-        }
     }
 
     private static void addToStore(ItemStackHandler handler, ItemStack stack) {

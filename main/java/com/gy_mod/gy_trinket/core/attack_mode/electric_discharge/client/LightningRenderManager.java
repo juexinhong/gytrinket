@@ -18,14 +18,25 @@ public class LightningRenderManager {
     private static final List<LightningRenderData> lightningDataList = new ArrayList<>();
 
     public static void addLightning(List<ElectricDischargeManager.LightningSegment> segments) {
+        addLightning(segments, 8, -1.0f);
+    }
+
+    /**
+     * 添加闪电线段到渲染列表。
+     *
+     * @param segments  线段列表
+     * @param duration  持续 tick 数
+     * @param maxWidth  最大宽度覆盖值，若 <= 0 则使用自动计算
+     */
+    public static void addLightning(List<ElectricDischargeManager.LightningSegment> segments, int duration, float maxWidth) {
         long currentTime = Minecraft.getInstance().level != null ? Minecraft.getInstance().level.getGameTime() : 0;
-        
+
         double totalLength = 0;
         for (ElectricDischargeManager.LightningSegment segment : segments) {
             totalLength += segment.start().distanceTo(segment.end());
         }
-        
-        lightningDataList.add(new LightningRenderData(segments, currentTime, 8, totalLength));
+
+        lightningDataList.add(new LightningRenderData(segments, currentTime, duration, totalLength, maxWidth));
     }
 
     public static void onRenderLevelLast(RenderLevelStageEvent event) {
@@ -73,8 +84,20 @@ public class LightningRenderManager {
                 origin = segments.get(0).start();
             }
 
-            double defaultLength = 6.0;
-            double scaleRatio = Math.max(0.3, 1 + (data.getTotalLength() / defaultLength - 1) * 0.25);
+            float maxWidth;
+            float minWidth;
+            float maxWidthOverride = data.getMaxWidthOverride();
+            if (maxWidthOverride > 0) {
+                // 使用自定义宽度（如蜂群闪电）
+                maxWidth = maxWidthOverride;
+                minWidth = maxWidth * 0.05f;
+            } else {
+                // 原始宽度计算
+                double defaultLength = 6.0;
+                double scaleRatio = Math.max(0.3, 1 + (data.getTotalLength() / defaultLength - 1) * 0.25);
+                maxWidth = 0.08f * (float) scaleRatio;
+                minWidth = 0.01f * (float) scaleRatio;
+            }
 
             Vec3 lastPerpendicular = null;
 
@@ -93,9 +116,6 @@ public class LightningRenderManager {
                     lastPerpendicular = perpendicular;
                 }
 
-                float maxWidth = 0.08f * (float) scaleRatio;
-                float minWidth = 0.01f * (float) scaleRatio;
-                
                 double totalDistance = data.getTotalLength();
                 float startProgress = Math.min(1.0f, (float) (distanceFromOrigin / totalDistance));
                 float endProgress = Math.min(1.0f, (float) ((distanceFromOrigin + segmentLength) / totalDistance));

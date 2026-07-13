@@ -5,6 +5,8 @@ import com.gy_mod.gy_trinket.core.entity.construct.ConstructManager;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructType;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneBullet;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneConstructTypes;
+import com.gy_mod.gy_trinket.core.entity.construct.swarm.SwarmConstructTypes;
+import com.gy_mod.gy_trinket.core.entity.construct.wingman.WingmanConstructTypes;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
@@ -116,6 +118,20 @@ public class TooltipHandler {
             }
         ));
 
+        // 自毁装置
+        rules.add(new TooltipConfig(
+            Config.SELF_DESTRUCT_ITEMS,
+            "self_destruct", "self_destruct_effect",
+            ChatFormatting.RED
+        ));
+
+        // 督战者
+        rules.add(new TooltipConfig(
+            Config.TASKMASTER_ITEMS,
+            "taskmaster", "taskmaster_effect",
+            ChatFormatting.GOLD
+        ));
+
         // 追击阵列
         rules.add(new TooltipConfig(
             Config.PURSUIT_ARRAY_REQUIRED_ITEMS,
@@ -220,6 +236,18 @@ public class TooltipHandler {
             () -> new Object[]{
                 (int)(Config.getChargedShieldChargeRatio() * 100),
                 (int)(Config.getChargedShieldMaxBonus() * 100)
+            }
+        ));
+
+        // 积怨
+        rules.add(new TooltipConfig(
+            Config.GRUDGE_ITEMS,
+            "grudge", "grudge_effect",
+            ChatFormatting.RED,
+            () -> new Object[]{
+                Config.getGrudgeConversionRatio(),
+                Config.getGrudgeFadeBase(),
+                (int)(Config.getGrudgeFadePercent() * 100)
             }
         ));
 
@@ -385,6 +413,16 @@ public class TooltipHandler {
             addTooltip(event, "defense_drone_module", ChatFormatting.BLUE);
         }
 
+        if (Config.WINGMAN_MODULE_ITEMS.get().contains(itemId)) {
+            addTooltip(event, "wingman_module", ChatFormatting.GRAY);
+            addWingmanModuleDescTooltip(event);
+        }
+
+        if (Config.SWARM_MODULE_ITEMS.get().contains(itemId)) {
+            addTooltip(event, "mothership_body", ChatFormatting.GRAY);
+            addMothershipBodyDescTooltip(event);
+        }
+
         if (Config.BARRIER_ITEMS.get().contains(itemId)) {
             addTooltip(event, "barrier", ChatFormatting.DARK_PURPLE);
             addFormattedTooltip(event, "barrier_effect", ChatFormatting.DARK_PURPLE,
@@ -403,11 +441,64 @@ public class TooltipHandler {
             String formattedText = tooltip.getString();
             try {
                 ConstructType droneType = ConstructManager.getInstance().getConstructType(DroneConstructTypes.DRONE);
-                int maxCount = droneType != null ? droneType.getMaxCount() : 3;
-                double maxHealth = droneType != null ? droneType.getMaxHealth() : 5.0;
+                int maxCount = droneType != null ? droneType.getMaxCount() : Config.getDroneMaxCount();
+                double maxHealth = droneType != null ? droneType.getMaxHealth() : Config.getDroneBaseHealth();
                 double attackSpeed = 1.0 / Config.ORBIT_ATTACK_INTERVAL.get();
                 formattedText = String.format(formattedText,
-                    maxCount, (int) maxHealth, DroneBullet.BASE_DAMAGE, attackSpeed);
+                    maxCount, (int) maxHealth, DroneBullet.getBaseDamage(), attackSpeed);
+                event.getToolTip().add(Component.literal(formattedText).withStyle(ChatFormatting.GRAY));
+            } catch (Exception e) {
+                event.getToolTip().add(tooltip.withStyle(ChatFormatting.GRAY));
+            }
+        }
+    }
+
+    /**
+     * 僚机模块描述工具提示（需要特殊的动态参数计算）
+     */
+    private static void addWingmanModuleDescTooltip(ItemTooltipEvent event) {
+        String translationKey = TOOLTIP_PREFIX + "wingman_module_desc";
+        MutableComponent tooltip = Component.translatable(translationKey);
+
+        if (!isDefaultTranslation(tooltip, translationKey)) {
+            String formattedText = tooltip.getString();
+            try {
+                ConstructType wingmanType = ConstructManager.getInstance().getConstructType(WingmanConstructTypes.WINGMAN);
+                int maxCount = wingmanType != null ? wingmanType.getMaxCount() : Config.getWingmanMaxCount();
+                double maxHealth = wingmanType != null ? wingmanType.getMaxHealth() : Config.getWingmanBaseHealth();
+                int explosiveCount = Config.getWingmanExplosiveCount();
+                double explosiveDamage = Config.getWingmanExplosiveDamage();
+                double explosionDamage = Config.getWingmanExplosionDamage();
+                double explosionRadius = Config.getWingmanExplosionRadius();
+                double attackSpeed = 1.0 / Config.getWingmanAttackInterval();
+                formattedText = String.format(formattedText,
+                    maxCount, (int) maxHealth, explosiveCount, explosiveDamage,
+                    explosionDamage, explosionRadius, attackSpeed);
+                event.getToolTip().add(Component.literal(formattedText).withStyle(ChatFormatting.GRAY));
+            } catch (Exception e) {
+                event.getToolTip().add(tooltip.withStyle(ChatFormatting.GRAY));
+            }
+        }
+    }
+
+    /**
+     * 母舰机身描述工具提示（需要特殊的动态参数计算）
+     */
+    private static void addMothershipBodyDescTooltip(ItemTooltipEvent event) {
+        String translationKey = TOOLTIP_PREFIX + "mothership_body_desc";
+        MutableComponent tooltip = Component.translatable(translationKey);
+
+        if (!isDefaultTranslation(tooltip, translationKey)) {
+            String formattedText = tooltip.getString();
+            try {
+                ConstructType swarmType = ConstructManager.getInstance().getConstructType(SwarmConstructTypes.SWARM);
+                int maxCount = swarmType != null ? swarmType.getMaxCount() : Config.getSwarmMaxCount();
+                double maxHealth = swarmType != null ? swarmType.getMaxHealth() : Config.getSwarmBaseHealth();
+                double damage = Config.getSwarmBaseDamage();
+                double attackSpeed = 1.0 / Config.getSwarmAttackInterval();
+                double attackRange = Config.getSwarmAttackRange();
+                formattedText = String.format(formattedText,
+                    maxCount, maxHealth, damage, attackSpeed, attackRange);
                 event.getToolTip().add(Component.literal(formattedText).withStyle(ChatFormatting.GRAY));
             } catch (Exception e) {
                 event.getToolTip().add(tooltip.withStyle(ChatFormatting.GRAY));

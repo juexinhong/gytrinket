@@ -1,5 +1,6 @@
 package com.gy_mod.gy_trinket.core.entity.construct.drone;
 
+import com.gy_mod.gy_trinket.Config;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructCategory;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructManager;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructType;
@@ -17,8 +18,8 @@ public class DroneConstructTypes {
                 .categories(ConstructCategory.createOtherCategories(ConstructCategory.Tier.STANDARD))
                 .tags(Set.of("drone"))
                 .buildTime(100)
-                .maxHealth(5.0)
-                .maxCount(3)
+                .maxHealth(Config.getDroneBaseHealth())
+                .maxCount(Config.getDroneMaxCount())
                 .constructClass(DroneConstruct.class)
                 .build());
     }

@@ -126,7 +126,7 @@ public class AttributeManager {
 
     private static double calculateFinalAttributeValue(double staticValue, double dynamicValue, AttributeType type) {
         return switch (type) {
-            case BASE -> staticValue;
+            case BASE -> staticValue + dynamicValue;
             case PERCENT -> staticValue + dynamicValue;
             case INDEPENDENT_MULTIPLY -> staticValue * dynamicValue;
         };
@@ -237,12 +237,7 @@ public class AttributeManager {
             gytrinket.LOGGER.warn("尝试设置未注册的动态属性: {}", attributeName);
             return;
         }
-        
-        if (def.getType() == AttributeType.BASE) {
-            gytrinket.LOGGER.warn("底数类型属性不支持动态属性: {}", attributeName);
-            return;
-        }
-        
+
         Map<String, AttributeValueSet> dynamicAttrs = PLAYER_DYNAMIC_ATTRIBUTES.computeIfAbsent(playerUUID, k -> new java.util.concurrent.ConcurrentHashMap<>());
         AttributeValueSet valueSet = dynamicAttrs.computeIfAbsent(attributeName, k -> new AttributeValueSet());
         

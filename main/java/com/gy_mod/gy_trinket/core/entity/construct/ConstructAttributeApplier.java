@@ -4,6 +4,12 @@ import com.gy_mod.gy_trinket.core.attribute.AttributeDefinition;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneConstructEntity;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneConstructTypes;
+import com.gy_mod.gy_trinket.core.entity.construct.swarm.SwarmConstructEntity;
+import com.gy_mod.gy_trinket.core.entity.construct.swarm.SwarmConstructTypes;
+import com.gy_mod.gy_trinket.core.entity.construct.swarm.MothershipManager;
+import com.gy_mod.gy_trinket.core.entity.construct.wingman.WingmanConstructEntity;
+import com.gy_mod.gy_trinket.core.entity.construct.wingman.WingmanConstructTypes;
+import com.gy_mod.gy_trinket.Config;
 import com.gy_mod.gy_trinket.event.PlayerLightPointStoreChangedEvent;
 import com.gy_mod.gy_trinket.gytrinket;
 import net.minecraft.server.level.ServerPlayer;
@@ -45,6 +51,38 @@ public class ConstructAttributeApplier {
         Map<String, Double> constructAttrs = computeConstructAttributes(playerUUID);
         PLAYER_CONSTRUCT_ATTR_CACHE.put(playerUUID, constructAttrs);
         applyAttributesToConstructs(playerUUID, player, constructAttrs);
+
+        // 属性重算后更新蜂群溢出倍率（基于数量上限，非当前数量）
+        updateSwarmOverflowMultiplier(playerUUID);
+    }
+
+    /**
+     * 计算蜂群数量上限的溢出倍率并存储到 MothershipManager。
+     * <p>
+     * 仅在属性重算时调用：溢出倍率跟随数量上限变化，而非当前蜂群数量。
+     * 当原始上限 > 极限值时，溢出倍率 = 原始上限 / 极限值，用于放大每只蜂群的属性和易伤值。
+     */
+    private static void updateSwarmOverflowMultiplier(UUID playerUUID) {
+        int swarmLimit = Config.getSwarmCountLimit();
+        if (swarmLimit <= 0) {
+            MothershipManager.setOverflowMultiplier(playerUUID, 1.0);
+            return;
+        }
+
+        ConstructType swarmType = ConstructManager.getInstance().getConstructType(SwarmConstructTypes.SWARM);
+        if (swarmType == null) {
+            MothershipManager.setOverflowMultiplier(playerUUID, 1.0);
+            return;
+        }
+
+        double rawCount = computeRawMaxCount(playerUUID, swarmType);
+
+        if (rawCount > swarmLimit) {
+            double overflowMultiplier = rawCount / swarmLimit;
+            MothershipManager.setOverflowMultiplier(playerUUID, overflowMultiplier);
+        } else {
+            MothershipManager.setOverflowMultiplier(playerUUID, 1.0);
+        }
     }
 
     public static Map<String, Double> computeConstructAttributes(UUID playerUUID) {
@@ -67,6 +105,24 @@ public class ConstructAttributeApplier {
         for (Entity entity : droneEntities.values()) {
             if (entity instanceof DroneConstructEntity droneEntity && droneEntity.isAlive()) {
                 applyAttributesToDrone(playerUUID, droneEntity, constructAttrs);
+            }
+        }
+
+        Map<UUID, Entity> wingmanEntities = ConstructManager.getInstance()
+                .getActiveConstructEntities(playerUUID, WingmanConstructTypes.WINGMAN);
+
+        for (Entity entity : wingmanEntities.values()) {
+            if (entity instanceof WingmanConstructEntity wingmanEntity && wingmanEntity.isAlive()) {
+                applyAttributesToWingman(playerUUID, wingmanEntity, constructAttrs);
+            }
+        }
+
+        Map<UUID, Entity> swarmEntities = ConstructManager.getInstance()
+                .getActiveConstructEntities(playerUUID, SwarmConstructTypes.SWARM);
+
+        for (Entity entity : swarmEntities.values()) {
+            if (entity instanceof SwarmConstructEntity swarmEntity && swarmEntity.isAlive()) {
+                applyAttributesToSwarm(playerUUID, swarmEntity, constructAttrs);
             }
         }
     }
@@ -148,6 +204,264 @@ public class ConstructAttributeApplier {
         drone.setAttackSpeedMultiplier(finalAttackSpeedMultiplier);
     }
 
+    public static void applyAttributesToWingman(UUID playerUUID, WingmanConstructEntity wingman, Map<String, Double> constructAttrs) {
+        Set<String> instanceTags = new HashSet<>();
+        if (wingman.getWingmanConstruct() != null) {
+            instanceTags.addAll(wingman.getWingmanConstruct().getCurrentTags());
+        }
+
+        ConstructType type = ConstructManager.getInstance().getConstructType(WingmanConstructTypes.WINGMAN);
+
+        double healthBase = 0;
+        double healthPercent = 1.0;
+        double healthIndependent = 1.0;
+        double damageBase = 0;
+        double damagePercent = 1.0;
+        double damageIndependent = 1.0;
+        double attackSpeedPercent = 1.0;
+        double attackSpeedIndependent = 1.0;
+
+        for (Map.Entry<String, Double> entry : constructAttrs.entrySet()) {
+            String attrName = entry.getKey();
+            double value = entry.getValue();
+
+            ConstructAttributeTarget target = ConstructAttributeRegistry.getTarget(attrName);
+            if (target == null) {
+                continue;
+            }
+
+            if (type == null || !target.matches(type, instanceTags)) {
+                continue;
+            }
+
+            switch (target.getEffectType()) {
+                case HEALTH -> {
+                    AttributeDefinition def = AttributeManager.getAttributeDefinition(attrName);
+                    if (def != null) {
+                        switch (def.getType()) {
+                            case BASE -> healthBase += value;
+                            case PERCENT -> healthPercent *= value;
+                            case INDEPENDENT_MULTIPLY -> healthIndependent *= value;
+                        }
+                    }
+                }
+                case DAMAGE -> {
+                    AttributeDefinition def = AttributeManager.getAttributeDefinition(attrName);
+                    if (def != null) {
+                        switch (def.getType()) {
+                            case BASE -> damageBase += value;
+                            case PERCENT -> damagePercent *= value;
+                            case INDEPENDENT_MULTIPLY -> damageIndependent *= value;
+                        }
+                    }
+                }
+                case ATTACK_SPEED -> {
+                    AttributeDefinition def = AttributeManager.getAttributeDefinition(attrName);
+                    if (def != null) {
+                        switch (def.getType()) {
+                            case PERCENT -> attackSpeedPercent *= value;
+                            case INDEPENDENT_MULTIPLY -> attackSpeedIndependent *= value;
+                        }
+                    }
+                }
+            }
+        }
+
+        double baseMaxHealth = wingman.getBaseMaxHealth();
+        double finalMaxHealth = (baseMaxHealth + healthBase) * healthPercent * healthIndependent;
+        double baseAttackDamage = wingman.getBaseAttackDamage();
+        double finalAttackDamage = (baseAttackDamage + damageBase) * damagePercent * damageIndependent;
+        double finalAttackSpeedMultiplier = attackSpeedPercent * attackSpeedIndependent;
+
+        applyWingmanHealthModifier(wingman, finalMaxHealth);
+        applyWingmanDamageModifier(wingman, finalAttackDamage);
+        wingman.setAttackSpeedMultiplier(finalAttackSpeedMultiplier);
+    }
+
+    private static void applyWingmanHealthModifier(WingmanConstructEntity wingman, double targetMaxHealth) {
+        AttributeInstance healthAttr = wingman.getAttribute(Attributes.MAX_HEALTH);
+        if (healthAttr == null) {
+            return;
+        }
+
+        double oldMaxHealth = wingman.getMaxHealth();
+        float currentHealth = wingman.getHealth();
+        float healthRatio = oldMaxHealth > 0 ? currentHealth / (float) oldMaxHealth : 1.0f;
+
+        removeModifier(healthAttr, CONSTRUCT_HEALTH_MODIFIER_UUID);
+        removeModifier(healthAttr, CONSTRUCT_HEALTH_PERCENT_MODIFIER_UUID);
+
+        double baseHealth = wingman.getBaseMaxHealth();
+        double addition = targetMaxHealth - baseHealth;
+        if (addition != 0) {
+            AttributeModifier addModifier = new AttributeModifier(
+                    CONSTRUCT_HEALTH_MODIFIER_UUID,
+                    "construct_health_addition",
+                    addition,
+                    AttributeModifier.Operation.ADDITION
+            );
+            healthAttr.addPermanentModifier(addModifier);
+        }
+
+        double newMaxHealth = wingman.getMaxHealth();
+        float newHealth = (float) (newMaxHealth * healthRatio);
+        if (newHealth > newMaxHealth) {
+            newHealth = (float) newMaxHealth;
+        }
+        wingman.setHealth(newHealth);
+    }
+
+    private static void applyWingmanDamageModifier(WingmanConstructEntity wingman, double targetDamage) {
+        AttributeInstance damageAttr = wingman.getAttribute(Attributes.ATTACK_DAMAGE);
+        if (damageAttr == null) {
+            return;
+        }
+
+        removeModifier(damageAttr, CONSTRUCT_DAMAGE_MODIFIER_UUID);
+        removeModifier(damageAttr, CONSTRUCT_DAMAGE_PERCENT_MODIFIER_UUID);
+
+        double baseDamage = wingman.getBaseAttackDamage();
+        double addition = targetDamage - baseDamage;
+        if (addition != 0) {
+            AttributeModifier addModifier = new AttributeModifier(
+                    CONSTRUCT_DAMAGE_MODIFIER_UUID,
+                    "construct_damage_addition",
+                    addition,
+                    AttributeModifier.Operation.ADDITION
+            );
+            damageAttr.addPermanentModifier(addModifier);
+        }
+    }
+
+    public static void applyAttributesToSwarm(UUID playerUUID, SwarmConstructEntity swarm, Map<String, Double> constructAttrs) {
+        Set<String> instanceTags = new HashSet<>();
+        if (swarm.getSwarmConstruct() != null) {
+            instanceTags.addAll(swarm.getSwarmConstruct().getCurrentTags());
+        }
+
+        ConstructType type = ConstructManager.getInstance().getConstructType(SwarmConstructTypes.SWARM);
+
+        double healthBase = 0;
+        double healthPercent = 1.0;
+        double healthIndependent = 1.0;
+        double damageBase = 0;
+        double damagePercent = 1.0;
+        double damageIndependent = 1.0;
+        double attackSpeedPercent = 1.0;
+        double attackSpeedIndependent = 1.0;
+
+        for (Map.Entry<String, Double> entry : constructAttrs.entrySet()) {
+            String attrName = entry.getKey();
+            double value = entry.getValue();
+
+            ConstructAttributeTarget target = ConstructAttributeRegistry.getTarget(attrName);
+            if (target == null) {
+                continue;
+            }
+
+            if (type == null || !target.matches(type, instanceTags)) {
+                continue;
+            }
+
+            switch (target.getEffectType()) {
+                case HEALTH -> {
+                    AttributeDefinition def = AttributeManager.getAttributeDefinition(attrName);
+                    if (def != null) {
+                        switch (def.getType()) {
+                            case BASE -> healthBase += value;
+                            case PERCENT -> healthPercent *= value;
+                            case INDEPENDENT_MULTIPLY -> healthIndependent *= value;
+                        }
+                    }
+                }
+                case DAMAGE -> {
+                    AttributeDefinition def = AttributeManager.getAttributeDefinition(attrName);
+                    if (def != null) {
+                        switch (def.getType()) {
+                            case BASE -> damageBase += value;
+                            case PERCENT -> damagePercent *= value;
+                            case INDEPENDENT_MULTIPLY -> damageIndependent *= value;
+                        }
+                    }
+                }
+                case ATTACK_SPEED -> {
+                    AttributeDefinition def = AttributeManager.getAttributeDefinition(attrName);
+                    if (def != null) {
+                        switch (def.getType()) {
+                            case PERCENT -> attackSpeedPercent *= value;
+                            case INDEPENDENT_MULTIPLY -> attackSpeedIndependent *= value;
+                        }
+                    }
+                }
+            }
+        }
+
+        double baseMaxHealth = swarm.getBaseMaxHealth();
+        double finalMaxHealth = (baseMaxHealth + healthBase) * healthPercent * healthIndependent;
+        double baseAttackDamage = swarm.getBaseAttackDamage();
+        double finalAttackDamage = (baseAttackDamage + damageBase) * damagePercent * damageIndependent;
+        double finalAttackSpeedMultiplier = attackSpeedPercent * attackSpeedIndependent;
+
+        applySwarmHealthModifier(swarm, finalMaxHealth);
+        applySwarmDamageModifier(swarm, finalAttackDamage);
+        swarm.setAttackSpeedMultiplier(finalAttackSpeedMultiplier);
+    }
+
+    private static void applySwarmHealthModifier(SwarmConstructEntity swarm, double targetMaxHealth) {
+        AttributeInstance healthAttr = swarm.getAttribute(Attributes.MAX_HEALTH);
+        if (healthAttr == null) {
+            return;
+        }
+
+        double oldMaxHealth = swarm.getMaxHealth();
+        float currentHealth = swarm.getHealth();
+        float healthRatio = oldMaxHealth > 0 ? currentHealth / (float) oldMaxHealth : 1.0f;
+
+        removeModifier(healthAttr, CONSTRUCT_HEALTH_MODIFIER_UUID);
+        removeModifier(healthAttr, CONSTRUCT_HEALTH_PERCENT_MODIFIER_UUID);
+
+        double baseHealth = swarm.getBaseMaxHealth();
+        double addition = targetMaxHealth - baseHealth;
+        if (addition != 0) {
+            AttributeModifier addModifier = new AttributeModifier(
+                    CONSTRUCT_HEALTH_MODIFIER_UUID,
+                    "construct_health_addition",
+                    addition,
+                    AttributeModifier.Operation.ADDITION
+            );
+            healthAttr.addPermanentModifier(addModifier);
+        }
+
+        double newMaxHealth = swarm.getMaxHealth();
+        float newHealth = (float) (newMaxHealth * healthRatio);
+        if (newHealth > newMaxHealth) {
+            newHealth = (float) newMaxHealth;
+        }
+        swarm.setHealth(newHealth);
+    }
+
+    private static void applySwarmDamageModifier(SwarmConstructEntity swarm, double targetDamage) {
+        AttributeInstance damageAttr = swarm.getAttribute(Attributes.ATTACK_DAMAGE);
+        if (damageAttr == null) {
+            return;
+        }
+
+        removeModifier(damageAttr, CONSTRUCT_DAMAGE_MODIFIER_UUID);
+        removeModifier(damageAttr, CONSTRUCT_DAMAGE_PERCENT_MODIFIER_UUID);
+
+        double baseDamage = swarm.getBaseAttackDamage();
+        double addition = targetDamage - baseDamage;
+        if (addition != 0) {
+            AttributeModifier addModifier = new AttributeModifier(
+                    CONSTRUCT_DAMAGE_MODIFIER_UUID,
+                    "construct_damage_addition",
+                    addition,
+                    AttributeModifier.Operation.ADDITION
+            );
+            damageAttr.addPermanentModifier(addModifier);
+        }
+    }
+
     private static void applyHealthModifier(DroneConstructEntity drone, double targetMaxHealth) {
         AttributeInstance healthAttr = drone.getAttribute(Attributes.MAX_HEALTH);
         if (healthAttr == null) {
@@ -221,6 +535,21 @@ public class ConstructAttributeApplier {
     }
 
     public static double getEffectiveMaxCount(UUID playerUUID, ConstructType type) {
+        double rawCount = computeRawMaxCount(playerUUID, type);
+
+        // 蜂群数量极限值截断（溢出倍率在 refreshForPlayer 中计算，不在此处设置副作用）
+        int swarmLimit = Config.getSwarmCountLimit();
+        if (swarmLimit > 0 && SwarmConstructTypes.SWARM.equals(type.getId()) && rawCount > swarmLimit) {
+            return swarmLimit;
+        }
+
+        return rawCount;
+    }
+
+    /**
+     * 计算构造体数量上限的原始值（不应用极限值截断）。
+     */
+    private static double computeRawMaxCount(UUID playerUUID, ConstructType type) {
         int baseCount = type.getMaxCount();
         double baseBonus = 0;
         double percent = 1.0;
@@ -244,7 +573,8 @@ public class ConstructAttributeApplier {
             }
         }
 
-        return Math.round((baseCount + baseBonus) * percent * independent);
+        // 向下取整：小数部分累积到整数时才生效，避免半值向上取整导致超量
+        return Math.floor((baseCount + baseBonus) * percent * independent);
     }
 
     public static double getEffectiveBuildSpeed(UUID playerUUID, ConstructType type) {

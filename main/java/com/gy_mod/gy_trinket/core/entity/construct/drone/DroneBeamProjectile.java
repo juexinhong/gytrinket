@@ -1,12 +1,12 @@
 package com.gy_mod.gy_trinket.core.entity.construct.drone;
 
-import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
@@ -117,8 +117,6 @@ public class DroneBeamProjectile extends Entity implements GeoEntity {
                 return;
             }
             this.checkCollision();
-        } else {
-            this.spawnParticles();
         }
     }
 
@@ -166,25 +164,16 @@ public class DroneBeamProjectile extends Entity implements GeoEntity {
                     float projectileDamage = totalDamage * 0.5F;
                     float fireDamage = totalDamage * 0.5F;
 
-                    float targetHealth = entity.getHealth();
-                    boolean isFatalHit = targetHealth <= totalDamage;
+                    boolean isFatalHit = entity.getHealth() <= totalDamage;
 
-                    net.minecraft.world.damagesource.DamageSource projectileDamageSource;
-                    net.minecraft.world.damagesource.DamageSource fireDamageSource;
+                    DamageSource projectileDamageSource;
+                    DamageSource fireDamageSource;
 
                     if (isFatalHit) {
-                        if (damageOwner != null) {
-                            projectileDamageSource = entity.damageSources().explosion(null, damageOwner);
-                            fireDamageSource = entity.damageSources().explosion(null, damageOwner);
-                        } else {
-                            if (realAttacker instanceof LivingEntity livingAttacker) {
-                                projectileDamageSource = entity.damageSources().mobAttack(livingAttacker);
-                                fireDamageSource = entity.damageSources().mobAttack(livingAttacker);
-                            } else {
-                                projectileDamageSource = entity.damageSources().indirectMagic(realAttacker, realAttacker);
-                                fireDamageSource = entity.damageSources().indirectMagic(realAttacker, realAttacker);
-                            }
-                        }
+                        // 斩杀：伤害源根据配置决定是否归属玩家
+                        DamageSource executeSource = ModDamageSources.getExecuteDamageSource(entity, damageOwner, realAttacker);
+                        projectileDamageSource = executeSource;
+                        fireDamageSource = executeSource;
                     } else {
                         if (realAttacker instanceof LivingEntity livingAttacker) {
                             projectileDamageSource = entity.damageSources().mobAttack(livingAttacker);
@@ -207,7 +196,7 @@ public class DroneBeamProjectile extends Entity implements GeoEntity {
                         );
                     }
 
-                    if (isFatalHit && damageOwner != null) {
+                    if (isFatalHit && com.gy_mod.gy_trinket.core.execute.ExecuteToggleManager.isExecuteEnabled(damageOwner)) {
                         entity.setLastHurtByMob(damageOwner);
                     }
 
@@ -355,31 +344,6 @@ public class DroneBeamProjectile extends Entity implements GeoEntity {
 
     public UUID getShooterUUID() {
         return this.ownerUUID;
-    }
-
-    private void spawnParticles() {
-        Vec3 lookVec = this.getLookAngle();
-        Vec3 beamStart = this.position().add(this.startOffset);
-
-        double particleStartOffset = 8.0D;
-        double particleEndOffset = BEAM_LENGTH;
-        double particleRange = particleEndOffset - particleStartOffset;
-
-        int particleCount = 4;
-        for (int i = 0; i < particleCount; i++) {
-            double progress = (double) i / (particleCount - 1.0D);
-            Vec3 particlePos = beamStart.add(lookVec.scale(particleStartOffset + particleRange * progress));
-
-            this.level().addParticle(
-                    ParticleTypes.END_ROD,
-                    particlePos.x + (this.random.nextDouble() - 0.5D) * BEAM_WIDTH,
-                    particlePos.y + (this.random.nextDouble() - 0.5D) * BEAM_HEIGHT,
-                    particlePos.z + (this.random.nextDouble() - 0.5D) * BEAM_WIDTH,
-                    0.0D,
-                    0.0D,
-                    0.0D
-            );
-        }
     }
 
     @Override

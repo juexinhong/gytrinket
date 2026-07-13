@@ -276,12 +276,32 @@ public class IgniteManager {
         float damage = igniteData.getDamagePerTick();
         Entity initiator = igniteData.getInitiator();
 
+        // 不足以斩杀时不归属攻击者，足够斩杀时根据斩杀归属开关决定
+        boolean canKill = damage >= target.getHealth();
+        Entity actualInitiator = canKill && isExecuteAttributionEnabled(initiator) ? initiator : null;
+
         com.gy_mod.gy_trinket.core.modifier.player.knockback.KnockbackManager.markNoKnockback(target.getUUID());
         target.invulnerableTime = 0;
-        target.hurt(ModDamageTypes.getOnFireDamageSource(target.level(), initiator), damage);
+        target.hurt(ModDamageTypes.getOnFireDamageSource(target.level(), actualInitiator), damage);
         target.invulnerableTime = 0;
 
         spawnIgniteParticles(target);
+    }
+
+    /**
+     * 判断斩杀归属是否启用
+     */
+    private static boolean isExecuteAttributionEnabled(Entity initiator) {
+        if (initiator instanceof net.minecraft.world.entity.player.Player player) {
+            return com.gy_mod.gy_trinket.core.execute.ExecuteToggleManager.isExecuteEnabled(player);
+        }
+        if (initiator instanceof com.gy_mod.gy_trinket.core.entity.construct.drone.DroneConstructEntity drone) {
+            net.minecraft.world.entity.Entity owner = drone.getOwner();
+            if (owner instanceof net.minecraft.world.entity.player.Player player) {
+                return com.gy_mod.gy_trinket.core.execute.ExecuteToggleManager.isExecuteEnabled(player);
+            }
+        }
+        return true;
     }
 
     /**

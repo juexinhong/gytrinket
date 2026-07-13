@@ -1,38 +1,43 @@
 package com.gy_mod.gy_trinket.core.entity.construct.drone;
 
 import com.gy_mod.gy_trinket.Config;
+import com.gy_mod.gy_trinket.core.entity.construct.AbstractConstructEntity;
+import com.gy_mod.gy_trinket.core.entity.construct.ConstructAttributeApplier;
+import com.gy_mod.gy_trinket.core.entity.construct.ConstructData;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.behavior.IDroneBehavior;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.behavior.IDroneSpecialBehavior;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.behavior.DroneSpecialBehaviorManager;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.behavior.PursuitBehavior;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.behavior.FormationBehavior;
+import com.gy_mod.gy_trinket.core.entity.construct.drone.behavior.SelfDestructBehavior;
 import com.gy_mod.gy_trinket.core.explosion.SimulatedExplosion;
+import com.gy_mod.gy_trinket.core.hostile_target.HostileTargetManager;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
-import net.minecraft.util.Mth;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.PathfinderMob;
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import software.bernie.geckolib.animatable.GeoEntity;
-import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache;
-import software.bernie.geckolib.core.animation.AnimatableManager;
-import software.bernie.geckolib.util.GeckoLibUtil;
 
 import javax.annotation.Nullable;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 /**
  * 无人机构造体实体类
@@ -41,12 +46,13 @@ import java.util.Set;
  * 支持三种阵列类型：环绕阵列(ORBIT)、追击阵列(PURSUIT)、待机阵列(STANDBY)。
  * 通过效果标签(EffectTag)可扩展无人机能力：突击(ASSAULT)增加攻击速度，防御(DEFENSE)增加生命值。
  */
-public class DroneConstructEntity extends PathfinderMob implements GeoEntity {
+public class DroneConstructEntity extends AbstractConstructEntity {
 
     /**
      * 无人机效果标签枚举
      * ASSAULT: 突击标签，提升攻击速度
      * DEFENSE: 防御标签，提升生命值
+     * COMMANDER: 指挥官标签，用于列队阵列的指挥官无人机
      */
     public enum DroneEffectTag {
         ASSAULT,
@@ -57,33 +63,13 @@ public class DroneConstructEntity extends PathfinderMob implements GeoEntity {
     private static final EntityDataAccessor<Integer> DATA_ARRAY_TYPE = SynchedEntityData.defineId(DroneConstructEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> DATA_EFFECT_TAGS = SynchedEntityData.defineId(DroneConstructEntity.class, EntityDataSerializers.INT);
 
-    private final AnimatableInstanceCache animatableInstanceCache = GeckoLibUtil.createInstanceCache(this);
-
-    @Nullable
-    private java.util.UUID ownerUUID;
-
-    private int attackCooldown = 0;
-
-    public void setAttackCooldown(int cooldown) {
-        this.attackCooldown = cooldown;
-    }
-
-    public int getAttackCooldown() {
-        return this.attackCooldown;
-    }
-
     private final Set<DroneEffectTag> effectTags = new HashSet<>();
-    
-    private double baseMaxHealth = 5.0;
-    private double baseAttackDamage = 0.3;
-    private double attackSpeedMultiplier = 1.0;
 
     private boolean isExploding = false;
     private double explosionSpeed = 0;
     private int explosionTimer = 0;
-    private boolean isTemporarilyPickable = false;
-    
-    // 存储对应的 DroneConstruct 引用
+
+    /** 存储对应的 DroneConstruct 引用 */
     private DroneConstruct droneConstruct;
 
     // 列队阵列相关字段
@@ -100,92 +86,20 @@ public class DroneConstructEntity extends PathfinderMob implements GeoEntity {
      */
     public DroneConstructEntity(EntityType<? extends PathfinderMob> type, Level level) {
         super(type, level);
-        this.setNoGravity(true);
-        this.noPhysics = true;
-    }
-
-    private void checkManagerRegistration() {
-        java.util.UUID ownerUUID = this.getOwnerUUID();
-        if (ownerUUID == null) {
-            this.remove(RemovalReason.DISCARDED);
-            return;
-        }
-
-        com.gy_mod.gy_trinket.core.entity.construct.ConstructManager cm =
-            com.gy_mod.gy_trinket.core.entity.construct.ConstructManager.getInstance();
-
-        java.util.Map<java.util.UUID, net.minecraft.world.entity.Entity> activeEntities =
-            cm.getActiveConstructEntities(ownerUUID, com.gy_mod.gy_trinket.core.entity.construct.drone.DroneConstructTypes.DRONE);
-        boolean inActiveEntities = activeEntities != null && activeEntities.containsKey(this.getUUID());
-
-        boolean inPlayerConstructs = false;
-        java.util.Map<String, java.util.List<com.gy_mod.gy_trinket.core.entity.construct.ConstructData>> constructsMap =
-            cm.getPlayerConstructs(ownerUUID);
-        java.util.List<com.gy_mod.gy_trinket.core.entity.construct.ConstructData> droneList =
-            constructsMap.get(com.gy_mod.gy_trinket.core.entity.construct.drone.DroneConstructTypes.DRONE);
-        if (droneList != null) {
-            for (com.gy_mod.gy_trinket.core.entity.construct.ConstructData data : droneList) {
-                if (this.getUUID().equals(data.getEntityUUID())) {
-                    inPlayerConstructs = true;
-                    break;
-                }
-            }
-        }
-
-        if (!inActiveEntities && !inPlayerConstructs) {
-            this.remove(RemovalReason.DISCARDED);
-            return;
-        }
-
-        if (inActiveEntities && inPlayerConstructs) {
-            return;
-        }
-
-        if (this.level().getServer() == null) {
-            return;
-        }
-
-        net.minecraft.server.level.ServerPlayer ownerPlayer =
-            this.level().getServer().getPlayerList().getPlayer(ownerUUID);
-        if (ownerPlayer == null) {
-            this.remove(RemovalReason.DISCARDED);
-            return;
-        }
-
-        if (!inActiveEntities) {
-            cm.registerConstructEntity(ownerUUID, com.gy_mod.gy_trinket.core.entity.construct.drone.DroneConstructTypes.DRONE, this);
-        }
-
-        if (!inPlayerConstructs) {
-            com.gy_mod.gy_trinket.core.entity.construct.drone.DroneArrayType currentArrayType =
-                com.gy_mod.gy_trinket.core.entity.construct.drone.DroneArrayManager.getInstance().getPlayerArrayType(ownerPlayer);
-            if (currentArrayType == null) {
-                currentArrayType = com.gy_mod.gy_trinket.core.entity.construct.drone.DroneArrayType.Types.ORBIT;
-            }
-            com.gy_mod.gy_trinket.core.entity.construct.drone.DroneConstructData newData =
-                new com.gy_mod.gy_trinket.core.entity.construct.drone.DroneConstructData(
-                    com.gy_mod.gy_trinket.core.entity.construct.drone.DroneConstructTypes.DRONE,
-                    this.getUUID(),
-                    this.getMaxHealth(),
-                    currentArrayType);
-            newData.setHealth(this.getHealth());
-            newData.setHasAssaultModule(this.hasEffectTag(DroneEffectTag.ASSAULT));
-            newData.setHasDefenseModule(this.hasEffectTag(DroneEffectTag.DEFENSE));
-            cm.addConstruct(ownerPlayer, newData);
-        }
+        this.baseMaxHealth = Config.getDroneBaseHealth();
+        this.baseAttackDamage = Config.getDroneBaseDamage();
     }
 
     /**
      * 带所有者和构造体数据的构造函数
-     * @param level 世界
-     * @param ownerUUID 所有者玩家UUID
-     * @param droneConstruct 对应的无人机构造体数据
      */
-    public DroneConstructEntity(Level level, java.util.UUID ownerUUID, DroneConstruct droneConstruct) {
+    public DroneConstructEntity(Level level, UUID ownerUUID, DroneConstruct droneConstruct) {
         this(ModEntities.DRONE_CONSTRUCT.get(), level);
-        this.ownerUUID = ownerUUID;
+        setOwnerUUID(ownerUUID);
         this.droneConstruct = droneConstruct;
     }
+
+    // ===== 同步数据 =====
 
     @Override
     protected void defineSynchedData() {
@@ -209,37 +123,23 @@ public class DroneConstructEntity extends PathfinderMob implements GeoEntity {
         }
     }
 
-    /**
-     * 判断是否为环绕阵列
-     * @return true 如果是环绕阵列
-     */
+    // ===== 阵列类型判定 =====
+
     public boolean isOrbitArray() {
         int index = this.entityData.get(DATA_ARRAY_TYPE);
         return index == 0;
     }
 
-    /**
-     * 判断是否为追击阵列
-     * @return true 如果是追击阵列
-     */
     public boolean isPursuitArray() {
         int index = this.entityData.get(DATA_ARRAY_TYPE);
         return index == 1;
     }
 
-    /**
-     * 判断是否为待机阵列
-     * @return true 如果是待机阵列
-     */
     public boolean isStandbyArray() {
         int index = this.entityData.get(DATA_ARRAY_TYPE);
         return index == 2;
     }
 
-    /**
-     * 判断是否为列队阵列
-     * @return true 如果是列队阵列
-     */
     public boolean isFormationArray() {
         int index = this.entityData.get(DATA_ARRAY_TYPE);
         return index == 3;
@@ -249,16 +149,11 @@ public class DroneConstructEntity extends PathfinderMob implements GeoEntity {
         int index = this.entityData.get(DATA_ARRAY_TYPE);
         return index == 4;
     }
-    
-    /**
-     * 获取当前无人机的行为处理器
-     * @return 对应的IDroneBehavior实现
-     */
+
     public IDroneBehavior getBehavior() {
         if (this.droneConstruct != null) {
             return this.droneConstruct.getBehavior();
         }
-        // 如果 droneConstruct 为 null，则根据阵列类型获取默认行为
         if (isOrbitArray()) {
             return DroneArrayType.Types.ORBIT.getBehavior();
         } else if (isPursuitArray()) {
@@ -292,26 +187,29 @@ public class DroneConstructEntity extends PathfinderMob implements GeoEntity {
         this.refreshDimensions();
     }
 
-    @Override
-    public net.minecraft.world.entity.EntityDimensions getDimensions(net.minecraft.world.entity.Pose pose) {
-        if (isDefenseDrone()) {
-            return net.minecraft.world.entity.EntityDimensions.scalable(1.0f, 5.0f);
-        }
-        return super.getDimensions(pose);
-    }
-
-    @Override
-    public boolean canBeCollidedWith() {
-        return false;
-    }
+    // ===== 碰撞规则 =====
 
     @Override
     public boolean isPickable() {
-        if (isDefenseDrone()) {
-            return isTemporarilyPickable;
-        }
+        // 所有的构造体都应该可以被弹射物攻击，而不只是防御无人机
         return true;
     }
+
+    /**
+     * 防御无人机使用扩大的碰撞箱以拦截弹射物。
+     * 通过重写 makeBoundingBox() 返回扩大的碰撞箱来实现防御无人机的弹射物拦截。
+     */
+    @Override
+    protected AABB makeBoundingBox() {
+        if (effectTags != null && isDefenseDrone()) {
+            float width = 0.8f;
+            float height = 4.0f;
+            return AABB.ofSize(this.getEyePosition(), (double) width, (double) height, (double) width);
+        }
+        return super.makeBoundingBox();
+    }
+
+    // ===== 效果标签管理 =====
 
     public void addEffectTag(DroneEffectTag tag) {
         effectTags.add(tag);
@@ -357,33 +255,6 @@ public class DroneConstructEntity extends PathfinderMob implements GeoEntity {
         }
         this.entityData.set(DATA_EFFECT_TAGS, data);
     }
-    
-    private void applyAttributeModifiers() {
-        this.getAttribute(Attributes.MAX_HEALTH).setBaseValue(baseMaxHealth);
-
-        if (this.getHealth() > baseMaxHealth) {
-            this.setHealth((float) baseMaxHealth);
-        }
-
-        refreshConstructAttributes();
-    }
-
-    public void refreshConstructAttributes() {
-        if (this.ownerUUID == null) {
-            return;
-        }
-        java.util.UUID playerUUID = this.ownerUUID;
-        net.minecraft.server.level.ServerPlayer player = null;
-        if (this.level().getServer() != null) {
-            player = this.level().getServer().getPlayerList().getPlayer(playerUUID);
-        }
-        if (player != null) {
-            com.gy_mod.gy_trinket.core.entity.construct.ConstructAttributeApplier.applyAttributesToDrone(
-                    playerUUID, this,
-                    com.gy_mod.gy_trinket.core.entity.construct.ConstructAttributeApplier.computeConstructAttributes(playerUUID)
-            );
-        }
-    }
 
     public boolean isAssaultDrone() {
         return hasEffectTag(DroneEffectTag.ASSAULT);
@@ -397,29 +268,7 @@ public class DroneConstructEntity extends PathfinderMob implements GeoEntity {
         return hasEffectTag(DroneEffectTag.COMMANDER);
     }
 
-    public double getBaseMaxHealth() {
-        return baseMaxHealth;
-    }
-
-    public void setBaseMaxHealth(double baseMaxHealth) {
-        this.baseMaxHealth = baseMaxHealth;
-    }
-
-    public double getBaseAttackDamage() {
-        return baseAttackDamage;
-    }
-
-    public void setBaseAttackDamage(double baseAttackDamage) {
-        this.baseAttackDamage = baseAttackDamage;
-    }
-
-    public double getAttackSpeedMultiplier() {
-        return attackSpeedMultiplier;
-    }
-
-    public void setAttackSpeedMultiplier(double multiplier) {
-        this.attackSpeedMultiplier = multiplier;
-    }
+    // ===== 引用与状态 =====
 
     public DroneConstruct getDroneConstruct() {
         return droneConstruct;
@@ -453,36 +302,15 @@ public class DroneConstructEntity extends PathfinderMob implements GeoEntity {
         return this.calculateViewVector(this.getXRot(), this.getYRot());
     }
 
-    public void facePositionWithInterpolation(Vec3 targetPos, float rotationSpeed) {
-        Vec3 dronePos = this.position();
-
-        double dx = targetPos.x - dronePos.x;
-        double dy = targetPos.y - dronePos.y;
-        double dz = targetPos.z - dronePos.z;
-
-        double horizontalDistance = Math.sqrt(dx * dx + dz * dz);
-        float targetYaw = (float) (Math.atan2(dz, dx) * (180.0 / Math.PI)) - 90.0f;
-        float targetPitch = -(float) (Math.atan2(dy, horizontalDistance) * (180.0 / Math.PI));
-
-        float currentYaw = this.getYRot();
-
-        float deltaYaw = targetYaw - currentYaw;
-        while (deltaYaw > 180.0f) deltaYaw -= 360.0f;
-        while (deltaYaw < -180.0f) deltaYaw += 360.0f;
-
-        float yawStep = Math.min(Math.abs(deltaYaw), rotationSpeed);
-        if (deltaYaw < 0) yawStep = -yawStep;
-        float newYaw = currentYaw + yawStep;
-
-        this.setYRot(newYaw);
-        this.setXRot(targetPitch);
-        this.setYHeadRot(newYaw);
-        this.yBodyRot = newYaw;
-        this.yHeadRot = newYaw;
-    }
+    // ===== 自爆 =====
 
     public void explodeAndRemove() {
         if (this.level().isClientSide) return;
+
+        // 最终指令的自爆视为死亡判定，可以触发自毁装置
+        if (SelfDestructBehavior.hasRequiredItems(this)) {
+            SelfDestructBehavior.triggerSelfDestructExplosion(this);
+        }
 
         float maxHealth = this.getMaxHealth();
         float speed = (float) this.explosionSpeed;
@@ -494,13 +322,13 @@ public class DroneConstructEntity extends PathfinderMob implements GeoEntity {
 
         Entity owner = this.getOwner();
         DamageSource damageSource;
-        if (owner instanceof net.minecraft.world.entity.player.Player player) {
+        if (owner instanceof Player player) {
             damageSource = this.damageSources().explosion(this, player);
         } else {
             damageSource = this.damageSources().explosion(this, owner);
         }
 
-        net.minecraft.world.entity.player.Player playerOwner = owner instanceof net.minecraft.world.entity.player.Player ? (net.minecraft.world.entity.player.Player) owner : null;
+        Player playerOwner = owner instanceof Player p ? p : null;
 
         SimulatedExplosion.execute(
                 this.level(),
@@ -509,32 +337,56 @@ public class DroneConstructEntity extends PathfinderMob implements GeoEntity {
                 damage,
                 damageSource,
                 entity -> entity != this && entity.isAlive()
-                        && !(entity instanceof net.minecraft.world.entity.player.Player)
+                        && !(entity instanceof Player)
                         && entity instanceof net.minecraft.world.entity.Mob
-                        && com.gy_mod.gy_trinket.core.hostile_target.HostileTargetManager.shouldAttackPlayer(entity, playerOwner),
+                        && HostileTargetManager.shouldAttackPlayer(entity, playerOwner),
                 false,
                 playerOwner
         );
 
-        if (this.level() instanceof net.minecraft.server.level.ServerLevel serverLevel) {
+        if (this.level() instanceof ServerLevel serverLevel) {
             serverLevel.sendParticles(ParticleTypes.EXPLOSION_EMITTER,
                     pos.x, pos.y, pos.z, 1, 0, 0, 0, 0);
         }
 
         removeFromConstructManager();
-        this.remove(net.minecraft.world.entity.Entity.RemovalReason.DISCARDED);
+        this.remove(Entity.RemovalReason.DISCARDED);
+    }
+
+    // ===== 抽象方法实现 =====
+
+    @Override
+    protected String getConstructTypeId() {
+        return DroneConstructTypes.DRONE;
     }
 
     @Override
-    public void addAdditionalSaveData(CompoundTag tag) {
-        super.addAdditionalSaveData(tag);
-        if (this.ownerUUID != null) {
-            tag.putUUID("owner", this.ownerUUID);
+    protected ConstructData createConstructDataForRegistration(ServerPlayer ownerPlayer) {
+        DroneArrayType currentArrayType = DroneArrayManager.getInstance().getPlayerArrayType(ownerPlayer);
+        if (currentArrayType == null) {
+            currentArrayType = DroneArrayType.Types.ORBIT;
         }
+        DroneConstructData newData = new DroneConstructData(
+                DroneConstructTypes.DRONE,
+                this.getUUID(),
+                this.getBaseMaxHealth(),
+                currentArrayType);
+        newData.setHasAssaultModule(this.hasEffectTag(DroneEffectTag.ASSAULT));
+        newData.setHasDefenseModule(this.hasEffectTag(DroneEffectTag.DEFENSE));
+        return newData;
+    }
+
+    @Override
+    protected void applyConstructAttributes(UUID playerUUID, Map<String, Double> attributes) {
+        ConstructAttributeApplier.applyAttributesToDrone(playerUUID, this, attributes);
+    }
+
+    // ===== 类型特定 NBT 钩子 =====
+
+    @Override
+    protected void addTypeSpecificSaveData(CompoundTag tag) {
         tag.putInt("array_type", this.entityData.get(DATA_ARRAY_TYPE));
-
         tag.putInt("effects", this.entityData.get(DATA_EFFECT_TAGS));
-
         tag.putInt("drone_index", this.droneIndex);
         tag.putInt("total_drones", this.totalDrones);
         tag.putBoolean("is_left_side", this.isLeftSide);
@@ -544,11 +396,7 @@ public class DroneConstructEntity extends PathfinderMob implements GeoEntity {
     }
 
     @Override
-    public void readAdditionalSaveData(CompoundTag tag) {
-        super.readAdditionalSaveData(tag);
-        if (tag.hasUUID("owner")) {
-            this.ownerUUID = tag.getUUID("owner");
-        }
+    protected void readTypeSpecificSaveData(CompoundTag tag) {
         if (tag.contains("array_type")) {
             this.entityData.set(DATA_ARRAY_TYPE, tag.getInt("array_type"));
         }
@@ -584,41 +432,23 @@ public class DroneConstructEntity extends PathfinderMob implements GeoEntity {
             this.addEffect(new net.minecraft.world.effect.MobEffectInstance(
                     net.minecraft.world.effect.MobEffects.GLOWING, Integer.MAX_VALUE, 0, false, false));
         }
-        applyAttributeModifiers();
+    }
+
+    @Override
+    protected void onAttributesApplied() {
         updateEffectData();
         this.refreshDimensions();
     }
 
-    @Nullable
-    public java.util.UUID getOwnerUUID() {
-        return this.ownerUUID;
-    }
-
-    @Nullable
-    public Entity getOwner() {
-        if (this.ownerUUID == null) return null;
-        return this.level().getPlayerByUUID(this.ownerUUID);
-    }
-
     @Override
-    public void die(DamageSource source) {
-        if (tryPreventDeathBehaviors(source)) {
-            return;
-        }
-        triggerSpecialBehaviorsOnDeath(source);
-        super.die(source);
-        removeFromConstructManager();
+    protected void onRemoveFromConstructManager() {
+        CommanderManager.getInstance().onDroneRemoved(this);
     }
+
+    // ===== 伤害与死亡（添加无人机特殊行为触发） =====
 
     @Override
     public boolean hurt(DamageSource source, float amount) {
-        Entity attacker = source.getEntity();
-        if (attacker instanceof Player playerAttacker) {
-            if (this.getOwnerUUID() != null && this.getOwnerUUID().equals(playerAttacker.getUUID())) {
-                return false;
-            }
-        }
-
         boolean result = super.hurt(source, amount);
         if (result && this.getHealth() <= this.getMaxHealth() * 0.2f && this.getHealth() > 0) {
             triggerSpecialBehaviorsOnNearDeath(source);
@@ -628,6 +458,17 @@ public class DroneConstructEntity extends PathfinderMob implements GeoEntity {
         }
         return result;
     }
+
+    @Override
+    public void die(DamageSource source) {
+        if (tryPreventDeathBehaviors(source)) {
+            return;
+        }
+        triggerSpecialBehaviorsOnDeath(source);
+        super.die(source);
+    }
+
+    // ===== 特殊行为触发 =====
 
     private void tickSpecialBehaviors() {
         List<IDroneSpecialBehavior> behaviors = DroneSpecialBehaviorManager.getInstance().getApplicableBehaviors(this);
@@ -659,7 +500,7 @@ public class DroneConstructEntity extends PathfinderMob implements GeoEntity {
 
     private boolean tryPreventDeathBehaviors(DamageSource source) {
         List<IDroneSpecialBehavior> behaviors = DroneSpecialBehaviorManager.getInstance().getApplicableBehaviors(this);
-        behaviors.sort(java.util.Comparator.comparingInt(IDroneSpecialBehavior::getPriority));
+        behaviors.sort(Comparator.comparingInt(IDroneSpecialBehavior::getPriority));
         for (IDroneSpecialBehavior behavior : behaviors) {
             if (behavior.tryPreventDeath(this, source)) {
                 return true;
@@ -668,30 +509,7 @@ public class DroneConstructEntity extends PathfinderMob implements GeoEntity {
         return false;
     }
 
-    private void removeFromConstructManager() {
-        if (this.ownerUUID != null && !this.level().isClientSide) {
-            CommanderManager.getInstance().onDroneRemoved(this);
-
-            com.gy_mod.gy_trinket.core.entity.construct.ConstructManager manager = 
-                com.gy_mod.gy_trinket.core.entity.construct.ConstructManager.getInstance();
-            manager.removeConstruct(this.ownerUUID, this.getUUID());
-            manager.markConstructDead(this.ownerUUID, DroneConstructTypes.DRONE, this.getUUID());
-            manager.unregisterConstructEntity(this.ownerUUID, DroneConstructTypes.DRONE, this.getUUID());
-        }
-    }
-
-    public void setOwnerUUID(@Nullable java.util.UUID uuid) {
-        this.ownerUUID = uuid;
-    }
-
-    @Override
-    public void aiStep() {
-        super.aiStep();
-
-        if (this.attackCooldown > 0) {
-            this.attackCooldown--;
-        }
-    }
+    // ===== 主循环 =====
 
     /**
      * 每刻更新逻辑
@@ -711,19 +529,12 @@ public class DroneConstructEntity extends PathfinderMob implements GeoEntity {
             return;
         }
 
-        updateTemporarilyPickable();
-
         if (this.isNoGravity()) {
             this.setDeltaMovement(this.getDeltaMovement().multiply(0.98, 0.98, 0.98));
         }
 
         Entity owner = this.getOwner();
-        if (owner != null && owner.isAlive()) {
-            // 客户端生成飞行粒子效果
-            if (this.level().isClientSide && this.random.nextFloat() < 0.1f) {
-                addFlightParticles();
-            }
-
+        if (owner != null && owner.isAlive() && this.isAlive()) {
             // 更新列队阵列的攻击传递状态
             if (this.isFormationArray() && this.getOwnerUUID() != null) {
                 FormationBehavior.tickAttackPass(this.getOwnerUUID());
@@ -759,14 +570,23 @@ public class DroneConstructEntity extends PathfinderMob implements GeoEntity {
 
                             behavior.executeAttack(this, (LivingEntity) owner, targetToAttack, canAttack);
                         } else {
-                            // 无目标时朝向玩家方向
-                            faceOwnerDirection((LivingEntity) owner);
+                            // 无攻击目标时，检查是否有记忆目标（3秒记忆期内继续转向）
+                            LivingEntity memoryTarget = pursuitBehavior.getMemoryTarget(this);
+                            if (memoryTarget != null) {
+                                faceTargetWithInterpolation(memoryTarget);
+                            } else {
+                                // 无记忆目标时朝向玩家方向
+                                faceOwnerDirection((LivingEntity) owner);
+                            }
                         }
                     }
                 } else if (this.isFormationArray()) {
-                    // 列队阵列：翼根无人机自由攻击并触发传递，非翼根无人机等待传递
+                    // 列队阵列：先更新朝向，确保视线判定使用正确的俯仰角
+                    faceFormationDirection((LivingEntity) owner, null);
+
+                    // 翼根无人机自由攻击并触发传递，非翼根无人机等待传递
                     List<LivingEntity> targets = behavior.searchTargets(this, (LivingEntity) owner, behavior.getAttackRange());
-                    
+
                     if (this.getWingIndex() == 0) {
                         if (!targets.isEmpty() && this.attackCooldown <= 0) {
                             LivingEntity nearestTarget = targets.get(0);
@@ -775,7 +595,7 @@ public class DroneConstructEntity extends PathfinderMob implements GeoEntity {
                             if (canAttack) {
                                 faceFormationDirection((LivingEntity) owner, nearestTarget);
                                 FormationBehavior.performBeamAttack(this, nearestTarget);
-                                int formationCooldown = (int) (com.gy_mod.gy_trinket.Config.FORMATION_ATTACK_INTERVAL.get() * 20.0 / this.attackSpeedMultiplier);
+                                int formationCooldown = (int) (Config.FORMATION_ATTACK_INTERVAL.get() * 20.0 / this.attackSpeedMultiplier);
                                 this.setAttackCooldown(Math.max(1, formationCooldown));
                                 FormationBehavior.onWingRootAttack(this, nearestTarget);
                             } else {
@@ -844,9 +664,10 @@ public class DroneConstructEntity extends PathfinderMob implements GeoEntity {
         }
     }
 
+    // ===== 无人机专用朝向方法 =====
+
     /**
      * 立即朝向目标（无插值）
-     * @param target 要朝向的目标实体
      */
     private void faceTarget(LivingEntity target) {
         Vec3 dronePos = this.position();
@@ -896,6 +717,9 @@ public class DroneConstructEntity extends PathfinderMob implements GeoEntity {
         this.yHeadRot = perpendicularYaw;
     }
 
+    /**
+     * 朝向远离玩家的方向（用于防御无人机）
+     */
     private void faceOutwardFromOwner(LivingEntity owner) {
         Vec3 dronePos = this.position();
         Vec3 ownerPos = owner.position();
@@ -917,69 +741,13 @@ public class DroneConstructEntity extends PathfinderMob implements GeoEntity {
         this.yHeadRot = yaw;
     }
 
-    private void updateTemporarilyPickable() {
-        isTemporarilyPickable = false;
-
-        if (!isDefenseDrone()) return;
-        if (this.level().isClientSide) return;
-
-        Entity ownerEntity = this.getOwner();
-        if (!(ownerEntity instanceof Player owner)) return;
-
-        Vec3 playerPos = owner.position();
-        AABB searchArea = new AABB(
-                playerPos.x - 5.0, playerPos.y - 5.0, playerPos.z - 5.0,
-                playerPos.x + 5.0, playerPos.y + 5.0, playerPos.z + 5.0
-        );
-
-        List<net.minecraft.world.entity.projectile.Projectile> projectiles =
-                this.level().getEntitiesOfClass(net.minecraft.world.entity.projectile.Projectile.class, searchArea);
-
-        for (net.minecraft.world.entity.projectile.Projectile proj : projectiles) {
-            Entity projOwner = proj.getOwner();
-            if (projOwner instanceof Player) continue;
-            if (projOwner instanceof DroneConstructEntity droneShooter
-                    && droneShooter.getOwnerUUID() != null
-                    && droneShooter.getOwnerUUID().equals(this.getOwnerUUID())) continue;
-            if (projOwner == this) continue;
-
-            if (proj instanceof net.minecraft.world.entity.projectile.AbstractArrow arrow) {
-                Vec3 velocity = arrow.getDeltaMovement();
-                double speedSquared = velocity.x * velocity.x + velocity.y * velocity.y + velocity.z * velocity.z;
-                if (speedSquared < 0.01) continue;
-            }
-
-            isTemporarilyPickable = true;
-            break;
-        }
-    }
-
     /**
-     * 使用固定插值朝向目标（用于追击阵列）
-     * 偏航角每刻最多转动20度，俯仰角立即调整
-     * @param target 要朝向的目标实体
+     * 列队阵列朝向：基于玩家朝向延伸点，并可在30度范围内偏向目标
      */
-    private void faceTargetWithInterpolation(LivingEntity target) {
-        facePositionWithInterpolation(target.position().add(0, target.getEyeHeight() * 0.5, 0), 20.0f);
-    }
-
-    /**
-     * 朝向玩家的朝向方向（用于追击阵列无目标时）
-     * @param owner 玩家实体
-     */
-    private void faceOwnerDirection(LivingEntity owner) {
-        float ownerYaw = owner.getYRot();
-
-        this.setYRot(ownerYaw);
-        this.setYHeadRot(ownerYaw);
-        this.yBodyRot = ownerYaw;
-        this.yHeadRot = ownerYaw;
-    }
-
     private void faceFormationDirection(LivingEntity owner, @Nullable LivingEntity target) {
         Vec3 ownerPos = owner.position();
         Vec3 dronePos = this.position();
-        
+
         float ownerYaw = owner.getYRot();
         double yawRad = Math.toRadians(ownerYaw);
         Vec3 lookDir = new Vec3(
@@ -987,26 +755,26 @@ public class DroneConstructEntity extends PathfinderMob implements GeoEntity {
             0,
             -Math.cos(yawRad)
         ).normalize();
-        
+
         Vec3 extendedPos = ownerPos.add(lookDir.scale(-6));  //虽然是玩家身后6格.其实为了聚焦也是没有办法的事
-        
+
         Vec3 toExtended = extendedPos.subtract(dronePos).normalize();
         float baseYaw = (float) Math.toDegrees(Math.atan2(toExtended.z, toExtended.x)) - 90f;
-        
+
         if (target != null) {
             Vec3 toTarget = target.position().add(0, target.getEyeHeight() * 0.5, 0).subtract(dronePos).normalize();
             float targetYaw = (float) Math.toDegrees(Math.atan2(toTarget.z, toTarget.x)) - 90f;
-            
+
             float yawDiff = targetYaw - baseYaw;
             while (yawDiff > 180) yawDiff -= 360;
             while (yawDiff < -180) yawDiff += 360;
-            
+
             yawDiff = Math.max(-30f, Math.min(30f, yawDiff));
             baseYaw += yawDiff;
         }
-        
+
         float pitch = owner.getXRot();
-        
+
         this.setYRot(baseYaw);
         this.setXRot(pitch);
         this.setYHeadRot(baseYaw);
@@ -1014,41 +782,18 @@ public class DroneConstructEntity extends PathfinderMob implements GeoEntity {
         this.yHeadRot = baseYaw;
     }
 
-    private void addFlightParticles() {
-        Vec3 pos = this.position();
-        Vec3 lookAngle = new Vec3(
-            Mth.cos((this.getYRot() + 90.0f) * Mth.DEG_TO_RAD),
-            0.0,
-            Mth.sin((this.getYRot() + 90.0f) * Mth.DEG_TO_RAD)
-        );
-
-        Vec3 leftOffset = pos.add(-lookAngle.x * 0.3, -0.2, -lookAngle.z * 0.3);
-        Vec3 rightOffset = pos.add(lookAngle.x * 0.3, -0.2, lookAngle.z * 0.3);
-
-        this.level().addParticle(ParticleTypes.CLOUD, leftOffset.x, leftOffset.y, leftOffset.z,
-            lookAngle.x * -0.1, 0, lookAngle.z * -0.1);
-        this.level().addParticle(ParticleTypes.CLOUD, rightOffset.x, rightOffset.y, rightOffset.z,
-            lookAngle.x * -0.1, 0, lookAngle.z * -0.1);
-    }
+    // ===== 属性注册 =====
 
     public static AttributeSupplier.Builder createAttributes() {
+        // 注册时使用默认值，实际值由 applyAttributeModifiers() 从 Config 覆盖
         return PathfinderMob.createMobAttributes()
             .add(Attributes.MAX_HEALTH, 5.0)
             .add(Attributes.FOLLOW_RANGE, 16.0)
             .add(Attributes.ATTACK_DAMAGE, 0.3);
     }
 
-    @Override
-    public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
-        // 禁用动画播放，直到所有无人机都有完整的动画
-    }
+    // ===== 列队阵列相关 getter/setter =====
 
-    @Override
-    public AnimatableInstanceCache getAnimatableInstanceCache() {
-        return this.animatableInstanceCache;
-    }
-
-    // 列队阵列相关方法
     public int getDroneIndex() {
         return this.droneIndex;
     }

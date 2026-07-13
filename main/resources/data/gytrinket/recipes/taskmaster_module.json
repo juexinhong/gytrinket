@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " # ",
+    "X@X",
+    " * "
+  ],
+  "key": {
+    "#": { "item": "gytrinket:construct_frame" },
+    "X": { "item": "minecraft:string" },
+    "@": { "item": "minecraft:ender_eye" },
+    "*": { "item": "minecraft:blue_wool" }
+  },
+  "result": {
+    "item": "gytrinket:taskmaster_module",
+    "count": 1
+  }
+}

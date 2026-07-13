@@ -1,6 +1,7 @@
 package com.gy_mod.gy_trinket.core.explosion;
 
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
+import com.gy_mod.gy_trinket.core.execute.ExecuteToggleManager;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
@@ -37,9 +38,11 @@ public class SimulatedExplosion {
     /** 基础速度的理论上限（格/tick） */
     private static final double MAX_BASE_SPEED = 3.0;
     /** 达到最大基础速度一半时的爆炸半径 */
-    private static final double HALF_MAX_RADIUS = 6.0;
+    private static final double HALF_MAX_RADIUS = 4.0;
     /** 竖直方向修正的最大比例（爆心处除外） */
     private static final double MAX_VERTICAL_BIAS = 0.5;
+    /** 击退力倍率 */
+    private static final double KNOCKBACK_MULTIPLIER = 0.5;
 
     /**
      * 执行模拟爆炸（无玩家owner，不应用爆炸属性增幅）
@@ -51,22 +54,32 @@ public class SimulatedExplosion {
     }
 
     /**
-     * 执行模拟爆炸：对范围内实体施加伤害和击退
-     * <p>
-     * 如果提供了owner，会自动乘以该玩家的爆炸属性组增幅
-     *
-     * @param level             世界
-     * @param center            爆炸中心
-     * @param radius            爆炸半径（应用属性增幅前）
-     * @param damage            爆炸伤害（应用属性增幅前）
-     * @param damageSource      伤害源
-     * @param entityFilter      实体过滤器（返回true的实体会受到伤害和击退）
-     * @param resetInvulnerable 是否在伤害前后重置无敌时间
-     * @param owner             爆炸归属玩家，用于应用爆炸属性增幅（可为null）
+     * 执行模拟爆炸（不应用爆炸属性增幅，自定义斥力倍率）
      */
     public static void execute(Level level, Vec3 center, double radius, float damage,
                                DamageSource damageSource, Predicate<LivingEntity> entityFilter,
                                boolean resetInvulnerable, Player owner) {
+        execute(level, center, radius, damage, damageSource, entityFilter, resetInvulnerable, owner, -1.0);
+    }
+
+    /**
+     * 执行模拟爆炸：对范围内实体施加伤害和击退
+     * <p>
+     * 如果提供了owner，会自动乘以该玩家的爆炸属性组增幅
+     *
+     * @param level                      世界
+     * @param center                     爆炸中心
+     * @param radius                     爆炸半径（应用属性增幅前）
+     * @param damage                     爆炸伤害（应用属性增幅前）
+     * @param damageSource               伤害源
+     * @param entityFilter               实体过滤器（返回true的实体会受到伤害和击退）
+     * @param resetInvulnerable          是否在伤害前后重置无敌时间
+     * @param owner                      爆炸归属玩家，用于应用爆炸属性增幅（可为null）
+     * @param knockbackMultiplierOverride 额外斥力倍率修正（<0表示使用默认值KNOCKBACK_MULTIPLIER）
+     */
+    public static void execute(Level level, Vec3 center, double radius, float damage,
+                               DamageSource damageSource, Predicate<LivingEntity> entityFilter,
+                               boolean resetInvulnerable, Player owner, double knockbackMultiplierOverride) {
         if (level.isClientSide) return;
 
         // 应用玩家爆炸属性增幅
@@ -94,13 +107,25 @@ public class SimulatedExplosion {
                 entity.invulnerableTime = 0;
             }
 
-            entity.hurt(damageSource, damage);
+            // 斩杀归属逻辑：根据 ExecuteToggleManager 决定是否将击杀归属玩家
+            DamageSource actualSource = damageSource;
+            if (owner != null && damageSource.getEntity() != null) {
+                if (damage >= entity.getHealth() && ExecuteToggleManager.isExecuteEnabled(owner)) {
+                    // 斩杀归属启用 + 足够斩杀：使用带玩家归属的伤害源
+                    actualSource = entity.damageSources().explosion(null, owner);
+                } else {
+                    // 斩杀归属禁用 或 不足以斩杀：使用无攻击者的爆炸伤害源
+                    actualSource = entity.damageSources().explosion(null);
+                }
+            }
+
+            entity.hurt(actualSource, damage);
 
             if (resetInvulnerable) {
                 entity.invulnerableTime = 0;
             }
 
-            applyKnockback(entity, center, radius, distance);
+            applyKnockback(entity, center, radius, distance, knockbackMultiplierOverride);
         }
     }
 
@@ -110,7 +135,7 @@ public class SimulatedExplosion {
      * 速度公式：
      * - 基础速度 = MAX_BASE_SPEED × radius / (radius + HALF_MAX_RADIUS)（反比递减）
      * - 距离衰减 = 1 - 0.7 × (距离 / 半径)
-     * - 最终速度 = 基础速度 × 距离衰减
+     * - 最终速度 = 基础速度 × 距离衰减 × KNOCKBACK_MULTIPLIER
      * <p>
      * 方向公式：
      * - 距离爆心越近，方向越向竖直方向靠近（最多修正70%，爆心处100%）
@@ -118,7 +143,7 @@ public class SimulatedExplosion {
      * - 水平方向视为竖直方向
      * - 爆心处纯竖直
      */
-    private static void applyKnockback(LivingEntity entity, Vec3 center, double radius, double distance) {
+    private static void applyKnockback(LivingEntity entity, Vec3 center, double radius, double distance, double knockbackMultiplierOverride) {
         Vec3 rawDirection;
         boolean atCenter = distance < 0.01;
         if (atCenter) {
@@ -137,7 +162,7 @@ public class SimulatedExplosion {
         // 距离爆心越近，方向越向竖直方向靠近；爆心处100%，其余最多70%
         double distanceRatio = distance / radius;
         double rawBias = 1.0 - distanceRatio;
-        double upBias = atCenter ? 1.0 : Math.min(rawBias, MAX_VERTICAL_BIAS);
+        double upBias = atCenter ? 1.0 : rawBias * MAX_VERTICAL_BIAS;
 
         // 竖直方向：实体在爆心上方则向上，下方则向下
         double verticalSign = (entity.getY() - center.y) >= 0 ? 1.0 : -1.0;
@@ -151,7 +176,8 @@ public class SimulatedExplosion {
         // 基础速度使用反比公式，边际收益递减
         double baseSpeed = MAX_BASE_SPEED * radius / (radius + HALF_MAX_RADIUS);
         double speedFactor = 1.0 - 0.7 * distanceRatio;
-        double speed = baseSpeed * speedFactor;
+        double effectiveMultiplier = knockbackMultiplierOverride >= 0 ? knockbackMultiplierOverride : KNOCKBACK_MULTIPLIER;
+        double speed = baseSpeed * speedFactor * effectiveMultiplier;
 
         Vec3 knockback = direction.scale(speed);
         entity.setDeltaMovement(entity.getDeltaMovement().add(knockback));

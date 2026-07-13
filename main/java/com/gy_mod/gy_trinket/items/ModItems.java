@@ -15,6 +15,7 @@ public class ModItems {
     
     // 机身物品
     public static final RegistryObject<Item> GUARDIAN = ITEMS.register("guardian", () -> new Item(new Item.Properties())); // 哨卫机身
+    public static final RegistryObject<Item> SWARM_MODULE = ITEMS.register("mothership_body", () -> new Item(new Item.Properties())); // 母舰机身
 
     // 基础护盾物品
     public static final RegistryObject<Item> SHIELD_GY = ITEMS.register("shield_gy", () -> new Item(new Item.Properties())); // 基础护盾
@@ -89,6 +90,7 @@ public class ModItems {
 
     // 再生物品
     public static final RegistryObject<Item> REGEN_MODULE = ITEMS.register("regen_module", () -> new Item(new Item.Properties())); // 再生模块
+    public static final RegistryObject<Item> QUICK_RECONSTRUCTION_MODULE = ITEMS.register("quick_reconstruction_module", () -> new Item(new Item.Properties())); // 快速重构模块
     public static final RegistryObject<Item> REGEN_SHIELD_MODULE = ITEMS.register("regen_shield_module", () -> new Item(new Item.Properties())); // 护盾再生模块
 
     // 协同物品
@@ -111,6 +113,8 @@ public class ModItems {
     // 构造体物品
     public static final RegistryObject<Item> PRECISION_CONSTRUCT_MODULE = ITEMS.register("precision_construct_module", () -> new Item(new Item.Properties())); // 精密构造模块
     public static final RegistryObject<Item> SHIELD_TRANSFER_MODULE = ITEMS.register("shield_transfer_module", () -> new Item(new Item.Properties())); // 护盾移植模块
+    public static final RegistryObject<Item> SELF_DESTRUCT_MODULE = ITEMS.register("self_destruct_module", () -> new Item(new Item.Properties())); // 自毁装置模块
+    public static final RegistryObject<Item> TASKMASTER_MODULE = ITEMS.register("taskmaster_module", () -> new Item(new Item.Properties())); // 督战者模块
 
     // 无人机构建物品
     public static final RegistryObject<Item> DRONE_MODULE = ITEMS.register("drone_module", () -> new Item(new Item.Properties())); // 无人机模块
@@ -129,8 +133,12 @@ public class ModItems {
     public static final RegistryObject<Item> ARC_BARRIER_MODULE = ITEMS.register("arc_barrier_module", () -> new Item(new Item.Properties())); // 弧形屏障模块
     public static final RegistryObject<Item> RESHAPING_MODULE = ITEMS.register("reshaping_module", () -> new Item(new Item.Properties())); // 重塑模块
 
+    // 僚机物品
+    public static final RegistryObject<Item> WINGMAN_MODULE = ITEMS.register("wingman_module", () -> new Item(new Item.Properties())); // 僚机模块
+
     // 超越模块
     public static final RegistryObject<Item> CHARGED_SHIELD_MODULE = ITEMS.register("charged_shield_module", () -> new Item(new Item.Properties())); // 充能护盾模块
+    public static final RegistryObject<Item> GRUDGE_MODULE = ITEMS.register("grudge_module", () -> new Item(new Item.Properties())); // 积怨模块
     
     // 零件
     public static final RegistryObject<Item> BEAM = ITEMS.register("beam", () -> new Item(new Item.Properties())); // 光束
@@ -172,4 +180,5 @@ public class ModItems {
     public static final RegistryObject<Item> COUNTER_PULSE_PART = ITEMS.register("counter_pulse_part", () -> new Item(new Item.Properties())); // 反制脉冲零件
     public static final RegistryObject<Item> ARC_BARRIER_PART = ITEMS.register("arc_barrier_part", () -> new Item(new Item.Properties())); // 弧形屏障零件
     public static final RegistryObject<Item> RESHAPING_PART = ITEMS.register("reshaping_part", () -> new Item(new Item.Properties())); // 重塑零件
+
 }

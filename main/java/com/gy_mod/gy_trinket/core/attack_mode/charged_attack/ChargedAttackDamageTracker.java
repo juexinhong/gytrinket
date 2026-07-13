@@ -7,8 +7,8 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * 充能攻击伤害追踪器
  * <p>
- * 临时存储玩家释放时的充能值，供伤害事件使用
- * 伤害事件触发后立即消费（一次性）
+ * 存储玩家释放后的充能值，供伤害事件使用
+ * 充能值随tick快速消退，每次攻击消耗当前充能值
  */
 public class ChargedAttackDamageTracker {
 

@@ -2,6 +2,9 @@
   "creative_tab.gytrinket": "Light Point Trinket",
   "key.gytrinket.show_attributes": "Show Light Point Core Attributes",
   "key.gytrinket.switch_array": "Switch Drone Array",
+  "key.gytrinket.toggle_execute": "Toggle Execute Attribution",
+  "message.gytrinket.execute_enabled": "Execute Attribution: Enabled",
+  "message.gytrinket.execute_disabled": "Execute Attribution: Disabled",
   "category.gytrinket.gameplay": "Light Point Trinket",
   "tooltip.gytrinket.drone_module": "Drone Construction Material",
   "tooltip.gytrinket.drone_module_desc": "Allows building drone constructs\nMax Count: %d  Health: %d  Damage: %.1f  Attack Speed: %.0f/s\nDrone is a Standard Construct",
@@ -162,11 +165,13 @@
   "tooltip.gytrinket.advanced_engineering_effect": "Each player level provides %.1f%% independent multiplier drone health and drone damage",
 
   "tooltip.gytrinket.assault": "Assault",
-  "tooltip.gytrinket.assault_effect": "Hold left click to auto-attack. Attack speed gradually increases. Takes self-damage (increases with attack speed)",
+  "tooltip.gytrinket.assault_effect": "Hold left click to auto-attack. Attack speed gradually increases. Takes self-damage (increases with attack speed). -60% movement speed while assaulting",
   "tooltip.gytrinket.charged_attack": "Charged Attack",
-  "tooltip.gytrinket.charged_attack_effect": "Hold left click to charge, release to attack. Charge has no cap but is limited by drag. Damage = current damage + charge value",
+  "tooltip.gytrinket.charged_attack_effect": "Hold left click to charge, release to attack. Charge has no cap but is limited by drag. Damage = current damage + charge value. -20% movement speed while charging",
   "tooltip.gytrinket.charged_shield": "Charged Shield",
-  "tooltip.gytrinket.charged_shield_effect": "While charging, gain dynamic shield effect and radius bonus (%s%% of charge, max %s%%). Fades quickly after releasing",
+  "tooltip.gytrinket.charged_shield_effect": "While charging, gain dynamic shield effect and radius bonus (%s%% of charge, max %s%%). Fades quickly after releasing. Additional -15% movement speed while charging",
+  "tooltip.gytrinket.grudge": "Grudge",
+  "tooltip.gytrinket.grudge_effect": "While charging, each point of health or shield lost grants %s charge rate. Always decaying (%s + %s%% of current value per tick). Clears on release. Additional -15% movement speed while charging",
 
   "item.gytrinket.light_point_core": "Light Point Core",
   "item.gytrinket.guardian": "Guardian Frame",
@@ -243,6 +248,7 @@
   "item.gytrinket.assault_module": "Assault Module",
   "item.gytrinket.charged_attack_module": "Charged Attack Module",
   "item.gytrinket.charged_shield_module": "Charged Shield Module",
+  "item.gytrinket.grudge_module": "Grudge Module",
   
   "item.gytrinket.thrust_boost_module": "Thrust Boost Module",
   "item.gytrinket.aerodynamic_framework_module": "Aerodynamic Framework Module",
@@ -732,5 +738,47 @@
   "screen.gytrinket.back": "Back",
   "screen.gytrinket.add_item_prompt": "Item ID (e.g. minecraft:diamond):",
   "screen.gytrinket.no_attributes_registered": "No attributes registered",
-  "screen.gytrinket.reorder_hint": "Drop to reorder"
+  "screen.gytrinket.reorder_hint": "Drop to reorder",
+
+  "tooltip.gytrinket.wingman_module": "Wingman",
+  "tooltip.gytrinket.wingman_module_desc": "Allows building wingman constructs\nMax Count: %d  Health: %d  Explosives: ×%d  Bullet Dmg: %.1f  Explosion: %.1f/Radius: %.1f  Attack Speed: %.0f/s\nWingman is an Advanced Construct",
+  "tooltip.gytrinket.mothership_body": "Mothership Body",
+  "tooltip.gytrinket.mothership_body_desc": "Allows building swarm constructs\nMax Count: %d  Health: %.1f  Damage: %.2f  Attack Speed: %.1f/s  Range: %.1f\nSwarm is a Basic Construct\nMothership: +1 max count per 4 light point levels",
+
+  "tooltip.gytrinket.attr.wingman_count": "Wingman Count",
+  "tooltip.gytrinket.attr.wingman_count_percent": "Wingman Count %",
+  "tooltip.gytrinket.attr.wingman_count_independent": "Wingman Count Independent",
+  "tooltip.gytrinket.attr.wingman_health": "Wingman Health",
+  "tooltip.gytrinket.attr.wingman_health_percent": "Wingman Health %",
+  "tooltip.gytrinket.attr.wingman_health_independent": "Wingman Health Independent",
+  "tooltip.gytrinket.attr.wingman_damage": "Wingman Damage",
+  "tooltip.gytrinket.attr.wingman_damage_percent": "Wingman Damage %",
+  "tooltip.gytrinket.attr.wingman_damage_independent": "Wingman Damage Independent",
+  "tooltip.gytrinket.attr.wingman_attack_speed_percent": "Wingman Attack Speed %",
+  "tooltip.gytrinket.attr.wingman_attack_speed_independent": "Wingman Attack Speed Independent",
+  "tooltip.gytrinket.attr.construct_standard_non_weapon_count_percent": "Standard Non-Weapon Construct Count %",
+  "tooltip.gytrinket.attr.construct_basic_non_weapon_count_percent": "Basic Non-Weapon Construct Count %",
+  "tooltip.gytrinket.attr.swarm_count_mothership": "Swarm Count (Mothership)",
+
+  "tooltip.gytrinket.self_destruct": "Self-Destruct",
+  "tooltip.gytrinket.self_destruct_effect": "Constructs explode when destroyed. Explosion power scales with the construct's max health",
+  "tooltip.gytrinket.taskmaster": "Taskmaster",
+  "tooltip.gytrinket.taskmaster_effect": "Gain x%% construct build speed, -x%% independent movement speed. x=2×(standard limit+advanced limit). Disables attack modes",
+
+  "item.gytrinket.self_destruct_module": "Self-Destruct Module",
+  "item.gytrinket.taskmaster_module": "Taskmaster Module",
+  "item.gytrinket.wingman_module": "Wingman Module",
+  "item.gytrinket.mothership_body": "Mothership Body",
+  "item.gytrinket.quick_reconstruction_module": "Quick Reconstruction Module",
+
+  "block.gytrinket.light_point_core": "Light Point Core",
+
+  "screen.gytrinket.light_point_level": "Light Point Level",
+  "screen.gytrinket.light_point_exp": "Light Point Exp",
+  "screen.gytrinket.upgrade_points": "Upgrade Points",
+
+  "command.gytrinket.resetlevel.success": "Light Point Level has been reset",
+  "command.gytrinket.resetlevel.not_player": "This command can only be executed by a player",
+
+  "message.gytrinket.quick_equip.not_enough_points": "Not enough upgrade points"
 }

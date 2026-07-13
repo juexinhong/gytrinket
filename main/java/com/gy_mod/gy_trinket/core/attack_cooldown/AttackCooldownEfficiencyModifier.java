@@ -3,18 +3,15 @@ package com.gy_mod.gy_trinket.core.attack_cooldown;
 import com.gy_mod.gy_trinket.Config;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
 import com.gy_mod.gy_trinket.core.disable.DisableSystem;
-import com.gy_mod.gy_trinket.core.shield.cooldown.CooldownContext;
-import com.gy_mod.gy_trinket.core.shield.cooldown.IShieldCooldownModifier;
-import com.gy_mod.gy_trinket.core.shield.cooldown.ShieldCooldownManager;
 import com.gy_mod.gy_trinket.event.PlayerAttributesCalculatedEvent;
 import com.gy_mod.gy_trinket.storage.PlayerStore;
 import com.gy_mod.gy_trinket.storage.PlayerStoreManager;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 
+import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.server.ServerLifecycleHooks;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -23,9 +20,7 @@ import java.util.Set;
 import java.util.UUID;
 
 @Mod.EventBusSubscriber(modid = com.gy_mod.gy_trinket.gytrinket.MODID)
-public class AttackCooldownEfficiencyModifier implements IShieldCooldownModifier {
-
-    public static final String NAME = "attack_cooldown_efficiency";
+public class AttackCooldownEfficiencyModifier {
 
     private static final String NAMESPACE = "attack_cooldown_efficiency";
 
@@ -38,60 +33,8 @@ public class AttackCooldownEfficiencyModifier implements IShieldCooldownModifier
     private static final float ATTACK_COOLDOWN_THRESHOLD = 0.9f;
 
     private static final Set<UUID> PLAYER_HAS_EFFICIENCY_ITEM = new HashSet<>();
-    
+
     private static final Map<UUID, Boolean> PLAYER_ATTACK_COOLDOWN_STATE = new HashMap<>();
-
-    @Override
-    public String getName() {
-        return NAME;
-    }
-
-    @Override
-    public int getPriority() {
-        return 20;
-    }
-
-    @Override
-    public boolean onPreTick(ShieldCooldownManager.CooldownData state, CooldownContext context) {
-        UUID playerUUID = context.getPlayerUUID();
-
-        if (!PLAYER_HAS_EFFICIENCY_ITEM.contains(playerUUID)) {
-            return false;
-        }
-
-        Player player = getPlayer(playerUUID);
-        if (player == null) {
-            return false;
-        }
-
-        float attackStrength = player.getAttackStrengthScale(0.0f);
-        boolean isInAttackCooldown = attackStrength < ATTACK_COOLDOWN_THRESHOLD;
-        
-        Boolean previousState = PLAYER_ATTACK_COOLDOWN_STATE.get(playerUUID);
-        
-        if (previousState != null && previousState.equals(isInAttackCooldown)) {
-            return false;
-        }
-        
-        PLAYER_ATTACK_COOLDOWN_STATE.put(playerUUID, isInAttackCooldown);
-
-        if (!isInAttackCooldown) {
-            AttributeManager.setDynamicAttribute(playerUUID, NAMESPACE, SHIELD_COOLDOWN_ATTR, EFFICIENCY_BONUS);
-            AttributeManager.setDynamicAttribute(playerUUID, NAMESPACE, RECOVERY_EFFICIENCY_ATTR, EFFICIENCY_BONUS);
-        } else {
-            AttributeManager.removeDynamicAttribute(playerUUID, NAMESPACE, SHIELD_COOLDOWN_ATTR);
-            AttributeManager.removeDynamicAttribute(playerUUID, NAMESPACE, RECOVERY_EFFICIENCY_ATTR);
-        }
-
-        return false;
-    }
-
-    private Player getPlayer(UUID playerUUID) {
-        if (ServerLifecycleHooks.getCurrentServer() != null) {
-            return ServerLifecycleHooks.getCurrentServer().getPlayerList().getPlayer(playerUUID);
-        }
-        return null;
-    }
 
     @SubscribeEvent
     public static void onAttributesCalculated(PlayerAttributesCalculatedEvent event) {
@@ -120,6 +63,40 @@ public class AttackCooldownEfficiencyModifier implements IShieldCooldownModifier
         } else {
             PLAYER_HAS_EFFICIENCY_ITEM.remove(playerUUID);
             PLAYER_ATTACK_COOLDOWN_STATE.remove(playerUUID);
+            AttributeManager.removeDynamicAttribute(playerUUID, NAMESPACE, SHIELD_COOLDOWN_ATTR);
+            AttributeManager.removeDynamicAttribute(playerUUID, NAMESPACE, RECOVERY_EFFICIENCY_ATTR);
+        }
+    }
+
+    @SubscribeEvent
+    public static void onPlayerTick(TickEvent.PlayerTickEvent event) {
+        if (event.phase != TickEvent.Phase.END) return;
+
+        Player player = event.player;
+        if (!(player instanceof net.minecraft.server.level.ServerPlayer)) {
+            return;
+        }
+
+        UUID playerUUID = player.getUUID();
+
+        if (!PLAYER_HAS_EFFICIENCY_ITEM.contains(playerUUID)) {
+            return;
+        }
+
+        float attackStrength = player.getAttackStrengthScale(0.0f);
+        boolean isInAttackCooldown = attackStrength < ATTACK_COOLDOWN_THRESHOLD;
+
+        Boolean previousState = PLAYER_ATTACK_COOLDOWN_STATE.get(playerUUID);
+        if (previousState != null && previousState.equals(isInAttackCooldown)) {
+            return;
+        }
+
+        PLAYER_ATTACK_COOLDOWN_STATE.put(playerUUID, isInAttackCooldown);
+
+        if (!isInAttackCooldown) {
+            AttributeManager.setDynamicAttribute(playerUUID, NAMESPACE, SHIELD_COOLDOWN_ATTR, EFFICIENCY_BONUS);
+            AttributeManager.setDynamicAttribute(playerUUID, NAMESPACE, RECOVERY_EFFICIENCY_ATTR, EFFICIENCY_BONUS);
+        } else {
             AttributeManager.removeDynamicAttribute(playerUUID, NAMESPACE, SHIELD_COOLDOWN_ATTR);
             AttributeManager.removeDynamicAttribute(playerUUID, NAMESPACE, RECOVERY_EFFICIENCY_ATTR);
         }

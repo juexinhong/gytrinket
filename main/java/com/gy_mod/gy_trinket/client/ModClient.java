@@ -8,7 +8,12 @@ import com.gy_mod.gy_trinket.core.entity.construct.drone.ModEntities;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneRenderer;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneBulletRenderer;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.client.renderer.DroneBeamRenderer;
+import com.gy_mod.gy_trinket.core.entity.construct.drone.client.renderer.DroneBulletTrailManager;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.client.renderer.ArmorShardRenderer;
+import com.gy_mod.gy_trinket.core.entity.construct.wingman.WingmanRenderer;
+import com.gy_mod.gy_trinket.core.entity.construct.wingman.ExplosiveProjectileRenderer;
+import com.gy_mod.gy_trinket.core.entity.construct.swarm.SwarmRenderer;
+import com.gy_mod.gy_trinket.core.entity.construct.swarm.client.EnergyWaveRenderManager;
 import com.gy_mod.gy_trinket.key.KeyInputHandler;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneInputHandler;
 import net.minecraftforge.api.distmarker.Dist;
@@ -31,6 +36,8 @@ public class ModClient {
     @SubscribeEvent
     public static void onClientSetup(FMLClientSetupEvent event) {
         MinecraftForge.EVENT_BUS.addListener(LightningRenderManager::onRenderLevelLast);
+        MinecraftForge.EVENT_BUS.addListener(EnergyWaveRenderManager::onRenderLevelLast);
+        MinecraftForge.EVENT_BUS.addListener(DroneBulletTrailManager::onRenderLevelLast);
         ShieldParticleRenderEvent.init();
         ShieldParticleTickEvent.init();
         com.gy_mod.gy_trinket.client.attack_mode.burst_fire.BurstFireClientHandler.init();
@@ -58,5 +65,11 @@ public class ModClient {
         // 注册无人机光束炮渲染器
         event.registerEntityRenderer(ModEntities.DRONE_BEAM.get(), DroneBeamRenderer::new);
         event.registerEntityRenderer(ModEntities.ARMOR_SHARD.get(), ArmorShardRenderer::new);
+        // 注册僚机渲染器
+        event.registerEntityRenderer(ModEntities.WINGMAN_CONSTRUCT.get(), WingmanRenderer::new);
+        // 注册爆破弹渲染器
+        event.registerEntityRenderer(ModEntities.EXPLOSIVE_PROJECTILE.get(), ExplosiveProjectileRenderer::new);
+        // 注册蜂群渲染器
+        event.registerEntityRenderer(ModEntities.SWARM_CONSTRUCT.get(), SwarmRenderer::new);
     }
 }

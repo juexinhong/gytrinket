@@ -1,5 +1,6 @@
 package com.gy_mod.gy_trinket.client.screen;
 
+import com.gy_mod.gy_trinket.core.level.ModLevelData;
 import com.gy_mod.gy_trinket.network.NetworkHandler;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -18,6 +19,9 @@ public class PlayerPanelScreen extends AbstractPanelScreen {
     private int slotCount;
     private CompoundTag upgradeDataTag;
     private ListTag upgradeTargets;
+    private int modLevel;
+    private int upgradeExp;
+    private int upgradePoints;
 
     private List<Map.Entry<String, Double>> sortedAttrs = new ArrayList<>();
     private int attrStartY;
@@ -28,12 +32,16 @@ public class PlayerPanelScreen extends AbstractPanelScreen {
     private int hoveredSlotIndex = -1;
 
     public PlayerPanelScreen(Map<String, Double> attributes, ListTag items, int slotCount,
-                              CompoundTag upgradeDataTag, ListTag upgradeTargets) {
+                              CompoundTag upgradeDataTag, ListTag upgradeTargets,
+                              int modLevel, int upgradeExp, int upgradePoints) {
         super(Component.translatable("screen.gytrinket.player_panel"), null, SolidUIRenderer.PANEL);
         this.attributes = attributes != null ? attributes : new HashMap<>();
         this.slotCount = slotCount;
         this.upgradeDataTag = upgradeDataTag != null ? upgradeDataTag : new CompoundTag();
         this.upgradeTargets = upgradeTargets != null ? upgradeTargets : new ListTag();
+        this.modLevel = modLevel;
+        this.upgradeExp = upgradeExp;
+        this.upgradePoints = upgradePoints;
         this.equippedItems = new ArrayList<>();
         parseItems(items);
         rebuildSortedAttrs();
@@ -56,11 +64,15 @@ public class PlayerPanelScreen extends AbstractPanelScreen {
     }
 
     public void updateData(Map<String, Double> attributes, ListTag items, int slotCount,
-                            CompoundTag upgradeDataTag, ListTag upgradeTargets) {
+                            CompoundTag upgradeDataTag, ListTag upgradeTargets,
+                            int modLevel, int upgradeExp, int upgradePoints) {
         this.attributes = attributes != null ? attributes : new HashMap<>();
         this.slotCount = slotCount;
         this.upgradeDataTag = upgradeDataTag != null ? upgradeDataTag : new CompoundTag();
         this.upgradeTargets = upgradeTargets != null ? upgradeTargets : new ListTag();
+        this.modLevel = modLevel;
+        this.upgradeExp = upgradeExp;
+        this.upgradePoints = upgradePoints;
         parseItems(items);
         rebuildSortedAttrs();
     }
@@ -294,6 +306,32 @@ public class PlayerPanelScreen extends AbstractPanelScreen {
 
         int dividerY = panelY + panelHeight / 2;
         renderer.drawDivider(guiGraphics, colX, dividerY, colWidth);
+
+        // 光点等级信息
+        int levelY = dividerY + 6;
+        guiGraphics.drawString(font, Component.translatable("screen.gytrinket.light_point_level").getString(),
+                colX + 2, levelY, renderer.getAccentColor());
+
+        levelY += 12;
+        String levelStr = String.valueOf(modLevel);
+        guiGraphics.drawString(font, levelStr, colX + 5, levelY, renderer.getValueColor());
+
+        // 光点经验进度条
+        int xpNeeded = ModLevelData.getXpNeededForNextLevel(modLevel);
+        String expStr = upgradeExp + "/" + xpNeeded;
+        guiGraphics.drawString(font, expStr, colX + colWidth - 5 - font.width(expStr), levelY, renderer.getTextColor());
+
+        // 经验进度条
+        levelY += 12;
+        int barWidth = colWidth - 10;
+        float progress = xpNeeded > 0 ? (float) upgradeExp / xpNeeded : 0.0f;
+        guiGraphics.fill(colX + 5, levelY, colX + 5 + barWidth, levelY + 3, 0xFF333333);
+        guiGraphics.fill(colX + 5, levelY, colX + 5 + (int)(barWidth * progress), levelY + 3, renderer.getAccentColor());
+
+        // 升级点
+        levelY += 8;
+        String pointsStr = Component.translatable("screen.gytrinket.upgrade_points").getString() + ": " + upgradePoints;
+        guiGraphics.drawString(font, pointsStr, colX + 5, levelY, renderer.getTextColor());
     }
 
     private void renderTooltip(GuiGraphics guiGraphics, int mouseX, int mouseY) {

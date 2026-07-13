@@ -76,6 +76,20 @@ public class ConstructAttributeRegistry {
                         .category(ConstructCategory.ADVANCED)
                         .build());
 
+        register("construct_standard_non_weapon_count_percent",
+                ConstructAttributeTarget.builder(ConstructAttributeTarget.EffectType.MAX_COUNT)
+                        .category(ConstructCategory.CONSTRUCT)
+                        .category(ConstructCategory.STANDARD)
+                        .category(ConstructCategory.OTHER)
+                        .build());
+
+        register("construct_basic_non_weapon_count_percent",
+                ConstructAttributeTarget.builder(ConstructAttributeTarget.EffectType.MAX_COUNT)
+                        .category(ConstructCategory.CONSTRUCT)
+                        .category(ConstructCategory.BASIC)
+                        .category(ConstructCategory.OTHER)
+                        .build());
+
         register("drone_count",
                 ConstructAttributeTarget.builder(ConstructAttributeTarget.EffectType.MAX_COUNT)
                         .category(ConstructCategory.CONSTRUCT)
@@ -244,6 +258,12 @@ public class ConstructAttributeRegistry {
                 ConstructAttributeTarget.builder(ConstructAttributeTarget.EffectType.DAMAGE)
                         .category(ConstructCategory.CONSTRUCT)
                         .tag("commander")
+                        .build());
+
+        register("swarm_count_mothership",
+                ConstructAttributeTarget.builder(ConstructAttributeTarget.EffectType.MAX_COUNT)
+                        .category(ConstructCategory.CONSTRUCT)
+                        .tag("swarm")
                         .build());
     }
 }

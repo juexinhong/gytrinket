@@ -1,7 +1,6 @@
 package com.gy_mod.gy_trinket.core.shield.cooldown;
 
 import com.gy_mod.gy_trinket.core.attack_cooldown.AttackCooldownModifier;
-import com.gy_mod.gy_trinket.core.attack_cooldown.AttackCooldownEfficiencyModifier;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
 import com.gy_mod.gy_trinket.core.shield.ShieldManager;
 import com.gy_mod.gy_trinket.event.AttributeDynamicChangeEvent;
@@ -37,7 +36,6 @@ public class ShieldCooldownManager {
     static {
         registerModifier(new DamageReductionModifier());
         registerModifier(new AttackCooldownModifier());
-        registerModifier(new AttackCooldownEfficiencyModifier());
     }
 
     public static void registerModifier(IShieldCooldownModifier modifier) {

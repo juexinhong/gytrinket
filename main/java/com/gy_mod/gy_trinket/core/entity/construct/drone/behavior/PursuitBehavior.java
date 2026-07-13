@@ -16,16 +16,17 @@ import net.minecraft.world.phys.Vec3;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import org.jetbrains.annotations.Nullable;
+
 /**
  * 追击阵列行为处理器
  * <p>
  * 追击阵列的无人机具有以下特性：
  * - 20格索敌范围和20格攻击范围
- * - 7格/秒的基础移速
  * - 优先攻击距离玩家6格范围内的敌人（优先攻击目标）
- * - 尝试将自身位置维持在目标头顶3-5格范围内
- * - 高度保持在目标身高的50%-70%
- * - 无目标时保持在玩家10格范围内待机
+ * - 有目标时：根据距离执行追击/接近/悬停/远离，高度保持在目标身高的50%-70%
+ * - 无目标时：跟随玩家并保持在玩家头上1格的位置
+ * - 无人机之间使用Boid鸟群算法保持适当间距（不会太挤也不会太松）
  */
 public class PursuitBehavior implements IDroneBehavior {
     /** 索敌范围 */
@@ -44,9 +45,51 @@ public class PursuitBehavior implements IDroneBehavior {
     /** 高度调整速度（格/刻） */
     private static final float HEIGHT_ADJUST_SPEED = 0.1f;
     private static final long PRIORITY_TARGET_DURATION = 60L;
+    /** 目标记忆持续时间（tick），3秒=60tick */
+    private static final long TARGET_MEMORY_DURATION = 60L;
+
+    // Boid参数
+    private static final double BOID_COMFORT_RANGE = 2.0;        // 舒适区：此距离内不产生力，避免振荡
+    private static final double BOID_SEPARATION_RANGE = 3.0;    // 分离检测外边界
+    private static final double BOID_SEPARATION_STRENGTH = 0.06;
+    private static final double BOID_COHESION_RANGE = 8.0;      // 聚合检测外边界
+    private static final double BOID_COHESION_STRENGTH = 0.015;
+    private static final double BOID_ALIGNMENT_RANGE = 5.0;
+    private static final double BOID_ALIGNMENT_STRENGTH = 0.02;
+    private static final double VELOCITY_DAMPING = 0.8;          // 速度阻尼：每tick保留80%速度，防止过冲
 
     /** 存储每个玩家的优先攻击目标信息 */
     private final Map<UUID, PriorityTargetInfo> priorityTargetMap = new HashMap<>();
+
+    /** 存储每个无人机的目标记忆，避免索敌边缘抖动 */
+    private final Map<UUID, TargetMemory> targetMemoryMap = new HashMap<>();
+
+    /**
+     * 获取无人机的记忆目标（用于转向逻辑）
+     * 即使目标离开攻击范围，记忆仍有效时返回该目标
+     */
+    @Nullable
+    public LivingEntity getMemoryTarget(Entity drone) {
+        TargetMemory memory = targetMemoryMap.get(drone.getUUID());
+        if (memory != null && memory.endTick > drone.level().getGameTime() && memory.target.isAlive()) {
+            return memory.target;
+        }
+        return null;
+    }
+
+    /**
+     * 目标记忆内部类
+     * 当目标离开索敌范围后，保留3秒记忆，避免追击/待机频繁切换
+     */
+    private static class TargetMemory {
+        LivingEntity target;
+        long endTick;
+
+        TargetMemory(LivingEntity target, long endTick) {
+            this.target = target;
+            this.endTick = endTick;
+        }
+    }
 
     /**
      * 优先攻击目标信息内部类
@@ -63,11 +106,49 @@ public class PursuitBehavior implements IDroneBehavior {
         }
     }
 
-    private static final double DRONE_REPEL_RANGE = 1.5;
-    private static final double DRONE_SEPARATION_STRENGTH = 0.05;
+    /**
+     * 收集同一玩家的其他无人机位置和速度信息
+     */
+    private void collectNeighborData(Entity drone, LivingEntity owner,
+                                      List<Vec3> neighborPositions, List<Vec3> neighborVelocities) {
+        Level level = drone.level();
+        Vec3 dronePos = drone.position();
+        double scanRange = 8.0;
+        List<DroneConstructEntity> nearbyDrones = level.getEntitiesOfClass(
+            DroneConstructEntity.class,
+            new AABB(dronePos.x - scanRange, dronePos.y - scanRange, dronePos.z - scanRange,
+                     dronePos.x + scanRange, dronePos.y + scanRange, dronePos.z + scanRange),
+            other -> other != drone && other.isAlive()
+                     && other.getOwnerUUID() != null && other.getOwnerUUID().equals(owner.getUUID())
+        );
+
+        for (DroneConstructEntity other : nearbyDrones) {
+            neighborPositions.add(other.position());
+            neighborVelocities.add(other.getDeltaMovement());
+        }
+    }
+
+    /**
+     * 仅计算Boid集群力（分离+聚合+对齐），不包含seek
+     * seek由原有移动逻辑处理
+     */
+    private Vec3 calculateBoidFlockForce(Entity drone, LivingEntity owner) {
+        List<Vec3> neighborPositions = new ArrayList<>();
+        List<Vec3> neighborVelocities = new ArrayList<>();
+        collectNeighborData(drone, owner, neighborPositions, neighborVelocities);
+
+        Vec3 dronePos = drone.position();
+        Vec3 droneVelocity = drone.getDeltaMovement();
+
+        Vec3 separation = BoidCalculator.separation(dronePos, neighborPositions, BOID_COMFORT_RANGE, BOID_SEPARATION_RANGE, BOID_SEPARATION_STRENGTH);
+        Vec3 cohesion = BoidCalculator.cohesion(dronePos, neighborPositions, BOID_COMFORT_RANGE, BOID_COHESION_RANGE, BOID_COHESION_STRENGTH);
+        Vec3 alignment = BoidCalculator.alignment(droneVelocity, neighborVelocities, BOID_ALIGNMENT_RANGE, BOID_ALIGNMENT_STRENGTH);
+
+        return separation.add(cohesion).add(alignment);
+    }
 
     private static List<List<Vec3>> clusterPositions(List<Vec3> positions, double threshold) {
-        List<List<Vec3>> clusters = new java.util.ArrayList<>();
+        List<List<Vec3>> clusters = new ArrayList<>();
         int[] parent = new int[positions.size()];
         for (int i = 0; i < parent.length; i++) {
             parent[i] = i;
@@ -84,10 +165,10 @@ public class PursuitBehavior implements IDroneBehavior {
                 }
             }
         }
-        java.util.Map<Integer, List<Vec3>> clusterMap = new java.util.HashMap<>();
+        Map<Integer, List<Vec3>> clusterMap = new HashMap<>();
         for (int i = 0; i < positions.size(); i++) {
             int root = findRoot(parent, i);
-            clusterMap.computeIfAbsent(root, k -> new java.util.ArrayList<>()).add(positions.get(i));
+            clusterMap.computeIfAbsent(root, k -> new ArrayList<>()).add(positions.get(i));
         }
         clusters.addAll(clusterMap.values());
         return clusters;
@@ -101,61 +182,6 @@ public class PursuitBehavior implements IDroneBehavior {
         return i;
     }
 
-    private void applyDroneSeparation(Entity drone, Vec3 dronePos) {
-        Level level = drone.level();
-        List<DroneConstructEntity> nearbyDrones = level.getEntitiesOfClass(
-            DroneConstructEntity.class,
-            new AABB(dronePos.x - DRONE_REPEL_RANGE, dronePos.y - DRONE_REPEL_RANGE, dronePos.z - DRONE_REPEL_RANGE,
-                     dronePos.x + DRONE_REPEL_RANGE, dronePos.y + DRONE_REPEL_RANGE, dronePos.z + DRONE_REPEL_RANGE),
-            other -> other != drone && other.isAlive()
-        );
-
-        List<DroneConstructEntity> closeDrones = new java.util.ArrayList<>();
-        for (DroneConstructEntity other : nearbyDrones) {
-            double dist = dronePos.distanceTo(other.position());
-            if (dist < DRONE_REPEL_RANGE) {
-                closeDrones.add(other);
-            }
-        }
-
-        if (closeDrones.isEmpty()) {
-            return;
-        }
-
-        Vec3 center = dronePos;
-        for (DroneConstructEntity other : closeDrones) {
-            center = center.add(other.position());
-        }
-        center = center.scale(1.0 / (closeDrones.size() + 1));
-
-        Vec3 awayFromCenter = dronePos.subtract(center);
-        Vec3 separationDir;
-        if (awayFromCenter.lengthSqr() > 0.001) {
-            separationDir = awayFromCenter.normalize();
-        } else {
-            separationDir = new Vec3(level.random.nextDouble() - 0.5, 0, level.random.nextDouble() - 0.5);
-            if (separationDir.lengthSqr() < 0.001) {
-                return;
-            }
-            separationDir = separationDir.normalize();
-        }
-
-        double closestDist = Double.MAX_VALUE;
-        for (DroneConstructEntity other : closeDrones) {
-            double dist = dronePos.distanceTo(other.position());
-            if (dist < closestDist) {
-                closestDist = dist;
-            }
-        }
-
-        double factor = Math.max(0, 1.0 - closestDist / DRONE_REPEL_RANGE);
-        double offset = DRONE_SEPARATION_STRENGTH * factor;
-
-        drone.setPos(dronePos.x + separationDir.x * offset,
-                     dronePos.y,
-                     dronePos.z + separationDir.z * offset);
-    }
-
     @Override
     public Set<String> getRequiredTags() {
         return Set.of(DroneArrayType.Tags.ARRAY, DroneArrayType.Tags.PURSUIT);
@@ -164,11 +190,6 @@ public class PursuitBehavior implements IDroneBehavior {
     /**
      * 更新无人机位置
      * 根据是否有攻击目标选择追击模式或待机模式
-     * @param drone 无人机实体
-     * @param owner 玩家实体
-     * @param orbitAngle 环绕角度（追击阵列不使用）
-     * @param deltaTime 时间增量
-     * @return 新位置
      */
     @Override
     public Vec3 updatePosition(Entity drone, LivingEntity owner, float orbitAngle, float deltaTime) {
@@ -189,13 +210,13 @@ public class PursuitBehavior implements IDroneBehavior {
 
     /**
      * 在无人机周围搜索最近的敌人目标
-     * @param drone 无人机实体
-     * @param owner 玩家实体
-     * @return 最近的敌人目标，若无则返回null
+     * 带目标记忆：目标离开索敌范围后保留3秒，避免追击/待机频繁切换
      */
     private LivingEntity findTarget(Entity drone, LivingEntity owner) {
         Level level = drone.level();
         Vec3 dronePos = drone.position();
+        long currentTick = level.getGameTime();
+        UUID droneUUID = drone.getUUID();
 
         AABB searchBox = new AABB(
             dronePos.x - SEARCH_RANGE,
@@ -217,22 +238,45 @@ public class PursuitBehavior implements IDroneBehavior {
                     return HostileTargetManager.shouldAttackPlayer(entity, player);
                 });
 
-        if (allTargets.isEmpty()) {
-            return null;
+        if (!allTargets.isEmpty()) {
+            // 索敌范围内有目标，取最近的
+            LivingEntity newTarget = allTargets.stream()
+                    .min(Comparator.comparingDouble(t -> dronePos.distanceTo(t.position())))
+                    .orElse(null);
+
+            if (newTarget != null) {
+                // 更新或创建目标记忆
+                TargetMemory existing = targetMemoryMap.get(droneUUID);
+                if (existing != null && existing.target == newTarget) {
+                    // 同一目标，刷新记忆
+                    existing.endTick = currentTick + TARGET_MEMORY_DURATION;
+                } else {
+                    // 新目标，覆盖记忆
+                    targetMemoryMap.put(droneUUID, new TargetMemory(newTarget, currentTick + TARGET_MEMORY_DURATION));
+                }
+                return newTarget;
+            }
         }
 
-        return allTargets.stream()
-                .min(Comparator.comparingDouble(target -> drone.position().distanceTo(target.position())))
-                .orElse(null);
+        // 索敌范围内无目标，检查记忆
+        TargetMemory memory = targetMemoryMap.get(droneUUID);
+        if (memory != null) {
+            if (memory.endTick > currentTick && memory.target.isAlive()) {
+                // 记忆有效且目标存活，继续追击
+                return memory.target;
+            } else {
+                // 记忆过期或目标死亡，清除
+                targetMemoryMap.remove(droneUUID);
+            }
+        }
+
+        return null;
     }
 
     /**
      * 查找玩家附近的优先攻击目标
      * 优先攻击目标有效期为3秒，重复检测到相同目标时刷新有效期
      * 切换目标时会移除旧目标的记录
-     * @param drone 无人机实体
-     * @param owner 玩家实体
-     * @return 优先攻击目标，若无则返回null
      */
     public LivingEntity findPriorityTarget(Entity drone, LivingEntity owner) {
         Level level = drone.level();
@@ -267,7 +311,7 @@ public class PursuitBehavior implements IDroneBehavior {
         }
 
         LivingEntity newTarget = nearbyTargets.stream()
-                .min(Comparator.comparingDouble(target -> ownerPos.distanceTo(target.position())))
+                .min(Comparator.comparingDouble(t -> ownerPos.distanceTo(t.position())))
                 .orElse(null);
 
         if (newTarget != null) {
@@ -275,10 +319,8 @@ public class PursuitBehavior implements IDroneBehavior {
 
             if (existingInfo != null) {
                 if (existingInfo.target == newTarget) {
-                    // 相同目标，刷新有效期
                     existingInfo.endTick = currentTick + PRIORITY_TARGET_DURATION;
                 } else {
-                    // 切换目标，移除旧记录
                     priorityTargetMap.remove(ownerUUID);
                     priorityTargetMap.put(ownerUUID, new PriorityTargetInfo(newTarget, currentTick + PRIORITY_TARGET_DURATION));
                 }
@@ -298,9 +340,6 @@ public class PursuitBehavior implements IDroneBehavior {
 
     /**
      * 检查是否存在有效的优先攻击目标
-     * @param drone 无人机实体
-     * @param owner 玩家实体
-     * @return true 如果存在有效的优先攻击目标
      */
     public boolean hasPriorityTarget(Entity drone, LivingEntity owner) {
         UUID ownerUUID = owner.getUUID();
@@ -327,12 +366,7 @@ public class PursuitBehavior implements IDroneBehavior {
      * - 距离3-5格：保持位置，仅调整高度
      * - 距离<3格：以慢速离开目标
      * 高度保持在目标身高的50%-70%之间
-     * @param drone 无人机实体
-     * @param owner 玩家实体
-     * @param target 普通攻击目标
-     * @param priorityTarget 优先攻击目标
-     * @param deltaTime 时间增量
-     * @return 新位置
+     * 所有状态下都叠加Boid集群力（分离+聚合+对齐）
      */
     private Vec3 pursuitMovement(Entity drone, LivingEntity owner, LivingEntity target, LivingEntity priorityTarget, float deltaTime) {
         LivingEntity actualTarget = (priorityTarget != null) ? priorityTarget : target;
@@ -350,9 +384,9 @@ public class PursuitBehavior implements IDroneBehavior {
         float yaw = drone.getYRot() * (float) Math.PI / 180.0f;
 
         if (horizontalDist > 6.0) {
-            // 远距离：向朝向方向移动，速度随距离增加
+            // 远距离：向朝向方向移动，速度随距离增加（每额外1格+10%）
             float excessDistance = (float) (horizontalDist - 6.0);
-            float speedMultiplier = 1.0f + excessDistance * 0.15f;
+            float speedMultiplier = 1.0f + excessDistance * 0.10f;
             speed = MOVE_SPEED * speedMultiplier;
             direction = new Vec3(-Math.sin(yaw), 0, Math.cos(yaw)).normalize();
         } else if (horizontalDist > 5.0) {
@@ -372,9 +406,9 @@ public class PursuitBehavior implements IDroneBehavior {
         }
 
         // 高度调整逻辑 - 只要有目标就总是触发
-        // 目标高度范围为目标身高的50%-60%，在这个范围内不需要调整
+        // 目标高度范围为目标身高的50%-70%，在这个范围内不需要调整
         double targetHeightMin = targetPos.y + actualTarget.getBbHeight() * 0.5;
-        double targetHeightMax = targetPos.y + actualTarget.getBbHeight() * 0.6;
+        double targetHeightMax = targetPos.y + actualTarget.getBbHeight() * 0.7;
 
         Vec3 verticalDirection = Vec3.ZERO;
 
@@ -392,63 +426,71 @@ public class PursuitBehavior implements IDroneBehavior {
             verticalDirection = new Vec3(0, HEIGHT_ADJUST_SPEED * speedFactor, 0);
         }
 
-        // 合并水平和垂直方向，保持水平移动速度
-        Vec3 moveDirection = direction;
-        double actualSpeed = speed;
-        
-        if (verticalDirection != Vec3.ZERO) {
-            if (direction != Vec3.ZERO) {
-                actualSpeed = speed;
-            }
-        }
-
-        Vec3 newPos = dronePos.add(moveDirection.scale(actualSpeed * deltaTime));
-        if (verticalDirection != Vec3.ZERO) {
-            newPos = newPos.add(verticalDirection.scale(deltaTime));
-        }
-
-        Vec3 finalMovement = moveDirection.scale(actualSpeed);
+        // 合并水平和垂直方向
+        Vec3 finalMovement = direction.scale(speed);
         if (verticalDirection != Vec3.ZERO) {
             finalMovement = finalMovement.add(verticalDirection);
         }
+
+        // 叠加Boid集群力（仅分离+聚合+对齐，不包含seek）
+        Vec3 boidForce = calculateBoidFlockForce(drone, owner);
+        finalMovement = finalMovement.add(boidForce);
+
+        // 限制最大速度
+        double maxSpeed = MOVE_SPEED * 2.0;
+        double currentSpeed = finalMovement.length();
+        if (currentSpeed > maxSpeed) {
+            finalMovement = finalMovement.normalize().scale(maxSpeed);
+        }
+
+        // 速度阻尼：防止过冲振荡
+        finalMovement = finalMovement.scale(VELOCITY_DAMPING);
+
         drone.setDeltaMovement(finalMovement);
 
-        applyDroneSeparation(drone, dronePos);
-
-        return newPos;
+        return dronePos.add(finalMovement);
     }
 
     /**
      * 待机模式移动逻辑
      * 无目标时的行为：
-     * - 距离玩家>8格：向朝向方向移动，超过20格时立即传送回玩家
-     * - 距离玩家<=8格：保持静止，与其他无人机保持2格距离
-     * @param drone 无人机实体
-     * @param owner 玩家实体
-     * @param deltaTime 时间增量
-     * @return 新位置
+     * - 跟随玩家并保持在玩家头上1格的位置
+     * - 距离玩家>8格时向玩家方向移动，超过20格时立即传送回玩家
+     * - 叠加Boid集群力保证无人机之间不会太挤也不会太松
      */
     private Vec3 standbyMovement(Entity drone, LivingEntity owner, float deltaTime) {
         Vec3 dronePos = drone.position();
         Vec3 ownerPos = owner.position();
+
+        // 目标位置：玩家头上3格
+        Vec3 standbyTarget = ownerPos.add(0, 3.0, 0);
 
         double horizontalDist = Math.sqrt(
             Math.pow(dronePos.x - ownerPos.x, 2) +
             Math.pow(dronePos.z - ownerPos.z, 2)
         );
 
+        // 超过20格直接传送回玩家
+        if (horizontalDist > 20.0) {
+            drone.teleportTo(ownerPos.x, ownerPos.y + 3.0, ownerPos.z);
+            return drone.position();
+        }
+
         Vec3 toOwner = new Vec3(ownerPos.x - dronePos.x, 0, ownerPos.z - dronePos.z);
         Vec3 horizontalDir = toOwner.lengthSqr() > 0.001 ? toOwner.normalize() : Vec3.ZERO;
 
+        // 高度调整：向玩家头上1格靠拢
         Vec3 verticalDir = Vec3.ZERO;
-        double heightDiff = ownerPos.y + 3.0 - dronePos.y;
-        if (Math.abs(heightDiff) > 0.5) {
-            verticalDir = new Vec3(0, Math.signum(heightDiff) * HEIGHT_ADJUST_SPEED, 0);
+        double heightDiff = standbyTarget.y - dronePos.y;
+        if (Math.abs(heightDiff) > 0.3) {
+            double heightSpeed = HEIGHT_ADJUST_SPEED * (1.0 + Math.abs(heightDiff) * 0.5);
+            verticalDir = new Vec3(0, Math.signum(heightDiff) * heightSpeed, 0);
         }
 
         Vec3 finalMovement = Vec3.ZERO;
 
         if (horizontalDist > STANDBY_RANGE) {
+            // 距离玩家较远，使用集群中心对齐逻辑
             Level level = drone.level();
             List<DroneConstructEntity> allDrones = level.getEntitiesOfClass(
                 DroneConstructEntity.class,
@@ -457,7 +499,7 @@ public class PursuitBehavior implements IDroneBehavior {
                 other -> other.isAlive() && other.getOwnerUUID() != null && other.getOwnerUUID().equals(owner.getUUID())
             );
 
-            List<Vec3> movingPositions = new java.util.ArrayList<>();
+            List<Vec3> movingPositions = new ArrayList<>();
             movingPositions.add(dronePos);
             for (DroneConstructEntity other : allDrones) {
                 if (other == drone) continue;
@@ -481,7 +523,7 @@ public class PursuitBehavior implements IDroneBehavior {
                 }
             }
             if (myCluster == null) {
-                myCluster = java.util.Collections.singletonList(dronePos);
+                myCluster = Collections.singletonList(dronePos);
             }
 
             Vec3 groupCenter = Vec3.ZERO;
@@ -495,15 +537,31 @@ public class PursuitBehavior implements IDroneBehavior {
 
             double speedBoost = 1.0 + (horizontalDist - STANDBY_RANGE) * 0.2;
             finalMovement = moveDir.scale(MOVE_SPEED * speedBoost);
+        } else if (horizontalDist > 3.0) {
+            // 中距离：慢速靠近玩家
+            finalMovement = horizontalDir.scale(LEAVE_SPEED);
         }
+        // 距离<=3格：不水平移动
 
         if (verticalDir != Vec3.ZERO) {
             finalMovement = finalMovement.add(verticalDir);
         }
 
-        drone.setDeltaMovement(finalMovement);
+        // 叠加Boid集群力（仅分离+聚合+对齐，不包含seek）
+        Vec3 boidForce = calculateBoidFlockForce(drone, owner);
+        finalMovement = finalMovement.add(boidForce);
 
-        applyDroneSeparation(drone, dronePos);
+        // 限制最大速度
+        double maxSpeed = MOVE_SPEED * 2.0;
+        double currentSpeed = finalMovement.length();
+        if (currentSpeed > maxSpeed) {
+            finalMovement = finalMovement.normalize().scale(maxSpeed);
+        }
+
+        // 速度阻尼：防止过冲振荡
+        finalMovement = finalMovement.scale(VELOCITY_DAMPING);
+
+        drone.setDeltaMovement(finalMovement);
 
         return dronePos.add(finalMovement);
     }
@@ -560,21 +618,13 @@ public class PursuitBehavior implements IDroneBehavior {
             return;
         }
 
-        // 检查视线
-        boolean hasLineOfSight = drone instanceof LivingEntity livingDrone && livingDrone.hasLineOfSight(target);
-        if (!hasLineOfSight) {
-            return;
-        }
-
+        // 追击阵列子弹可穿透方块，无需视线检查
         fireBullet(drone, owner, target);
     }
 
     /**
      * 发射无人机子弹
      * 子弹从无人机身高一半位置发射
-     * @param drone 无人机实体
-     * @param owner 玩家实体
-     * @param target 目标实体
      */
     private void fireBullet(Entity drone, LivingEntity owner, LivingEntity target) {
         if (drone.level().isClientSide) {
@@ -586,7 +636,7 @@ public class PursuitBehavior implements IDroneBehavior {
 
         Vec3 direction = targetPos.subtract(dronePos).normalize();
 
-        float damage = DroneBullet.BASE_DAMAGE;
+        float damage = DroneBullet.getBaseDamage();
         float cooldown = getConfigAttackInterval() * 20.0f;
 
         if (drone instanceof DroneConstructEntity droneEntity) {

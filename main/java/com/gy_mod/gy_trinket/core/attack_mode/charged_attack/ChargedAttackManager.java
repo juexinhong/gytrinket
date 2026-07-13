@@ -2,6 +2,7 @@ package com.gy_mod.gy_trinket.core.attack_mode.charged_attack;
 
 import com.gy_mod.gy_trinket.Config;
 import com.gy_mod.gy_trinket.core.attack_mode.AttackStateManager;
+import com.gy_mod.gy_trinket.core.grudge.GrudgeManager;
 import com.gy_mod.gy_trinket.gytrinket;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
@@ -23,7 +24,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * 1. 需要光点核心中有指定物品才能启用
  * 2. 生效时禁用玩家正常攻击行为
  * 3. 按住左键时进行充能，充能无上限但有阻力制衡
- * 4. 松开左键释放攻击，伤害 = 玩家当前伤害 + 充能值
+ * 4. 松开左键释放攻击，伤害 = 玩家当前伤害 * (1 + 充能值)
  * 5. 只影响释放时的这一次攻击，后续连击不受影响
  * <p>
  * 跨系统交互通过 AttackModeManager 策略管理：
@@ -78,26 +79,24 @@ public class ChargedAttackManager {
 
     /**
      * 计算充能速率
+     * 充能速率仅受攻击速度影响，不受攻击伤害影响
      */
     public static double calculateChargeRate(Player player) {
         double baseRate = Config.getChargedAttackBaseChargeRate();
-        double attackDamage = player.getAttributeValue(Attributes.ATTACK_DAMAGE);
         double attackSpeed = player.getAttributeValue(Attributes.ATTACK_SPEED);
-
-        double damageMultiplier = attackDamage * Config.getChargedAttackDamageScaleFactor();
         double speedMultiplier = attackSpeed * Config.getChargedAttackSpeedScaleFactor();
 
-        return baseRate * damageMultiplier * speedMultiplier;
+        return baseRate * speedMultiplier;
     }
 
     /**
      * 计算带阻力的充能增量
+     * 阻力阈值仅受攻击速度影响，不受攻击伤害影响
      */
     public static double calculateChargeIncrement(double currentCharge, double baseRate, Player player) {
         double dragCoeff = Config.getChargedAttackDragCoefficient();
-        double attackDamage = player.getAttributeValue(Attributes.ATTACK_DAMAGE);
         double attackSpeed = player.getAttributeValue(Attributes.ATTACK_SPEED);
-        double dragThreshold = attackDamage * attackSpeed * Config.getChargedAttackDragThresholdFactor();
+        double dragThreshold = attackSpeed * Config.getChargedAttackDragThresholdFactor();
         double dragFactor = 1.0 - dragCoeff * currentCharge / (currentCharge + dragThreshold);
         return baseRate * Math.max(dragFactor, 0.01);
     }
@@ -134,12 +133,18 @@ public class ChargedAttackManager {
 
         // 计算充能增量
         double chargeRate = calculateChargeRate(player);
+
+        // 添加积怨充能速率（也受阻力影响）
+        double grudgeRate = GrudgeManager.getTotalGrudgeChargeRate(playerUUID);
+        chargeRate += grudgeRate;
+
         double increment = calculateChargeIncrement(data.chargeValue, chargeRate, player);
         data.chargeValue += increment;
     }
 
     /**
      * 释放充能攻击，返回充能值
+     * 不立即清零充能值，改为标记释放状态，由tick进行快速消退
      */
     public static double releaseCharge(UUID playerUUID) {
         ChargedAttackData data = PLAYER_CHARGE_DATA.get(playerUUID);
@@ -149,7 +154,7 @@ public class ChargedAttackManager {
 
         double chargeValue = data.chargeValue;
         data.charging = false;
-        data.chargeValue = 0;
+        data.releasing = true;
 
         // 存储充能值到Tracker
         ChargedAttackDamageTracker.setChargeValue(playerUUID, chargeValue);
@@ -185,30 +190,51 @@ public class ChargedAttackManager {
         }
 
         ChargedAttackData data = PLAYER_CHARGE_DATA.get(uuid);
-        if (data == null || !data.charging) {
+        if (data == null) {
             return;
         }
 
-        // 检查玩家是否仍然按住左键
-        if (AttackStateManager.isPlayerHeld(player)) {
-            // 持续充能
-            updateCharging(uuid, player);
+        if (data.charging) {
+            // 检查玩家是否仍然按住左键
+            if (AttackStateManager.isPlayerHeld(player)) {
+                // 持续充能
+                updateCharging(uuid, player);
 
-            // 每3 tick同步充能值到客户端
-            data.syncTickCounter++;
-            if (data.syncTickCounter >= 3) {
-                data.syncTickCounter = 0;
-                com.gy_mod.gy_trinket.network.NetworkHandler.sendChargedAttackSyncToPlayer(player, data.chargeValue);
+                // 每3 tick同步充能值到客户端
+                data.syncTickCounter++;
+                if (data.syncTickCounter >= 3) {
+                    data.syncTickCounter = 0;
+                    com.gy_mod.gy_trinket.network.NetworkHandler.sendChargedAttackSyncToPlayer(player, data.chargeValue);
+                }
+            } else if (AttackStateManager.isPlayerReleased(player)) {
+                // 松开左键 - 释放充能攻击
+                double chargeValue = releaseCharge(uuid);
+                if (chargeValue > 0) {
+                    // 通知客户端释放攻击
+                    com.gy_mod.gy_trinket.network.NetworkHandler.sendChargedAttackSyncToPlayer(player, chargeValue);
+                }
             }
-        } else if (AttackStateManager.isPlayerReleased(player)) {
-            // 松开左键 - 释放充能攻击
-            double chargeValue = releaseCharge(uuid);
-            if (chargeValue > 0) {
-                // 通知客户端释放攻击
-                com.gy_mod.gy_trinket.network.NetworkHandler.sendChargedAttackSyncToPlayer(player, chargeValue);
+        } else if (data.releasing) {
+            // 释放后快速消退：每刻消退 1 + 当前值的30%
+            double decay = 1.0 + data.chargeValue * 0.3;
+            data.chargeValue -= decay;
+
+            if (data.chargeValue <= 0) {
+                data.chargeValue = 0;
+                data.releasing = false;
+                // 同步0到客户端，清空HUD显示
+                com.gy_mod.gy_trinket.network.NetworkHandler.sendChargedAttackSyncToPlayer(player, 0);
+            } else {
+                // 同步消退中的充能值到客户端
+                data.syncTickCounter++;
+                if (data.syncTickCounter >= 3) {
+                    data.syncTickCounter = 0;
+                    com.gy_mod.gy_trinket.network.NetworkHandler.sendChargedAttackSyncToPlayer(player, data.chargeValue);
+                }
             }
-            // 同步0到客户端，清空HUD显示
-            com.gy_mod.gy_trinket.network.NetworkHandler.sendChargedAttackSyncToPlayer(player, 0);
+
+            // 同步消退中的充能值到Tracker，供伤害处理使用
+            ChargedAttackDamageTracker.setChargeValue(uuid, data.chargeValue);
         }
     }
 
@@ -241,12 +267,14 @@ public class ChargedAttackManager {
 
     private static class ChargedAttackData {
         boolean charging;
+        boolean releasing;
         double chargeValue;
         // 同步计时器（每3 tick同步一次充能值到客户端）
         int syncTickCounter;
 
         ChargedAttackData() {
             this.charging = false;
+            this.releasing = false;
             this.chargeValue = 0;
             this.syncTickCounter = 0;
         }

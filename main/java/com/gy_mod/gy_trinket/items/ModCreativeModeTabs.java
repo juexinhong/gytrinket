@@ -23,6 +23,7 @@ public class ModCreativeModeTabs {
                         
                         // 机身物品
                         output.accept(ModItems.GUARDIAN.get());
+                        output.accept(ModItems.SWARM_MODULE.get());
 
                         // 基础护盾物品
                         output.accept(ModItems.SHIELD_GY.get());
@@ -98,6 +99,7 @@ public class ModCreativeModeTabs {
 
                         // 再生物品
                         output.accept(ModItems.REGEN_MODULE.get());
+                        output.accept(ModItems.QUICK_RECONSTRUCTION_MODULE.get());
                         output.accept(ModItems.REGEN_SHIELD_MODULE.get());
 
                         // 协同物品
@@ -120,6 +122,8 @@ public class ModCreativeModeTabs {
 
                         // 构造体物品
                         output.accept(ModItems.PRECISION_CONSTRUCT_MODULE.get());
+                        output.accept(ModItems.SELF_DESTRUCT_MODULE.get());
+                        output.accept(ModItems.TASKMASTER_MODULE.get());
                         output.accept(ModItems.SHIELD_TRANSFER_MODULE.get());
 
                         // 无人机构建物品
@@ -139,8 +143,12 @@ public class ModCreativeModeTabs {
                         output.accept(ModItems.ARC_BARRIER_MODULE.get());
                         output.accept(ModItems.RESHAPING_MODULE.get());
 
+                        // 僚机物品
+                        output.accept(ModItems.WINGMAN_MODULE.get());
+
                         // 超越模块
                         output.accept(ModItems.CHARGED_SHIELD_MODULE.get());
+                        output.accept(ModItems.GRUDGE_MODULE.get());
                         
                         // 零件
                         output.accept(ModItems.BEAM.get());

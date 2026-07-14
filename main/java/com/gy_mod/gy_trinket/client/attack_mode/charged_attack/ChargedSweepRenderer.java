@@ -21,10 +21,10 @@ import org.joml.Matrix4f;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * 充能横扫自定义渲染器
@@ -38,7 +38,7 @@ public class ChargedSweepRenderer {
 
     private static final Logger LOGGER = LoggerFactory.getLogger("GyTrinket-Debug");
 
-    private static final List<ChargedSweepRenderData> ACTIVE_SWEEPS = new ArrayList<>();
+    private static final List<ChargedSweepRenderData> ACTIVE_SWEEPS = new CopyOnWriteArrayList<>();
 
     private ChargedSweepRenderer() {}
 
@@ -88,12 +88,11 @@ public class ChargedSweepRenderer {
 
         BufferBuilder bufferBuilder = Tesselator.getInstance().getBuilder();
 
-        Iterator<ChargedSweepRenderData> it = ACTIVE_SWEEPS.iterator();
-        while (it.hasNext()) {
-            ChargedSweepRenderData data = it.next();
+        List<ChargedSweepRenderData> expired = new java.util.ArrayList<>();
+        for (ChargedSweepRenderData data : ACTIVE_SWEEPS) {
             int age = (int) (currentTick - data.creationTime());
             if (age >= data.lifetime()) {
-                it.remove();
+                expired.add(data);
                 continue;
             }
 
@@ -162,6 +161,8 @@ public class ChargedSweepRenderer {
 
             BufferUploader.drawWithShader(bufferBuilder.end());
         }
+
+        ACTIVE_SWEEPS.removeAll(expired);
 
         poseStack.popPose();
         RenderSystem.enableCull();

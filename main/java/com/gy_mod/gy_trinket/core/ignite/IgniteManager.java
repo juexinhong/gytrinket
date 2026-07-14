@@ -181,21 +181,17 @@ public class IgniteManager {
     }
 
     /**
-     * 世界刻事件处理（处理所有实体）
-     * 使用 LevelTickEvent 确保使用正确的 level.getGameTime()
+     * 服务器刻事件处理（处理所有实体）
+     * 使用 ServerTickEvent 而非 LevelTickEvent，避免多维度加载时每维度各触发一次导致计时加速。
      */
     @SubscribeEvent
-    public static void onLevelTick(TickEvent.LevelTickEvent event) {
+    public static void onServerTick(TickEvent.ServerTickEvent event) {
         if (event.phase != TickEvent.Phase.END) {
             return;
         }
 
-        if (event.level.isClientSide) {
-            return;
-        }
-        
-        long currentTick = event.level.getGameTime();
-        
+        long currentTick = event.getServer().getLevel(net.minecraft.world.level.Level.OVERWORLD).getGameTime();
+
         // 确保每个游戏刻只处理一次
         if (currentTick == lastProcessedTick) {
             return;

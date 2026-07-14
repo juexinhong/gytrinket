@@ -1,7 +1,6 @@
 package com.gy_mod.gy_trinket.event;
 
-import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneConstructEntity;
-import com.gy_mod.gy_trinket.core.entity.construct.wingman.WingmanConstructEntity;
+import com.gy_mod.gy_trinket.core.entity.construct.IConstructEntity;
 import com.gy_mod.gy_trinket.gytrinket;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.projectile.Projectile;
@@ -98,17 +97,15 @@ public class ConstructPenetrationHandler {
      * 判断实体是否是构造体
      */
     private static boolean isConstruct(Entity entity) {
-        return entity instanceof DroneConstructEntity || entity instanceof WingmanConstructEntity;
+        return entity instanceof IConstructEntity;
     }
 
     /**
      * 获取构造体的所有者UUID
      */
     private static UUID getConstructOwnerUUID(Entity construct) {
-        if (construct instanceof DroneConstructEntity drone) {
-            return drone.getOwnerUUID();
-        } else if (construct instanceof WingmanConstructEntity wingman) {
-            return wingman.getOwnerUUID();
+        if (construct instanceof IConstructEntity constructEntity) {
+            return constructEntity.getOwnerUUID();
         }
         return null;
     }

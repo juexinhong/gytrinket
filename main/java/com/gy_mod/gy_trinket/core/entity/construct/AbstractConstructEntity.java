@@ -28,6 +28,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Predicate;
 
@@ -43,6 +44,10 @@ import java.util.function.Predicate;
 public abstract class AbstractConstructEntity extends PathfinderMob implements GeoEntity, IConstructEntity {
 
     private final AnimatableInstanceCache animatableInstanceCache = GeckoLibUtil.createInstanceCache(this);
+
+    // 归属者UUID客户端同步
+    private static final EntityDataAccessor<Optional<UUID>> DATA_OWNER_UUID =
+            SynchedEntityData.defineId(AbstractConstructEntity.class, EntityDataSerializers.OPTIONAL_UUID);
 
     @Nullable
     protected UUID ownerUUID;
@@ -62,22 +67,29 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
         super(type, level);
         this.setNoGravity(true);
         this.noPhysics = true;
+        this.blocksBuilding = false;
     }
 
     @Override
     protected void defineSynchedData() {
         super.defineSynchedData();
+        entityData.define(DATA_OWNER_UUID, Optional.empty());
     }
 
     // 归属者管理
 
     @Nullable
+    @Override
     public UUID getOwnerUUID() {
+        // 优先从SynchedEntityData读取（客户端也能获取同步后的值）
+        Optional<UUID> synced = entityData.get(DATA_OWNER_UUID);
+        if (synced.isPresent()) return synced.get();
         return this.ownerUUID;
     }
 
     public void setOwnerUUID(@Nullable UUID uuid) {
         this.ownerUUID = uuid;
+        entityData.set(DATA_OWNER_UUID, Optional.ofNullable(uuid));
     }
 
     @Nullable
@@ -106,6 +118,18 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
     }
 
     // 碰撞规则
+
+    @Override
+    public boolean isPickable() {
+        // 构造体不阻挡玩家射线追踪，使玩家可以穿过构造体交互方块/实体/攻击
+        return false;
+    }
+
+    @Override
+    public boolean canBeHitByProjectile() {
+        // 弹射物仍可命中构造体（敌人箭矢等），玩家弹射物穿透由 ConstructPenetrationHandler 处理
+        return true;
+    }
 
     @Override
     public boolean canBeCollidedWith() {
@@ -263,6 +287,10 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
 
     @Override
     public boolean hurt(DamageSource source, float amount) {
+        // 免疫挤压伤害（实体过多导致的伤害）
+        if ("cramming".equals(source.getMsgId())) {
+            return false;
+        }
         Entity attacker = source.getEntity();
         if (attacker instanceof Player playerAttacker) {
             if (this.getOwnerUUID() != null && this.getOwnerUUID().equals(playerAttacker.getUUID())) {
@@ -365,6 +393,7 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
         super.readAdditionalSaveData(tag);
         if (tag.hasUUID("owner")) {
             this.ownerUUID = tag.getUUID("owner");
+            entityData.set(DATA_OWNER_UUID, Optional.of(this.ownerUUID));
         }
         readTypeSpecificSaveData(tag);
         applyAttributeModifiers();

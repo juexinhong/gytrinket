@@ -179,6 +179,7 @@ public class ModCreativeModeTabs {
                         output.accept(ModItems.COORDINATE.get());
                         output.accept(ModItems.PRECISION_CONSTRUCT_PART.get());
                         output.accept(ModItems.SHIELD_TRANSFER_PART.get());
+                        output.accept(ModItems.TOTEM.get());
                         output.accept(ModItems.DRONE_PART.get());
                         output.accept(ModItems.WIDE_PROTOCOL.get());
                         output.accept(ModItems.ADVANCED_ENGINEERING_PART.get());

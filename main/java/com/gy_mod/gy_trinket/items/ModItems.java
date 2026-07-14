@@ -141,6 +141,7 @@ public class ModItems {
     public static final RegistryObject<Item> GRUDGE_MODULE = ITEMS.register("grudge_module", () -> new Item(new Item.Properties())); // 积怨模块
     
     // 零件
+    public static final RegistryObject<Item> TOTEM = ITEMS.register("totem", () -> new Item(new Item.Properties())); // 图腾
     public static final RegistryObject<Item> BEAM = ITEMS.register("beam", () -> new Item(new Item.Properties())); // 光束
     public static final RegistryObject<Item> BARRIER = ITEMS.register("barrier", () -> new Item(new Item.Properties())); // 屏障
     public static final RegistryObject<Item> ULTIMATE_SHIELD = ITEMS.register("ultimate_shield", () -> new Item(new Item.Properties())); // 至高之盾

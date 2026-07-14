@@ -1,10 +1,7 @@
 package com.gy_mod.gy_trinket.core.entity.construct.swarm;
 
 import com.gy_mod.gy_trinket.Config;
-import com.gy_mod.gy_trinket.core.entity.construct.ConstructAttributeApplier;
-import com.gy_mod.gy_trinket.core.entity.construct.ConstructData;
-import com.gy_mod.gy_trinket.core.entity.construct.ConstructManager;
-import com.gy_mod.gy_trinket.core.entity.construct.IConstructEntity;
+import com.gy_mod.gy_trinket.core.entity.construct.*;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.ModDamageSources;
 import com.gy_mod.gy_trinket.core.execute.ExecuteToggleManager;
 import com.gy_mod.gy_trinket.core.hostile_target.HostileTargetManager;
@@ -32,10 +29,6 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.common.MinecraftForge;
-import software.bernie.geckolib.animatable.GeoEntity;
-import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache;
-import software.bernie.geckolib.core.animation.AnimatableManager;
-import software.bernie.geckolib.util.GeckoLibUtil;
 
 import javax.annotation.Nullable;
 import java.util.*;
@@ -49,24 +42,12 @@ import java.util.*;
  * 玩家护盾破裂时全员获得攻速/移速增益，且不修复护盾。
  * 单实例构建时有小概率提升等阶（标准/高阶），获得生命与伤害加成。
  */
-public class SwarmConstructEntity extends PathfinderMob implements GeoEntity, IConstructEntity {
+public class SwarmConstructEntity extends AbstractConstructEntity {
 
     /** 等阶：0=基础 1=标准 2=高阶 */
     private int tier = SwarmConstructTypes.TIER_BASIC;
 
     private SwarmConstruct swarmConstruct;
-
-    // ===== 归属者 =====
-    @Nullable
-    private UUID ownerUUID;
-
-    // ===== 攻击冷却 =====
-    private int attackCooldown = 0;
-
-    // ===== 基础属性 =====
-    protected double baseMaxHealth;
-    protected double baseAttackDamage;
-    protected double attackSpeedMultiplier = 1.0;
 
     // ===== 客户端同步标志 =====
     /** 修复模式标志（服务端计算，客户端读取，避免客户端因无护盾数据而误入待机分支） */
@@ -105,22 +86,15 @@ public class SwarmConstructEntity extends PathfinderMob implements GeoEntity, IC
     private static final double VELOCITY_DAMPING = 0.85;
     private static final double NEIGHBOR_SCAN_RANGE = 8.0;
 
-    /** 玩家最大索敌距离限制 */
-    private static final float PLAYER_MAX_TARGET_RANGE = 35.0f;
-
-    private final AnimatableInstanceCache animatableInstanceCache = GeckoLibUtil.createInstanceCache(this);
-
     public SwarmConstructEntity(EntityType<? extends PathfinderMob> type, Level level) {
         super(type, level);
-        this.setNoGravity(true);
-        this.noPhysics = true;
         this.baseMaxHealth = Config.getSwarmBaseHealth();
         this.baseAttackDamage = Config.getSwarmBaseDamage();
     }
 
     public SwarmConstructEntity(Level level, UUID ownerUUID, SwarmConstruct swarmConstruct) {
         this(com.gy_mod.gy_trinket.core.entity.construct.drone.ModEntities.SWARM_CONSTRUCT.get(), level);
-        this.ownerUUID = ownerUUID;
+        setOwnerUUID(ownerUUID);
         this.swarmConstruct = swarmConstruct;
         this.tier = swarmConstruct.getTier();
         applyAttributeModifiers();
@@ -133,68 +107,33 @@ public class SwarmConstructEntity extends PathfinderMob implements GeoEntity, IC
         entityData.define(DATA_SHIELD_BROKEN, false);
     }
 
-    @Override
-    public boolean isPickable() {
-        return true;
-    }
+    // ===== 抽象方法实现 =====
 
     @Override
-    public boolean canBeCollidedWith() {
-        return false;
-    }
-
-    // ===== 归属者管理 =====
-
-    @Nullable
-    @Override
-    public UUID getOwnerUUID() {
-        return this.ownerUUID;
-    }
-
-    public void setOwnerUUID(@Nullable UUID uuid) {
-        this.ownerUUID = uuid;
-    }
-
-    @Nullable
-    public Entity getOwner() {
-        if (this.ownerUUID == null) return null;
-        return this.level().getPlayerByUUID(this.ownerUUID);
-    }
-
-    // ===== IConstructEntity =====
-
-    @Override
-    public double getBaseMaxHealth() {
-        return baseMaxHealth;
-    }
-
-    public void setBaseMaxHealth(double baseMaxHealth) {
-        this.baseMaxHealth = baseMaxHealth;
+    protected String getConstructTypeId() {
+        return SwarmConstructTypes.SWARM;
     }
 
     @Override
-    public double getBaseAttackDamage() {
-        return baseAttackDamage;
-    }
-
-    public void setBaseAttackDamage(double baseAttackDamage) {
-        this.baseAttackDamage = baseAttackDamage;
-    }
-
-    @Override
-    public double getAttackSpeedMultiplier() {
-        return attackSpeedMultiplier;
+    protected ConstructData createConstructDataForRegistration(ServerPlayer ownerPlayer) {
+        SwarmConstructData newData = new SwarmConstructData(
+            SwarmConstructTypes.SWARM,
+            this.getUUID(),
+            this.getBaseMaxHealth()
+        );
+        newData.setTier(this.tier);
+        return newData;
     }
 
     @Override
-    public void setAttackSpeedMultiplier(double multiplier) {
-        this.attackSpeedMultiplier = multiplier;
+    protected void applyConstructAttributes(UUID playerUUID, Map<String, Double> attributes) {
+        ConstructAttributeApplier.applyAttributesToSwarm(playerUUID, this, attributes);
     }
 
     @Override
     public void refreshConstructAttributes() {
-        if (this.ownerUUID == null) return;
-        UUID playerUUID = this.ownerUUID;
+        if (getOwnerUUID() == null) return;
+        UUID playerUUID = getOwnerUUID();
         ServerPlayer player = null;
         if (this.level().getServer() != null) {
             player = this.level().getServer().getPlayerList().getPlayer(playerUUID);
@@ -203,6 +142,8 @@ public class SwarmConstructEntity extends PathfinderMob implements GeoEntity, IC
             ConstructAttributeApplier.applyAttributesToSwarm(playerUUID, this, ConstructAttributeApplier.computeConstructAttributes(playerUUID));
         }
     }
+
+    // ===== 蜂群特有属性 =====
 
     public SwarmConstruct getSwarmConstruct() {
         return swarmConstruct;
@@ -227,156 +168,43 @@ public class SwarmConstructEntity extends PathfinderMob implements GeoEntity, IC
         }
     }
 
-    // ===== 攻击冷却 =====
-
-    public int getAttackCooldown() {
-        return this.attackCooldown;
+    /**
+     * 蜂群重写：根据等阶重算基础生命/伤害，再应用 MAX_HEALTH + refreshConstructAttributes。
+     * 当蜂群数量超过极限值时，溢出倍率会放大基础属性以保持等效战力。
+     */
+    @Override
+    protected void applyAttributeModifiers() {
+        double tierMult = getTierMultiplier();
+        double overflowMult = MothershipManager.getOverflowMultiplier(getOwnerUUID());
+        this.baseMaxHealth = Config.getSwarmBaseHealth() * tierMult * overflowMult;
+        this.baseAttackDamage = Config.getSwarmBaseDamage() * tierMult * overflowMult;
+        if (this.getAttribute(Attributes.MAX_HEALTH) != null) {
+            this.getAttribute(Attributes.MAX_HEALTH).setBaseValue(baseMaxHealth);
+        }
+        refreshConstructAttributes();
     }
 
-    public void setAttackCooldown(int cooldown) {
-        this.attackCooldown = cooldown;
+    // ===== NBT 蜂群特有数据 =====
+
+    @Override
+    protected void addTypeSpecificSaveData(CompoundTag tag) {
+        tag.putInt("tier", this.tier);
     }
 
     @Override
-    public void aiStep() {
-        super.aiStep();
-        if (this.attackCooldown > 0) {
-            this.attackCooldown--;
+    protected void readTypeSpecificSaveData(CompoundTag tag) {
+        if (tag.contains("tier")) {
+            this.tier = tag.getInt("tier");
         }
     }
 
-    // ===== 伤害和死亡 =====
+    // ===== 属性 =====
 
-    @Override
-    public boolean hurt(DamageSource source, float amount) {
-        Entity attacker = source.getEntity();
-        if (attacker instanceof Player playerAttacker) {
-            if (this.getOwnerUUID() != null && this.getOwnerUUID().equals(playerAttacker.getUUID())) {
-                return false;
-            }
-        }
-        return super.hurt(source, amount);
-    }
-
-    @Override
-    public void die(DamageSource source) {
-        super.die(source);
-        removeFromConstructManager();
-    }
-
-    private void removeFromConstructManager() {
-        if (this.ownerUUID != null && !this.level().isClientSide) {
-            ConstructManager manager = ConstructManager.getInstance();
-            manager.removeConstruct(this.ownerUUID, this.getUUID());
-            manager.markConstructDead(this.ownerUUID, SwarmConstructTypes.SWARM, this.getUUID());
-            manager.unregisterConstructEntity(this.ownerUUID, SwarmConstructTypes.SWARM, this.getUUID());
-        }
-    }
-
-    // ===== 管理器注册检查 =====
-
-    private void checkManagerRegistration() {
-        UUID ownerUUID = this.getOwnerUUID();
-        if (ownerUUID == null) {
-            this.remove(RemovalReason.DISCARDED);
-            return;
-        }
-
-        ConstructManager cm = ConstructManager.getInstance();
-
-        Map<UUID, Entity> activeEntities = cm.getActiveConstructEntities(ownerUUID, SwarmConstructTypes.SWARM);
-        boolean inActiveEntities = activeEntities != null && activeEntities.containsKey(this.getUUID());
-
-        boolean inPlayerConstructs = false;
-        Map<String, List<ConstructData>> constructsMap = cm.getPlayerConstructs(ownerUUID);
-        List<ConstructData> list = constructsMap.get(SwarmConstructTypes.SWARM);
-        if (list != null) {
-            for (ConstructData data : list) {
-                if (this.getUUID().equals(data.getEntityUUID())) {
-                    inPlayerConstructs = true;
-                    break;
-                }
-            }
-        }
-
-        if (!inActiveEntities && !inPlayerConstructs) {
-            this.remove(RemovalReason.DISCARDED);
-            return;
-        }
-
-        if (inActiveEntities && inPlayerConstructs) {
-            return;
-        }
-
-        if (this.level().getServer() == null) {
-            return;
-        }
-
-        ServerPlayer ownerPlayer = this.level().getServer().getPlayerList().getPlayer(ownerUUID);
-        if (ownerPlayer == null) {
-            this.remove(RemovalReason.DISCARDED);
-            return;
-        }
-
-        if (!inActiveEntities) {
-            cm.registerConstructEntity(ownerUUID, SwarmConstructTypes.SWARM, this);
-        }
-
-        if (!inPlayerConstructs) {
-            SwarmConstructData newData = new SwarmConstructData(
-                SwarmConstructTypes.SWARM,
-                this.getUUID(),
-                this.getBaseMaxHealth()
-            );
-            newData.setTier(this.tier);
-            float maxH = this.getMaxHealth();
-            newData.setHealthRatio(maxH > 0 ? this.getHealth() / maxH : 1.0);
-            cm.addConstruct(ownerPlayer, newData);
-        }
-    }
-
-    // ===== 朝向控制 =====
-
-    public void facePositionWithInterpolation(Vec3 targetPos, float rotationSpeed) {
-        Vec3 pos = this.position();
-
-        double dx = targetPos.x - pos.x;
-        double dy = targetPos.y - pos.y;
-        double dz = targetPos.z - pos.z;
-
-        double horizontalDistance = Math.sqrt(dx * dx + dz * dz);
-        float targetYaw = (float) (Math.atan2(dz, dx) * (180.0 / Math.PI)) - 90.0f;
-        float targetPitch = -(float) (Math.atan2(dy, horizontalDistance) * (180.0 / Math.PI));
-
-        float currentYaw = this.getYRot();
-
-        float deltaYaw = targetYaw - currentYaw;
-        while (deltaYaw > 180.0f) deltaYaw -= 360.0f;
-        while (deltaYaw < -180.0f) deltaYaw += 360.0f;
-
-        float yawStep = Math.min(Math.abs(deltaYaw), rotationSpeed);
-        if (deltaYaw < 0) yawStep = -yawStep;
-        float newYaw = currentYaw + yawStep;
-
-        this.setYRot(newYaw);
-        this.setXRot(targetPitch);
-        this.setYHeadRot(newYaw);
-        this.yBodyRot = newYaw;
-        this.yHeadRot = newYaw;
-    }
-
-    public void faceTargetWithInterpolation(LivingEntity target) {
-        facePositionWithInterpolation(target.position().add(0, target.getEyeHeight() * 0.5, 0), 20.0f);
-    }
-
-    // ===== 友方构造体判定 =====
-
-    private boolean isOwnConstruct(LivingEntity entity, UUID ownerUUID) {
-        if (entity instanceof IConstructEntity constructEntity) {
-            UUID entOwner = constructEntity.getOwnerUUID();
-            return entOwner != null && entOwner.equals(ownerUUID);
-        }
-        return false;
+    public static AttributeSupplier.Builder createAttributes() {
+        return PathfinderMob.createMobAttributes()
+            .add(Attributes.MAX_HEALTH, 1.6)
+            .add(Attributes.FOLLOW_RANGE, 20.0)
+            .add(Attributes.ATTACK_DAMAGE, 0.08);
     }
 
     // ===== Boid 集群力 =====
@@ -870,70 +698,5 @@ public class SwarmConstructEntity extends PathfinderMob implements GeoEntity, IC
         Vec3 swarmMidPos = swarm.position().add(0, swarm.getBbHeight() * 0.5, 0);
         Vec3 lookDir = this.getLookAngle().normalize();
         NetworkHandler.sendSwarmEnergyWaveToAll(serverLevel, swarm.getId(), swarmMidPos, lookDir, false);
-    }
-
-    // ===== 属性 =====
-
-    public static AttributeSupplier.Builder createAttributes() {
-        return PathfinderMob.createMobAttributes()
-            .add(Attributes.MAX_HEALTH, 1.6)
-            .add(Attributes.FOLLOW_RANGE, 20.0)
-            .add(Attributes.ATTACK_DAMAGE, 0.08);
-    }
-
-    /**
-     * 蜂群重写：根据等阶重算基础生命/伤害，再应用 MAX_HEALTH + refreshConstructAttributes。
-     * 当蜂群数量超过极限值时，溢出倍率会放大基础属性以保持等效战力。
-     */
-    protected void applyAttributeModifiers() {
-        double tierMult = getTierMultiplier();
-        double overflowMult = MothershipManager.getOverflowMultiplier(getOwnerUUID());
-        this.baseMaxHealth = Config.getSwarmBaseHealth() * tierMult * overflowMult;
-        this.baseAttackDamage = Config.getSwarmBaseDamage() * tierMult * overflowMult;
-        if (this.getAttribute(Attributes.MAX_HEALTH) != null) {
-            this.getAttribute(Attributes.MAX_HEALTH).setBaseValue(baseMaxHealth);
-        }
-        refreshConstructAttributes();
-    }
-
-    // ===== NBT =====
-
-    @Override
-    public void addAdditionalSaveData(CompoundTag tag) {
-        super.addAdditionalSaveData(tag);
-        if (this.ownerUUID != null) {
-            tag.putUUID("owner", this.ownerUUID);
-        }
-        tag.putInt("tier", this.tier);
-        float maxH = this.getMaxHealth();
-        tag.putFloat("health_ratio", maxH > 0 ? this.getHealth() / maxH : 1.0f);
-    }
-
-    @Override
-    public void readAdditionalSaveData(CompoundTag tag) {
-        super.readAdditionalSaveData(tag);
-        if (tag.hasUUID("owner")) {
-            this.ownerUUID = tag.getUUID("owner");
-        }
-        if (tag.contains("tier")) {
-            this.tier = tag.getInt("tier");
-        }
-        applyAttributeModifiers();
-
-        if (tag.contains("health_ratio")) {
-            float healthRatio = tag.getFloat("health_ratio");
-            this.setHealth(this.getMaxHealth() * healthRatio);
-        }
-    }
-
-    // ===== GeckoLib =====
-
-    @Override
-    public AnimatableInstanceCache getAnimatableInstanceCache() {
-        return this.animatableInstanceCache;
-    }
-
-    @Override
-    public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
     }
 }

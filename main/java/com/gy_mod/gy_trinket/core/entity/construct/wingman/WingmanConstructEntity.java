@@ -65,11 +65,6 @@ public class WingmanConstructEntity extends AbstractConstructEntity {
         this.wingmanConstruct = wingmanConstruct;
     }
 
-    @Override
-    public boolean isPickable() {
-        return false;
-    }
-
     public WingmanConstruct getWingmanConstruct() {
         return wingmanConstruct;
     }

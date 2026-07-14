@@ -1931,6 +1931,15 @@ public class NetworkHandler {
                         // 同步0到客户端，清空HUD显示
                         sendChargedAttackSyncToPlayer(player, 0);
                     }
+                    case 4 -> {
+                        // 充能横扫攻击释放（剑类物品，替代原版attack）
+                        double chargeValue = com.gy_mod.gy_trinket.core.attack_mode.charged_attack.ChargedAttackManager.releaseCharge(uuid);
+                        if (chargeValue > 0) {
+                            com.gy_mod.gy_trinket.core.attack_mode.charged_attack.ChargedAttackSweepHandler.executeChargedSweepAttack(player, chargeValue);
+                        }
+                        // 同步0到客户端，清空HUD显示
+                        sendChargedAttackSyncToPlayer(player, 0);
+                    }
                 }
             });
             context.setPacketHandled(true);

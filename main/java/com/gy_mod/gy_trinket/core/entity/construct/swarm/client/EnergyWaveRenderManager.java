@@ -12,8 +12,8 @@ import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
 import net.minecraftforge.client.event.RenderLevelStageEvent;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * 蜂群能量波渲染管理器。
@@ -31,7 +31,7 @@ public class EnergyWaveRenderManager {
     private static final float FORWARD_DRIFT = 0.3f;
     private static final float END_SCALE = 2.0f;
 
-    private static final List<EnergyWaveData> waves = new ArrayList<>();
+    private static final List<EnergyWaveData> waves = new CopyOnWriteArrayList<>();
 
     public static void addWave(int entityId, double x, double y, double z, double dirX, double dirY, double dirZ, boolean isRepair) {
         long currentTime = Minecraft.getInstance().level != null ? Minecraft.getInstance().level.getGameTime() : 0;

@@ -40,17 +40,15 @@ public class InvincibilityMarkerManager {
     }
 
     /**
-     * 监听世界刻事件
+     * 监听服务器刻事件
      * <p>
      * 每刻更新所有标记的剩余时间，到期自动移除。
+     * 使用ServerTickEvent而非LevelTickEvent，避免多维度加载时每维度各触发一次导致计时加速。
      * </p>
      */
     @SubscribeEvent
-    public static void onLevelTick(TickEvent.LevelTickEvent event) {
+    public static void onServerTick(TickEvent.ServerTickEvent event) {
         if (event.phase != TickEvent.Phase.END) {
-            return;
-        }
-        if (event.level.isClientSide) {
             return;
         }
 

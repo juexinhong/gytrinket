@@ -189,12 +189,6 @@ public class DroneConstructEntity extends AbstractConstructEntity {
 
     // ===== 碰撞规则 =====
 
-    @Override
-    public boolean isPickable() {
-        // 所有的构造体都应该可以被弹射物攻击，而不只是防御无人机
-        return true;
-    }
-
     /**
      * 防御无人机使用扩大的碰撞箱以拦截弹射物。
      * 通过重写 makeBoundingBox() 返回扩大的碰撞箱来实现防御无人机的弹射物拦截。

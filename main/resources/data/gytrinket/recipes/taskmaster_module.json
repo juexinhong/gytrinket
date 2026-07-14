@@ -9,7 +9,7 @@
   "key": {
     "#": { "item": "gytrinket:construct_frame" },
     "X": { "item": "minecraft:string" },
-    "@": { "item": "minecraft:ender_eye" },
+    "@": { "item": "gytrinket:totem" },
     "*": { "item": "minecraft:blue_wool" }
   },
   "result": {

@@ -1,6 +1,6 @@
 package com.gy_mod.gy_trinket.event;
 
-import com.gy_mod.gy_trinket.Config;
+import com.gy_mod.gy_trinket.ClientConfig;
 import com.gy_mod.gy_trinket.core.shield.ShieldManager;
 import com.gy_mod.gy_trinket.gytrinket;
 import com.gy_mod.gy_trinket.network.NetworkHandler;
@@ -52,7 +52,7 @@ public class ShieldIdleParticleEvent {
      * 供伤害系统无方向伤害时调用
      */
     public static void triggerIdleParticles(ServerPlayer player) {
-        if (!Config.SHIELD_IDLE_PARTICLE_ENABLED.get()) {
+        if (!ClientConfig.isLoaded() || !ClientConfig.SHIELD_IDLE_PARTICLE_ENABLED.get()) {
             return;
         }
         resetIdleTimer(player.getUUID());
@@ -68,7 +68,7 @@ public class ShieldIdleParticleEvent {
             return;
         }
 
-        if (!Config.SHIELD_IDLE_PARTICLE_ENABLED.get()) {
+        if (!ClientConfig.isLoaded() || !ClientConfig.SHIELD_IDLE_PARTICLE_ENABLED.get()) {
             return;
         }
 

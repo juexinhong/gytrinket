@@ -4,12 +4,15 @@ import com.gy_mod.gy_trinket.client.attack_mode.AttackModeClientUtil;
 import com.gy_mod.gy_trinket.client.attack_mode.AttackStateInputHandler;
 import com.gy_mod.gy_trinket.client.attack_mode.burst_fire.BurstFireClientHandler;
 import com.gy_mod.gy_trinket.core.attack_mode.AttackStateManager;
+import com.gy_mod.gy_trinket.core.attack_mode.charged_attack.ChargedAttackSweepHandler;
 import com.gy_mod.gy_trinket.gytrinket;
 import com.gy_mod.gy_trinket.network.NetworkHandler;
 import net.minecraft.client.Minecraft;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.HitResult;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.event.TickEvent;
@@ -157,14 +160,20 @@ public class ChargedAttackInputHandler {
         // 寻找准星对准的目标
         Entity target = AttackModeClientUtil.findTargetInCrosshair(player);
         if (target instanceof LivingEntity) {
-            // 有目标：发送释放消息
-            NetworkHandler.INSTANCE.sendToServer(new NetworkHandler.ChargedAttackMessage(2));
-
-            // 客户端执行攻击
-            minecraft.gameMode.attack(player, target);
-
-            // 重置攻击强度
-            AttackModeClientUtil.resetAttackStrengthTicker(player);
+            ItemStack mainHandItem = player.getMainHandItem();
+            if (ChargedAttackSweepHandler.isSwordItem(mainHandItem)) {
+                // 剑类充能攻击：发送action=4，服务端执行自定义横扫伤害
+                // 不调用原版attack，服务端处理一切
+                NetworkHandler.INSTANCE.sendToServer(new NetworkHandler.ChargedAttackMessage(4));
+                // 仍需挥动手臂和重置攻击强度
+                player.swing(InteractionHand.MAIN_HAND);
+                AttackModeClientUtil.resetAttackStrengthTicker(player);
+            } else {
+                // 非剑类充能攻击：使用原版攻击+充能加成
+                NetworkHandler.INSTANCE.sendToServer(new NetworkHandler.ChargedAttackMessage(2));
+                minecraft.gameMode.attack(player, target);
+                AttackModeClientUtil.resetAttackStrengthTicker(player);
+            }
         } else {
             // 无目标：发送取消消息，清空充能
             NetworkHandler.INSTANCE.sendToServer(new NetworkHandler.ChargedAttackMessage(3));

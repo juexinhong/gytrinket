@@ -66,16 +66,12 @@ public class BurnManager {
     }
 
     @SubscribeEvent
-    public static void onLevelTick(TickEvent.LevelTickEvent event) {
+    public static void onServerTick(TickEvent.ServerTickEvent event) {
         if (event.phase != TickEvent.Phase.END) {
             return;
         }
 
-        if (event.level.isClientSide) {
-            return;
-        }
-
-        long currentTick = event.level.getGameTime();
+        long currentTick = event.getServer().getLevel(net.minecraft.world.level.Level.OVERWORLD).getGameTime();
 
         if (currentTick == lastProcessedTick) {
             return;

@@ -204,7 +204,10 @@ public class QuickEquipEvent {
                 || Config.isAdvancedEngineeringItem(item)
                 || Config.isPursuitArrayItem(item)
                 || Config.isFormationArrayItem(item)
-                || Config.isGuardArrayItem(item);
+                || Config.isGuardArrayItem(item)
+                || Config.isSelfDestructItem(item)
+                || Config.isWingmanModuleItem(item)
+                || Config.isSwarmModuleItem(item);
     }
 
     private static boolean hasSameItemInStore(ItemStackHandler handler, Item item) {

@@ -103,5 +103,6 @@ public class gytrinket {
     private void registerEntityAttributes(EntityAttributeCreationEvent event) {
         event.put(ModEntities.DRONE_CONSTRUCT.get(), com.gy_mod.gy_trinket.core.entity.construct.drone.DroneConstructEntity.createAttributes().build());
         event.put(ModEntities.SWARM_CONSTRUCT.get(), com.gy_mod.gy_trinket.core.entity.construct.swarm.SwarmConstructEntity.createAttributes().build());
+        event.put(ModEntities.WINGMAN_CONSTRUCT.get(), com.gy_mod.gy_trinket.core.entity.construct.wingman.WingmanConstructEntity.createAttributes().build());
     }
 }

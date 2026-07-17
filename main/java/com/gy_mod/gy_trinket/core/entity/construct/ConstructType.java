@@ -1,5 +1,7 @@
 package com.gy_mod.gy_trinket.core.entity.construct;
 
+import net.minecraft.world.entity.player.Player;
+
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
@@ -12,7 +14,8 @@ public class ConstructType {
     private final int buildTime;
     private final double maxHealth;
     private final int maxCount;
-    private final Class<? extends IConstruct> constructClass;
+    private final IConstructFactory constructFactory;
+    private final IEntityRestorer entityRestorer;
 
     private ConstructType(Builder builder) {
         this.id = builder.id;
@@ -22,7 +25,8 @@ public class ConstructType {
         this.buildTime = builder.buildTime;
         this.maxHealth = builder.maxHealth;
         this.maxCount = builder.maxCount;
-        this.constructClass = builder.constructClass;
+        this.constructFactory = builder.constructFactory;
+        this.entityRestorer = builder.entityRestorer;
     }
 
     /** 获取唯一标识符 */
@@ -65,27 +69,36 @@ public class ConstructType {
         return maxCount;
     }
 
-    /** 获取对应的构造体实现类 */
-    public Class<? extends IConstruct> getConstructClass() {
-        return constructClass;
+    /** 获取构造体工厂 */
+    public IConstructFactory getConstructFactory() {
+        return constructFactory;
+    }
+
+    /** 获取实体恢复器 */
+    public IEntityRestorer getEntityRestorer() {
+        return entityRestorer;
+    }
+
+    /** 使用工厂创建构造体逻辑实例 */
+    public IConstruct createConstruct(Player player) {
+        if (constructFactory != null) {
+            return constructFactory.create(player, this);
+        }
+        return null;
+    }
+
+    /** 是否注册了实体恢复器 */
+    public boolean hasEntityRestorer() {
+        return entityRestorer != null;
     }
 
     /**
      * 检查此构造体类型是否匹配目标类别
-     *
-     * @param targetCategories 目标类别集合
-     * @return 如果匹配返回true
      */
     public boolean matchesCategories(Set<ConstructCategory> targetCategories) {
         return ConstructCategory.matches(targetCategories, this.categories);
     }
 
-    /**
-     * 创建类型构建器
-     *
-     * @param id 唯一标识符
-     * @return 新的构建器实例
-     */
     public static Builder builder(String id) {
         return new Builder(id);
     }
@@ -98,7 +111,8 @@ public class ConstructType {
         private int buildTime = 20;
         private double maxHealth = 20.0;
         private int maxCount = 3;
-        private Class<? extends IConstruct> constructClass;
+        private IConstructFactory constructFactory;
+        private IEntityRestorer entityRestorer;
 
         public Builder(String id) {
             this.id = id;
@@ -143,8 +157,26 @@ public class ConstructType {
             return this;
         }
 
+        public Builder constructFactory(IConstructFactory constructFactory) {
+            this.constructFactory = constructFactory;
+            return this;
+        }
+
+        public Builder entityRestorer(IEntityRestorer entityRestorer) {
+            this.entityRestorer = entityRestorer;
+            return this;
+        }
+
+        /** 兼容旧接口：从 Class 创建工厂（反射） */
         public Builder constructClass(Class<? extends IConstruct> constructClass) {
-            this.constructClass = constructClass;
+            this.constructFactory = (player, type) -> {
+                try {
+                    return constructClass.getConstructor(String.class, net.minecraft.world.entity.LivingEntity.class, double.class)
+                            .newInstance(type.getId(), player, type.getMaxHealth());
+                } catch (Exception e) {
+                    throw new RuntimeException("无法创建构造体实例: " + constructClass.getName(), e);
+                }
+            };
             return this;
         }
 

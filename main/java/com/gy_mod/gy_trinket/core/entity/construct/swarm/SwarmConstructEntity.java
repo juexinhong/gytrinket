@@ -3,12 +3,12 @@ package com.gy_mod.gy_trinket.core.entity.construct.swarm;
 import com.gy_mod.gy_trinket.Config;
 import com.gy_mod.gy_trinket.core.entity.construct.*;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.ModDamageSources;
+import com.gy_mod.gy_trinket.core.entity.construct.drone.behavior.BoidCalculator;
 import com.gy_mod.gy_trinket.core.execute.ExecuteToggleManager;
 import com.gy_mod.gy_trinket.core.hostile_target.HostileTargetManager;
 import com.gy_mod.gy_trinket.core.modifier.player.knockback.KnockbackManager;
-import com.gy_mod.gy_trinket.network.NetworkHandler;
-import com.gy_mod.gy_trinket.core.shield.ShieldData;
 import com.gy_mod.gy_trinket.core.shield.ShieldManager;
+import com.gy_mod.gy_trinket.network.NetworkHandler;
 import com.gy_mod.gy_trinket.core.vulnerability.VulnerabilityApplyEvent;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
@@ -41,6 +41,9 @@ import java.util.*;
  * 玩家护盾受损时部分蜂群转为修复模式（伤害转化为护盾恢复）；
  * 玩家护盾破裂时全员获得攻速/移速增益，且不修复护盾。
  * 单实例构建时有小概率提升等阶（标准/高阶），获得生命与伤害加成。
+ * <p>
+ * 性能优化：通过 ConstructGroupCache 共享 Boid 邻居数据、索敌结果、护盾状态和修复分配，
+ * 避免每实体独立重复查询导致的 O(N²) 开销。
  */
 public class SwarmConstructEntity extends AbstractConstructEntity {
 
@@ -62,8 +65,10 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
     private static final float STANDBY_HEIGHT = 3.5f;
     /** 待机跟随触发距离 */
     private static final float STANDBY_RANGE = 5.0f;
-    /** 护盾破裂增益倍率 */
-    private static final double SHIELD_BROKEN_BOOST = 1.5;
+    /** 护盾破裂攻击速度增益倍率：+100%攻速 */
+    private static final double SHIELD_BROKEN_ATTACK_SPEED_MULT = 2.0;
+    /** 护盾破裂移动速度增益倍率：+50%移速 */
+    private static final double SHIELD_BROKEN_MOVE_SPEED_MULT = 1.5;
 
     // 追击距离分级（与目标的水平距离，单位：格）
     /** d < DIST_LEAVE：太近，尝试离开（远离目标） */
@@ -84,12 +89,13 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
     private static final double BOID_ALIGNMENT_RANGE = 3.0;
     private static final double BOID_ALIGNMENT_STRENGTH = 0.025;
     private static final double VELOCITY_DAMPING = 0.85;
-    private static final double NEIGHBOR_SCAN_RANGE = 8.0;
 
     public SwarmConstructEntity(EntityType<? extends PathfinderMob> type, Level level) {
         super(type, level);
         this.baseMaxHealth = Config.getSwarmBaseHealth();
         this.baseAttackDamage = Config.getSwarmBaseDamage();
+        // 攻击冷却错峰：创建时随机偏移初始冷却，避免所有蜂群同一帧攻击
+        this.attackCooldown = level.random.nextInt(Math.max(1, (int)(Config.getSwarmAttackInterval() * 20)));
     }
 
     public SwarmConstructEntity(Level level, UUID ownerUUID, SwarmConstruct swarmConstruct) {
@@ -173,7 +179,7 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
      * 当蜂群数量超过极限值时，溢出倍率会放大基础属性以保持等效战力。
      */
     @Override
-    protected void applyAttributeModifiers() {
+    public void applyAttributeModifiers() {
         double tierMult = getTierMultiplier();
         double overflowMult = MothershipManager.getOverflowMultiplier(getOwnerUUID());
         this.baseMaxHealth = Config.getSwarmBaseHealth() * tierMult * overflowMult;
@@ -207,96 +213,34 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
             .add(Attributes.ATTACK_DAMAGE, 0.08);
     }
 
-    // ===== Boid 集群力 =====
+    // ===== Boid 集群力（使用共享缓存） =====
 
+    /**
+     * 计算Boid集群力，使用 ConstructGroupCache 共享邻居数据。
+     * 同玩家的所有蜂群共享一次 getEntitiesOfClass 查询结果。
+     */
     private Vec3 calculateBoidForce() {
         LivingEntity owner = getOwner() instanceof LivingEntity l ? l : null;
         if (owner == null) return Vec3.ZERO;
 
-        List<Vec3> neighborPositions = new ArrayList<>();
-        List<Vec3> neighborVelocities = new ArrayList<>();
-        collectBoidNeighborData(owner, neighborPositions, neighborVelocities);
+        UUID ownerUUID = owner.getUUID();
+        ConstructGroupCache cache = ConstructGroupCache.getInstance();
+
+        // 使用缓存获取排除自身的邻居数据
+        ConstructGroupCache.NeighborData neighborData = cache.getNeighborData(
+            ownerUUID, SwarmConstructTypes.SWARM, this.getUUID(), this.level(), owner.position());
 
         Vec3 pos = this.position();
         Vec3 velocity = this.getDeltaMovement();
 
-        Vec3 separation = boidSeparation(pos, neighborPositions);
-        Vec3 cohesion = boidCohesion(pos, neighborPositions);
-        Vec3 alignment = boidAlignment(velocity, neighborVelocities);
+        Vec3 separation = BoidCalculator.separation(pos, neighborData.positions,
+                BOID_COMFORT_RANGE, BOID_SEPARATION_RANGE, BOID_SEPARATION_STRENGTH);
+        Vec3 cohesion = BoidCalculator.cohesion(pos, neighborData.positions,
+                BOID_COMFORT_RANGE, BOID_COHESION_RANGE, BOID_COHESION_STRENGTH);
+        Vec3 alignment = BoidCalculator.alignment(velocity, neighborData.velocities,
+                BOID_ALIGNMENT_RANGE, BOID_ALIGNMENT_STRENGTH);
 
         return separation.add(cohesion).add(alignment);
-    }
-
-    private void collectBoidNeighborData(LivingEntity owner, List<Vec3> positions, List<Vec3> velocities) {
-        Vec3 pos = this.position();
-        AABB scanBox = new AABB(
-            pos.x - NEIGHBOR_SCAN_RANGE, pos.y - NEIGHBOR_SCAN_RANGE, pos.z - NEIGHBOR_SCAN_RANGE,
-            pos.x + NEIGHBOR_SCAN_RANGE, pos.y + NEIGHBOR_SCAN_RANGE, pos.z + NEIGHBOR_SCAN_RANGE
-        );
-        List<SwarmConstructEntity> nearby = this.level().getEntitiesOfClass(
-            SwarmConstructEntity.class, scanBox,
-            other -> other != this && other.isAlive()
-                     && other.getOwnerUUID() != null && other.getOwnerUUID().equals(owner.getUUID())
-        );
-        for (SwarmConstructEntity other : nearby) {
-            positions.add(other.position());
-            velocities.add(other.getDeltaMovement());
-        }
-    }
-
-    private Vec3 boidSeparation(Vec3 pos, List<Vec3> neighbors) {
-        if (neighbors.isEmpty()) return Vec3.ZERO;
-        Vec3 force = Vec3.ZERO;
-        int count = 0;
-        for (Vec3 nPos : neighbors) {
-            Vec3 diff = pos.subtract(nPos);
-            double dist = diff.length();
-            if (dist < 0.001) {
-                diff = new Vec3(Math.random() - 0.5, 0, Math.random() - 0.5).normalize().scale(BOID_COMFORT_RANGE * 0.5);
-                dist = diff.length();
-            }
-            if (dist < BOID_COMFORT_RANGE) {
-                double weight = 1.0 - (dist / BOID_COMFORT_RANGE);
-                force = force.add(diff.normalize().scale(weight));
-                count++;
-            }
-        }
-        if (count == 0) return Vec3.ZERO;
-        force = force.scale(1.0 / count);
-        if (force.length() > 0.001) {
-            force = force.normalize().scale(BOID_SEPARATION_STRENGTH);
-        }
-        return force;
-    }
-
-    private Vec3 boidCohesion(Vec3 pos, List<Vec3> neighbors) {
-        if (neighbors.isEmpty()) return Vec3.ZERO;
-        Vec3 center = Vec3.ZERO;
-        int count = 0;
-        for (Vec3 nPos : neighbors) {
-            double dist = pos.distanceTo(nPos);
-            if (dist >= BOID_COMFORT_RANGE && dist < BOID_COHESION_RANGE) {
-                center = center.add(nPos);
-                count++;
-            }
-        }
-        if (count == 0) return Vec3.ZERO;
-        center = center.scale(1.0 / count);
-        Vec3 toCenter = center.subtract(pos);
-        if (toCenter.length() < 0.001) return Vec3.ZERO;
-        return toCenter.normalize().scale(BOID_COHESION_STRENGTH);
-    }
-
-    private Vec3 boidAlignment(Vec3 velocity, List<Vec3> neighborVelocities) {
-        if (neighborVelocities.isEmpty()) return Vec3.ZERO;
-        Vec3 avg = Vec3.ZERO;
-        for (Vec3 vel : neighborVelocities) { avg = avg.add(vel); }
-        avg = avg.scale(1.0 / neighborVelocities.size());
-        Vec3 steering = avg.subtract(velocity);
-        if (steering.length() > BOID_ALIGNMENT_STRENGTH) {
-            steering = steering.normalize().scale(BOID_ALIGNMENT_STRENGTH);
-        }
-        return steering;
     }
 
     // ===== tick =====
@@ -317,7 +261,9 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
         if (ownerEntity == null || !ownerEntity.isAlive() || !this.isAlive()) return;
         LivingEntity owner = (LivingEntity) ownerEntity;
 
-        // ===== 护盾状态判定 =====
+        // ===== 护盾状态判定（使用共享缓存） =====
+        // 破裂加成：护盾值≤0 → 攻速+100%，移速+50%，与是否移植无关
+        // 修复模式：护盾未移植 且 护盾值>0 且 护盾未满 → 部分蜂群修复护盾
         boolean shieldBroken;
         boolean repairMode;
         double speedMult;
@@ -326,19 +272,19 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
         if (this.level().isClientSide) {
             shieldBroken = this.entityData.get(DATA_SHIELD_BROKEN);
             repairMode = this.entityData.get(DATA_REPAIR_MODE);
-            speedMult = shieldBroken ? SHIELD_BROKEN_BOOST : 1.0;
+            speedMult = shieldBroken ? SHIELD_BROKEN_MOVE_SPEED_MULT : 1.0;
             attackSpeedMult = 1.0;
         } else {
-            ShieldData shieldData = ShieldManager.getShieldData(owner.getUUID());
-            double currentShield = shieldData != null ? shieldData.getCurrentShield() : 0.0;
-            double maxShield = shieldData != null ? shieldData.getMaxShield() : 0.0;
+            // 使用共享缓存获取护盾状态，避免每蜂群独立读取 ShieldManager
+            ConstructGroupCache cache = ConstructGroupCache.getInstance();
+            ConstructGroupCache.CachedShieldState shieldState = cache.getShieldState(owner.getUUID(), this.level());
 
-            shieldBroken = maxShield <= 0.0 || currentShield <= 0.0;
-            boolean shieldDamaged = maxShield > 0.0 && currentShield > 0.0 && currentShield < maxShield;
-            speedMult = shieldBroken ? SHIELD_BROKEN_BOOST : 1.0;
-            attackSpeedMult = shieldBroken ? SHIELD_BROKEN_BOOST : 1.0;
+            shieldBroken = shieldState.broken;
+            speedMult = shieldBroken ? SHIELD_BROKEN_MOVE_SPEED_MULT : 1.0;
+            attackSpeedMult = shieldBroken ? SHIELD_BROKEN_ATTACK_SPEED_MULT : 1.0;
 
-            repairMode = shieldDamaged && isAssignedToRepair(owner, currentShield, maxShield);
+            // 修复模式：可修复 且 被分配修复
+            repairMode = shieldState.canRepair && cache.getRepairAssignment(owner.getUUID(), this.level()).isAssigned(this.getUUID());
 
             this.entityData.set(DATA_SHIELD_BROKEN, shieldBroken);
             this.entityData.set(DATA_REPAIR_MODE, repairMode);
@@ -350,6 +296,7 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
             facePositionWithInterpolation(repairFacePos, 20.0f);
             executeShieldRepair(this, owner);
         } else {
+            // 使用共享缓存索敌
             LivingEntity target = findTarget(owner);
             if (target != null) {
                 pursuitMovement(this, owner, target, speedMult);
@@ -366,82 +313,17 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
         }
     }
 
-    // ===== 护盾修复分配 =====
+    // ===== 索敌（使用共享缓存） =====
 
-    private boolean isAssignedToRepair(LivingEntity owner, double currentShield, double maxShield) {
-        UUID myUUID = this.getUUID();
-        UUID ownerUUID = owner.getUUID();
-
-        List<SwarmConstructEntity> swarms = new ArrayList<>();
-        for (Entity entity : ConstructManager.getInstance()
-                .getActiveConstructEntities(ownerUUID, SwarmConstructTypes.SWARM).values()) {
-            if (entity instanceof SwarmConstructEntity swarm
-                    && swarm.isAlive()
-                    && swarm.level() == this.level()) {
-                swarms.add(swarm);
-            }
-        }
-
-        if (swarms.isEmpty()) return false;
-
-        swarms.sort(Comparator.comparing(Entity::getUUID));
-
-        int totalCount = swarms.size();
-
-        double damageRatio = maxShield > 0.0 ? (maxShield - currentShield) / maxShield : 0.0;
-        if (damageRatio <= 0.0) return false;
-
-        double repairRatio = 0.25 + 0.25 * damageRatio;
-        int repairCount = (int) Math.round(totalCount * repairRatio);
-
-        if (repairCount < 1) repairCount = 1;
-        if (repairCount > totalCount) repairCount = totalCount;
-
-        int myIndex = -1;
-        for (int i = 0; i < swarms.size(); i++) {
-            if (swarms.get(i).getUUID().equals(myUUID)) {
-                myIndex = i;
-                break;
-            }
-        }
-        return myIndex >= 0 && myIndex < repairCount;
-    }
-
-    // ===== 索敌 =====
-
+    /**
+     * 使用 ConstructGroupCache 共享索敌结果。
+     * 同玩家的所有蜂群共享一次以玩家为中心的索敌查询，
+     * 此方法仅做距离过滤取最近目标。
+     */
     private LivingEntity findTarget(LivingEntity owner) {
-        Player player = owner instanceof Player p ? p : null;
         float searchRange = (float) Config.getSwarmSearchRange();
-
-        Vec3 pos = this.position();
-        AABB searchBox = new AABB(
-            pos.x - searchRange, pos.y - searchRange, pos.z - searchRange,
-            pos.x + searchRange, pos.y + searchRange, pos.z + searchRange
-        );
-
-        List<LivingEntity> allTargets = this.level().getEntitiesOfClass(LivingEntity.class, searchBox,
-                entity -> isValidAttackTarget(entity, owner, player));
-
-        if (!allTargets.isEmpty()) {
-            return allTargets.stream()
-                    .min(Comparator.comparingDouble(t -> pos.distanceTo(t.position())))
-                    .orElse(null);
-        }
-
-        return null;
-    }
-
-    private boolean isValidAttackTarget(LivingEntity entity, LivingEntity owner, @Nullable Player player) {
-        if (entity == owner || entity == this) return false;
-        if (!entity.isAlive()) return false;
-        if (entity instanceof net.minecraft.world.entity.animal.AbstractGolem) return false;
-        if (isOwnConstruct(entity, owner.getUUID())) return false;
-        if (player != null) {
-            if (HostileTargetManager.isEntityProtectedByPlayer(entity, player)) return false;
-            if (!HostileTargetManager.shouldAttackPlayer(entity, player)) return false;
-            if (entity.distanceTo(owner) > PLAYER_MAX_TARGET_RANGE) return false;
-        }
-        return true;
+        return ConstructGroupCache.getInstance().findNearestTarget(
+            owner.getUUID(), owner, this.position(), searchRange);
     }
 
     // ===== 移动逻辑 =====
@@ -609,26 +491,31 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
         if (this.level().isClientSide) return;
         if (this.attackCooldown > 0) return;
 
-        double attackRange = Config.getSwarmAttackRange();
-        double distance = swarm.distanceTo(target);
-        if (distance > attackRange) return;
+        double baseAttackRange = Config.getSwarmAttackRange();
+        // 使用目标身高7/10处为检查点
+        Vec3 targetCheckPos = target.position().add(0, target.getBbHeight() * 0.7, 0);
+        // 大碰撞箱优化：目标碰撞箱宽度每有1格，攻击范围增加1格
+        double effectiveAttackRange = baseAttackRange + (int) target.getBbWidth();
+
+        double distance = swarm.position().distanceTo(targetCheckPos);
+        if (distance > effectiveAttackRange) return;
 
         Player player = owner instanceof Player p ? p : null;
         float damage = (float) this.baseAttackDamage;
         float vulnValue = (float) (Config.getSwarmVulnerabilityValue() * MothershipManager.getOverflowMultiplier(owner.getUUID()));
 
-        Vec3 swarmPos = swarm.position();
-        AABB arcBox = new AABB(
-            swarmPos.x - attackRange, swarmPos.y - attackRange, swarmPos.z - attackRange,
-            swarmPos.x + attackRange, swarmPos.y + attackRange, swarmPos.z + attackRange
-        );
-
-        List<LivingEntity> hits = this.level().getEntitiesOfClass(LivingEntity.class, arcBox,
-                entity -> isValidAttackTarget(entity, owner, player)
-                        && swarm.distanceTo(entity) <= attackRange);
+        // 使用共享索敌缓存获取攻击范围内目标，而非独立做 getEntitiesOfClass
+        float arcSearchRange = (float) (baseAttackRange + 4.0);
+        List<LivingEntity> hits = ConstructGroupCache.getInstance().findTargetsInRange(
+            owner.getUUID(), owner, swarm.position(), arcSearchRange);
 
         boolean hitAny = false;
         for (LivingEntity hit : hits) {
+            // 使用目标身高7/10处为检查点，并根据碰撞箱宽度调整攻击范围
+            Vec3 hitCheckPos = hit.position().add(0, hit.getBbHeight() * 0.7, 0);
+            double hitEffectiveRange = baseAttackRange + (int) hit.getBbWidth();
+            if (swarm.position().distanceTo(hitCheckPos) > hitEffectiveRange) continue;
+
             KnockbackManager.markNoKnockback(hit.getUUID());
             hit.invulnerableTime = 0;
 

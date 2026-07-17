@@ -141,7 +141,8 @@
       "gytrinket:taskmaster_module",
       "gytrinket:taskmaster_part",
       "gytrinket:grudge_module",
-      "gytrinket:mothership_body"
+      "gytrinket:mothership_body",
+      "gytrinket:totem"
     ]
   }
 }

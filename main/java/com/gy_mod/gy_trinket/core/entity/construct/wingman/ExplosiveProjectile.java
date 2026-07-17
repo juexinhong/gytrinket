@@ -21,10 +21,6 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
-import software.bernie.geckolib.animatable.GeoEntity;
-import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache;
-import software.bernie.geckolib.core.animation.AnimatableManager;
-import software.bernie.geckolib.util.GeckoLibUtil;
 
 import java.util.List;
 
@@ -35,9 +31,7 @@ import java.util.List;
  * 销毁时产生模拟爆炸（半径1格，0.5爆炸伤害）。
  * 无物理模式：穿墙，自行实现碰撞检测。
  */
-public class ExplosiveProjectile extends ThrowableItemProjectile implements GeoEntity {
-
-    private final AnimatableInstanceCache animatableInstanceCache = GeckoLibUtil.createInstanceCache(this);
+public class ExplosiveProjectile extends ThrowableItemProjectile {
 
     private float damage;
     /** 命中实体时在碰撞箱表面的交点位置，用于优化爆炸点位 */
@@ -46,6 +40,7 @@ public class ExplosiveProjectile extends ThrowableItemProjectile implements GeoE
     public ExplosiveProjectile(EntityType<? extends ExplosiveProjectile> type, Level level) {
         super(type, level);
         this.noPhysics = true;
+        this.setNoGravity(true);
         this.damage = (float) Config.getWingmanExplosiveDamage();
     }
 
@@ -53,6 +48,7 @@ public class ExplosiveProjectile extends ThrowableItemProjectile implements GeoE
         super(ModEntities.EXPLOSIVE_PROJECTILE.get(), owner, level);
         this.damage = damage;
         this.noPhysics = true;
+        this.setNoGravity(true);
     }
 
     @Override
@@ -231,7 +227,8 @@ public class ExplosiveProjectile extends ThrowableItemProjectile implements GeoE
                         && !(entity instanceof WingmanConstructEntity)
                         && (ownerPlayer == null || HostileTargetManager.shouldAttackPlayer(entity, ownerPlayer)),
                 true,
-                ownerPlayer
+                ownerPlayer,
+                0.0  // 爆破弹爆炸斥力修正为0
             );
         }
 
@@ -254,14 +251,6 @@ public class ExplosiveProjectile extends ThrowableItemProjectile implements GeoE
         super.readAdditionalSaveData(tag);
         this.damage = tag.getFloat("damage");
         this.noPhysics = true;
-    }
-
-    @Override
-    public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
-    }
-
-    @Override
-    public AnimatableInstanceCache getAnimatableInstanceCache() {
-        return this.animatableInstanceCache;
+        this.setNoGravity(true);
     }
 }

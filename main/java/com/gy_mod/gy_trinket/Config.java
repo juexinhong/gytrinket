@@ -601,7 +601,7 @@ public class Config {
         // ===== 1. 光环护盾 =====
         BUILDER.comment("光环护盾配置").push("aura_shield");
 
-        AURA_RADIUS = BUILDER.comment("光环护盾半径").defineInRange("auraRadius", 3.0, 0.0, 100.0);
+        AURA_RADIUS = BUILDER.comment("光环护盾半径").defineInRange("auraRadius", 3.5, 0.0, 100.0);
         AURA_DAMAGE = BUILDER.comment("光环护盾伤害").defineInRange("auraDamage", 0.75, 0.0, 100.0);
         AURA_TRIGGER_FREQUENCY = BUILDER.comment("光环护盾触发频率（刻）").defineInRange("auraTriggerFrequency", 5, 1, 200);
         AURA_SHIELD_COST = BUILDER.comment("光环护盾消耗护盾值").defineInRange("auraShieldCost", 0.042, 0.0, 10.0);
@@ -611,7 +611,7 @@ public class Config {
         // ===== 2. 虹吸护盾 =====
         BUILDER.comment("虹吸护盾配置").push("siphon_shield");
 
-        SIPHON_RADIUS = BUILDER.comment("虹吸护盾基础半径").defineInRange("siphonRadius", 3.5, 0.0, 100.0);
+        SIPHON_RADIUS = BUILDER.comment("虹吸护盾基础半径").defineInRange("siphonRadius", 4.0, 0.0, 100.0);
         SIPHON_DAMAGE = BUILDER.comment("虹吸护盾基础伤害量").defineInRange("siphonDamage", 0.3, 0.0, 100.0);
         SIPHON_TICK_INTERVAL = BUILDER.comment("虹吸护盾伤害频率（刻）").defineInRange("siphonTickInterval", 5, 1, 200);
         SIPHON_HEAL_RATIO = BUILDER.comment("虹吸护盾伤害恢复护盾比例").defineInRange("siphonHealRatio", 0.3, 0.0, 1.0);
@@ -706,13 +706,13 @@ public class Config {
             "跃传护盾爆炸半径（格）",
             "护盾破裂时爆炸的基础半径",
             "该值会受护盾效果半径属性组影响"
-        ).defineInRange("warpShieldExplosionRadius", 2.5, 1.0, 20.0);
+        ).defineInRange("warpShieldExplosionRadius", 3.3, 1.0, 20.0);
 
         WARP_SHIELD_WARP_DISTANCE = BUILDER.comment(
             "跃传护盾传送距离（格）",
             "护盾破裂时玩家/被保护实体被传送的基础距离",
             "该值会受护盾效果半径属性组影响"
-        ).defineInRange("warpShieldWarpDistance", 4.0, 1.0, 20.0);
+        ).defineInRange("warpShieldWarpDistance", 5.0, 1.0, 20.0);
 
         BUILDER.pop();
 
@@ -784,7 +784,7 @@ public class Config {
             "易爆护盾默认半径（格）",
             "该半径会受护盾效果半径属性影响",
             "示例：3.5"
-        ).defineInRange("explosiveShieldRadius", 3.5, 0.0, 10.0);
+        ).defineInRange("explosiveShieldRadius", 4.0, 0.0, 10.0);
 
         BUILDER.pop();
 
@@ -1176,12 +1176,12 @@ public class Config {
 
         BUILDER.pop();
 
-        // ===== 21.5 无人机斩杀机制 =====
-        BUILDER.comment("无人机斩杀机制配置").push("drone_execute");
+        // ===== 21.5 斩杀机制 =====
+        BUILDER.comment("斩杀机制配置").push("drone_execute");
 
         DRONE_EXECUTE_ENABLED = BUILDER.comment(
-            "是否启用无人机斩杀机制",
-            "启用时：当目标生命值低于无人机伤害，伤害归属玩家（爆炸伤害源）",
+            "是否启用斩杀机制",
+            "启用时：当目标生命值低于斩杀伤害，伤害归属玩家（爆炸伤害源）",
             "禁用时：伤害量不变，但伤害源不归属玩家（不会触发玩家的击杀效果）"
         ).define("droneExecuteEnabled", true);
 
@@ -1399,7 +1399,7 @@ public class Config {
 
         SWARM_MAX_COUNT = BUILDER.comment(
             "蜂群最大数量"
-        ).defineInRange("swarmMaxCount", 3, 1, 100);
+        ).defineInRange("swarmMaxCount", 4, 1, 100);
 
         SWARM_COUNT_LIMIT = BUILDER.comment(
             "蜂群数量极限值",
@@ -1411,7 +1411,7 @@ public class Config {
 
         SWARM_BUILD_TIME = BUILDER.comment(
             "蜂群构建时间（tick）"
-        ).defineInRange("swarmBuildTime", 60, 1, 6000);
+        ).defineInRange("swarmBuildTime", 20, 1, 6000);
 
         SWARM_MOVE_SPEED = BUILDER.comment(
             "蜂群移动速度"
@@ -1419,11 +1419,11 @@ public class Config {
 
         SWARM_SEARCH_RANGE = BUILDER.comment(
             "蜂群索敌范围（格）"
-        ).defineInRange("swarmSearchRange", 16.0, 1.0, 64.0);
+        ).defineInRange("swarmSearchRange", 20.0, 1.0, 64.0);
 
         SWARM_ATTACK_RANGE = BUILDER.comment(
             "蜂群攻击范围（格）"
-        ).defineInRange("swarmAttackRange", 3.0, 0.5, 32.0);
+        ).defineInRange("swarmAttackRange", 5.0, 0.5, 32.0);
 
         SWARM_ATTACK_INTERVAL = BUILDER.comment(
             "蜂群攻击间隔（秒）"
@@ -1431,19 +1431,19 @@ public class Config {
 
         SWARM_VULNERABILITY_VALUE = BUILDER.comment(
             "蜂群电弧施加的易伤值"
-        ).defineInRange("swarmVulnerabilityValue", 0.1, 0.0, 10.0);
+        ).defineInRange("swarmVulnerabilityValue", 0.0025, 0.0, 10.0);
 
         SWARM_SHIELD_REPAIR_MULTIPLIER = BUILDER.comment(
             "蜂群护盾修复转化倍率"
-        ).defineInRange("swarmShieldRepairMultiplier", 5.0, 0.0, 100.0);
+        ).defineInRange("swarmShieldRepairMultiplier", 3.0, 0.0, 100.0);
 
         SWARM_TIER_UPGRADE_CHANCE_STANDARD = BUILDER.comment(
             "蜂群升阶为标准的概率"
-        ).defineInRange("swarmTierUpgradeChanceStandard", 0.15, 0.0, 1.0);
+        ).defineInRange("swarmTierUpgradeChanceStandard", 0.1, 0.0, 1.0);
 
         SWARM_TIER_UPGRADE_CHANCE_ADVANCED = BUILDER.comment(
             "蜂群升阶为高阶的概率"
-        ).defineInRange("swarmTierUpgradeChanceAdvanced", 0.05, 0.0, 1.0);
+        ).defineInRange("swarmTierUpgradeChanceAdvanced", 0.03, 0.0, 1.0);
 
         BUILDER.pop();
 

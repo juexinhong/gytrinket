@@ -1,8 +1,16 @@
 package com.gy_mod.gy_trinket.network;
 
 import com.gy_mod.gy_trinket.Config;
+import com.gy_mod.gy_trinket.core.attack_mode.PlayerAttackLockManager;
+import com.gy_mod.gy_trinket.core.attack_mode.assault.AssaultManager;
+import com.gy_mod.gy_trinket.core.attack_mode.charged_attack.ChargedAttackDamageTracker;
+import com.gy_mod.gy_trinket.client.attack_mode.charged_attack.ChargedAttackInputHandler;
+import com.gy_mod.gy_trinket.core.attack_mode.charged_attack.ChargedAttackManager;
+import com.gy_mod.gy_trinket.core.attack_mode.charged_attack.ChargedAttackSweepHandler;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
 import com.gy_mod.gy_trinket.core.attribute.ItemAttributeConfig;
+import com.gy_mod.gy_trinket.core.attack_mode.electric_discharge.ElectricDischargeManager;
+import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneArrayManager;
 import com.gy_mod.gy_trinket.core.level.ModLevelManager;
 import com.gy_mod.gy_trinket.core.shield.cooldown.ShieldCooldownManager;
 import com.gy_mod.gy_trinket.core.shield.ShieldManager;
@@ -743,7 +751,7 @@ public class NetworkHandler {
             context.enqueueWork(() -> {
                 var player = context.getSender();
                 if (player != null) {
-                    com.gy_mod.gy_trinket.core.entity.construct.drone.DroneArrayManager.getInstance().switchToNextArray(player);
+                    DroneArrayManager.getInstance().switchToNextArray(player);
                 }
             });
 
@@ -766,7 +774,7 @@ public class NetworkHandler {
             context.enqueueWork(() -> {
                 var player = context.getSender();
                 if (player != null) {
-                    com.gy_mod.gy_trinket.core.attack_mode.electric_discharge.ElectricDischargeManager.releaseElectric(player);
+                    ElectricDischargeManager.releaseElectric(player);
                 }
             });
 
@@ -1084,7 +1092,7 @@ public class NetworkHandler {
             context.enqueueWork(() -> {
                 var player = context.getSender();
                 if (player != null) {
-                    com.gy_mod.gy_trinket.core.attack_mode.assault.AssaultManager.triggerAssault(player);
+                    AssaultManager.triggerAssault(player);
                 }
             });
 
@@ -1904,38 +1912,55 @@ public class NetworkHandler {
 
                 java.util.UUID uuid = player.getUUID();
 
-                if (!com.gy_mod.gy_trinket.core.attack_mode.charged_attack.ChargedAttackManager.hasChargedAttack(player)) {
+                if (!ChargedAttackManager.hasChargedAttack(player)) {
                     return;
                 }
 
                 switch (msg.action) {
                     case 0 -> {
-                        // 客户端请求开始充能 - 直接开始（常态禁用由 AttackModeManager 处理）
-                        com.gy_mod.gy_trinket.core.attack_mode.charged_attack.ChargedAttackManager.startCharging(uuid);
+                        // 客户端请求开始充能
+                        if (PlayerAttackLockManager.isLocked(uuid)) {
+                            // 攻击锁定时：即时结算 - 不充能，立即触发原版攻击
+                            // 原版攻击会被 AttackModeManager 的锁定检查拦截（LivingEntity），
+                            // 除非目标是无生命实体（船、矿车等），此时攻击正常通过
+                            ChargedAttackManager.cancelCharging(uuid);
+                            net.minecraft.world.entity.Entity target = ChargedAttackSweepHandler.findTargetInCrosshair(player, false);
+                            if (target != null) {
+                                player.attack(target);
+                            }
+                            // 同步0到客户端，重置充能状态（包括isCharging）
+                            sendChargedAttackSyncToPlayer(player, 0);
+                        } else {
+                            ChargedAttackManager.startCharging(uuid);
+                        }
                     }
                     case 1 -> {
                         // 更新充能（服务端独立计算，此处仅确认状态）
-                        com.gy_mod.gy_trinket.core.attack_mode.charged_attack.ChargedAttackManager.updateCharging(uuid, player);
+                        ChargedAttackManager.updateCharging(uuid, player);
                     }
                     case 2 -> {
                         // 释放攻击（releaseCharge内部已将充能值存入Tracker）
-                        com.gy_mod.gy_trinket.core.attack_mode.charged_attack.ChargedAttackManager.releaseCharge(uuid);
+                        double chargeValue = ChargedAttackManager.releaseCharge(uuid);
+                        // 射线群攻无生命实体（独立于LivingEntity攻击过滤）
+                        ChargedAttackSweepHandler.damageNonLivingTargetsAlongRaycast(player, chargeValue);
                         // 充能释放后的点射触发在 AttackModeManager.onPlayerAttack 中处理
                         // 同步0到客户端，清空HUD显示
                         sendChargedAttackSyncToPlayer(player, 0);
                     }
                     case 3 -> {
                         // 取消充能（无目标释放，直接清空）
-                        com.gy_mod.gy_trinket.core.attack_mode.charged_attack.ChargedAttackManager.cancelCharging(uuid);
-                        com.gy_mod.gy_trinket.core.attack_mode.charged_attack.ChargedAttackDamageTracker.removePlayer(uuid);
+                        ChargedAttackManager.cancelCharging(uuid);
+                        ChargedAttackDamageTracker.removePlayer(uuid);
                         // 同步0到客户端，清空HUD显示
                         sendChargedAttackSyncToPlayer(player, 0);
                     }
                     case 4 -> {
                         // 充能横扫攻击释放（剑类物品，替代原版attack）
-                        double chargeValue = com.gy_mod.gy_trinket.core.attack_mode.charged_attack.ChargedAttackManager.releaseCharge(uuid);
+                        double chargeValue = ChargedAttackManager.releaseCharge(uuid);
                         if (chargeValue > 0) {
-                            com.gy_mod.gy_trinket.core.attack_mode.charged_attack.ChargedAttackSweepHandler.executeChargedSweepAttack(player, chargeValue);
+                            ChargedAttackSweepHandler.executeChargedSweepAttack(player, chargeValue);
+                            // 射线群攻无生命实体（独立于LivingEntity攻击过滤）
+                            ChargedAttackSweepHandler.damageNonLivingTargetsAlongRaycast(player, chargeValue);
                         }
                         // 同步0到客户端，清空HUD显示
                         sendChargedAttackSyncToPlayer(player, 0);
@@ -1983,6 +2008,11 @@ public class NetworkHandler {
         private static void handleSyncChargedAttackOnClient(double chargeValue, double chargedDamage) {
             // 客户端收到充能值同步，存储到HUD渲染器
             com.gy_mod.gy_trinket.client.attack_mode.charged_attack.ChargedAttackHudRenderer.setChargeValue(chargeValue, chargedDamage);
+            // 当服务端同步chargeValue=0且客户端仍处于充能状态时，
+            // 重置isCharging以解除充能拦截（用于攻击锁定的即时结算场景）
+            if (chargeValue == 0) {
+                ChargedAttackInputHandler.resetChargeFromSync();
+            }
         }
     }
 

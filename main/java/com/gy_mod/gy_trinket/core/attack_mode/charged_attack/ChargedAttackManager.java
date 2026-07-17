@@ -2,8 +2,10 @@ package com.gy_mod.gy_trinket.core.attack_mode.charged_attack;
 
 import com.gy_mod.gy_trinket.Config;
 import com.gy_mod.gy_trinket.core.attack_mode.AttackStateManager;
+import com.gy_mod.gy_trinket.core.attack_mode.PlayerAttackLockManager;
 import com.gy_mod.gy_trinket.core.grudge.GrudgeManager;
 import com.gy_mod.gy_trinket.gytrinket;
+import com.gy_mod.gy_trinket.network.NetworkHandler;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -106,6 +108,11 @@ public class ChargedAttackManager {
      * 如果已经在充能中，不重置充能值（幂等操作）
      */
     public static void startCharging(UUID playerUUID) {
+        // 攻击锁定时禁用充能
+        if (PlayerAttackLockManager.isLocked(playerUUID)) {
+            return;
+        }
+
         ChargedAttackData data = PLAYER_CHARGE_DATA.computeIfAbsent(playerUUID, k -> new ChargedAttackData());
         if (data.charging) {
             // 已经在充能中，不重置
@@ -164,13 +171,16 @@ public class ChargedAttackManager {
 
     /**
      * 取消充能（不释放攻击）
+     * 同时清理伤害追踪器，避免残留的充能值影响后续攻击
      */
     public static void cancelCharging(UUID playerUUID) {
         ChargedAttackData data = PLAYER_CHARGE_DATA.get(playerUUID);
         if (data != null) {
             data.charging = false;
+            data.releasing = false;
             data.chargeValue = 0;
         }
+        ChargedAttackDamageTracker.removePlayer(playerUUID);
     }
 
     @SubscribeEvent
@@ -194,6 +204,16 @@ public class ChargedAttackManager {
             return;
         }
 
+        // 攻击锁定时取消充能（AttackModeManager也会在tick中调用cancelActiveModes，
+        // 此处确保即使ChargedAttackManager的tick先于AttackModeManager运行也不会继续充能）
+        if (PlayerAttackLockManager.isLocked(uuid)) {
+            if (data.charging || data.releasing) {
+                cancelCharging(uuid);
+                NetworkHandler.sendChargedAttackSyncToPlayer(player, 0);
+            }
+            return;
+        }
+
         if (data.charging) {
             // 检查玩家是否仍然按住左键
             if (AttackStateManager.isPlayerHeld(player)) {
@@ -204,14 +224,14 @@ public class ChargedAttackManager {
                 data.syncTickCounter++;
                 if (data.syncTickCounter >= 3) {
                     data.syncTickCounter = 0;
-                    com.gy_mod.gy_trinket.network.NetworkHandler.sendChargedAttackSyncToPlayer(player, data.chargeValue);
+                    NetworkHandler.sendChargedAttackSyncToPlayer(player, data.chargeValue);
                 }
             } else if (AttackStateManager.isPlayerReleased(player)) {
                 // 松开左键 - 释放充能攻击
                 double chargeValue = releaseCharge(uuid);
                 if (chargeValue > 0) {
                     // 通知客户端释放攻击
-                    com.gy_mod.gy_trinket.network.NetworkHandler.sendChargedAttackSyncToPlayer(player, chargeValue);
+                    NetworkHandler.sendChargedAttackSyncToPlayer(player, chargeValue);
                 }
             }
         } else if (data.releasing) {
@@ -223,13 +243,13 @@ public class ChargedAttackManager {
                 data.chargeValue = 0;
                 data.releasing = false;
                 // 同步0到客户端，清空HUD显示
-                com.gy_mod.gy_trinket.network.NetworkHandler.sendChargedAttackSyncToPlayer(player, 0);
+                NetworkHandler.sendChargedAttackSyncToPlayer(player, 0);
             } else {
                 // 同步消退中的充能值到客户端
                 data.syncTickCounter++;
                 if (data.syncTickCounter >= 3) {
                     data.syncTickCounter = 0;
-                    com.gy_mod.gy_trinket.network.NetworkHandler.sendChargedAttackSyncToPlayer(player, data.chargeValue);
+                    NetworkHandler.sendChargedAttackSyncToPlayer(player, data.chargeValue);
                 }
             }
 

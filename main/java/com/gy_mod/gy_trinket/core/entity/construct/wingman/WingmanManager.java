@@ -2,6 +2,7 @@ package com.gy_mod.gy_trinket.core.entity.construct.wingman;
 
 import com.gy_mod.gy_trinket.Config;
 import com.gy_mod.gy_trinket.core.disable.DisableSystem;
+import com.gy_mod.gy_trinket.core.entity.construct.ConstructBuilder;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructManager;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructType;
 import com.gy_mod.gy_trinket.event.PlayerAttributesCalculatedEvent;
@@ -44,7 +45,7 @@ public class WingmanManager {
         ConstructType type = ConstructManager.getInstance().getConstructType(WingmanConstructTypes.WINGMAN);
         if (type == null) return;
 
-        WingmanBuilder builder = new WingmanBuilder(player, type);
+        ConstructBuilder builder = new ConstructBuilder(player, type);
         ConstructManager.getInstance().startBuilding(player, builder);
     }
 

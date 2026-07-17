@@ -1,6 +1,7 @@
 package com.gy_mod.gy_trinket.core.entity.construct.drone;
 
 import com.gy_mod.gy_trinket.core.entity.construct.AbstractConstruct;
+import com.gy_mod.gy_trinket.core.entity.construct.ConstructData;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructManager;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.behavior.IDroneBehavior;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.effect.IDroneEffect;
@@ -79,6 +80,16 @@ public class DroneConstruct extends AbstractConstruct {
 
         // 注册到构造体管理器
         ConstructManager.getInstance().registerConstructEntity(owner.getUUID(), constructId, drone);
+    }
+
+    @Override
+    public ConstructData createData(java.util.UUID entityUUID) {
+        DroneConstructData data = new DroneConstructData(
+                constructId, entityUUID, maxHealth, arrayType
+        );
+        data.setHasAssaultModule(isAssaultDrone());
+        data.setHasDefenseModule(isDefenseDrone());
+        return data;
     }
 
     public DroneArrayType getArrayType() {

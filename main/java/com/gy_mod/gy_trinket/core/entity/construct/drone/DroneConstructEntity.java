@@ -9,7 +9,6 @@ import com.gy_mod.gy_trinket.core.entity.construct.drone.behavior.IDroneSpecialB
 import com.gy_mod.gy_trinket.core.entity.construct.drone.behavior.DroneSpecialBehaviorManager;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.behavior.PursuitBehavior;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.behavior.FormationBehavior;
-import com.gy_mod.gy_trinket.core.entity.construct.drone.behavior.SelfDestructBehavior;
 import com.gy_mod.gy_trinket.core.explosion.SimulatedExplosion;
 import com.gy_mod.gy_trinket.core.hostile_target.HostileTargetManager;
 import net.minecraft.core.particles.ParticleTypes;
@@ -88,6 +87,8 @@ public class DroneConstructEntity extends AbstractConstructEntity {
         super(type, level);
         this.baseMaxHealth = Config.getDroneBaseHealth();
         this.baseAttackDamage = Config.getDroneBaseDamage();
+        // 攻击冷却错峰：创建时随机偏移初始冷却，避免所有无人机同一帧攻击
+        this.attackCooldown = level.random.nextInt(40);
     }
 
     /**
@@ -302,9 +303,7 @@ public class DroneConstructEntity extends AbstractConstructEntity {
         if (this.level().isClientSide) return;
 
         // 最终指令的自爆视为死亡判定，可以触发自毁装置
-        if (SelfDestructBehavior.hasRequiredItems(this)) {
-            SelfDestructBehavior.triggerSelfDestructExplosion(this);
-        }
+        triggerSelfDestructIfAvailable();
 
         float maxHealth = this.getMaxHealth();
         float speed = (float) this.explosionSpeed;
@@ -558,9 +557,8 @@ public class DroneConstructEntity extends AbstractConstructEntity {
                         if (targetToAttack != null) {
                             boolean canAttack = this.distanceTo(targetToAttack) <= behavior.getAttackRange();
 
-                            if (canAttack) {
-                                faceTargetWithInterpolation(targetToAttack);
-                            }
+                            // 始终转向目标（无论是否在攻击范围内）
+                            faceTargetWithInterpolation(targetToAttack);
 
                             behavior.executeAttack(this, (LivingEntity) owner, targetToAttack, canAttack);
                         } else {

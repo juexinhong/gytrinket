@@ -1,5 +1,6 @@
 package com.gy_mod.gy_trinket.core.entity.construct.swarm;
 
+import com.gy_mod.gy_trinket.core.entity.construct.ConstructData;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructManager;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructType;
 import com.gy_mod.gy_trinket.core.entity.construct.IConstruct;
@@ -152,6 +153,14 @@ public class SwarmConstruct implements IConstruct {
     public void onBuildProgress(int progress, int total) {
     }
 
+    @Override
+    public ConstructData createData(UUID entityUUID) {
+        SwarmConstructData data = new SwarmConstructData(constructId, entityUUID, maxHealth);
+        data.setTier(tier);
+        return data;
+    }
+
+    @Override
     public UUID getEntityUUID() {
         return entityUUID;
     }

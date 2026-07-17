@@ -2,6 +2,7 @@ package com.gy_mod.gy_trinket.core.entity.construct.drone.behavior;
 
 import com.gy_mod.gy_trinket.Config;
 import com.gy_mod.gy_trinket.core.disable.DisableSystem;
+import com.gy_mod.gy_trinket.core.entity.construct.IConstructEntity;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneConstructEntity;
 import com.gy_mod.gy_trinket.core.explosion.SimulatedExplosion;
 import com.gy_mod.gy_trinket.core.hostile_target.HostileTargetManager;
@@ -11,6 +12,7 @@ import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
@@ -58,27 +60,28 @@ public class SelfDestructBehavior implements IDroneSpecialBehavior {
     }
 
     /**
-     * 当构造体实际死亡时触发自毁爆炸
-     * 注意：如果宽限协议或最终指令阻止了死亡，die()方法会提前返回，
-     * onDeath()不会被调用，因此自毁装置不会触发。
+     * 自毁装置已移至 AbstractConstructEntity.die() 中统一触发，
+     * 此处保留空实现以兼容无人机行为系统。
      */
     @Override
     public void onDeath(DroneConstructEntity drone, DamageSource source) {
-        if (!hasRequiredItems(drone)) {
-            return;
-        }
-        triggerSelfDestructExplosion(drone);
+        // 基类 AbstractConstructEntity.triggerSelfDestructIfAvailable() 已处理
     }
 
     /**
-     * 执行自毁爆炸
-     * 此方法也可由最终指令的explodeAndRemove()调用，
-     * 使最终指令的自爆也能触发自毁装置。
+     * 执行自毁爆炸（无人机专用，保持兼容）
      */
     public static void triggerSelfDestructExplosion(DroneConstructEntity drone) {
-        if (drone.level().isClientSide) return;
+        triggerSelfDestructExplosion((LivingEntity) drone);
+    }
 
-        float maxHealth = drone.getMaxHealth();
+    /**
+     * 执行自毁爆炸（通用版本，适用于所有构造体）
+     */
+    public static void triggerSelfDestructExplosion(LivingEntity construct) {
+        if (construct.level().isClientSide) return;
+
+        float maxHealth = construct.getMaxHealth();
         double baseDamage = Config.SELF_DESTRUCT_BASE_DAMAGE.get();
         double baseRadius = Config.SELF_DESTRUCT_BASE_RADIUS.get();
         double damagePerHealth = Config.SELF_DESTRUCT_DAMAGE_PER_MAX_HEALTH.get();
@@ -87,19 +90,20 @@ public class SelfDestructBehavior implements IDroneSpecialBehavior {
         float damage = (float) (baseDamage + maxHealth * damagePerHealth);
         double radius = baseRadius + maxHealth * radiusPerHealth;
 
-        Vec3 pos = drone.position();
+        Vec3 pos = construct.position();
 
-        Entity owner = drone.getOwner();
+        UUID ownerUUID = construct instanceof IConstructEntity cEntity ? cEntity.getOwnerUUID() : null;
+        Entity owner = ownerUUID != null ? construct.level().getPlayerByUUID(ownerUUID) : null;
         Player playerOwner = owner instanceof Player p ? p : null;
-        DamageSource damageSource = drone.damageSources().explosion(drone, owner);
+        DamageSource damageSource = construct.damageSources().explosion(construct, owner);
 
         SimulatedExplosion.execute(
-                drone.level(),
+                construct.level(),
                 pos,
                 radius,
                 damage,
                 damageSource,
-                entity -> entity != drone && entity.isAlive()
+                entity -> entity != construct && entity.isAlive()
                         && !(entity instanceof Player)
                         && entity instanceof net.minecraft.world.entity.Mob
                         && HostileTargetManager.shouldAttackPlayer(entity, playerOwner),
@@ -107,17 +111,24 @@ public class SelfDestructBehavior implements IDroneSpecialBehavior {
                 playerOwner
         );
 
-        if (drone.level() instanceof ServerLevel serverLevel) {
+        if (construct.level() instanceof ServerLevel serverLevel) {
             serverLevel.sendParticles(ParticleTypes.EXPLOSION_EMITTER,
                     pos.x, pos.y, pos.z, 1, 0, 0, 0, 0);
         }
     }
 
     /**
-     * 检查玩家光点核心中是否有自毁装置所需物品
+     * 检查玩家光点核心中是否有自毁装置所需物品（无人机专用，保持兼容）
      */
     public static boolean hasRequiredItems(DroneConstructEntity drone) {
-        UUID ownerUUID = drone.getOwnerUUID();
+        return hasRequiredItems((LivingEntity) drone);
+    }
+
+    /**
+     * 检查玩家光点核心中是否有自毁装置所需物品（通用版本）
+     */
+    public static boolean hasRequiredItems(LivingEntity construct) {
+        UUID ownerUUID = construct instanceof IConstructEntity cEntity ? cEntity.getOwnerUUID() : null;
         if (ownerUUID == null) {
             return false;
         }

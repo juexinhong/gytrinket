@@ -2,9 +2,13 @@ package com.gy_mod.gy_trinket.storage.datacenter;
 
 import com.gy_mod.gy_trinket.Config;
 import com.gy_mod.gy_trinket.core.damage.InvincibilityMarkerManager;
+import com.gy_mod.gy_trinket.core.entity.construct.AbstractConstructEntity;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructData;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructManager;
+import com.gy_mod.gy_trinket.core.entity.construct.ConstructType;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.*;
+import com.gy_mod.gy_trinket.core.entity.construct.wingman.WingmanConstructData;
+import com.gy_mod.gy_trinket.core.entity.construct.swarm.SwarmConstructData;
 import com.gy_mod.gy_trinket.core.shield.ShieldData;
 import com.gy_mod.gy_trinket.core.shield.ShieldManager;
 import com.gy_mod.gy_trinket.core.shield_transfer.ShieldTransferManager;
@@ -195,16 +199,19 @@ public class DataCenterLifecycleHandler {
         ListTag constructsList = new ListTag();
 
         if (isStandby) {
-            List<ConstructData> backupList = dam.getStandbyBackup(playerUUID, DroneConstructTypes.DRONE);
-            if (backupList != null) {
-                for (ConstructData data : backupList) {
+            // 待机模式：直接序列化待机备份数据
+            Map<String, List<ConstructData>> allBackups = dam.getAllStandbyBackups(playerUUID);
+            for (Map.Entry<String, List<ConstructData>> entry : allBackups.entrySet()) {
+                String typeId = entry.getKey();
+                for (ConstructData data : entry.getValue()) {
                     CompoundTag constructTag = new CompoundTag();
-                    constructTag.putString("typeId", data.getConstructId());
+                    constructTag.putString("typeId", typeId);
                     constructTag.put("data", data.saveToNBT());
                     constructsList.add(constructTag);
                 }
             }
         } else {
+            // 非待机模式：从活跃实体创建快照
             Map<String, List<ConstructData>> constructs = cm.getPlayerConstructs(playerUUID);
             for (Map.Entry<String, List<ConstructData>> entry : constructs.entrySet()) {
                 String typeId = entry.getKey();
@@ -215,25 +222,16 @@ public class DataCenterLifecycleHandler {
                     if (entity.level() != player.level()) continue;
                     if (entity.distanceTo(player) > MAX_SAVE_DISTANCE) continue;
 
-                    if (entity instanceof DroneConstructEntity droneEntity && data instanceof DroneConstructData droneData) {
-                        // 保存生命值比例，避免加载时因属性修饰符导致比例丢失
-                        double currentMaxHealth = droneEntity.getMaxHealth();
-                        float currentHealth = droneEntity.getHealth();
-                        droneData.setHealthRatio(currentMaxHealth > 0 ? currentHealth / currentMaxHealth : 1.0);
-                        droneData.setMaxHealth(droneEntity.getBaseMaxHealth());
-                        droneData.setHasAssaultModule(droneEntity.hasEffectTag(DroneConstructEntity.DroneEffectTag.ASSAULT));
-                        droneData.setHasDefenseModule(droneEntity.hasEffectTag(DroneConstructEntity.DroneEffectTag.DEFENSE));
-                        droneData.setArrayType(DroneArrayManager.getInstance().getPlayerArrayType(player));
-                    } else if (entity instanceof net.minecraft.world.entity.LivingEntity livingEntity) {
-                        data.setHealth(livingEntity.getHealth());
+                    // 使用 snapshotToData 统一提取实体状态
+                    if (entity instanceof AbstractConstructEntity constructEntity) {
+                        ConstructData snapshot = constructEntity.snapshotToData();
+                        if (snapshot != null) {
+                            CompoundTag constructTag = new CompoundTag();
+                            constructTag.putString("typeId", typeId);
+                            constructTag.put("data", snapshot.saveToNBT());
+                            constructsList.add(constructTag);
+                        }
                     }
-                    data.setSavedPos(entity.getX(), entity.getY(), entity.getZ());
-                    data.setDimension(entity.level().dimension().location().toString());
-
-                    CompoundTag constructTag = new CompoundTag();
-                    constructTag.putString("typeId", typeId);
-                    constructTag.put("data", data.saveToNBT());
-                    constructsList.add(constructTag);
                 }
             }
             cm.destroyAllConstructEntities(player);
@@ -291,90 +289,67 @@ public class DataCenterLifecycleHandler {
 
             boolean isStandby = dam.isInStandby(playerUUID);
 
-            List<ConstructData> allData = new ArrayList<>();
+            // 按类型分组加载数据
+            Map<String, List<ConstructData>> groupedData = new java.util.LinkedHashMap<>();
             for (int i = 0; i < constructsList.size(); i++) {
                 CompoundTag constructTag = constructsList.getCompound(i);
                 String typeId = constructTag.getString("typeId");
                 CompoundTag dataTag = constructTag.getCompound("data");
 
-                ConstructData data;
-                if ("drone".equals(typeId)) {
-                    data = DroneConstructData.loadFromNBT(dataTag);
-                } else {
-                    data = ConstructData.loadFromNBT(dataTag);
+                ConstructData data = loadConstructDataByType(typeId, dataTag);
+                if (data != null) {
+                    groupedData.computeIfAbsent(typeId, k -> new ArrayList<>()).add(data);
                 }
-                allData.add(data);
             }
 
             if (isStandby) {
-                List<ConstructData> backupList = new ArrayList<>();
-                for (ConstructData data : allData) {
-                    cm.addConstruct(player, data);
-                    if (data instanceof DroneConstructData droneData) {
-                        backupList.add(droneData);
+                // 待机模式：仅加载数据到管理器，设置待机备份
+                for (Map.Entry<String, List<ConstructData>> entry : groupedData.entrySet()) {
+                    String typeId = entry.getKey();
+                    List<ConstructData> dataList = entry.getValue();
+
+                    for (ConstructData data : dataList) {
+                        cm.addConstruct(player, data);
+                    }
+
+                    // 设置待机备份
+                    ConstructType constructType = cm.getConstructType(typeId);
+                    if (constructType != null) {
+                        dam.setStandbyBackup(playerUUID, typeId, dataList);
                     }
                 }
-                dam.setStandbyBackup(playerUUID, DroneConstructTypes.DRONE, backupList);
                 cm.setBuildingDisabled(player, true);
             } else {
-                for (ConstructData data : allData) {
-                    cm.addConstruct(player, data);
-                }
+                // 非待机模式：加载数据并恢复实体
+                for (Map.Entry<String, List<ConstructData>> entry : groupedData.entrySet()) {
+                    String typeId = entry.getKey();
+                    List<ConstructData> dataList = entry.getValue();
 
-                DroneArrayType arrayType = dam.getPlayerArrayType(player);
-                if (arrayType == null) {
-                    arrayType = DroneArrayType.Types.ORBIT;
-                }
+                    ConstructType constructType = cm.getConstructType(typeId);
+                    if (constructType == null || !constructType.hasEntityRestorer()) continue;
 
-                List<ConstructData> droneDataList = cm.getPlayerConstructsByType(player, DroneConstructTypes.DRONE);
-                for (ConstructData data : droneDataList) {
-                    if (data instanceof DroneConstructData droneData) {
-                        createDroneEntity(player, droneData, arrayType);
+                    for (ConstructData data : dataList) {
+                        cm.addConstruct(player, data);
+                        Entity entity = constructType.getEntityRestorer().restore(player, data, player.serverLevel());
+                        if (entity != null) {
+                            cm.registerConstructEntity(playerUUID, typeId, entity);
+                        }
                     }
                 }
             }
         }
     }
 
-    private static void createDroneEntity(ServerPlayer player, DroneConstructData data, DroneArrayType arrayType) {
-        ServerLevel serverLevel = player.serverLevel();
-        DroneConstructEntity droneEntity = new DroneConstructEntity(ModEntities.DRONE_CONSTRUCT.get(), serverLevel);
-
-        String currentDimension = player.level().dimension().location().toString();
-        if (data.hasPosition() && data.getDimension().equals(currentDimension)) {
-            droneEntity.setPos(data.getPosX(), data.getPosY(), data.getPosZ());
-        } else {
-            droneEntity.setPos(player.getX(), player.getY() + 1, player.getZ());
-        }
-
-        droneEntity.setOwnerUUID(player.getUUID());
-        droneEntity.setArrayType(arrayType);
-
-        // 恢复基础最大生命值
-        droneEntity.setBaseMaxHealth(data.getMaxHealth());
-        droneEntity.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH).setBaseValue(data.getMaxHealth());
-
-        // addEffectTag 内部会调用 applyAttributeModifiers，无需单独调用 refreshConstructAttributes
-        if (data.hasAssaultModule()) {
-            droneEntity.addEffectTag(DroneConstructEntity.DroneEffectTag.ASSAULT);
-        }
-        if (data.hasDefenseModule()) {
-            droneEntity.addEffectTag(DroneConstructEntity.DroneEffectTag.DEFENSE);
-        }
-
-        // 如果没有任何模块标签，需要手动刷新属性
-        if (!data.hasAssaultModule() && !data.hasDefenseModule()) {
-            droneEntity.refreshConstructAttributes();
-        }
-
-        // 属性修饰器应用完毕后，用保存的生命值比例恢复当前生命值
-        float healthRatio = (float) data.getHealthRatio();
-        float newMaxHealth = droneEntity.getMaxHealth();
-        droneEntity.setHealth(newMaxHealth * healthRatio);
-        serverLevel.addFreshEntity(droneEntity);
-
-        data.setEntityUUID(droneEntity.getUUID());
-        ConstructManager.getInstance().registerConstructEntity(player.getUUID(), DroneConstructTypes.DRONE, droneEntity);
+    /**
+     * 根据 typeId 分发到正确的 loadFromNBT 方法
+     */
+    private static ConstructData loadConstructDataByType(String typeId, CompoundTag dataTag) {
+        return switch (typeId) {
+            case "drone" -> DroneConstructData.loadFromNBT(dataTag);
+            case "wingman" -> WingmanConstructData.loadFromNBT(dataTag);
+            case "swarm" -> SwarmConstructData.loadFromNBT(dataTag);
+            default -> ConstructData.loadFromNBT(dataTag);
+        };
     }
 
     private static void saveShieldTransferData(ServerPlayer player) {

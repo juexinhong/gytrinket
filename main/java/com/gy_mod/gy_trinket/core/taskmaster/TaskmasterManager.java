@@ -1,5 +1,6 @@
 package com.gy_mod.gy_trinket.core.taskmaster;
 
+import com.gy_mod.gy_trinket.core.attack_mode.PlayerAttackLockManager;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructAttributeApplier;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructCategory;
@@ -46,6 +47,9 @@ public class TaskmasterManager {
     public static void updateDynamicAttributes(UUID playerUUID, Player player) {
         PLAYER_HAS_TASKMASTER.add(playerUUID);
 
+        // 锁定玩家特殊攻击
+        PlayerAttackLockManager.lockPlayer(playerUUID);
+
         double standardLimit = getConstructLimitByTier(playerUUID, player, ConstructCategory.STANDARD);
         double advancedLimit = getConstructLimitByTier(playerUUID, player, ConstructCategory.ADVANCED);
 
@@ -67,6 +71,10 @@ public class TaskmasterManager {
      */
     public static void removeDynamicAttributes(UUID playerUUID) {
         PLAYER_HAS_TASKMASTER.remove(playerUUID);
+
+        // 解锁玩家特殊攻击
+        PlayerAttackLockManager.unlockPlayer(playerUUID);
+
         AttributeManager.removeDynamicAttribute(playerUUID, NAMESPACE,
                 "construct_build_speed_percent");
         AttributeManager.removeDynamicAttribute(playerUUID, NAMESPACE,

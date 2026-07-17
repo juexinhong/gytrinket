@@ -1,6 +1,6 @@
 package com.gy_mod.gy_trinket.core.entity.construct;
 
-import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneConstructTypes;
+
 import net.minecraft.world.entity.player.Player;
 
 import java.util.*;
@@ -487,7 +487,6 @@ public class ConstructManager {
         UUID playerUUID = player.getUUID();
         if (disabled) {
             buildingDisabledPlayers.add(playerUUID);
-            cancelBuilding(player, DroneConstructTypes.DRONE);
         } else {
             buildingDisabledPlayers.remove(playerUUID);
         }
@@ -511,6 +510,7 @@ public class ConstructManager {
 
         Map<String, ConstructBuilder> builders = playerBuilders.get(playerUUID);
         if (builders != null && !builders.isEmpty()) {
+            boolean buildingDisabled = buildingDisabledPlayers.contains(playerUUID);
             List<String> completedBuilds = new ArrayList<>();
             List<String> cancelledBuilds = new ArrayList<>();
 
@@ -522,6 +522,9 @@ public class ConstructManager {
                     cancelledBuilds.add(constructId);
                     continue;
                 }
+
+                // 待机阵列期间暂停构建进度
+                if (buildingDisabled) continue;
 
                 if (builder.tick()) {
                     completedBuilds.add(constructId);
@@ -659,6 +662,8 @@ public class ConstructManager {
         activeConstructEntities.remove(playerUUID);
         playerBuilders.remove(playerUUID);
         buildingDisabledPlayers.remove(playerUUID);
+        // 清理构造体组共享缓存
+        ConstructGroupCache.getInstance().clearPlayerCache(playerUUID);
     }
 
     /**

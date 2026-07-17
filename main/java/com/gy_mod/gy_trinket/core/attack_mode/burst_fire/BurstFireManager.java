@@ -3,6 +3,7 @@ package com.gy_mod.gy_trinket.core.attack_mode.burst_fire;
 import com.gy_mod.gy_trinket.core.attack_mode.AttackModeManager;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
 import com.gy_mod.gy_trinket.gytrinket;
+import com.gy_mod.gy_trinket.network.NetworkHandler;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
@@ -137,7 +138,7 @@ public class BurstFireManager {
             IS_AUTO_ATTACKING.put(playerUUID, true);
 
             // 同步点射进行中状态到客户端
-            com.gy_mod.gy_trinket.network.NetworkHandler.sendBurstFiringToPlayer(player, true);
+            NetworkHandler.sendBurstFiringToPlayer(player, true);
 
             // 设置首次自动攻击延迟
             AUTO_ATTACK_DELAY.put(playerUUID, BURST_DELAY_TICKS);
@@ -172,7 +173,7 @@ public class BurstFireManager {
             remainingCooldown--;
             if (remainingCooldown <= 0) {
                 COMBO_COOLDOWN.remove(playerUUID);
-                com.gy_mod.gy_trinket.network.NetworkHandler.sendComboCooldownToPlayer(player, false, 0);
+                NetworkHandler.sendComboCooldownToPlayer(player, false, 0);
             } else {
                 COMBO_COOLDOWN.put(playerUUID, remainingCooldown);
             }
@@ -221,7 +222,7 @@ public class BurstFireManager {
         }
 
         // 发送网络包到客户端，设置攻击强度为100%
-        com.gy_mod.gy_trinket.network.NetworkHandler.sendAttackStrengthToPlayer(player, true);
+        NetworkHandler.sendAttackStrengthToPlayer(player, true);
 
         // 临时增加攻击速度模拟满攻击强度
         var attackSpeedAttribute = player.getAttribute(Attributes.ATTACK_SPEED);
@@ -286,10 +287,10 @@ public class BurstFireManager {
 
         COMBO_COOLDOWN.put(playerUUID, cooldownTicks);
 
-        com.gy_mod.gy_trinket.network.NetworkHandler.sendComboCooldownToPlayer(player, true, cooldownTicks);
+        NetworkHandler.sendComboCooldownToPlayer(player, true, cooldownTicks);
 
         // 同步点射结束状态到客户端
-        com.gy_mod.gy_trinket.network.NetworkHandler.sendBurstFiringToPlayer(player, false);
+        NetworkHandler.sendBurstFiringToPlayer(player, false);
 
         IS_AUTO_ATTACKING.put(playerUUID, false);
         CURRENT_TARGETS.remove(playerUUID);
@@ -327,17 +328,14 @@ public class BurstFireManager {
         AUTO_ATTACK_DELAY.put(playerUUID, BURST_DELAY_TICKS);
 
         // 同步点射进行中状态到客户端
-        com.gy_mod.gy_trinket.network.NetworkHandler.sendBurstFiringToPlayer(player, true);
+        NetworkHandler.sendBurstFiringToPlayer(player, true);
     }
 
     /**
-     * 清理玩家所有状态
+     * 清理玩家所有状态（不再拥有combo属性时调用）
      */
     private static void cleanupPlayerState(UUID playerUUID) {
-        CURRENT_TARGETS.remove(playerUUID);
-        REMAINING_COMBO.remove(playerUUID);
-        IS_AUTO_ATTACKING.remove(playerUUID);
-        AUTO_ATTACK_DELAY.remove(playerUUID);
+        cancelBurstFire(playerUUID);
     }
 
     /**
@@ -355,6 +353,17 @@ public class BurstFireManager {
     }
 
     /**
+     * 取消玩家的点射状态（由攻击锁定、登出、死亡调用）
+     */
+    public static void cancelBurstFire(UUID playerUUID) {
+        IS_AUTO_ATTACKING.remove(playerUUID);
+        CURRENT_TARGETS.remove(playerUUID);
+        REMAINING_COMBO.remove(playerUUID);
+        AUTO_ATTACK_DELAY.remove(playerUUID);
+        COMBO_COOLDOWN.remove(playerUUID);
+    }
+
+    /**
      * 监听玩家退出事件
      */
     @SubscribeEvent
@@ -362,13 +371,7 @@ public class BurstFireManager {
         if (!(event.getEntity() instanceof ServerPlayer player)) {
             return;
         }
-
-        UUID playerUUID = player.getUUID();
-        CURRENT_TARGETS.remove(playerUUID);
-        REMAINING_COMBO.remove(playerUUID);
-        IS_AUTO_ATTACKING.remove(playerUUID);
-        AUTO_ATTACK_DELAY.remove(playerUUID);
-        COMBO_COOLDOWN.remove(playerUUID);
+        cancelBurstFire(player.getUUID());
     }
 
     /**
@@ -379,13 +382,7 @@ public class BurstFireManager {
         if (!(event.getEntity() instanceof ServerPlayer player)) {
             return;
         }
-
-        UUID playerUUID = player.getUUID();
-        CURRENT_TARGETS.remove(playerUUID);
-        REMAINING_COMBO.remove(playerUUID);
-        IS_AUTO_ATTACKING.remove(playerUUID);
-        AUTO_ATTACK_DELAY.remove(playerUUID);
-        COMBO_COOLDOWN.remove(playerUUID);
+        cancelBurstFire(player.getUUID());
     }
 
     /**

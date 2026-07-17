@@ -1,6 +1,7 @@
 package com.gy_mod.gy_trinket.core.entity.construct.drone.behavior;
 
 import com.gy_mod.gy_trinket.Config;
+import com.gy_mod.gy_trinket.core.entity.construct.ConstructGroupCache;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructManager;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneArrayType;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneBullet;
@@ -236,28 +237,10 @@ public class GuardBehavior implements IDroneBehavior {
 
     @Override
     public List<LivingEntity> searchTargets(Entity drone, LivingEntity owner, float range) {
-        Level level = drone.level();
-        Vec3 dronePos = drone.position();
+        // 使用共享缓存索敌，从玩家中心的缓存结果中过滤当前位置附近的敌人
         float searchRange = getConfigAttackRange();
-
-        AABB searchBox = new AABB(
-                dronePos.x - searchRange, dronePos.y - searchRange, dronePos.z - searchRange,
-                dronePos.x + searchRange, dronePos.y + searchRange, dronePos.z + searchRange
-        );
-
-        Player player = owner instanceof Player ? (Player) owner : null;
-
-        List<LivingEntity> entities = level.getEntitiesOfClass(LivingEntity.class, searchBox,
-                entity -> {
-                    if (entity == owner || entity == drone) return false;
-                    if (!entity.isAlive()) return false;
-                    if (player != null && HostileTargetManager.isEntityProtectedByPlayer(entity, player)) return false;
-                    return HostileTargetManager.shouldAttackPlayer(entity, player);
-                });
-
-        return entities.stream()
-                .sorted(Comparator.comparingDouble(entity -> entity.distanceToSqr(dronePos)))
-                .collect(Collectors.toList());
+        return ConstructGroupCache.getInstance().findTargetsInRange(
+            owner.getUUID(), owner, drone.position(), searchRange);
     }
 
     @Override

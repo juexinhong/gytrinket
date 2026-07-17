@@ -45,6 +45,7 @@ public class DroneBullet extends ThrowableItemProjectile {
     public DroneBullet(EntityType<? extends DroneBullet> type, Level level) {
         super(type, level);
         this.noPhysics = true;
+        this.setNoGravity(true);
     }
 
     public DroneBullet(Level level, LivingEntity owner) {
@@ -52,6 +53,7 @@ public class DroneBullet extends ThrowableItemProjectile {
         this.entityData.set(FROM_DRONE, true);
         this.entityData.set(DAMAGE, getBaseDamage());
         this.noPhysics = true;
+        this.setNoGravity(true);
     }
 
     public DroneBullet(Level level, LivingEntity owner, float damage) {
@@ -59,6 +61,7 @@ public class DroneBullet extends ThrowableItemProjectile {
         this.entityData.set(FROM_DRONE, true);
         this.entityData.set(DAMAGE, damage);
         this.noPhysics = true;
+        this.setNoGravity(true);
     }
 
     @Override
@@ -247,5 +250,6 @@ public class DroneBullet extends ThrowableItemProjectile {
         this.entityData.set(FROM_DRONE, tag.getBoolean("fromDrone"));
         this.entityData.set(DAMAGE, tag.getFloat("damage"));
         this.noPhysics = true;
+        this.setNoGravity(true);
     }
 }

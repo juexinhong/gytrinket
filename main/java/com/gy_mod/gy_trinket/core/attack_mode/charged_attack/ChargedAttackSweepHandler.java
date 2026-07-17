@@ -1,7 +1,6 @@
 package com.gy_mod.gy_trinket.core.attack_mode.charged_attack;
 
 import com.gy_mod.gy_trinket.core.entity.construct.IConstructEntity;
-import com.gy_mod.gy_trinket.gytrinket;
 import com.gy_mod.gy_trinket.network.NetworkHandler;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
@@ -12,12 +11,11 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.SwordItem;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Predicate;
 
 /**
  * 充能攻击横扫增强处理
@@ -27,7 +25,6 @@ import java.util.UUID;
  * 2. 横扫伤害根据充能值提升（每点充能值+10%，最高100%加成）
  * 3. 横扫范围根据充能值扩大（每点+10%，无上限）
  */
-@Mod.EventBusSubscriber(modid = gytrinket.MODID)
 public class ChargedAttackSweepHandler {
 
     private ChargedAttackSweepHandler() {}
@@ -76,8 +73,8 @@ public class ChargedAttackSweepHandler {
             return;
         }
 
-        // 查找准星对准的主要目标
-        Entity primaryTarget = findTargetInCrosshair(player);
+        // 查找准星对准的主要目标（仅LivingEntity）
+        Entity primaryTarget = findTargetInCrosshair(player, true);
         if (primaryTarget == null) {
             return;
         }
@@ -161,16 +158,22 @@ public class ChargedAttackSweepHandler {
 
     /**
      * 查找玩家准星对准的目标
+     *
+     * @param player     玩家
+     * @param livingOnly true=仅LivingEntity（原版攻击过滤用），false=任意实体（含无生命实体，用于即时结算）
+     * @return 准星对准的最近实体，或null
      */
-    private static Entity findTargetInCrosshair(ServerPlayer player) {
+    public static Entity findTargetInCrosshair(ServerPlayer player, boolean livingOnly) {
         double reachDistance = player.getEntityReach();
         Vec3 eyePos = player.getEyePosition(1.0f);
         Vec3 lookVec = player.getLookAngle();
         Vec3 endPos = eyePos.add(lookVec.scale(reachDistance));
 
         AABB searchBox = player.getBoundingBox().expandTowards(lookVec.scale(reachDistance)).inflate(1.0);
-        List<Entity> entities = player.level().getEntities(player, searchBox, e ->
-                e instanceof LivingEntity && e.isAlive() && e != player && !isOwnConstruct(e, player));
+        Predicate<Entity> filter = livingOnly
+                ? e -> e instanceof LivingEntity && e.isAlive() && e != player && !isOwnConstruct(e, player)
+                : e -> e.isAlive() && e != player && !isOwnConstruct(e, player);
+        List<Entity> entities = player.level().getEntities(player, searchBox, filter::test);
 
         Entity closestEntity = null;
         double closestDistance = reachDistance;
@@ -188,6 +191,41 @@ public class ChargedAttackSweepHandler {
         }
 
         return closestEntity;
+    }
+
+    /**
+     * 对射线上的所有无生命实体造成充能加成伤害
+     * <p>
+     * 充能攻击释放时调用，独立于有生命实体的攻击过滤逻辑。
+     * 找到射线上所有非LivingEntity实体，施加充能加成伤害。
+     *
+     * @param player      攻击玩家
+     * @param chargeValue 充能值
+     */
+    public static void damageNonLivingTargetsAlongRaycast(ServerPlayer player, double chargeValue) {
+        if (chargeValue <= 0) {
+            return;
+        }
+
+        double reachDistance = player.getEntityReach();
+        Vec3 eyePos = player.getEyePosition(1.0f);
+        Vec3 lookVec = player.getLookAngle();
+        Vec3 endPos = eyePos.add(lookVec.scale(reachDistance));
+
+        AABB searchBox = player.getBoundingBox().expandTowards(lookVec.scale(reachDistance)).inflate(1.0);
+        List<Entity> entities = player.level().getEntities(player, searchBox,
+                e -> e.isAlive() && !(e instanceof LivingEntity) && e != player && !isOwnConstruct(e, player));
+
+        float baseDamage = (float) player.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE);
+        float chargedDamage = baseDamage * (1.0F + (float) chargeValue);
+
+        for (Entity entity : entities) {
+            AABB entityBox = entity.getBoundingBox().inflate(0.5);
+            var clipResult = entityBox.clip(eyePos, endPos);
+            if (clipResult.isPresent()) {
+                entity.hurt(player.damageSources().playerAttack(player), chargedDamage);
+            }
+        }
     }
 
     /**

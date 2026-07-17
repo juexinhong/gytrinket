@@ -1,6 +1,7 @@
 package com.gy_mod.gy_trinket.core.entity.construct.drone.behavior;
 
 import com.gy_mod.gy_trinket.Config;
+import com.gy_mod.gy_trinket.core.entity.construct.ConstructGroupCache;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructManager;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneArrayType;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneBullet;
@@ -119,38 +120,9 @@ public class OrbitBehavior implements IDroneBehavior {
 
     @Override
     public List<LivingEntity> searchTargets(Entity drone, LivingEntity owner, float range) {
-        Level level = drone.level();
-        
-        // 使用无人机的位置作为搜索中心
-        Vec3 dronePos = drone.position();
-        AABB searchBox = new AABB(
-            dronePos.x - SEARCH_RANGE,
-            dronePos.y - SEARCH_RANGE,
-            dronePos.z - SEARCH_RANGE,
-            dronePos.x + SEARCH_RANGE,
-            dronePos.y + SEARCH_RANGE,
-            dronePos.z + SEARCH_RANGE
-        );
-
-        List<LivingEntity> entities = level.getEntitiesOfClass(LivingEntity.class, searchBox,
-                entity -> {
-                    if (entity == owner || entity == drone) return false;
-                    if (!entity.isAlive()) return false;
-                    // 只攻击敌对生物
-                    if (entity.getType().getCategory() != net.minecraft.world.entity.MobCategory.MONSTER) return false;
-                    // 不攻击铁傀儡等友方实体
-                    if (entity instanceof net.minecraft.world.entity.animal.AbstractGolem) return false;
-                    // 不攻击玩家
-                    if (entity instanceof net.minecraft.world.entity.player.Player) return false;
-                    // 不检查视线（视线检查放在攻击时）
-                    return true;
-                });
-
-        List<LivingEntity> sortedEntities = entities.stream()
-                .sorted(Comparator.comparingDouble(entity -> entity.distanceToSqr(drone)))
-                .collect(Collectors.toList());
-        
-        return sortedEntities;
+        // 使用共享缓存索敌，从玩家中心的缓存结果中过滤当前位置附近的敌人
+        return ConstructGroupCache.getInstance().findTargetsInRange(
+            owner.getUUID(), owner, drone.position(), SEARCH_RANGE);
     }
 
     @Override

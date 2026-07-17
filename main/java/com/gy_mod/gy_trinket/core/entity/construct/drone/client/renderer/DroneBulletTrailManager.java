@@ -18,12 +18,20 @@ public class DroneBulletTrailManager {
     private static final Map<ThrowableItemProjectile, DroneBulletTrail> trailMap = new ConcurrentHashMap<>();
 
     /**
-     * 注册子弹的拖尾（由DroneBulletRenderer调用）。
-     * 若该子弹尚未有拖尾对象则创建一个。
+     * 注册子弹的拖尾（由渲染器调用）。
+     * 若该子弹尚未有拖尾对象则创建一个（默认无人机子弹类型）。
      */
     public static void registerTrail(ThrowableItemProjectile bullet) {
+        registerTrail(bullet, TrailType.DRONE_BULLET);
+    }
+
+    /**
+     * 注册弹射物的拖尾，指定轨迹类型。
+     * 若该弹射物尚未有拖尾对象则创建一个。
+     */
+    public static void registerTrail(ThrowableItemProjectile bullet, TrailType trailType) {
         if (bullet.isRemoved()) return;
-        trailMap.computeIfAbsent(bullet, b -> new DroneBulletTrail(b));
+        trailMap.computeIfAbsent(bullet, b -> new DroneBulletTrail(b, trailType));
     }
 
     /**

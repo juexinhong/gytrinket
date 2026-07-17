@@ -46,15 +46,36 @@ public class ConstructBuilder {
         }
     }
 
+    /**
+     * 构建完成时的通用流程：
+     * 1. 通过 {@link ConstructType#createConstruct} 创建构造体逻辑实例
+     * 2. 调用 {@link IConstruct#onCreated()} 生成实体
+     * 3. 通过 {@link IConstruct#createData} 创建持久化数据
+     * 4. 回写 entityUUID 并注册到 ConstructManager
+     * <p>
+     * 子类如需在构建完成时执行额外逻辑（如无人机的突击/防御模块检测、
+     * 蜂群的随机等阶），应覆写 {@link #createConstruct()} 提供自定义的构造体实例，
+     * 而不是直接覆写此方法。
+     */
     protected void onBuildComplete() {
-        UUID entityUUID = UUID.randomUUID();
-        ConstructData data = new ConstructData(
-                constructType.getId(),
-                entityUUID,
-                constructType.getMaxHealth()
-        );
+        IConstruct construct = createConstruct();
+        if (construct == null) return;
+
+        construct.onCreated();
+
+        UUID entityUUID = construct.getEntityUUID() != null ? construct.getEntityUUID() : UUID.randomUUID();
+        ConstructData data = construct.createData(entityUUID);
 
         ConstructManager.getInstance().addConstruct(player, data);
+    }
+
+    /**
+     * 创建构造体逻辑实例。
+     * 默认通过 {@link ConstructType#createConstruct} 工厂方法创建。
+     * 子类可覆写此方法以提供自定义创建逻辑。
+     */
+    protected IConstruct createConstruct() {
+        return constructType.createConstruct(player);
     }
 
     public int getProgress() {

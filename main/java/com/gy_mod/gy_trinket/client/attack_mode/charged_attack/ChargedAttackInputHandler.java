@@ -186,6 +186,17 @@ public class ChargedAttackInputHandler {
     }
 
     /**
+     * 由服务端同步消息调用：当服务端发送 chargeValue=0 且客户端仍处于充能状态时，
+     * 重置 isCharging 以解除充能拦截（用于攻击锁定的即时结算场景）
+     */
+    public static void resetChargeFromSync() {
+        if (isCharging) {
+            isCharging = false;
+            chargeStartDelay = 0;
+        }
+    }
+
+    /**
      * 获取客户端充能状态（供HUD渲染使用）
      */
     public static boolean isCharging() {

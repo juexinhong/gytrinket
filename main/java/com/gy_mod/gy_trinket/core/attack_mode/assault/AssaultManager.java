@@ -1,5 +1,6 @@
 package com.gy_mod.gy_trinket.core.attack_mode.assault;
 
+import com.gy_mod.gy_trinket.core.attack_mode.PlayerAttackLockManager;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
 import com.gy_mod.gy_trinket.core.modifier.player.knockback.KnockbackManager;
 import com.gy_mod.gy_trinket.damage.ModDamageTypes;
@@ -50,6 +51,11 @@ public class AssaultManager {
         }
 
         if (!hasAssault(player)) {
+            return;
+        }
+
+        // 攻击锁定时禁用强袭
+        if (PlayerAttackLockManager.isLocked(player)) {
             return;
         }
 

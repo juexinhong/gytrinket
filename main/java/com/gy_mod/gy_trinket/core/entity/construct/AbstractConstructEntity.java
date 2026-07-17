@@ -1,5 +1,6 @@
 package com.gy_mod.gy_trinket.core.entity.construct;
 
+import com.gy_mod.gy_trinket.core.entity.construct.drone.behavior.SelfDestructBehavior;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.behavior.TargetMemory;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
@@ -202,10 +203,22 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
 
     public void faceOwnerDirection(LivingEntity owner) {
         float ownerYaw = owner.getYRot();
-        this.setYRot(ownerYaw);
-        this.setYHeadRot(ownerYaw);
-        this.yBodyRot = ownerYaw;
-        this.yHeadRot = ownerYaw;
+        float currentYaw = this.getYRot();
+
+        float deltaYaw = ownerYaw - currentYaw;
+        while (deltaYaw > 180.0f) deltaYaw -= 360.0f;
+        while (deltaYaw < -180.0f) deltaYaw += 360.0f;
+
+        float rotationSpeed = 15.0f;
+        float yawStep = Math.min(Math.abs(deltaYaw), rotationSpeed);
+        if (deltaYaw < 0) yawStep = -yawStep;
+        float newYaw = currentYaw + yawStep;
+
+        this.setYRot(newYaw);
+        this.setXRot(0);
+        this.setYHeadRot(newYaw);
+        this.yBodyRot = newYaw;
+        this.yHeadRot = newYaw;
     }
 
     // 友方构造体判定
@@ -302,8 +315,24 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
 
     @Override
     public void die(DamageSource source) {
+        triggerSelfDestructIfAvailable();
         super.die(source);
         removeFromConstructManager();
+    }
+
+    /**
+     * 自毁装置：当构造体死亡时触发爆炸。
+     * 爆炸基础伤害为1，基础半径为1。每点最大生命值增加1点爆炸伤害和0.3格爆炸半径。
+     * 仅当玩家光点核心中拥有自毁装置物品时触发。
+     * <p>
+     * 子类若需在死亡时进行免疫判定（如宽限协议/最终指令），
+     * 应在覆写 die() 时优先检查免疫条件，若免疫则提前返回，
+     * 不调用 super.die()，从而阻止自毁装置触发。
+     */
+    protected void triggerSelfDestructIfAvailable() {
+        if (SelfDestructBehavior.hasRequiredItems(this)) {
+            SelfDestructBehavior.triggerSelfDestructExplosion(this);
+        }
     }
 
     protected void removeFromConstructManager() {
@@ -440,6 +469,43 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
     protected abstract String getConstructTypeId();
 
     protected abstract ConstructData createConstructDataForRegistration(ServerPlayer ownerPlayer);
+
+    /**
+     * 从当前实体状态创建数据快照，用于待机备份或玩家退出保存。
+     * <p>
+     * 基类填充通用字段（healthRatio, position, dimension, active），
+     * 子类覆盖 {@link #populateTypeSpecificData(ConstructData)} 填充类型特有字段。
+     *
+     * @return 包含当前实体状态的 ConstructData 快照
+     */
+    public ConstructData snapshotToData() {
+        ConstructData data = createConstructDataForRegistration(
+                this.getOwner() instanceof ServerPlayer sp ? sp : null);
+        if (data == null) return null;
+
+        // 通用字段
+        double currentMaxHealth = this.getMaxHealth();
+        float currentHealth = this.getHealth();
+        data.setHealthRatio(currentMaxHealth > 0 ? currentHealth / currentMaxHealth : 1.0);
+        data.setSavedPos(this.getX(), this.getY(), this.getZ());
+        data.setDimension(this.level().dimension().location().toString());
+        data.setActive(true);
+
+        // 类型特有字段
+        populateTypeSpecificData(data);
+
+        return data;
+    }
+
+    /**
+     * 子类覆盖此方法以填充类型特有的数据字段。
+     * 默认实现为空。
+     *
+     * @param data 要填充的构造体数据
+     */
+    protected void populateTypeSpecificData(ConstructData data) {
+        // 默认无类型特有字段
+    }
 
     // GeckoLib
 

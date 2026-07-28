@@ -1,6 +1,6 @@
 package com.gy_mod.gy_trinket.client.attack_mode;
 
-import com.gy_mod.gy_trinket.Config;
+import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.client.datacenter.ClientDataCenter;
 import com.gy_mod.gy_trinket.gytrinket;
 import net.minecraft.client.Minecraft;

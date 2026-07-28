@@ -1,9 +1,9 @@
 package com.gy_mod.gy_trinket.core.attack_mode.charged_attack;
 
-import com.gy_mod.gy_trinket.Config;
+import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.core.attack_mode.AttackStateManager;
 import com.gy_mod.gy_trinket.core.attack_mode.PlayerAttackLockManager;
-import com.gy_mod.gy_trinket.core.grudge.GrudgeManager;
+import com.gy_mod.gy_trinket.core.attack_mode.GrudgeManager;
 import com.gy_mod.gy_trinket.gytrinket;
 import com.gy_mod.gy_trinket.network.NetworkHandler;
 import net.minecraft.server.level.ServerPlayer;

@@ -1,7 +1,7 @@
 package com.gy_mod.gy_trinket.core.entity.construct.swarm;
 
-import com.gy_mod.gy_trinket.Config;
-import com.gy_mod.gy_trinket.core.disable.DisableSystem;
+import com.gy_mod.gy_trinket.config.Config;
+import com.gy_mod.gy_trinket.core.shield.DisableSystem;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructManager;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructType;
 import com.gy_mod.gy_trinket.event.PlayerAttributesCalculatedEvent;

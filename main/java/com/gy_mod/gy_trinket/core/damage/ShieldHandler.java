@@ -1,11 +1,14 @@
 package com.gy_mod.gy_trinket.core.damage;
 
-import com.gy_mod.gy_trinket.Config;
+import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.core.shield.ShieldData;
 import com.gy_mod.gy_trinket.core.shield.ShieldManager;
 import com.gy_mod.gy_trinket.core.shield.type.ShieldTypeManager;
 import com.gy_mod.gy_trinket.core.shield_transfer.ShieldTransferManager;
+import com.gy_mod.gy_trinket.core.sound.ModSounds;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 
@@ -32,11 +35,6 @@ public class ShieldHandler implements DamageHandler {
         UUID shieldOwnerUUID = shieldOwner.getUUID();
         LivingEntity attackedEntity = context.getAttackedEntity();
 
-        if (InvincibilityMarkerManager.hasMarker(attackedEntity)) {
-            context.setCanceled(true);
-            return;
-        }
-
         if (context.isPlayerSelfDamage()) {
             return;
         }
@@ -56,6 +54,15 @@ public class ShieldHandler implements DamageHandler {
 
         double currentShield = shieldData.getCurrentShield();
         if (currentShield <= 0) {
+            return;
+        }
+
+        // 无敌帧期间：取消伤害但仍然播放护盾受击音效
+        if (InvincibilityMarkerManager.hasMarker(attackedEntity)) {
+            context.setCanceled(true);
+            if (!isShieldSelfDamage) {
+                playShieldHitSound(attackedEntity);
+            }
             return;
         }
 
@@ -86,10 +93,29 @@ public class ShieldHandler implements DamageHandler {
         if (!isShieldSelfDamage) {
             ShieldTypeManager.processReflectAfterShieldDamage(shieldOwner, attackedEntity);
         }
+
+        // 播放护盾受击音效
+        if (!isShieldSelfDamage) {
+            playShieldHitSound(attackedEntity);
+        }
     }
 
     @Override
     public int getPriority() {
         return PRIORITY;
+    }
+
+    private static void playShieldHitSound(LivingEntity entity) {
+        String soundType = Config.getShieldHitSound();
+        if ("none".equals(soundType)) {
+            return;
+        }
+        if ("vanilla_hurt".equals(soundType)) {
+            entity.level().playSound(null, entity.getX(), entity.getY(), entity.getZ(),
+                    SoundEvents.PLAYER_HURT, SoundSource.PLAYERS, 0.5F, 1.0F);
+        } else if ("shield_hit".equals(soundType)) {
+            entity.level().playSound(null, entity.getX(), entity.getY(), entity.getZ(),
+                    ModSounds.SHIELD_HIT.get(), SoundSource.PLAYERS, 0.8F, 1.0F);
+        }
     }
 }

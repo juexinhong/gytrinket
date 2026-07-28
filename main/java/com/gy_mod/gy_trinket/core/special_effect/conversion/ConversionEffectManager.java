@@ -1,8 +1,8 @@
 package com.gy_mod.gy_trinket.core.special_effect.conversion;
 
-import com.gy_mod.gy_trinket.Config;
+import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
-import com.gy_mod.gy_trinket.core.disable.DisableSystem;
+import com.gy_mod.gy_trinket.core.shield.DisableSystem;
 import com.gy_mod.gy_trinket.core.modifier.player.health.PlayerHealthManager;
 import com.gy_mod.gy_trinket.event.PlayerAttributesCalculatedEvent;
 import com.gy_mod.gy_trinket.storage.PlayerStore;
@@ -60,10 +60,10 @@ public class ConversionEffectManager {
             return;
         }
 
-        // 步骤1：立即清除转化施加的动态属性
-        removeConversionAttributes(playerUUID);
+        // 获取排除转化自身影响后的护盾值，避免循环膨胀
+        double shieldValue = AttributeManager.getGroupAttributeExcludingNamespace(playerUUID, "shield", DYNAMIC_ATTRIBUTE_KEY);
 
-        // 步骤2：确保获取到的是应用了所有修饰符后的生命值
+        // 获取玩家最大生命值
         ServerPlayer player = event.getPlayer();
         if (player == null) {
             var server = ServerLifecycleHooks.getCurrentServer();
@@ -72,32 +72,22 @@ public class ConversionEffectManager {
             }
         }
 
-        // 获取护盾值（属性组计算后的值）
-        double shieldValue = AttributeManager.getGroupAttribute(playerUUID, "shield");
-
-        // 获取玩家最大生命值（确保应用了修饰符后的值）
         double healthValue = 20.0;
         if (player != null && player.isAlive()) {
-            // 先确保生命修饰符已应用
             double healthBase = AttributeManager.getPlayerAttribute(playerUUID, "player_health");
             double healthPercent = AttributeManager.getPlayerAttribute(playerUUID, "player_health_percent");
             double healthIndependent = AttributeManager.getPlayerAttribute(playerUUID, "player_health_independent");
 
-            // 如果有生命属性需要应用，手动调用 PlayerHealthManager 的逻辑
             if (healthBase != 0 || healthPercent != 1.0 || healthIndependent != 1.0) {
-                // 应用生命修饰符到玩家
                 PlayerHealthManager.onAttributesCalculated(event);
             }
 
-            // 现在获取的就是应用了修饰符后的生命值
             healthValue = player.getMaxHealth();
         }
 
-        // 保存到映射中，防止循环膨胀
         PLAYER_BASE_VALUES.put(playerUUID, new ConversionBaseValues(shieldValue, healthValue));
 
-        // 步骤3：执行转化
-        // 步骤4：设置动态属性
+        // 直接计算并设置（不再先清除再设置）
         performConversion(playerUUID);
     }
 
@@ -119,18 +109,16 @@ public class ConversionEffectManager {
         double conversionRatio = Config.CONVERSION_RATIO.get();
 
         if (health <= shield) {
-            // 生命值 <= 护盾值：将生命转化给护盾
             double convertAmount = health * conversionRatio;
             healthMultiplier = (health - convertAmount) / health - 1;
             shieldMultiplier = (shield + convertAmount) / shield - 1;
         } else {
-            // 护盾值 < 生命值：将护盾转化给生命
             double convertAmount = shield * conversionRatio;
             shieldMultiplier = (shield - convertAmount) / shield - 1;
             healthMultiplier = (health + convertAmount) / health - 1;
         }
 
-        // 设置动态属性（独立乘区）
+        // 直接设置，setDynamicAttribute 内部会检查值是否变化，相同则跳过
         AttributeManager.setDynamicAttribute(playerUUID, DYNAMIC_ATTRIBUTE_KEY, "player_health_independent", healthMultiplier);
         AttributeManager.setDynamicAttribute(playerUUID, DYNAMIC_ATTRIBUTE_KEY, "shield_independent", shieldMultiplier);
     }

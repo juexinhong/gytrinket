@@ -1,8 +1,8 @@
 package com.gy_mod.gy_trinket.core.entity.construct.drone;
 
-import com.gy_mod.gy_trinket.Config;
-import com.gy_mod.gy_trinket.core.execute.ExecuteToggleManager;
-import com.gy_mod.gy_trinket.core.hostile_target.HostileTargetManager;
+import com.gy_mod.gy_trinket.config.Config;
+import com.gy_mod.gy_trinket.core.attack_mode.ExecuteToggleManager;
+import com.gy_mod.gy_trinket.core.entity.construct.HostileTargetManager;
 import com.gy_mod.gy_trinket.core.modifier.player.knockback.KnockbackManager;
 import com.gy_mod.gy_trinket.core.vulnerability.VulnerabilityApplyEvent;
 import net.minecraft.nbt.CompoundTag;

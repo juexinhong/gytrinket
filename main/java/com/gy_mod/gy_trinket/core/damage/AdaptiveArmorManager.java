@@ -1,8 +1,8 @@
 package com.gy_mod.gy_trinket.core.damage;
 
-import com.gy_mod.gy_trinket.Config;
+import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
-import com.gy_mod.gy_trinket.core.disable.DisableSystem;
+import com.gy_mod.gy_trinket.core.shield.DisableSystem;
 import com.gy_mod.gy_trinket.event.PlayerAttributesCalculatedEvent;
 import com.gy_mod.gy_trinket.storage.PlayerStore;
 import com.gy_mod.gy_trinket.storage.PlayerStoreManager;

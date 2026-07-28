@@ -1,6 +1,6 @@
 package com.gy_mod.gy_trinket.core.burn;
 
-import com.gy_mod.gy_trinket.damage.ModDamageTypes;
+import com.gy_mod.gy_trinket.core.damage.ModDamageTypes;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
@@ -150,12 +150,12 @@ public class BurnManager {
      */
     private static boolean isExecuteAttributionEnabled(Entity initiator) {
         if (initiator instanceof net.minecraft.world.entity.player.Player player) {
-            return com.gy_mod.gy_trinket.core.execute.ExecuteToggleManager.isExecuteEnabled(player);
+            return com.gy_mod.gy_trinket.core.attack_mode.ExecuteToggleManager.isExecuteEnabled(player);
         }
         if (initiator instanceof com.gy_mod.gy_trinket.core.entity.construct.drone.DroneConstructEntity drone) {
             net.minecraft.world.entity.Entity owner = drone.getOwner();
             if (owner instanceof net.minecraft.world.entity.player.Player player) {
-                return com.gy_mod.gy_trinket.core.execute.ExecuteToggleManager.isExecuteEnabled(player);
+                return com.gy_mod.gy_trinket.core.attack_mode.ExecuteToggleManager.isExecuteEnabled(player);
             }
         }
         return true;

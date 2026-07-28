@@ -6,6 +6,7 @@ import com.gy_mod.gy_trinket.client.screen.UpgradeSelectScreen;
 import com.gy_mod.gy_trinket.client.screen.UpgradeTargetScreen;
 import com.gy_mod.gy_trinket.gytrinket;
 import com.gy_mod.gy_trinket.network.NetworkHandler;
+import com.gy_mod.gy_trinket.network.packet.RequestPanelDataMessage;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
@@ -48,7 +49,7 @@ public class KeyInputHandler {
                         || minecraft.screen instanceof ConfigPanelScreen) {
                     minecraft.setScreen(null);
                 } else if (minecraft.screen == null) {
-                    NetworkHandler.INSTANCE.sendToServer(new NetworkHandler.RequestPanelDataMessage());
+                    NetworkHandler.INSTANCE.sendToServer(new RequestPanelDataMessage());
                 }
             }
         }

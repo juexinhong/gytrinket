@@ -1,7 +1,7 @@
 package com.gy_mod.gy_trinket.core.entity.construct.drone;
 
-import com.gy_mod.gy_trinket.core.execute.ExecuteToggleManager;
-import com.gy_mod.gy_trinket.damage.ModDamageTypes;
+import com.gy_mod.gy_trinket.core.attack_mode.ExecuteToggleManager;
+import com.gy_mod.gy_trinket.core.damage.ModDamageTypes;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;

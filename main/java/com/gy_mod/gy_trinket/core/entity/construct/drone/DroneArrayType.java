@@ -1,7 +1,7 @@
 package com.gy_mod.gy_trinket.core.entity.construct.drone;
 
-import com.gy_mod.gy_trinket.Config;
-import com.gy_mod.gy_trinket.core.disable.DisableSystem;
+import com.gy_mod.gy_trinket.config.Config;
+import com.gy_mod.gy_trinket.core.shield.DisableSystem;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.behavior.IDroneBehavior;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.behavior.OrbitBehavior;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.behavior.PursuitBehavior;

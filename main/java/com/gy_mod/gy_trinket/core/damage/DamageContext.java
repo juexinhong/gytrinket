@@ -1,6 +1,6 @@
 package com.gy_mod.gy_trinket.core.damage;
 
-import com.gy_mod.gy_trinket.damage.ModDamageTypes;
+import com.gy_mod.gy_trinket.core.damage.ModDamageTypes;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageType;

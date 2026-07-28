@@ -1,6 +1,8 @@
 package com.gy_mod.gy_trinket.network.packet;
 
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.network.NetworkEvent;
 
 import java.util.function.Supplier;
@@ -61,13 +63,15 @@ public class ShieldParticlePacket {
     
     public void handle(Supplier<NetworkEvent.Context> context) {
         context.get().enqueueWork(() -> {
-            if (delayTicks > 0) {
-                com.gy_mod.gy_trinket.client.effect.particle.ShieldParticleTimerManager.getInstance()
-                    .addPendingParticle(entityId, originOffsetX, originOffsetY, originOffsetZ, offsetX, offsetY, offsetZ, dirX, dirY, dirZ, delayTicks);
-            } else {
-                com.gy_mod.gy_trinket.client.effect.particle.ShieldParticleRenderManager.getInstance()
-                    .addParticle(entityId, originOffsetX, originOffsetY, originOffsetZ, offsetX, offsetY, offsetZ, dirX, dirY, dirZ);
-            }
+            DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> {
+                if (delayTicks > 0) {
+                    com.gy_mod.gy_trinket.client.effect.particle.ShieldParticleTimerManager.getInstance()
+                        .addPendingParticle(entityId, originOffsetX, originOffsetY, originOffsetZ, offsetX, offsetY, offsetZ, dirX, dirY, dirZ, delayTicks);
+                } else {
+                    com.gy_mod.gy_trinket.client.effect.particle.ShieldParticleRenderManager.getInstance()
+                        .addParticle(entityId, originOffsetX, originOffsetY, originOffsetZ, offsetX, offsetY, offsetZ, dirX, dirY, dirZ);
+                }
+            });
         });
         context.get().setPacketHandled(true);
     }

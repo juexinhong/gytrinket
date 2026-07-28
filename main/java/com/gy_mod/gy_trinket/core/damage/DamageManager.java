@@ -3,7 +3,7 @@ package com.gy_mod.gy_trinket.core.damage;
 import com.gy_mod.gy_trinket.core.shield.ShieldManager;
 import com.gy_mod.gy_trinket.core.shield.type.ShieldTypeManager;
 import com.gy_mod.gy_trinket.core.shield_transfer.ShieldTransferManager;
-import com.gy_mod.gy_trinket.damage.ModDamageTypes;
+import com.gy_mod.gy_trinket.core.damage.ModDamageTypes;
 import com.gy_mod.gy_trinket.gytrinket;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;

@@ -1,6 +1,6 @@
 package com.gy_mod.gy_trinket.core.attack_mode.assault;
 
-import com.gy_mod.gy_trinket.Config;
+import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.core.attack_mode.AttackModeManager;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
 import com.gy_mod.gy_trinket.event.PlayerAttributesCalculatedEvent;

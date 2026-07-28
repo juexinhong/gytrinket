@@ -1,6 +1,6 @@
 package com.gy_mod.gy_trinket.event;
 
-import com.gy_mod.gy_trinket.Config;
+import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
 import com.gy_mod.gy_trinket.core.level.ModLevelManager;
 import com.gy_mod.gy_trinket.gytrinket;
@@ -207,6 +207,8 @@ public class QuickEquipEvent {
                 || Config.isGuardArrayItem(item)
                 || Config.isSelfDestructItem(item)
                 || Config.isWingmanModuleItem(item)
+                || Config.isInterceptorModuleItem(item)
+                || Config.isEvolutionModuleItem(item)
                 || Config.isSwarmModuleItem(item);
     }
 

@@ -1,6 +1,6 @@
 package com.gy_mod.gy_trinket.core.entity.construct.drone;
 
-import com.gy_mod.gy_trinket.Config;
+import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.core.entity.construct.AbstractConstructEntity;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructAttributeApplier;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructData;
@@ -10,7 +10,7 @@ import com.gy_mod.gy_trinket.core.entity.construct.drone.behavior.DroneSpecialBe
 import com.gy_mod.gy_trinket.core.entity.construct.drone.behavior.PursuitBehavior;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.behavior.FormationBehavior;
 import com.gy_mod.gy_trinket.core.explosion.SimulatedExplosion;
-import com.gy_mod.gy_trinket.core.hostile_target.HostileTargetManager;
+import com.gy_mod.gy_trinket.core.entity.construct.HostileTargetManager;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
@@ -349,8 +349,20 @@ public class DroneConstructEntity extends AbstractConstructEntity {
     // ===== 抽象方法实现 =====
 
     @Override
-    protected String getConstructTypeId() {
+    public String getConstructTypeId() {
         return DroneConstructTypes.DRONE;
+    }
+
+    @Override
+    public Set<String> getInstanceTags() {
+        java.util.Set<String> tags = super.getInstanceTags();
+        if (droneConstruct != null) {
+            tags.addAll(droneConstruct.getCurrentTags());
+        }
+        if (isCommander) {
+            tags.add("commander");
+        }
+        return tags;
     }
 
     @Override
@@ -371,7 +383,7 @@ public class DroneConstructEntity extends AbstractConstructEntity {
 
     @Override
     protected void applyConstructAttributes(UUID playerUUID, Map<String, Double> attributes) {
-        ConstructAttributeApplier.applyAttributesToDrone(playerUUID, this, attributes);
+        ConstructAttributeApplier.applyAttributesToConstruct(playerUUID, this, this, attributes);
     }
 
     // ===== 类型特定 NBT 钩子 =====

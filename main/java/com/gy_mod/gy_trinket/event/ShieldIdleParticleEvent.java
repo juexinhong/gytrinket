@@ -1,6 +1,6 @@
 package com.gy_mod.gy_trinket.event;
 
-import com.gy_mod.gy_trinket.ClientConfig;
+import com.gy_mod.gy_trinket.config.ClientConfig;
 import com.gy_mod.gy_trinket.core.shield.ShieldManager;
 import com.gy_mod.gy_trinket.gytrinket;
 import com.gy_mod.gy_trinket.network.NetworkHandler;

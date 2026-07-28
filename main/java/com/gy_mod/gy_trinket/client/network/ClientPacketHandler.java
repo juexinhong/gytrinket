@@ -1,13 +1,14 @@
 package com.gy_mod.gy_trinket.client.network;
 
-import com.gy_mod.gy_trinket.Config;
+import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.client.screen.AbstractPanelScreen;
 import com.gy_mod.gy_trinket.client.screen.ConfigPanelScreen;
 import com.gy_mod.gy_trinket.client.screen.PlayerPanelScreen;
 import com.gy_mod.gy_trinket.client.screen.UpgradeSelectScreen;
 import com.gy_mod.gy_trinket.client.screen.UpgradeTargetScreen;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
-import com.gy_mod.gy_trinket.network.NetworkHandler;
+import com.gy_mod.gy_trinket.network.packet.ResponsePanelDataMessage;
+import com.gy_mod.gy_trinket.network.packet.ResponseConfigDataMessage;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.nbt.CompoundTag;
@@ -19,7 +20,7 @@ import java.util.Map;
 public final class ClientPacketHandler {
     private ClientPacketHandler() {}
 
-    public static void handleResponsePanelData(NetworkHandler.ResponsePanelDataMessage msg) {
+    public static void handleResponsePanelData(ResponsePanelDataMessage msg) {
         Minecraft mc = Minecraft.getInstance();
         Screen currentScreen = mc.screen;
         PlayerPanelScreen panelScreen = null;
@@ -66,7 +67,7 @@ public final class ClientPacketHandler {
         }
     }
 
-    public static void handleResponseConfigData(NetworkHandler.ResponseConfigDataMessage msg) {
+    public static void handleResponseConfigData(ResponseConfigDataMessage msg) {
         syncLocalAttributeManager(msg.itemConfigData);
         Config.saveItemAttributesConfig();
 

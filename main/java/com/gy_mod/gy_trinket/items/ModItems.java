@@ -135,6 +135,12 @@ public class ModItems {
 
     // 僚机物品
     public static final RegistryObject<Item> WINGMAN_MODULE = ITEMS.register("wingman_module", () -> new Item(new Item.Properties())); // 僚机模块
+    public static final RegistryObject<Item> INTERCEPTOR_MODULE = ITEMS.register("interceptor_module", () -> new Item(new Item.Properties())); // 拦截机模块
+    public static final RegistryObject<Item> EVOLUTION_MODULE = ITEMS.register("evolution_module", () -> new Item(new Item.Properties())); // 进化模块
+    public static final RegistryObject<Item> NANO_REGEN_MODULE = ITEMS.register("nano_regen_module", () -> new Item(new Item.Properties())); // 纳米再生模块
+    public static final RegistryObject<Item> SUPPRESSION_MODULE = ITEMS.register("suppression_module", () -> new Item(new Item.Properties())); // 压制模块
+    public static final RegistryObject<Item> SHOCKWAVE_MODULE = ITEMS.register("shockwave_module", () -> new Item(new Item.Properties())); // 震撼弹模块
+    public static final RegistryObject<Item> WRENCH = ITEMS.register("wrench", () -> new WrenchItem(new Item.Properties().stacksTo(1))); // 扳手
 
     // 超越模块
     public static final RegistryObject<Item> CHARGED_SHIELD_MODULE = ITEMS.register("charged_shield_module", () -> new Item(new Item.Properties())); // 充能护盾模块

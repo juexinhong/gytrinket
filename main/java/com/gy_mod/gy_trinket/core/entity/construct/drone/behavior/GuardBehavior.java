@@ -1,13 +1,13 @@
 package com.gy_mod.gy_trinket.core.entity.construct.drone.behavior;
 
-import com.gy_mod.gy_trinket.Config;
+import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructGroupCache;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructManager;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneArrayType;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneBullet;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneConstructEntity;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneConstructTypes;
-import com.gy_mod.gy_trinket.core.hostile_target.HostileTargetManager;
+import com.gy_mod.gy_trinket.core.entity.construct.HostileTargetManager;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.Attributes;

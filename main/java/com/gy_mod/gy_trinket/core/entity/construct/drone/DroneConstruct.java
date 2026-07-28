@@ -72,7 +72,10 @@ public class DroneConstruct extends AbstractConstruct {
         Vec3 spawnPos = owner.position().add(0, 2, 0);
         drone.setPos(spawnPos.x, spawnPos.y, spawnPos.z);
 
-        // 设置生命值为最大生命值
+        // 主动获取构造体属性（进化/母舰等动态属性需在实体创建后应用）
+        drone.refreshConstructAttributes();
+
+        // 属性应用后再设置满血（此时maxHealth已包含动态加成）
         drone.setHealth(drone.getMaxHealth());
 
         level.addFreshEntity(drone);

@@ -145,6 +145,12 @@ public class ModCreativeModeTabs {
 
                         // 僚机物品
                         output.accept(ModItems.WINGMAN_MODULE.get());
+                        output.accept(ModItems.INTERCEPTOR_MODULE.get());
+                        output.accept(ModItems.EVOLUTION_MODULE.get());
+                        output.accept(ModItems.NANO_REGEN_MODULE.get());
+                        output.accept(ModItems.SUPPRESSION_MODULE.get());
+                        output.accept(ModItems.SHOCKWAVE_MODULE.get());
+                        output.accept(ModItems.WRENCH.get());
 
                         // 超越模块
                         output.accept(ModItems.CHARGED_SHIELD_MODULE.get());

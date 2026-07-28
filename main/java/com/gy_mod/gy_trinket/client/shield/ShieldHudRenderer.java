@@ -1,6 +1,6 @@
 package com.gy_mod.gy_trinket.client.shield;
 
-import com.gy_mod.gy_trinket.ClientConfig;
+import com.gy_mod.gy_trinket.config.ClientConfig;
 import com.mojang.blaze3d.platform.Window;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;

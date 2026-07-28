@@ -1,6 +1,6 @@
 package com.gy_mod.gy_trinket.core.shield.type;
 
-import com.gy_mod.gy_trinket.Config;
+import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
 import com.gy_mod.gy_trinket.core.shield.ShieldManager;
 import net.minecraft.world.entity.Entity;

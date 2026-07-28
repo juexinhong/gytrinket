@@ -265,5 +265,31 @@ public class ConstructAttributeRegistry {
                         .category(ConstructCategory.CONSTRUCT)
                         .tag("swarm")
                         .build());
+
+        // 僚机进化属性
+        register("wingman_evolution_health_percent",
+                ConstructAttributeTarget.builder(ConstructAttributeTarget.EffectType.HEALTH)
+                        .category(ConstructCategory.CONSTRUCT)
+                        .tag("wingman")
+                        .build());
+
+        register("wingman_evolution_attack_speed_percent",
+                ConstructAttributeTarget.builder(ConstructAttributeTarget.EffectType.ATTACK_SPEED)
+                        .category(ConstructCategory.CONSTRUCT)
+                        .tag("wingman")
+                        .build());
+
+        register("wingman_explosive_count",
+                ConstructAttributeTarget.builder(ConstructAttributeTarget.EffectType.EXPLOSIVE_COUNT)
+                        .category(ConstructCategory.CONSTRUCT)
+                        .tag("wingman")
+                        .build());
+
+        // 拦截机武器攻击速度属性（仅影响武器攻击，不影响爆破弹攻速）
+        register("wingman_weapon_attack_speed_percent",
+                ConstructAttributeTarget.builder(ConstructAttributeTarget.EffectType.WEAPON_ATTACK_SPEED)
+                        .category(ConstructCategory.CONSTRUCT)
+                        .tag("wingman")
+                        .build());
     }
 }

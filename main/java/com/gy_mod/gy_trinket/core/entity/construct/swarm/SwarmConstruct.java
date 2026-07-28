@@ -125,6 +125,11 @@ public class SwarmConstruct implements IConstruct {
 
         Vec3 spawnPos = owner.position().add(0, 2, 0);
         swarm.setPos(spawnPos.x, spawnPos.y, spawnPos.z);
+
+        // 主动获取构造体属性（进化/母舰等动态属性需在实体创建后应用）
+        swarm.refreshConstructAttributes();
+
+        // 属性应用后再设置满血（此时maxHealth已包含动态加成）
         swarm.setHealth(swarm.getMaxHealth());
 
         level.addFreshEntity(swarm);

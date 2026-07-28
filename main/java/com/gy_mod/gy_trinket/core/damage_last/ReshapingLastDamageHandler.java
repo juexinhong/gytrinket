@@ -3,7 +3,7 @@ package com.gy_mod.gy_trinket.core.damage_last;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.behavior.ReshapingBehavior;
 import com.gy_mod.gy_trinket.core.shield.ShieldManager;
 import com.gy_mod.gy_trinket.core.shield_transfer.ShieldTransferManager;
-import com.gy_mod.gy_trinket.damage.ModDamageTypes;
+import com.gy_mod.gy_trinket.core.damage.ModDamageTypes;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.damagesource.DamageType;
 import net.minecraft.world.entity.LivingEntity;

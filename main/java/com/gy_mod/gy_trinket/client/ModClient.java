@@ -4,6 +4,7 @@ import com.gy_mod.gy_trinket.blocks.ModBlockEntities;
 import com.gy_mod.gy_trinket.core.attack_mode.electric_discharge.client.LightningRenderManager;
 import com.gy_mod.gy_trinket.client.effect.particle.ShieldParticleRenderEvent;
 import com.gy_mod.gy_trinket.client.effect.particle.ShieldParticleTickEvent;
+import com.gy_mod.gy_trinket.client.shader.ModShaders;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.ModEntities;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneRenderer;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneBulletRenderer;
@@ -14,11 +15,18 @@ import com.gy_mod.gy_trinket.core.entity.construct.wingman.WingmanRenderer;
 import com.gy_mod.gy_trinket.core.entity.construct.wingman.ExplosiveProjectileRenderer;
 import com.gy_mod.gy_trinket.core.entity.construct.swarm.SwarmRenderer;
 import com.gy_mod.gy_trinket.core.entity.construct.swarm.client.EnergyWaveRenderManager;
+import com.gy_mod.gy_trinket.core.entity.construct.swarm.client.EnergyWaveShaderRenderer;
 import com.gy_mod.gy_trinket.key.KeyInputHandler;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneInputHandler;
+import com.gy_mod.gy_trinket.core.entity.construct.wingman.InterceptorConfigContainer;
+import com.gy_mod.gy_trinket.client.screen.InterceptorConfigContainerScreen;
+import net.minecraft.client.renderer.ShaderInstance;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.EntityRenderersEvent;
 import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
+import net.minecraftforge.client.event.RegisterShadersEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -35,8 +43,13 @@ public class ModClient {
      */
     @SubscribeEvent
     public static void onClientSetup(FMLClientSetupEvent event) {
+        event.enqueueWork(() -> {
+            net.minecraft.client.gui.screens.MenuScreens.register(
+                    InterceptorConfigContainer.TYPE, InterceptorConfigContainerScreen::new);
+        });
+
         MinecraftForge.EVENT_BUS.addListener(LightningRenderManager::onRenderLevelLast);
-        MinecraftForge.EVENT_BUS.addListener(EnergyWaveRenderManager::onRenderLevelLast);
+        MinecraftForge.EVENT_BUS.addListener(com.gy_mod.gy_trinket.client.effect.energywave.EnergyWaveVisualManager::onRenderLevelLast);
         MinecraftForge.EVENT_BUS.addListener(DroneBulletTrailManager::onRenderLevelLast);
         ShieldParticleRenderEvent.init();
         ShieldParticleTickEvent.init();
@@ -47,6 +60,31 @@ public class ModClient {
     public static void onRegisterKeyMappings(RegisterKeyMappingsEvent event) {
         KeyInputHandler.onRegisterKeyMappings(event);
         DroneInputHandler.onRegisterKeyMappings(event);
+    }
+
+    /**
+     * 注册自定义着色器
+     * shield_glass: Alpha 混合（玻璃表面）
+     * energy_wave: 能量波着色器渲染
+     */
+    @SubscribeEvent
+    public static void onRegisterShaders(RegisterShadersEvent event) throws java.io.IOException {
+        event.registerShader(
+            new ShaderInstance(
+                event.getResourceProvider(),
+                new ResourceLocation(com.gy_mod.gy_trinket.gytrinket.MODID, "shield_glass"),
+                com.mojang.blaze3d.vertex.DefaultVertexFormat.POSITION_TEX_COLOR
+            ),
+            ModShaders::setShieldGlassShader
+        );
+        event.registerShader(
+            new ShaderInstance(
+                event.getResourceProvider(),
+                new ResourceLocation(com.gy_mod.gy_trinket.gytrinket.MODID, "gytrinket_energy_wave"),
+                com.mojang.blaze3d.vertex.DefaultVertexFormat.POSITION_TEX
+            ),
+            ModShaders::setEnergyWaveShader
+        );
     }
     
     /**

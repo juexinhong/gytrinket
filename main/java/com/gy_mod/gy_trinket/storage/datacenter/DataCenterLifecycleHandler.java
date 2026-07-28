@@ -1,13 +1,16 @@
 package com.gy_mod.gy_trinket.storage.datacenter;
 
-import com.gy_mod.gy_trinket.Config;
+import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.core.damage.InvincibilityMarkerManager;
 import com.gy_mod.gy_trinket.core.entity.construct.AbstractConstructEntity;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructData;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructManager;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructType;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.*;
+import com.gy_mod.gy_trinket.core.entity.construct.wingman.InterceptorWeaponManager;
+import com.gy_mod.gy_trinket.core.entity.construct.wingman.attack_mode.InterceptorAttackModeManager;
 import com.gy_mod.gy_trinket.core.entity.construct.wingman.WingmanConstructData;
+import com.gy_mod.gy_trinket.network.NetworkHandler;
 import com.gy_mod.gy_trinket.core.entity.construct.swarm.SwarmConstructData;
 import com.gy_mod.gy_trinket.core.shield.ShieldData;
 import com.gy_mod.gy_trinket.core.shield.ShieldManager;
@@ -104,7 +107,7 @@ public class DataCenterLifecycleHandler {
         String activeType = ShieldTypeSlot.determineActiveType(player.getUUID());
         PlayerDataCenter.setData(player.getUUID(), "active_shield_type", activeType);
 
-        com.gy_mod.gy_trinket.core.disable.DisableSystem.updateDisabledItems(player.getUUID());
+        com.gy_mod.gy_trinket.core.shield.DisableSystem.updateDisabledItems(player.getUUID());
 
         // Phase 4: 加载构造体/无人机数据（此时属性已重算，drone_count加成已生效）
         loadConstructAndDroneData(serverPlayer);
@@ -141,6 +144,8 @@ public class DataCenterLifecycleHandler {
 
         ConstructManager.getInstance().clearPlayerData(player);
         DroneArrayManager.getInstance().removePlayerData(player);
+        InterceptorWeaponManager.clearPlayerData(player.getUUID());
+        InterceptorAttackModeManager.clearPlayerData(serverPlayer);
 
         gytrinket.LOGGER.debug("玩家 {} 退出，数据中心清理完成", player.getUUID());
     }
@@ -148,6 +153,15 @@ public class DataCenterLifecycleHandler {
     @SubscribeEvent
     public static void onPlayerRespawn(PlayerEvent.PlayerRespawnEvent event) {
         PlayerDataCenter.onRespawn(event.getEntity());
+
+        if (event.getEntity() instanceof ServerPlayer player) {
+            UUID playerUUID = player.getUUID();
+            // 防御性清理：重生时清理 PLAYER_DISABLED_ITEMS 并重建禁用系统，
+            // 防止 AttributeManager.onPlayerRespawn 在之前执行时使用脏数据
+            com.gy_mod.gy_trinket.core.shield.DisableSystem.clearPlayerData(playerUUID);
+            com.gy_mod.gy_trinket.core.shield.type.ShieldTypeManager.clearPlayerShieldTypes(playerUUID);
+            com.gy_mod.gy_trinket.core.shield.DisableSystem.updateDisabledItems(playerUUID);
+        }
     }
 
     @SubscribeEvent
@@ -254,6 +268,14 @@ public class DataCenterLifecycleHandler {
             existingData.remove("drone_array");
         }
 
+        // 保存拦截机武器/攻击模式数据
+        CompoundTag interceptorTag = InterceptorWeaponManager.saveToNBT(playerUUID);
+        if (!interceptorTag.isEmpty()) {
+            existingData.put("interceptor", interceptorTag);
+        } else {
+            existingData.remove("interceptor");
+        }
+
         storage.putPlayerData(playerUUID, existingData);
     }
 
@@ -281,6 +303,16 @@ public class DataCenterLifecycleHandler {
             CompoundTag arrayTag = savedData.getCompound("drone_array");
             dam.loadFromNBT(player, arrayTag);
         }
+
+        // 加载拦截机武器/攻击模式数据
+        if (savedData.contains("interceptor")) {
+            CompoundTag interceptorTag = savedData.getCompound("interceptor");
+            InterceptorWeaponManager.loadFromNBT(playerUUID, interceptorTag);
+        }
+
+        // 同步拦截机数据到客户端（UI界面需要）
+        NetworkHandler.sendInterceptorWeaponToPlayer(player, InterceptorWeaponManager.getWeapon(playerUUID));
+        NetworkHandler.sendInterceptorAttackModeToPlayer(player, InterceptorWeaponManager.getAttackMode(playerUUID));
 
         // 加载构造体数据
         if (savedData.contains("construct_manager")) {

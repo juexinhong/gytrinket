@@ -3,6 +3,7 @@ package com.gy_mod.gy_trinket.client.attack_mode;
 import com.gy_mod.gy_trinket.core.attack_mode.AttackStateManager;
 import com.gy_mod.gy_trinket.gytrinket;
 import com.gy_mod.gy_trinket.network.NetworkHandler;
+import com.gy_mod.gy_trinket.network.packet.AttackStateMessage;
 import net.minecraft.client.Minecraft;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.event.TickEvent;
@@ -61,7 +62,7 @@ public class AttackStateInputHandler {
 
     private static void syncToServer() {
         NetworkHandler.INSTANCE.sendToServer(
-            new NetworkHandler.AttackStateMessage(currentState.ordinal(), holdTicks)
+            new AttackStateMessage(currentState.ordinal(), holdTicks)
         );
     }
 

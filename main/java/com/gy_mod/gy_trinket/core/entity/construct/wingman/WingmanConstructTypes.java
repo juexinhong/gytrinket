@@ -1,6 +1,6 @@
 package com.gy_mod.gy_trinket.core.entity.construct.wingman;
 
-import com.gy_mod.gy_trinket.Config;
+import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructCategory;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructData;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructManager;
@@ -55,7 +55,13 @@ public class WingmanConstructTypes {
 
             wingmanEntity.setOwnerUUID(player.getUUID());
 
-            // 恢复生命值比例
+            // 刷新拦截机数据到客户端（从Manager统一查询）
+            wingmanEntity.refreshInterceptorData();
+
+            // 主动获取构造体属性（进化/母舰等动态属性需在实体恢复后应用）
+            wingmanEntity.refreshConstructAttributes();
+
+            // 恢复生命值比例（此时maxHealth已包含动态加成）
             float healthRatio = (float) wingmanData.getHealthRatio();
             float newMaxHealth = wingmanEntity.getMaxHealth();
             wingmanEntity.setHealth(newMaxHealth * healthRatio);

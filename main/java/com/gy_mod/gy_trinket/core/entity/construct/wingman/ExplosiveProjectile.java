@@ -1,11 +1,11 @@
 package com.gy_mod.gy_trinket.core.entity.construct.wingman;
 
-import com.gy_mod.gy_trinket.Config;
+import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneConstructEntity;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.ModDamageSources;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.ModEntities;
-import com.gy_mod.gy_trinket.core.explosion.SimulatedExplosion;
-import com.gy_mod.gy_trinket.core.hostile_target.HostileTargetManager;
+import com.gy_mod.gy_trinket.core.explosion.EnergyWaveExplosion;
+import com.gy_mod.gy_trinket.core.entity.construct.HostileTargetManager;
 import com.gy_mod.gy_trinket.core.modifier.player.knockback.KnockbackManager;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.damagesource.DamageSource;
@@ -100,9 +100,10 @@ public class ExplosiveProjectile extends ThrowableItemProjectile {
             Vec3 currentPos = this.position();
             Vec3 nextPos = currentPos.add(velocity);
 
-            LivingEntity hitTarget = findTargetInPath(currentPos, nextPos);
+            Vec3[] hitPosOut = new Vec3[1];
+            LivingEntity hitTarget = findTargetInPath(currentPos, nextPos, hitPosOut);
             if (hitTarget != null) {
-                this.explosionPos = hitTarget.position();
+                this.explosionPos = hitPosOut[0] != null ? hitPosOut[0] : hitTarget.position();
 
                 dealDamageToTarget(hitTarget);
                 triggerExplosionAndDiscard();
@@ -120,10 +121,19 @@ public class ExplosiveProjectile extends ThrowableItemProjectile {
     }
 
     /**
-     * 沿弹道路径寻找第一个可攻击的实体
+     * 沿弹道路径寻找第一个可攻击的实体，同时返回命中交点
      */
     @Nullable
     private LivingEntity findTargetInPath(Vec3 currentPos, Vec3 nextPos) {
+        return findTargetInPath(currentPos, nextPos, null);
+    }
+
+    /**
+     * 沿弹道路径寻找第一个可攻击的实体
+     * @param hitPosOut 若非null，写入射线与碰撞箱的交点位置（重叠时取子弹当前位置）
+     */
+    @Nullable
+    private LivingEntity findTargetInPath(Vec3 currentPos, Vec3 nextPos, @Nullable Vec3[] hitPosOut) {
         Entity owner = this.getOwner();
         Player ownerPlayer = getOwnerPlayer();
 
@@ -140,6 +150,7 @@ public class ExplosiveProjectile extends ThrowableItemProjectile {
 
         LivingEntity closest = null;
         double closestDist = Double.MAX_VALUE;
+        Vec3 closestHitPos = null;
 
         AABB bulletBox = this.getBoundingBox();
 
@@ -154,6 +165,7 @@ public class ExplosiveProjectile extends ThrowableItemProjectile {
                 if (dist < closestDist) {
                     closestDist = dist;
                     closest = target;
+                    closestHitPos = currentPos;
                 }
                 continue;
             }
@@ -166,8 +178,13 @@ public class ExplosiveProjectile extends ThrowableItemProjectile {
                 if (dist < closestDist) {
                     closestDist = dist;
                     closest = target;
+                    closestHitPos = intersection;
                 }
             }
+        }
+
+        if (closest != null && hitPosOut != null && hitPosOut.length > 0) {
+            hitPosOut[0] = closestHitPos;
         }
 
         return closest;
@@ -196,16 +213,25 @@ public class ExplosiveProjectile extends ThrowableItemProjectile {
     }
 
     /**
-     * 销毁时产生模拟爆炸（在子弹自身位置）
+     * 销毁时产生能量波爆炸（方向为爆破弹飞行方向，溅射长度2格）
+     * 若玩家拥有震撼弹模块，伤害和溅射长度提升50%
      */
     private void triggerExplosionAndDiscard() {
         if (!this.level().isClientSide) {
             Vec3 pos = this.position();
             Vec3 explosionCenter = this.explosionPos != null ? this.explosionPos : pos;
             float explosionDamage = (float) Config.getWingmanExplosionDamage();
-            double explosionRadius = Config.getWingmanExplosionRadius();
+            double splashLength = 1.5;
+            Vec3 splashDirection = this.getDeltaMovement();
 
             Player ownerPlayer = getOwnerPlayer();
+
+            // 震撼弹模块加成
+            if (ownerPlayer != null && ShockwaveModuleManager.hasShockwaveModule(ownerPlayer.getUUID())) {
+                explosionDamage *= Config.getWingmanShockwaveDamageMultiplier();
+                splashLength *= Config.getWingmanShockwaveSplashLengthMultiplier();
+            }
+
             DamageSource damageSource;
             if (ownerPlayer != null) {
                 damageSource = this.damageSources().explosion(this, ownerPlayer);
@@ -214,10 +240,11 @@ public class ExplosiveProjectile extends ThrowableItemProjectile {
                 damageSource = this.damageSources().explosion(this, owner);
             }
 
-            SimulatedExplosion.execute(
+            EnergyWaveExplosion.execute(
                 this.level(),
                 explosionCenter,
-                explosionRadius,
+                splashDirection,
+                splashLength,
                 explosionDamage,
                 damageSource,
                 entity -> entity.isAlive()
@@ -227,8 +254,7 @@ public class ExplosiveProjectile extends ThrowableItemProjectile {
                         && !(entity instanceof WingmanConstructEntity)
                         && (ownerPlayer == null || HostileTargetManager.shouldAttackPlayer(entity, ownerPlayer)),
                 true,
-                ownerPlayer,
-                0.0  // 爆破弹爆炸斥力修正为0
+                ownerPlayer
             );
         }
 

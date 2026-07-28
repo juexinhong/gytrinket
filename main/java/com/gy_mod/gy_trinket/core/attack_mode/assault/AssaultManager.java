@@ -3,7 +3,7 @@ package com.gy_mod.gy_trinket.core.attack_mode.assault;
 import com.gy_mod.gy_trinket.core.attack_mode.PlayerAttackLockManager;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
 import com.gy_mod.gy_trinket.core.modifier.player.knockback.KnockbackManager;
-import com.gy_mod.gy_trinket.damage.ModDamageTypes;
+import com.gy_mod.gy_trinket.core.damage.ModDamageTypes;
 import com.gy_mod.gy_trinket.gytrinket;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
@@ -64,10 +64,10 @@ public class AssaultManager {
 
         data.stacks++;
 
-        double attackSpeedBonus = com.gy_mod.gy_trinket.Config.getAssaultAttackSpeedPerStack() * data.stacks;
+        double attackSpeedBonus = com.gy_mod.gy_trinket.config.Config.getAssaultAttackSpeedPerStack() * data.stacks;
         AttributeManager.setDynamicAttribute(uuid, "assault", "attack_speed_independent", attackSpeedBonus);
 
-        float selfDamage = (float) (com.gy_mod.gy_trinket.Config.getAssaultSelfDamagePerStack() * data.stacks);
+        float selfDamage = (float) (com.gy_mod.gy_trinket.config.Config.getAssaultSelfDamagePerStack() * data.stacks);
         if (selfDamage > 0) {
             KnockbackManager.markNoKnockback(uuid);
             player.hurt(ModDamageTypes.getPlayerSelfDamageSource(player.level()), selfDamage);

@@ -1,8 +1,8 @@
 package com.gy_mod.gy_trinket.core.entity.construct.swarm;
 
-import com.gy_mod.gy_trinket.Config;
+import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
-import com.gy_mod.gy_trinket.core.disable.DisableSystem;
+import com.gy_mod.gy_trinket.core.shield.DisableSystem;
 import com.gy_mod.gy_trinket.core.level.ModLevelManager;
 import com.gy_mod.gy_trinket.event.PlayerAttributesCalculatedEvent;
 import com.gy_mod.gy_trinket.gytrinket;
@@ -37,7 +37,10 @@ import java.util.concurrent.ConcurrentHashMap;
 public class MothershipManager {
 
     private static final String NAMESPACE = "mothership";
-    private static final String ATTR_SWARM_COUNT = "swarm_count_mothership";
+    private static final String ATTR_SWARM_COUNT = "construct_swarm_count_mothership_base";
+    private static final String ATTR_SWARM_HEALTH_INDEPENDENT = "construct_swarm_health_independent";
+    private static final String ATTR_SWARM_DAMAGE_INDEPENDENT = "construct_swarm_damage_independent";
+    private static final String ATTR_SWARM_ATTACK_SPEED_INDEPENDENT = "construct_swarm_attack_speed_independent";
 
     /** 溢出倍率存储：玩家UUID -> 溢出倍率（当蜂群数量超过极限值时，属性和易伤值的放大倍率） */
     private static final Map<UUID, Double> OVERFLOW_MULTIPLIERS = new ConcurrentHashMap<>();
@@ -100,10 +103,7 @@ public class MothershipManager {
     }
 
     /**
-     * 获取蜂群溢出倍率（当蜂群数量超过极限值时，属性和易伤值的放大倍率）。
-     * <p>
-     * 由 {@link com.gy_mod.gy_trinket.core.entity.construct.ConstructAttributeApplier#getEffectiveMaxCount}
-     * 在计算蜂群最终数量时设置。
+     * 获取蜂群溢出倍率（用于非属性系统的场景，如自爆易伤计算）。
      *
      * @param playerUUID 玩家 UUID
      * @return 溢出倍率，1.0 表示无溢出
@@ -113,7 +113,13 @@ public class MothershipManager {
     }
 
     /**
-     * 设置蜂群溢出倍率。倍率 <= 1.0 时移除存储。
+     * 设置蜂群溢出倍率。通过动态属性系统设置独立乘区值，替代直接修改基础数值。
+     * <p>
+     * 倍率 > 1.0 时，设置 construct_swarm_health_independent 等独立乘区属性；
+     * 倍率 <= 1.0 时，移除动态属性。
+     * <p>
+     * 由 {@link com.gy_mod.gy_trinket.core.entity.construct.ConstructAttributeApplier#getEffectiveMaxCount}
+     * 在计算蜂群最终数量时调用。
      *
      * @param playerUUID 玩家 UUID
      * @param multiplier 溢出倍率
@@ -121,8 +127,15 @@ public class MothershipManager {
     public static void setOverflowMultiplier(UUID playerUUID, double multiplier) {
         if (multiplier <= 1.0) {
             OVERFLOW_MULTIPLIERS.remove(playerUUID);
+            AttributeManager.removeDynamicAttribute(playerUUID, NAMESPACE, ATTR_SWARM_HEALTH_INDEPENDENT);
+            AttributeManager.removeDynamicAttribute(playerUUID, NAMESPACE, ATTR_SWARM_DAMAGE_INDEPENDENT);
+            AttributeManager.removeDynamicAttribute(playerUUID, NAMESPACE, ATTR_SWARM_ATTACK_SPEED_INDEPENDENT);
         } else {
             OVERFLOW_MULTIPLIERS.put(playerUUID, multiplier);
+            // 独立乘区：值 = multiplier（INDEPENDENT_MULTIPLY 类型，最终计算时 finalValue = baseValue * value）
+            AttributeManager.setDynamicAttribute(playerUUID, NAMESPACE, ATTR_SWARM_HEALTH_INDEPENDENT, multiplier);
+            AttributeManager.setDynamicAttribute(playerUUID, NAMESPACE, ATTR_SWARM_DAMAGE_INDEPENDENT, multiplier);
+            AttributeManager.setDynamicAttribute(playerUUID, NAMESPACE, ATTR_SWARM_ATTACK_SPEED_INDEPENDENT, multiplier);
         }
     }
 }

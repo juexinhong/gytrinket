@@ -1,11 +1,12 @@
 package com.gy_mod.gy_trinket.core.entity.construct.swarm;
 
-import com.gy_mod.gy_trinket.Config;
+import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.core.entity.construct.*;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.ModDamageSources;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.behavior.BoidCalculator;
-import com.gy_mod.gy_trinket.core.execute.ExecuteToggleManager;
-import com.gy_mod.gy_trinket.core.hostile_target.HostileTargetManager;
+import com.gy_mod.gy_trinket.core.attack_mode.ExecuteToggleManager;
+import com.gy_mod.gy_trinket.core.explosion.EnergyWaveExplosion;
+import com.gy_mod.gy_trinket.core.entity.construct.HostileTargetManager;
 import com.gy_mod.gy_trinket.core.modifier.player.knockback.KnockbackManager;
 import com.gy_mod.gy_trinket.core.shield.ShieldManager;
 import com.gy_mod.gy_trinket.network.NetworkHandler;
@@ -32,6 +33,7 @@ import net.minecraftforge.common.MinecraftForge;
 
 import javax.annotation.Nullable;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * 蜂群构造体实体类
@@ -103,7 +105,7 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
         setOwnerUUID(ownerUUID);
         this.swarmConstruct = swarmConstruct;
         this.tier = swarmConstruct.getTier();
-        applyAttributeModifiers();
+        refreshConstructAttributes();
     }
 
     @Override
@@ -116,8 +118,17 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
     // ===== 抽象方法实现 =====
 
     @Override
-    protected String getConstructTypeId() {
+    public String getConstructTypeId() {
         return SwarmConstructTypes.SWARM;
+    }
+
+    @Override
+    public Set<String> getInstanceTags() {
+        java.util.Set<String> tags = super.getInstanceTags();
+        if (swarmConstruct != null) {
+            tags.addAll(swarmConstruct.getCurrentTags());
+        }
+        return tags;
     }
 
     @Override
@@ -133,20 +144,12 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
 
     @Override
     protected void applyConstructAttributes(UUID playerUUID, Map<String, Double> attributes) {
-        ConstructAttributeApplier.applyAttributesToSwarm(playerUUID, this, attributes);
+        ConstructAttributeApplier.applyAttributesToConstruct(playerUUID, this, this, attributes);
     }
 
     @Override
     public void refreshConstructAttributes() {
-        if (getOwnerUUID() == null) return;
-        UUID playerUUID = getOwnerUUID();
-        ServerPlayer player = null;
-        if (this.level().getServer() != null) {
-            player = this.level().getServer().getPlayerList().getPlayer(playerUUID);
-        }
-        if (player != null) {
-            ConstructAttributeApplier.applyAttributesToSwarm(playerUUID, this, ConstructAttributeApplier.computeConstructAttributes(playerUUID));
-        }
+        ConstructAttributeApplier.fetchAttributesForConstruct(this, this);
     }
 
     // ===== 蜂群特有属性 =====
@@ -176,14 +179,13 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
 
     /**
      * 蜂群重写：根据等阶重算基础生命/伤害，再应用 MAX_HEALTH + refreshConstructAttributes。
-     * 当蜂群数量超过极限值时，溢出倍率会放大基础属性以保持等效战力。
+     * 溢出机制已通过属性系统管理（construct_swarm_health_independent 等），不再直接修改基础值。
      */
     @Override
     public void applyAttributeModifiers() {
         double tierMult = getTierMultiplier();
-        double overflowMult = MothershipManager.getOverflowMultiplier(getOwnerUUID());
-        this.baseMaxHealth = Config.getSwarmBaseHealth() * tierMult * overflowMult;
-        this.baseAttackDamage = Config.getSwarmBaseDamage() * tierMult * overflowMult;
+        this.baseMaxHealth = Config.getSwarmBaseHealth() * tierMult;
+        this.baseAttackDamage = Config.getSwarmBaseDamage() * tierMult;
         if (this.getAttribute(Attributes.MAX_HEALTH) != null) {
             this.getAttribute(Attributes.MAX_HEALTH).setBaseValue(baseMaxHealth);
         }
@@ -332,9 +334,9 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
         Vec3 pos = swarm.position();
         Vec3 targetPos = target.position();
 
-        double horizontalDist = Math.sqrt(
-            Math.pow(pos.x - targetPos.x, 2) + Math.pow(pos.z - targetPos.z, 2)
-        );
+        double dx = pos.x - targetPos.x;
+        double dz = pos.z - targetPos.z;
+        double horizontalDist = Math.sqrt(dx * dx + dz * dz);
 
         double moveSpeed = Config.getSwarmMoveSpeed();
 
@@ -403,9 +405,9 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
         Vec3 ownerPos = owner.position();
         double standbyTargetY = ownerPos.y + STANDBY_HEIGHT;
 
-        double horizontalDist = Math.sqrt(
-            Math.pow(pos.x - ownerPos.x, 2) + Math.pow(pos.z - ownerPos.z, 2)
-        );
+        double dx = pos.x - ownerPos.x;
+        double dz = pos.z - ownerPos.z;
+        double horizontalDist = Math.sqrt(dx * dx + dz * dz);
 
         double dist3D = pos.distanceTo(new Vec3(ownerPos.x, standbyTargetY, ownerPos.z));
         if (dist3D > 40.0) {
@@ -449,9 +451,9 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
         Vec3 ownerPos = owner.position();
         double attackRange = Config.getSwarmAttackRange();
 
-        double horizontalDist = Math.sqrt(
-            Math.pow(pos.x - ownerPos.x, 2) + Math.pow(pos.z - ownerPos.z, 2)
-        );
+        double dx = pos.x - ownerPos.x;
+        double dz = pos.z - ownerPos.z;
+        double horizontalDist = Math.sqrt(dx * dx + dz * dz);
 
         double moveSpeed = Config.getSwarmMoveSpeed();
 
@@ -492,54 +494,48 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
         if (this.attackCooldown > 0) return;
 
         double baseAttackRange = Config.getSwarmAttackRange();
-        // 使用目标身高7/10处为检查点
-        Vec3 targetCheckPos = target.position().add(0, target.getBbHeight() * 0.7, 0);
-        // 大碰撞箱优化：目标碰撞箱宽度每有1格，攻击范围增加1格
+        // 距离检查：蜂群身高一半处为中心，目标身高70%处为检查点
+        Vec3 swarmMid = swarm.position().add(0, swarm.getBbHeight() * 0.5, 0);
+        Vec3 targetMid = target.position().add(0, target.getBbHeight() * 0.7, 0);
+        // 目标碰撞箱宽度每有1格，攻击范围增加1格容差
         double effectiveAttackRange = baseAttackRange + (int) target.getBbWidth();
 
-        double distance = swarm.position().distanceTo(targetCheckPos);
-        if (distance > effectiveAttackRange) return;
+        if (swarmMid.distanceTo(targetMid) > effectiveAttackRange) return;
 
         Player player = owner instanceof Player p ? p : null;
         float damage = (float) this.baseAttackDamage;
         float vulnValue = (float) (Config.getSwarmVulnerabilityValue() * MothershipManager.getOverflowMultiplier(owner.getUUID()));
 
-        // 使用共享索敌缓存获取攻击范围内目标，而非独立做 getEntitiesOfClass
+        // 爆心：蜂群身高一半处
+        Vec3 blastCenter = swarm.position().add(0, swarm.getBbHeight() * 0.5, 0);
+        Vec3 lookDir = this.getLookAngle().normalize();
+
+        // 使用共享索敌缓存过滤有效目标
         float arcSearchRange = (float) (baseAttackRange + 4.0);
-        List<LivingEntity> hits = ConstructGroupCache.getInstance().findTargetsInRange(
-            owner.getUUID(), owner, swarm.position(), arcSearchRange);
+        Set<UUID> validTargetUUIDs = ConstructGroupCache.getInstance()
+            .findTargetsInRange(owner.getUUID(), owner, swarmMid, arcSearchRange)
+            .stream()
+            .map(LivingEntity::getUUID)
+            .collect(Collectors.toSet());
 
-        boolean hitAny = false;
-        for (LivingEntity hit : hits) {
-            // 使用目标身高7/10处为检查点，并根据碰撞箱宽度调整攻击范围
-            Vec3 hitCheckPos = hit.position().add(0, hit.getBbHeight() * 0.7, 0);
-            double hitEffectiveRange = baseAttackRange + (int) hit.getBbWidth();
-            if (swarm.position().distanceTo(hitCheckPos) > hitEffectiveRange) continue;
-
-            KnockbackManager.markNoKnockback(hit.getUUID());
-            hit.invulnerableTime = 0;
-
-            if (player != null && hit.getHealth() < damage) {
-                DamageSource executeSource = ModDamageSources.getExecuteDamageSource(hit, player, swarm);
-                hit.hurt(executeSource, damage * 2.0f);
-                if (ExecuteToggleManager.isExecuteEnabled(player)) {
-                    hit.setLastHurtByMob(player);
+        // 使用能量波爆炸处理伤害判定（不显示爆炸特效，蜂群有自己的能量波视觉）
+        // mobAttack 使 getEntity()=蜂群 → 仇恨归蜂群自身；斩杀时由 EnergyWaveExplosion 切换为玩家归属
+        DamageSource baseDamageSource = this.damageSources().mobAttack((LivingEntity) swarm);
+        boolean hitAny = EnergyWaveExplosion.execute(
+            this.level(), blastCenter, lookDir, baseAttackRange,
+            damage, baseDamageSource,
+            entity -> validTargetUUIDs.contains(entity.getUUID()),
+            true, player,
+            hitEntity -> {
+                // 对击中目标施加易伤
+                if (vulnValue > 0.0f) {
+                    MinecraftForge.EVENT_BUS.post(
+                        new VulnerabilityApplyEvent("swarm_arc", vulnValue, hitEntity, true)
+                    );
                 }
-            } else {
-                DamageSource source = hit.damageSources().indirectMagic(swarm, swarm);
-                hit.hurt(source, damage);
-            }
-
-            hit.invulnerableTime = 0;
-
-            if (vulnValue > 0.0f) {
-                MinecraftForge.EVENT_BUS.post(
-                    new VulnerabilityApplyEvent("swarm_arc", vulnValue, hit, true)
-                );
-            }
-
-            hitAny = true;
-        }
+            },
+            false // 蜂群自带能量波视觉，不叠加爆炸特效
+        );
 
         if (hitAny) {
             spawnAttackEnergyWave(swarm);

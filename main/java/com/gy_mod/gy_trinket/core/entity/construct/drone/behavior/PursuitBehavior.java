@@ -1,12 +1,12 @@
 package com.gy_mod.gy_trinket.core.entity.construct.drone.behavior;
 
-import com.gy_mod.gy_trinket.Config;
+import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructGroupCache;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneArrayType;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneBullet;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneConstructEntity;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneConstructTypes;
-import com.gy_mod.gy_trinket.core.hostile_target.HostileTargetManager;
+import com.gy_mod.gy_trinket.core.entity.construct.HostileTargetManager;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -299,10 +299,9 @@ public class PursuitBehavior implements IDroneBehavior {
         Vec3 dronePos = drone.position();
         Vec3 targetPos = actualTarget.position();
 
-        double horizontalDist = Math.sqrt(
-            Math.pow(dronePos.x - targetPos.x, 2) +
-            Math.pow(dronePos.z - targetPos.z, 2)
-        );
+        double dx = dronePos.x - targetPos.x;
+        double dz = dronePos.z - targetPos.z;
+        double horizontalDist = Math.sqrt(dx * dx + dz * dz);
 
         double speed = 0;
         Vec3 direction = Vec3.ZERO;
@@ -374,10 +373,9 @@ public class PursuitBehavior implements IDroneBehavior {
 
         Vec3 standbyTarget = ownerPos.add(0, 3.0, 0);
 
-        double horizontalDist = Math.sqrt(
-            Math.pow(dronePos.x - ownerPos.x, 2) +
-            Math.pow(dronePos.z - ownerPos.z, 2)
-        );
+        double dx = dronePos.x - ownerPos.x;
+        double dz = dronePos.z - ownerPos.z;
+        double horizontalDist = Math.sqrt(dx * dx + dz * dz);
 
         if (horizontalDist > 20.0) {
             drone.teleportTo(ownerPos.x, ownerPos.y + 3.0, ownerPos.z);
@@ -405,10 +403,9 @@ public class PursuitBehavior implements IDroneBehavior {
             List<Vec3> movingPositions = new ArrayList<>();
             movingPositions.add(dronePos);
             for (Vec3 otherPos : snapshot.positions) {
-                double otherDist = Math.sqrt(
-                    Math.pow(otherPos.x - ownerPos.x, 2) +
-                    Math.pow(otherPos.z - ownerPos.z, 2)
-                );
+                double oDx = otherPos.x - ownerPos.x;
+                double oDz = otherPos.z - ownerPos.z;
+                double otherDist = Math.sqrt(oDx * oDx + oDz * oDz);
                 if (otherDist > STANDBY_RANGE) {
                     movingPositions.add(otherPos);
                 }

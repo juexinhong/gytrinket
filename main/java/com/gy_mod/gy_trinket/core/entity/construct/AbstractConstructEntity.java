@@ -30,6 +30,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Predicate;
 
@@ -58,6 +59,7 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
     protected double baseMaxHealth;
     protected double baseAttackDamage;
     protected double attackSpeedMultiplier = 1.0;
+    protected double weaponAttackSpeedMultiplier = 1.0;
 
     // 索敌通用参数与状态
     protected static final float PLAYER_MAX_TARGET_RANGE = 35.0f;
@@ -162,9 +164,16 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
         return attackSpeedMultiplier;
     }
 
-    @Override
     public void setAttackSpeedMultiplier(double multiplier) {
         this.attackSpeedMultiplier = multiplier;
+    }
+
+    public double getWeaponAttackSpeedMultiplier() {
+        return weaponAttackSpeedMultiplier;
+    }
+
+    public void setWeaponAttackSpeedMultiplier(double multiplier) {
+        this.weaponAttackSpeedMultiplier = multiplier;
     }
 
     // 朝向控制
@@ -443,16 +452,19 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
     // 属性应用
 
     @Override
+    /**
+     * 刷新构造体属性：构造体主动获取自身对应的属性。
+     * <p>
+     * 三种调用场景：
+     * <ol>
+     *   <li>构造体构建完毕</li>
+     *   <li>玩家重登恢复</li>
+     *   <li>待机阵列恢复</li>
+     * </ol>
+     * 通过 {@link ConstructAttributeApplier#fetchAttributesForConstruct} 从属性缓存或实时计算获取属性。
+     */
     public void refreshConstructAttributes() {
-        if (this.ownerUUID == null) return;
-        UUID playerUUID = this.ownerUUID;
-        ServerPlayer player = null;
-        if (this.level().getServer() != null) {
-            player = this.level().getServer().getPlayerList().getPlayer(playerUUID);
-        }
-        if (player != null) {
-            applyConstructAttributes(playerUUID, ConstructAttributeApplier.computeConstructAttributes(playerUUID));
-        }
+        ConstructAttributeApplier.fetchAttributesForConstruct(this, this);
     }
 
     protected void applyAttributeModifiers() {
@@ -466,7 +478,14 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
 
     // 抽象方法
 
-    protected abstract String getConstructTypeId();
+    public abstract String getConstructTypeId();
+
+    @Override
+    public Set<String> getInstanceTags() {
+        Set<String> tags = new java.util.HashSet<>();
+        // 子类可覆写以添加实例特有标签（如突击/防御/指挥官）
+        return tags;
+    }
 
     protected abstract ConstructData createConstructDataForRegistration(ServerPlayer ownerPlayer);
 

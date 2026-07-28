@@ -1,6 +1,6 @@
 package com.gy_mod.gy_trinket.core.taskmaster;
 
-import com.gy_mod.gy_trinket.Config;
+import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.event.PlayerAttributesCalculatedEvent;
 import com.gy_mod.gy_trinket.gytrinket;
 import com.gy_mod.gy_trinket.storage.PlayerStoreUtils;

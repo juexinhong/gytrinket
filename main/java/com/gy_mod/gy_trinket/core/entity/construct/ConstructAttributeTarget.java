@@ -10,8 +10,10 @@ public class ConstructAttributeTarget {
         HEALTH,
         DAMAGE,
         ATTACK_SPEED,
+        WEAPON_ATTACK_SPEED,
         BUILD_SPEED,
-        MAX_COUNT
+        MAX_COUNT,
+        EXPLOSIVE_COUNT
     }
 
     private final Set<ConstructCategory> categories;

@@ -1,6 +1,6 @@
 package com.gy_mod.gy_trinket.core.upgrade;
 
-import com.gy_mod.gy_trinket.Config;
+import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.gytrinket;
 import com.gy_mod.gy_trinket.storage.datacenter.PlayerDataCenter;
 import net.minecraft.core.RegistryAccess;

@@ -1,6 +1,6 @@
 package com.gy_mod.gy_trinket.event;
 
-import com.gy_mod.gy_trinket.Config;
+import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
 import com.gy_mod.gy_trinket.gytrinket;
 import com.gy_mod.gy_trinket.storage.PlayerStore;
@@ -36,7 +36,7 @@ public class PrecisionConstructEventHandler {
             return;
         }
 
-        int level = Math.max(0, player.experienceLevel);
+        int level = Math.max(0, com.gy_mod.gy_trinket.core.level.ModLevelManager.getModLevel(playerUUID));
         double bonus = level * Config.PRECISION_CONSTRUCT_BONUS_PER_LEVEL.get();
 
         AttributeManager.setDynamicAttribute(playerUUID, NAMESPACE, "construct_build_speed_independent", bonus);

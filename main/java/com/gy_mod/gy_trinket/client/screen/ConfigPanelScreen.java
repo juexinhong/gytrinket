@@ -1,6 +1,12 @@
 package com.gy_mod.gy_trinket.client.screen;
 
 import com.gy_mod.gy_trinket.network.NetworkHandler;
+import com.gy_mod.gy_trinket.network.packet.ConfigAddItemMessage;
+import com.gy_mod.gy_trinket.network.packet.ConfigDeleteItemMessage;
+import com.gy_mod.gy_trinket.network.packet.ConfigReorderMessage;
+import com.gy_mod.gy_trinket.network.packet.ConfigRemoveAttrMessage;
+import com.gy_mod.gy_trinket.network.packet.ConfigResetMessage;
+import com.gy_mod.gy_trinket.network.packet.ConfigUpdateMessage;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
@@ -81,7 +87,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
 
         this.addRenderableWidget(Button.builder(
                 Component.translatable("screen.gytrinket.reset_defaults"),
-                button -> NetworkHandler.INSTANCE.sendToServer(new NetworkHandler.ConfigResetMessage())
+                button -> NetworkHandler.INSTANCE.sendToServer(new ConfigResetMessage())
         ).bounds(panelX + 90, btnY, 80, 16).build());
 
         this.addRenderableWidget(Button.builder(
@@ -182,7 +188,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
                 itemConfigData.add(newItem);
 
                 NetworkHandler.INSTANCE.sendToServer(
-                    new NetworkHandler.ConfigAddItemMessage(addingItemId));
+                    new ConfigAddItemMessage(addingItemId));
             }
         }
         isAddingItem = false;
@@ -201,7 +207,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
                     CompoundTag attr = attrs.getCompound(editingAttrIndex);
                     attr.putDouble("value", val);
                     NetworkHandler.INSTANCE.sendToServer(
-                        new NetworkHandler.ConfigUpdateMessage(itemTag.getString("itemId"), attr.getString("name"), val));
+                        new ConfigUpdateMessage(itemTag.getString("itemId"), attr.getString("name"), val));
                 } catch (NumberFormatException ignored) {}
             }
         }
@@ -221,7 +227,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
                 attrs.remove(editingAttrIndex);
                 itemTag.put("attributes", attrs);
                 NetworkHandler.INSTANCE.sendToServer(
-                    new NetworkHandler.ConfigRemoveAttrMessage(itemId, editingAttrName));
+                    new ConfigRemoveAttrMessage(itemId, editingAttrName));
             }
         }
         isEditing = false;
@@ -735,7 +741,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
                     attrs.remove(hoveredAttrIndex);
                     itemTag.put("attributes", attrs);
                     NetworkHandler.INSTANCE.sendToServer(
-                        new NetworkHandler.ConfigRemoveAttrMessage(itemId, attrName));
+                        new ConfigRemoveAttrMessage(itemId, attrName));
                 }
                 isDeletingAttr = false;
                 return true;
@@ -747,7 +753,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
         if (hoveredDelete && hoveredItemIndex >= 0) {
             CompoundTag itemTag = itemConfigData.getCompound(hoveredItemIndex);
             String itemId = itemTag.getString("itemId");
-            NetworkHandler.INSTANCE.sendToServer(new NetworkHandler.ConfigDeleteItemMessage(itemId));
+            NetworkHandler.INSTANCE.sendToServer(new ConfigDeleteItemMessage(itemId));
             itemConfigData.remove(hoveredItemIndex);
             if (selectedItemIndex == hoveredItemIndex) selectedItemIndex = -1;
             else if (selectedItemIndex > hoveredItemIndex) selectedItemIndex--;
@@ -809,7 +815,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
                 else if (selectedItemIndex < dragFromIndex && selectedItemIndex >= insertIdx) selectedItemIndex++;
 
                 NetworkHandler.INSTANCE.sendToServer(
-                    new NetworkHandler.ConfigReorderMessage(dragFromIndex, dragTargetIndex));
+                    new ConfigReorderMessage(dragFromIndex, dragTargetIndex));
             }
             isDraggingItem = false;
             dragFromIndex = -1;
@@ -846,7 +852,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
 
             String itemId = itemTag.getString("itemId");
             NetworkHandler.INSTANCE.sendToServer(
-                new NetworkHandler.ConfigUpdateMessage(itemId, attrName, value));
+                new ConfigUpdateMessage(itemId, attrName, value));
         }
     }
 

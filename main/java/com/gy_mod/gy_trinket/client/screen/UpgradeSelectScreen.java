@@ -1,6 +1,8 @@
 package com.gy_mod.gy_trinket.client.screen;
 
 import com.gy_mod.gy_trinket.network.NetworkHandler;
+import com.gy_mod.gy_trinket.network.packet.UpgradeConsumeMessage;
+import com.gy_mod.gy_trinket.network.packet.UpgradeReturnMessage;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
@@ -57,7 +59,7 @@ public class UpgradeSelectScreen extends AbstractPanelScreen {
         this.addRenderableWidget(Button.builder(
                 Component.translatable("screen.gytrinket.return_materials"),
                 button -> {
-                    NetworkHandler.INSTANCE.sendToServer(new NetworkHandler.UpgradeReturnMessage(baseItemKey, upgradedItemKey));
+                    NetworkHandler.INSTANCE.sendToServer(new UpgradeReturnMessage(baseItemKey, upgradedItemKey));
                     Minecraft.getInstance().setScreen(parentScreen);
                 }
         ).bounds(panelX + 5, btnY, 90, 16).build());
@@ -158,7 +160,7 @@ public class UpgradeSelectScreen extends AbstractPanelScreen {
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (button == 0 && hoveredSlotIndex >= 0 && !hoveredItem.isEmpty()) {
-            NetworkHandler.INSTANCE.sendToServer(new NetworkHandler.UpgradeConsumeMessage(hoveredSlotIndex, baseItemKey, upgradedItemKey));
+            NetworkHandler.INSTANCE.sendToServer(new UpgradeConsumeMessage(hoveredSlotIndex, baseItemKey, upgradedItemKey));
             return true;
         }
         return super.mouseClicked(mouseX, mouseY, button);

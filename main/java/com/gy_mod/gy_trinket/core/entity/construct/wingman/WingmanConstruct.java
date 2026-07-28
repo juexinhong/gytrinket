@@ -26,6 +26,14 @@ public class WingmanConstruct extends AbstractConstruct {
 
         Vec3 spawnPos = owner.position().add(0, 2, 0);
         wingman.setPos(spawnPos.x, spawnPos.y, spawnPos.z);
+
+        // 刷新拦截机数据到客户端（从Manager统一查询）
+        wingman.refreshInterceptorData();
+
+        // 主动获取构造体属性（进化/母舰等动态属性需在实体创建后应用）
+        wingman.refreshConstructAttributes();
+
+        // 属性应用后再设置满血（此时maxHealth已包含动态加成）
         wingman.setHealth(wingman.getMaxHealth());
 
         level.addFreshEntity(wingman);

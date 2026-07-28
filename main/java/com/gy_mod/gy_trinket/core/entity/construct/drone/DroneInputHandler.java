@@ -2,6 +2,8 @@ package com.gy_mod.gy_trinket.core.entity.construct.drone;
 
 import com.gy_mod.gy_trinket.gytrinket;
 import com.gy_mod.gy_trinket.network.NetworkHandler;
+import com.gy_mod.gy_trinket.network.packet.SwitchDroneArrayMessage;
+import com.gy_mod.gy_trinket.network.packet.ToggleExecuteMessage;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
@@ -60,11 +62,11 @@ public class DroneInputHandler {
         }
 
         if (arraySwitchKey.consumeClick()) {
-            NetworkHandler.INSTANCE.sendToServer(new NetworkHandler.SwitchDroneArrayMessage());
+            NetworkHandler.INSTANCE.sendToServer(new SwitchDroneArrayMessage());
         }
 
         if (executeToggleKey.consumeClick()) {
-            NetworkHandler.INSTANCE.sendToServer(new NetworkHandler.ToggleExecuteMessage());
+            NetworkHandler.INSTANCE.sendToServer(new ToggleExecuteMessage());
         }
     }
 }

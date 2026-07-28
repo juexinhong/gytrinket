@@ -1,10 +1,10 @@
 package com.gy_mod.gy_trinket.core.attack_mode;
 
-import com.gy_mod.gy_trinket.Config;
+import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.core.attack_mode.assault.AssaultManager;
 import com.gy_mod.gy_trinket.core.attack_mode.charged_attack.ChargedAttackManager;
-import com.gy_mod.gy_trinket.core.charged_shield.ChargedShieldManager;
-import com.gy_mod.gy_trinket.core.grudge.GrudgeManager;
+import com.gy_mod.gy_trinket.core.shield.ChargedShieldManager;
+import com.gy_mod.gy_trinket.core.attack_mode.GrudgeManager;
 import com.gy_mod.gy_trinket.core.modifier.ModifierHelper;
 import com.gy_mod.gy_trinket.gytrinket;
 import net.minecraft.server.level.ServerPlayer;

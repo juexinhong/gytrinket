@@ -1,6 +1,6 @@
 package com.gy_mod.gy_trinket.core.entity.construct.drone.behavior;
 
-import com.gy_mod.gy_trinket.Config;
+import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneConstructEntity;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneBeamProjectile;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneConstructTypes;

@@ -1,6 +1,6 @@
 package com.gy_mod.gy_trinket.core.tooltip;
 
-import com.gy_mod.gy_trinket.Config;
+import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructManager;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructType;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneBullet;
@@ -418,6 +418,16 @@ public class TooltipHandler {
             addWingmanModuleDescTooltip(event);
         }
 
+        if (Config.WINGMAN_INTERCEPTOR_MODULE_ITEMS.get().contains(itemId)) {
+            addTooltip(event, "interceptor_module", ChatFormatting.GRAY);
+            addInterceptorModuleDescTooltip(event);
+        }
+
+        if (Config.WINGMAN_NANO_REGEN_MODULE_ITEMS.get().contains(itemId)) {
+            addTooltip(event, "nano_regen_module", ChatFormatting.GREEN);
+            addNanoRegenModuleDescTooltip(event);
+        }
+
         if (Config.SWARM_MODULE_ITEMS.get().contains(itemId)) {
             addTooltip(event, "mothership_body", ChatFormatting.GRAY);
             addMothershipBodyDescTooltip(event);
@@ -479,6 +489,22 @@ public class TooltipHandler {
                 event.getToolTip().add(tooltip.withStyle(ChatFormatting.GRAY));
             }
         }
+    }
+
+    /**
+     * 拦截机模块描述工具提示
+     */
+    private static void addInterceptorModuleDescTooltip(ItemTooltipEvent event) {
+        addTooltip(event, "interceptor_module_desc", ChatFormatting.GRAY);
+    }
+
+    /**
+     * 纳米再生模块描述工具提示
+     */
+    private static void addNanoRegenModuleDescTooltip(ItemTooltipEvent event) {
+        addFormattedTooltip(event, "nano_regen_module_desc", ChatFormatting.GRAY,
+            () -> new Object[]{Config.getWingmanNanoRegenPercent() * 100}
+        );
     }
 
     /**

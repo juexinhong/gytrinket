@@ -1,6 +1,6 @@
 package com.gy_mod.gy_trinket.event;
 
-import com.gy_mod.gy_trinket.Config;
+import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
 import com.gy_mod.gy_trinket.gytrinket;
 import com.gy_mod.gy_trinket.storage.PlayerStore;
@@ -32,16 +32,16 @@ public class AdvancedEngineeringEventHandler {
         UUID playerUUID = player.getUUID();
 
         if (!hasRequiredItem(playerUUID)) {
-            AttributeManager.removeDynamicAttribute(playerUUID, NAMESPACE, "drone_health_independent");
-            AttributeManager.removeDynamicAttribute(playerUUID, NAMESPACE, "drone_damage_independent");
+            AttributeManager.removeDynamicAttribute(playerUUID, NAMESPACE, "construct_drone_health_independent");
+            AttributeManager.removeDynamicAttribute(playerUUID, NAMESPACE, "construct_drone_damage_independent");
             return;
         }
 
-        int level = Math.max(0, player.experienceLevel);
+        int level = Math.max(0, com.gy_mod.gy_trinket.core.level.ModLevelManager.getModLevel(playerUUID));
         double bonus = level * Config.ADVANCED_ENGINEERING_BONUS_PER_LEVEL.get();
 
-        AttributeManager.setDynamicAttribute(playerUUID, NAMESPACE, "drone_health_independent", bonus);
-        AttributeManager.setDynamicAttribute(playerUUID, NAMESPACE, "drone_damage_independent", bonus);
+        AttributeManager.setDynamicAttribute(playerUUID, NAMESPACE, "construct_drone_health_independent", bonus);
+        AttributeManager.setDynamicAttribute(playerUUID, NAMESPACE, "construct_drone_damage_independent", bonus);
     }
 
     private static boolean hasRequiredItem(UUID playerUUID) {

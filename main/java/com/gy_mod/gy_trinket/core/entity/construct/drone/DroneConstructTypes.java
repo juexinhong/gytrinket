@@ -1,6 +1,6 @@
 package com.gy_mod.gy_trinket.core.entity.construct.drone;
 
-import com.gy_mod.gy_trinket.Config;
+import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructCategory;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructData;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructManager;
@@ -67,7 +67,6 @@ public class DroneConstructTypes {
             droneEntity.setOwnerUUID(player.getUUID());
             droneEntity.setArrayType(arrayType);
             droneEntity.setBaseMaxHealth(droneData.getMaxHealth());
-            droneEntity.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH).setBaseValue(droneData.getMaxHealth());
 
             if (droneData.hasAssaultModule()) {
                 droneEntity.addEffectTag(DroneConstructEntity.DroneEffectTag.ASSAULT);
@@ -75,9 +74,9 @@ public class DroneConstructTypes {
             if (droneData.hasDefenseModule()) {
                 droneEntity.addEffectTag(DroneConstructEntity.DroneEffectTag.DEFENSE);
             }
-            if (!droneData.hasAssaultModule() && !droneData.hasDefenseModule()) {
-                droneEntity.refreshConstructAttributes();
-            }
+
+            // 主动获取构造体属性（进化/母舰等动态属性需在实体恢复后应用）
+            droneEntity.refreshConstructAttributes();
 
             // 属性修饰器应用完毕后，用保存的生命值比例恢复当前生命值
             float healthRatio = (float) droneData.getHealthRatio();

@@ -1,6 +1,8 @@
 package com.gy_mod.gy_trinket;
 
 import com.mojang.logging.LogUtils;
+import com.gy_mod.gy_trinket.config.ClientConfig;
+import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.blocks.ModBlockEntities;
 import com.gy_mod.gy_trinket.blocks.ModBlocks;
 import com.gy_mod.gy_trinket.core.TickScheduler;
@@ -10,9 +12,9 @@ import com.gy_mod.gy_trinket.core.damage.DamageManager;
 import com.gy_mod.gy_trinket.core.damage.InvincibilityMarkerManager;
 import com.gy_mod.gy_trinket.core.damage_last.LastDamageManager;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructTypeRegistry;
-import com.gy_mod.gy_trinket.core.entity.construct.ConstructAttributeRegistry;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneRegistry;
 import com.gy_mod.gy_trinket.core.entity.construct.wingman.WingmanRegistry;
+import com.gy_mod.gy_trinket.core.entity.construct.wingman.NanoRegenManager;
 import com.gy_mod.gy_trinket.core.entity.construct.swarm.SwarmRegistry;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.ModEntities;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.behavior.DroneSpecialBehaviorManager;
@@ -25,6 +27,8 @@ import com.gy_mod.gy_trinket.core.shield.type.ShieldTypeManager;
 import com.gy_mod.gy_trinket.event.LightPointStoreEventHandler;
 import com.gy_mod.gy_trinket.items.ModCreativeModeTabs;
 import com.gy_mod.gy_trinket.items.ModItems;
+import com.gy_mod.gy_trinket.items.ModMenus;
+import com.gy_mod.gy_trinket.core.sound.ModSounds;
 import com.gy_mod.gy_trinket.network.NetworkHandler;
 import com.gy_mod.gy_trinket.storage.datacenter.DataCenterLifecycleHandler;
 import net.minecraftforge.common.MinecraftForge;
@@ -47,8 +51,10 @@ public class gytrinket {
         ModBlocks.BLOCKS.register(modEventBus);
         ModBlockEntities.BLOCK_ENTITIES.register(modEventBus);
         ModItems.ITEMS.register(modEventBus);
+        ModMenus.MENUS.register(modEventBus);
         ModCreativeModeTabs.register(modEventBus);
         ModParticles.PARTICLE_TYPES.register(modEventBus);
+        ModSounds.SOUND_EVENTS.register(modEventBus);
         ModEntities.register(modEventBus);
 
         MinecraftForge.EVENT_BUS.register(TickScheduler.class);
@@ -81,6 +87,9 @@ public class gytrinket {
         LOGGER.info("最终伤害管理器初始化完成");
         ShieldTypeManager.init();
         LOGGER.info("护盾类型管理器初始化完成");
+
+        NanoRegenManager.init();
+        LOGGER.info("纳米再生管理器初始化完成");
         
         // 注册无人机构造体类型
         ConstructTypeRegistry.register(new DroneRegistry());
@@ -91,7 +100,7 @@ public class gytrinket {
         
         ConstructTypeRegistry.executeRegistries();
 
-        ConstructAttributeRegistry.registerDefaults();
+        // ConstructAttributeRegistry.registerDefaults(); // 已废弃：属性名解析由 ConstructAttributeNameParser 替代
 
         DroneSpecialBehaviorManager.getInstance().registerBehavior(new NearDeathProtectionBehavior());
         DroneSpecialBehaviorManager.getInstance().registerBehavior(new NearDeathExplosionBehavior());

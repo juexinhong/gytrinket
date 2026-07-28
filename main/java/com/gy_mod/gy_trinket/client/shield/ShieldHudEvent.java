@@ -1,6 +1,6 @@
 package com.gy_mod.gy_trinket.client.shield;
 
-import com.gy_mod.gy_trinket.ClientConfig;
+import com.gy_mod.gy_trinket.config.ClientConfig;
 import com.gy_mod.gy_trinket.gytrinket;
 import net.minecraft.client.Minecraft;
 import net.minecraftforge.api.distmarker.Dist;

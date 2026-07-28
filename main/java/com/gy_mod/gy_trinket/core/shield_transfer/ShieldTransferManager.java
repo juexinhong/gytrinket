@@ -1,8 +1,8 @@
 package com.gy_mod.gy_trinket.core.shield_transfer;
 
-import com.gy_mod.gy_trinket.Config;
+import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
-import com.gy_mod.gy_trinket.core.disable.DisableSystem;
+import com.gy_mod.gy_trinket.core.shield.DisableSystem;
 import com.gy_mod.gy_trinket.gytrinket;
 import com.gy_mod.gy_trinket.core.TickScheduler;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructManager;

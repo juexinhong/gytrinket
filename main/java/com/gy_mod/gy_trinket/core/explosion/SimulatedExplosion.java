@@ -1,7 +1,7 @@
 package com.gy_mod.gy_trinket.core.explosion;
 
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
-import com.gy_mod.gy_trinket.core.execute.ExecuteToggleManager;
+import com.gy_mod.gy_trinket.core.attack_mode.ExecuteToggleManager;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;

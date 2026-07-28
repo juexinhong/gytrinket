@@ -2,6 +2,7 @@ package com.gy_mod.gy_trinket.client.screen;
 
 import com.gy_mod.gy_trinket.core.level.ModLevelData;
 import com.gy_mod.gy_trinket.network.NetworkHandler;
+import com.gy_mod.gy_trinket.network.packet.RequestConfigDataMessage;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
@@ -118,7 +119,7 @@ public class PlayerPanelScreen extends AbstractPanelScreen {
     private void openConfigScreen() {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player != null) {
-            NetworkHandler.INSTANCE.sendToServer(new NetworkHandler.RequestConfigDataMessage());
+            NetworkHandler.INSTANCE.sendToServer(new RequestConfigDataMessage());
         }
     }
 

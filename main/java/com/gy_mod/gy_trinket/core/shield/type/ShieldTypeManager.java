@@ -1,6 +1,6 @@
 package com.gy_mod.gy_trinket.core.shield.type;
 
-import com.gy_mod.gy_trinket.Config;
+import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.gytrinket;
 import com.gy_mod.gy_trinket.storage.PlayerStore;
 import com.gy_mod.gy_trinket.storage.PlayerStoreManager;
@@ -163,6 +163,34 @@ public class ShieldTypeManager {
         return result;
     }
 
+    /**
+     * 清理指定玩家的护盾类型数据，触发 onRemoved 回调并清除子类型数据。
+     * 用于重算前和重生时的防御性清理，确保从干净状态开始计算。
+     */
+    public static void clearPlayerShieldTypes(UUID playerUUID) {
+        List<IShieldType.ShieldTypeData> oldTypes = PLAYER_SHIELD_TYPES.getOrDefault(playerUUID, Collections.emptyList());
+
+        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+        if (server != null) {
+            ServerPlayer serverPlayer = server.getPlayerList().getPlayer(playerUUID);
+            if (serverPlayer != null) {
+                for (IShieldType.ShieldTypeData data : oldTypes) {
+                    if (data.active()) {
+                        data.type().onRemoved(serverPlayer);
+                    }
+                }
+            }
+        }
+
+        PLAYER_SHIELD_TYPES.remove(playerUUID);
+
+        AuraShieldType.clearPlayerData(playerUUID);
+        SiphonShieldType.clearPlayerData(playerUUID);
+        ReflectShieldType.clearPlayerData(playerUUID);
+        AmplificationShieldType.clearPlayerData(playerUUID);
+        WarpShieldType.clearPlayerData(playerUUID);
+    }
+
     public static Set<String> updateShieldTypes(UUID playerUUID, Set<String> preDisabledItems) {
         MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
         if (server == null) {
@@ -186,7 +214,13 @@ public class ShieldTypeManager {
 
         for (IShieldType.ShieldTypeData data : newTypes) {
             if (data.active()) {
-                data.type().onApplied(serverPlayer, newTypes);
+                // 同一类型只调用一次onApplied
+                boolean alreadyApplied = newTypes.stream()
+                    .filter(d -> d.active() && d.type().getName().equals(data.type().getName()))
+                    .anyMatch(d -> newTypes.indexOf(d) < newTypes.indexOf(data));
+                if (!alreadyApplied) {
+                    data.type().onApplied(serverPlayer, newTypes);
+                }
             }
         }
 
@@ -222,11 +256,7 @@ public class ShieldTypeManager {
             for (String typeName : typeNames) {
                 IShieldType type = getType(typeName);
                 if (type != null) {
-                    boolean alreadyHas = collected.stream()
-                        .anyMatch(d -> d.type().getName().equals(typeName));
-                    if (!alreadyHas) {
-                        collected.add(new IShieldType.ShieldTypeData(type, stack, true));
-                    }
+                    collected.add(new IShieldType.ShieldTypeData(type, stack, true));
                 }
             }
         }
@@ -236,26 +266,46 @@ public class ShieldTypeManager {
 
     private static Set<String> resolveConflicts(List<IShieldType.ShieldTypeData> types) {
         Set<String> disabledItemIds = new HashSet<>();
-        boolean disableAllFromHere = false;
+        // 追踪上一个生效的护盾是否为兼容类型
+        // null = 尚未有生效的护盾（第一个护盾总是生效）
+        // true = 上一个生效的是兼容类型，链可以继续
+        // false = 上一个生效的是不兼容类型，链已断裂
+        Boolean lastActiveWasCompatible = null;
 
         for (int i = 0; i < types.size(); i++) {
             IShieldType.ShieldTypeData data = types.get(i);
             String typeName = data.type().getName();
+            boolean isCompatible = Config.isShieldTypeCompatible(typeName);
+            ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(data.source().getItem());
 
-            if (disableAllFromHere) {
+            if (lastActiveWasCompatible != null && !lastActiveWasCompatible) {
+                // 链已断裂，后续所有护盾都不生效
                 types.set(i, data.withActive(false));
-                ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(data.source().getItem());
                 if (itemId != null) {
                     disabledItemIds.add(itemId.toString());
                 }
                 continue;
             }
 
-            if (!Config.isShieldTypeCompatible(typeName)) {
-                disableAllFromHere = true;
+            // lastActiveWasCompatible == null（第一个）或 true（兼容链中）
+            if (isCompatible) {
+                // 兼容类型：生效，链继续
+                lastActiveWasCompatible = true;
+            } else {
+                if (lastActiveWasCompatible == null) {
+                    // 第一个护盾是不兼容类型：生效，但链断裂
+                    lastActiveWasCompatible = false;
+                } else {
+                    // 兼容链中遇到不兼容类型：不生效，链断裂
+                    types.set(i, data.withActive(false));
+                    if (itemId != null) {
+                        disabledItemIds.add(itemId.toString());
+                    }
+                    lastActiveWasCompatible = false;
+                }
             }
         }
-        
+
         return disabledItemIds;
     }
 

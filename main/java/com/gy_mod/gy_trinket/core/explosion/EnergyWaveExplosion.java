@@ -12,6 +12,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -50,7 +51,7 @@ public class EnergyWaveExplosion {
                                Predicate<LivingEntity> entityFilter,
                                boolean resetInvulnerable) {
         return execute(level, center, splashDirection, splashLength, damage, damageSource,
-                entityFilter, resetInvulnerable, null, null, true);
+                entityFilter, resetInvulnerable, null, null, true, 0.0);
     }
 
     /**
@@ -71,7 +72,7 @@ public class EnergyWaveExplosion {
                                Predicate<LivingEntity> entityFilter,
                                boolean resetInvulnerable, Player owner) {
         return execute(level, center, splashDirection, splashLength, damage, damageSource,
-                entityFilter, resetInvulnerable, owner, null, true);
+                entityFilter, resetInvulnerable, owner, null, true, 0.0);
     }
 
     /**
@@ -86,14 +87,13 @@ public class EnergyWaveExplosion {
                                boolean resetInvulnerable, Player owner,
                                Consumer<LivingEntity> postHitCallback) {
         return execute(level, center, splashDirection, splashLength, damage, damageSource,
-                entityFilter, resetInvulnerable, owner, postHitCallback, true);
+                entityFilter, resetInvulnerable, owner, postHitCallback, true, 0.0);
     }
 
     /**
-     * 执行能量波爆炸（完整参数）
+     * 执行能量波爆炸（带身后判定）
      *
-     * @param showVisual      是否触发能量波爆炸视觉特效（蜂群自带能量波时应传false避免叠加）
-     * @param postHitCallback  每个被击中的实体伤害后调用（可为null）
+     * @param behindLength    爆心身后判定距离（格），沿溅射反方向延伸的圆柱检测范围
      * @return 是否击中了任何实体
      */
     public static boolean execute(Level level, Vec3 center, Vec3 splashDirection, double splashLength,
@@ -101,7 +101,7 @@ public class EnergyWaveExplosion {
                                Predicate<LivingEntity> entityFilter,
                                boolean resetInvulnerable, Player owner,
                                Consumer<LivingEntity> postHitCallback,
-                               boolean showVisual) {
+                               boolean showVisual, double behindLength) {
         if (level.isClientSide) return false;
 
         // 应用玩家爆炸属性增幅
@@ -125,24 +125,27 @@ public class EnergyWaveExplosion {
         // 锥形底部半宽（与视觉外焰层比例一致）
         double baseHalfWidth = effectiveLength * OUTER_RATIO * (1 + toleranceBonus);
 
+        // 身后起点（沿溅射反方向延伸behindLength格）
+        Vec3 behindStart = center.subtract(direction.scale(behindLength));
+
         // AABB用于初始实体查询，膨胀量覆盖锥形最大半宽+实体体积
         double inflation = baseHalfWidth + 1.0;
         AABB aabb = new AABB(
-                Math.min(center.x, rayEnd.x) - inflation,
-                Math.min(center.y, rayEnd.y) - inflation,
-                Math.min(center.z, rayEnd.z) - inflation,
-                Math.max(center.x, rayEnd.x) + inflation,
-                Math.max(center.y, rayEnd.y) + inflation,
-                Math.max(center.z, rayEnd.z) + inflation
+                Math.min(behindStart.x, rayEnd.x) - inflation,
+                Math.min(behindStart.y, rayEnd.y) - inflation,
+                Math.min(behindStart.z, rayEnd.z) - inflation,
+                Math.max(behindStart.x, rayEnd.x) + inflation,
+                Math.max(behindStart.y, rayEnd.y) + inflation,
+                Math.max(behindStart.z, rayEnd.z) + inflation
         );
 
-        List<LivingEntity> entities = level.getEntitiesOfClass(LivingEntity.class, aabb);
+        List<LivingEntity> entities = new ArrayList<>(level.getEntitiesOfClass(LivingEntity.class, aabb));
 
         boolean hitAny = false;
         for (LivingEntity entity : entities) {
             if (!entityFilter.test(entity)) continue;
 
-            if (!isInEnergyWave(entity, center, direction, effectiveLength, baseHalfWidth)) continue;
+            if (!isInEnergyWave(entity, center, direction, effectiveLength, baseHalfWidth, behindLength)) continue;
 
             if (resetInvulnerable) {
                 entity.invulnerableTime = 0;
@@ -183,14 +186,17 @@ public class EnergyWaveExplosion {
     }
 
     /**
-     * 判断实体是否在能量波锥形范围内
+     * 判断实体是否在能量波范围内
      * <p>
-     * 使用外焰层锥形几何体作为检测范围，与视觉渲染形状一致。
+     * 正方向（沿溅射方向）使用外焰层锥形几何体作为检测范围，与视觉渲染形状一致。
+     * 反方向（身后）使用以baseHalfWidth为半径的圆柱检测范围。
+     * <p>
      * 锥形底部半宽 = effectiveLength × OUTER_RATIO × (1 + toleranceBonus)，
      * 锥形半径沿射线方向线性递减至0。
+     * 身后圆柱半径 = baseHalfWidth，延伸behindLength格。
      * <p>
-     * 判定方法：将实体AABB中心投影到锥形轴线上，计算该处的锥形半径，
-     * 若实体中心到轴线的垂直距离小于锥形半径+AABB半径，则命中。
+     * 判定方法：将实体AABB中心投影到锥形轴线上，计算该处的锥形/圆柱半径，
+     * 若实体中心到轴线的垂直距离小于半径+AABB半径，则命中。
      * AABB半径使用半对角线长度，确保不会漏掉部分在锥形内的实体。
      *
      * @param entity          目标实体
@@ -198,9 +204,10 @@ public class EnergyWaveExplosion {
      * @param direction       溅射方向（归一化）
      * @param effectiveLength 有效溅射长度（锥形长度）
      * @param baseHalfWidth   锥形底部半宽（已含容差提升）
+     * @param behindLength    身后判定距离（格）
      */
     private static boolean isInEnergyWave(LivingEntity entity, Vec3 center, Vec3 direction,
-                                          double effectiveLength, double baseHalfWidth) {
+                                          double effectiveLength, double baseHalfWidth, double behindLength) {
         if (effectiveLength <= 0) return false;
 
         AABB entityBox = entity.getBoundingBox();
@@ -216,20 +223,27 @@ public class EnergyWaveExplosion {
         double halfZ = entityBox.getZsize() / 2;
         double aabbRadius = Math.sqrt(halfX * halfX + halfY * halfY + halfZ * halfZ);
 
-        // 沿射线方向：实体必须在锥形范围内（考虑AABB半径）
-        if (alongRay + aabbRadius < 0 || alongRay - aabbRadius > effectiveLength) {
+        // 沿射线方向：实体必须在锥形+身后圆柱范围内（考虑AABB半径）
+        if (alongRay + aabbRadius < -behindLength || alongRay - aabbRadius > effectiveLength) {
             return false;
         }
 
-        // 锥形在沿射线距离t处的半径：baseHalfWidth * (1 - t / effectiveLength)
-        double clampedAlong = Math.max(0, Math.min(alongRay, effectiveLength));
-        double coneRadius = baseHalfWidth * (1 - clampedAlong / effectiveLength);
+        // 计算检测半径：正方向使用锥形半径，身后使用baseHalfWidth作为圆柱半径
+        double coneRadius;
+        if (alongRay < 0) {
+            // 身后区域：圆柱，半径等于baseHalfWidth
+            coneRadius = baseHalfWidth;
+        } else {
+            // 锥形区域：半径沿射线方向线性递减
+            double clampedAlong = Math.min(alongRay, effectiveLength);
+            coneRadius = baseHalfWidth * (1 - clampedAlong / effectiveLength);
+        }
 
         // 实体中心到轴线的垂直距离
         double perpDistSq = toEntity.lengthSqr() - alongRay * alongRay;
         double perpDist = Math.sqrt(Math.max(0, perpDistSq));
 
-        // 垂直距离在锥形半径内（加上AABB半径容差，确保不漏判）
+        // 垂直距离在检测半径内（加上AABB半径容差，确保不漏判）
         return perpDist < coneRadius + aabbRadius;
     }
 }

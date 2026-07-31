@@ -285,6 +285,18 @@ public class Config {
     public static final ForgeConfigSpec.DoubleValue GRUDGE_FADE_PERCENT;
     public static final ForgeConfigSpec.DoubleValue GRUDGE_MOVEMENT_SPEED_PENALTY;
 
+    // ===== 幽灵机身 (ghost_fuselage) =====
+    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> GHOST_FUSELAGE_MODULE_ITEMS;
+    public static final ForgeConfigSpec.DoubleValue GHOST_FUSELAGE_STEALTH_SPEED_BONUS_PER_LEVEL;
+    public static final ForgeConfigSpec.DoubleValue GHOST_FUSELAGE_MAX_BONUS_PER_LEVEL;
+    public static final ForgeConfigSpec.DoubleValue GHOST_FUSELAGE_BASE_MAX_DAMAGE_BONUS;
+    public static final ForgeConfigSpec.DoubleValue GHOST_FUSELAGE_MOVE_SPEED_THRESHOLD;
+    public static final ForgeConfigSpec.DoubleValue GHOST_FUSELAGE_MOVE_SPEED_REDUCTION;
+    public static final ForgeConfigSpec.DoubleValue GHOST_FUSELAGE_DEPLOY_REDUCTION;
+    public static final ForgeConfigSpec.DoubleValue GHOST_FUSELAGE_ATTACK_REDUCTION;
+    public static final ForgeConfigSpec.DoubleValue GHOST_FUSELAGE_USE_ITEM_REDUCTION_PER_TICK;
+    public static final ForgeConfigSpec.IntValue GHOST_FUSELAGE_FULL_STEALTH_TICKS;
+
     // ===== 32. 升级系统 (upgrade_system) =====
     public static final ForgeConfigSpec.ConfigValue<Boolean> UPGRADE_SYSTEM_ENABLED;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> UPGRADE_PATHS;
@@ -427,7 +439,8 @@ public class Config {
             "construct_wingman_attack_speed_independent:INDEPENDENT_MULTIPLY:construct_wingman_attack_speed," +
             "construct_wingman_evolution_health_percent:PERCENT:construct_wingman_evolution," +
             "construct_wingman_evolution_attack_speed_percent:PERCENT:construct_wingman_evolution," +
-            "construct_wingman_explosive_count_base:BASE:construct_wingman_explosive_count"
+            "construct_wingman_explosive_count_base:BASE:construct_wingman_explosive_count," +
+            "construct_wingman_weapon_attack_speed_percent:PERCENT:construct_wingman_weapon_attack_speed"
         );
 
         ITEM_ATTRIBUTES_CONFIG = BUILDER.comment(
@@ -510,7 +523,9 @@ public class Config {
 
                 "gytrinket:defense_drone_module|construct_drone_defense_health_percent=1.5",
 
-                "gytrinket:suppression_module|construct_wingman_weapon_attack_speed_percent=0.5",
+                "gytrinket:interceptor_module|construct_wingman_explosive_count_base=1",
+                "gytrinket:evolution_module|construct_wingman_explosive_count_base=1",
+                "gytrinket:suppression_module|construct_wingman_weapon_attack_speed_percent=0.5|construct_wingman_explosive_count_base=2",
 
                 "gytrinket:guardian|shield_effect_percent=0.10|shield_effect_radius=0.25|shield_damage_reduction=-0.1|attack_speed_percent=-0.1",
 
@@ -588,7 +603,8 @@ public class Config {
         ).defineListAllowEmpty("bodyItems",
             List.of(
                 "gytrinket:guardian",
-                "gytrinket:mothership_body"
+                "gytrinket:mothership_body",
+                "gytrinket:ghost_fuselage"
             ),
             s -> true
         );
@@ -1470,8 +1486,8 @@ public class Config {
 
         WINGMAN_SHOCKWAVE_DAMAGE_MULTIPLIER = BUILDER.comment(
             "震撼弹模块：爆破弹爆炸伤害倍率",
-            "默认：1.5（+50%），范围：1.0 ~ 10.0"
-        ).defineInRange("wingmanShockwaveDamageMultiplier", 1.5, 1.0, 10.0);
+            "默认：2.0（+100%），范围：1.0 ~ 10.0"
+        ).defineInRange("wingmanShockwaveDamageMultiplier", 2.0, 1.0, 10.0);
 
         WINGMAN_SHOCKWAVE_SPLASH_LENGTH_MULTIPLIER = BUILDER.comment(
             "震撼弹模块：爆破弹溅射长度倍率",
@@ -1797,17 +1813,17 @@ public class Config {
         ).defineInRange("conversionRatio", 0.2, 0.001, 1.0);
 
         GRUDGE_FADE_BASE = BUILDER.comment(
-            "积怨消退基础速率",
-            "消退时每tick固定减少的充能速率",
+            "积怨消退最低速率",
+            "消退时每tick至少减少的充能速率",
             "默认1.0",
             "范围：0.0 ~ 10.0"
         ).defineInRange("fadeBase", 0.00001, 0.0, 10.0);
 
         GRUDGE_FADE_PERCENT = BUILDER.comment(
             "积怨消退百分比",
-            "消退时每tick额外减少当前值的百分比",
-            "消退速度 = fadeBase + 当前值 * fadePercent",
-            "默认0.08（即8%）",
+            "消退时每tick减少当前值的百分比",
+            "消退速度 = max(fadeBase, 当前值 * fadePercent)",
+            "默认0.02（即2%）",
             "范围：0.0 ~ 1.0"
         ).defineInRange("fadePercent", 0.02, 0.0, 1.0);
 
@@ -1817,6 +1833,77 @@ public class Config {
             "默认-0.15（即-15%，独立乘区）",
             "范围：-0.99 ~ 0.0"
         ).defineInRange("movementSpeedPenalty", -0.15, -0.99, 0.0);
+
+        BUILDER.pop();
+
+        // ===== 幽灵机身 =====
+        BUILDER.comment("幽灵机身配置").push("ghost_fuselage");
+
+        GHOST_FUSELAGE_MODULE_ITEMS = BUILDER.comment(
+            "幽灵机身物品配置",
+            "格式：物品ID",
+            "列在此处的物品为幽灵机身物品",
+            "示例：gytrinket:ghost_fuselage"
+        ).defineListAllowEmpty("ghostFuselageItems",
+            java.util.List.of(
+                "gytrinket:ghost_fuselage"
+            ),
+            s -> true
+        );
+
+        GHOST_FUSELAGE_STEALTH_SPEED_BONUS_PER_LEVEL = BUILDER.comment(
+            "每级光点等级增加的隐身速度百分比",
+            "默认0.005（即0.5%/级）",
+            "范围：0.0 ~ 1.0"
+        ).defineInRange("stealthSpeedBonusPerLevel", 0.005, 0.0, 1.0);
+
+        GHOST_FUSELAGE_MAX_BONUS_PER_LEVEL = BUILDER.comment(
+            "每级光点等级增加的最大伤害加成百分比",
+            "默认0.005（即0.5%/级），最大加成=基础最大伤害加成×(1+level×此值）",
+            "范围：0.0 ~ 1.0"
+        ).defineInRange("maxBonusPerLevel", 0.005, 0.0, 1.0);
+
+        GHOST_FUSELAGE_BASE_MAX_DAMAGE_BONUS = BUILDER.comment(
+            "基础最大伤害加成（完全隐身时的独立乘区伤害加成）",
+            "默认3.0（即+300%）",
+            "范围：0.0 ~ 100.0"
+        ).defineInRange("baseMaxDamageBonus", 3.0, 0.0, 100.0);
+
+        GHOST_FUSELAGE_MOVE_SPEED_THRESHOLD = BUILDER.comment(
+            "移动速度阈值（blocks/tick），超过此值开始扣除隐身进度",
+            "默认0.0（任何移动都扣除）",
+            "范围：0.0 ~ 10.0"
+        ).defineInRange("moveSpeedThreshold", 0.25, 0.0, 10.0);
+
+        GHOST_FUSELAGE_MOVE_SPEED_REDUCTION = BUILDER.comment(
+            "移动速度超过阈值时，每0.1 blocks/tick扣除的隐身进度",
+            "默认0.2（正常行走0.1×0.2=0.02，与基础增长持平）",
+            "范围：0.0 ~ 1.0"
+        ).defineInRange("moveSpeedReduction", 0.2, 0.0, 1.0);
+
+        GHOST_FUSELAGE_DEPLOY_REDUCTION = BUILDER.comment(
+            "部署构造体时一次性扣除的隐身进度",
+            "默认0.5（即50%）",
+            "范围：0.0 ~ 1.0"
+        ).defineInRange("deployReduction", 0.35, 0.0, 1.0);
+
+        GHOST_FUSELAGE_ATTACK_REDUCTION = BUILDER.comment(
+            "左键攻击时一次性扣除的隐身进度",
+            "默认0.2（即20%）",
+            "范围：0.0 ~ 1.0"
+        ).defineInRange("attackReduction", 0.35, 0.0, 1.0);
+
+        GHOST_FUSELAGE_USE_ITEM_REDUCTION_PER_TICK = BUILDER.comment(
+            "右键使用物品时每tick扣除的隐身进度",
+            "默认0.03（每tick扣3%进度）",
+            "范围：0.0 ~ 1.0"
+        ).defineInRange("useItemReductionPerTick", 0.015, 0.0, 1.0);
+
+        GHOST_FUSELAGE_FULL_STEALTH_TICKS = BUILDER.comment(
+            "达到完全隐身（80%进度）所需的tick数",
+            "默认40（即2秒）",
+            "范围：1 ~ 600（0.05秒 ~ 30秒）"
+        ).defineInRange("fullStealthTicks", 60, 1, 600);
 
         BUILDER.pop();
 
@@ -2147,6 +2234,8 @@ public class Config {
         registerModuleItems("pursuit_array", PURSUIT_ARRAY_REQUIRED_ITEMS.get());
         registerModuleItems("formation_array", FORMATION_ARRAY_REQUIRED_ITEMS.get());
         registerModuleItems("guard_array", GUARD_ARRAY_REQUIRED_ITEMS.get());
+
+        registerModuleItems("ghost_fuselage", GHOST_FUSELAGE_MODULE_ITEMS.get());
 
         DANGEROUS_ENTITY_SET.clear();
         List<? extends String> dangerousEntities = DANGEROUS_ENTITIES.get();
@@ -2622,5 +2711,47 @@ public class Config {
 
     public static String getShieldHitSound() {
         return SHIELD_HIT_SOUND.get();
+    }
+
+    // ===== 幽灵机身辅助方法 =====
+
+    public static boolean isGhostFuselageItem(Item item) {
+        return isModuleItem("ghost_fuselage", item);
+    }
+
+    public static double getGhostFuselageStealthSpeedBonusPerLevel() {
+        return GHOST_FUSELAGE_STEALTH_SPEED_BONUS_PER_LEVEL.get();
+    }
+
+    public static double getGhostFuselageMaxBonusPerLevel() {
+        return GHOST_FUSELAGE_MAX_BONUS_PER_LEVEL.get();
+    }
+
+    public static double getGhostFuselageBaseMaxDamageBonus() {
+        return GHOST_FUSELAGE_BASE_MAX_DAMAGE_BONUS.get();
+    }
+
+    public static double getGhostFuselageMoveSpeedThreshold() {
+        return GHOST_FUSELAGE_MOVE_SPEED_THRESHOLD.get();
+    }
+
+    public static double getGhostFuselageMoveSpeedReduction() {
+        return GHOST_FUSELAGE_MOVE_SPEED_REDUCTION.get();
+    }
+
+    public static double getGhostFuselageDeployReduction() {
+        return GHOST_FUSELAGE_DEPLOY_REDUCTION.get();
+    }
+
+    public static double getGhostFuselageAttackReduction() {
+        return GHOST_FUSELAGE_ATTACK_REDUCTION.get();
+    }
+
+    public static double getGhostFuselageUseItemReductionPerTick() {
+        return GHOST_FUSELAGE_USE_ITEM_REDUCTION_PER_TICK.get();
+    }
+
+    public static int getGhostFuselageFullStealthTicks() {
+        return GHOST_FUSELAGE_FULL_STEALTH_TICKS.get();
     }
 }

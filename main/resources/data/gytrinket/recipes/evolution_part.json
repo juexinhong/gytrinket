@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "RDR",
+    "DWD",
+    "RDR"
+  ],
+  "key": {
+    "R": { "item": "minecraft:redstone" },
+    "D": { "item": "minecraft:diamond" },
+    "W": { "item": "gytrinket:wingman_part" }
+  },
+  "result": {
+    "item": "gytrinket:evolution_part",
+    "count": 1
+  }
+}

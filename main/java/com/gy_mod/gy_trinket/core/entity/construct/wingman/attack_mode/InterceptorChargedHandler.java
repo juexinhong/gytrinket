@@ -2,6 +2,7 @@ package com.gy_mod.gy_trinket.core.entity.construct.wingman.attack_mode;
 
 import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.core.attack_mode.charged_attack.ChargedAttackSweepHandler;
+import com.gy_mod.gy_trinket.core.entity.construct.drone.ModDamageSources;
 import com.gy_mod.gy_trinket.core.entity.construct.wingman.WingmanConstructEntity;
 import com.gy_mod.gy_trinket.core.attack_mode.GrudgeManager;
 import com.gy_mod.gy_trinket.core.shield.ShieldManager;
@@ -379,7 +380,7 @@ public class InterceptorChargedHandler implements InterceptorAttackModeHandler {
 
             // 移除无敌时间
             entity.invulnerableTime = 0;
-            entity.hurt(wingman.damageSources().mobAttack(wingman), sweepDamage);
+            entity.hurt(ModDamageSources.mobAttackWithGuardAggro(wingman, entity), sweepDamage);
 
             // 击退
             float yaw = wingman.getYRot() * ((float) Math.PI / 180F);

@@ -308,10 +308,39 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
     // 伤害和死亡
 
     @Override
+    public boolean doHurtTarget(net.minecraft.world.entity.Entity target) {
+        // 近战攻击使用守卫阵列仇恨集中机制决定伤害归属
+        if (target instanceof LivingEntity livingTarget) {
+            float damage = (float) this.getAttributeValue(Attributes.ATTACK_DAMAGE);
+            net.minecraft.world.damagesource.DamageSource damageSource =
+                    com.gy_mod.gy_trinket.core.entity.construct.drone.ModDamageSources.mobAttackWithGuardAggro(this, livingTarget);
+            boolean hit = livingTarget.hurt(damageSource, damage);
+            if (hit) {
+                // 原版 doHurtTarget 的后处理：击退和耐久消耗
+                livingTarget.setLastHurtByMob(this);
+                // 击退
+                livingTarget.knockback(0.4F,
+                        net.minecraft.util.Mth.sin(this.getYRot() * ((float) Math.PI / 180F)),
+                        -net.minecraft.util.Mth.cos(this.getYRot() * ((float) Math.PI / 180F)));
+            }
+            return hit;
+        }
+        return super.doHurtTarget(target);
+    }
+
+    @Override
     public boolean hurt(DamageSource source, float amount) {
+        // 免疫窒息伤害（卡在方块里）
+        if ("inWall".equals(source.getMsgId())) {
+            return false;
+        }
         // 免疫挤压伤害（实体过多导致的伤害）
         if ("cramming".equals(source.getMsgId())) {
             return false;
+        }
+        // 60%爆炸伤害减免
+        if (source.typeHolder().is(net.minecraft.tags.DamageTypeTags.IS_EXPLOSION)) {
+            amount *= 0.4F;
         }
         Entity attacker = source.getEntity();
         if (attacker instanceof Player playerAttacker) {

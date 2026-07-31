@@ -1,5 +1,6 @@
 package com.gy_mod.gy_trinket.core.entity.construct.wingman.attack_mode;
 
+import com.gy_mod.gy_trinket.core.entity.construct.drone.ModDamageSources;
 import com.gy_mod.gy_trinket.core.entity.construct.wingman.WingmanConstructEntity;
 import com.gy_mod.gy_trinket.core.modifier.player.attack.AttackSpeedManager;
 import net.minecraft.sounds.SoundEvents;
@@ -105,7 +106,7 @@ public class MeleeWeaponMode implements InterceptorWeaponMode {
                 float posX = Mth.sin(attacker.getYRot() * ((float) Math.PI / 180F));
                 float posY = -Mth.cos(attacker.getYRot() * ((float) Math.PI / 180F));
                 entity.knockback(0.4, posX, posY);
-                entity.hurt(attacker.damageSources().mobAttack(attacker), sweepDamage);
+                entity.hurt(ModDamageSources.mobAttackWithGuardAggro(attacker, entity), sweepDamage);
             }
         }
 

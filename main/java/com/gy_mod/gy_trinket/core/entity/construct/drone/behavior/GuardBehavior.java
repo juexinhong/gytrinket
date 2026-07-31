@@ -27,7 +27,7 @@ public class GuardBehavior implements IDroneBehavior {
     private static final float ORBIT_RADIUS = 3.0f;
     private static final float DEFENSE_ORBIT_RADIUS = 2.0f;
     private static final float VERTICAL_OFFSET = 0.3f;
-    private static final float ARC_LENGTH_PER_DRONE = (float) (Math.PI * 0.5 * 0.65);
+    private static final float ARC_LENGTH_PER_DRONE = (float) (Math.PI * 0.26);
     private static final float THREAT_SEARCH_RANGE = 30.0f;
     private static final float REPEL_SPEED = 0.05f;
     private static final double HORIZONTAL_SPEED = 0.7;
@@ -36,6 +36,8 @@ public class GuardBehavior implements IDroneBehavior {
     private static final double FAST_VERTICAL_THRESHOLD = 1.5;
     private static final double SPEED_BOOST_DISTANCE = 3.0;
     private static final double SPEED_BOOST_PER_BLOCK = 0.2;
+    // 防御无人机传送移动：每tick最大移动距离（模拟平滑移动，防止跨越大距离）
+    private static final double DEFENSE_MAX_TELEPORT_PER_TICK = 1.0;
 
     private static Field ARROW_IN_GROUND_FIELD;
 
@@ -58,7 +60,16 @@ public class GuardBehavior implements IDroneBehavior {
             return speedSquared < 0.01;
         }
         try {
-            return ARROW_IN_GROUND_FIELD.getBoolean(arrow);
+            Class<?> fieldType = ARROW_IN_GROUND_FIELD.getType();
+            if (fieldType == boolean.class) {
+                return ARROW_IN_GROUND_FIELD.getBoolean(arrow);
+            } else if (fieldType == int.class) {
+                return ARROW_IN_GROUND_FIELD.getInt(arrow) != 0;
+            } else {
+                Vec3 velocity = arrow.getDeltaMovement();
+                double speedSquared = velocity.x * velocity.x + velocity.y * velocity.y + velocity.z * velocity.z;
+                return speedSquared < 0.01;
+            }
         } catch (IllegalAccessException e) {
             Vec3 velocity = arrow.getDeltaMovement();
             double speedSquared = velocity.x * velocity.x + velocity.y * velocity.y + velocity.z * velocity.z;
@@ -147,7 +158,27 @@ public class GuardBehavior implements IDroneBehavior {
         }
 
         droneEntity.getNavigation().stop();
-        droneEntity.setDeltaMovement(motionX, motionY, motionZ);
+
+        if (isDefenseDrone) {
+            // 防御无人机：noPhysics=false，使用传送移动（可穿方块但需限制每tick距离）
+            double newX = drone.getX() + motionX;
+            double newY = drone.getY() + motionY;
+            double newZ = drone.getZ() + motionZ;
+
+            // 限制每tick最大移动距离，模拟平滑移动
+            double totalDist = Math.sqrt(motionX * motionX + motionY * motionY + motionZ * motionZ);
+            if (totalDist > DEFENSE_MAX_TELEPORT_PER_TICK) {
+                double scale = DEFENSE_MAX_TELEPORT_PER_TICK / totalDist;
+                newX = drone.getX() + motionX * scale;
+                newY = drone.getY() + motionY * scale;
+                newZ = drone.getZ() + motionZ * scale;
+            }
+
+            droneEntity.setPos(newX, newY, newZ);
+            droneEntity.setDeltaMovement(0, 0, 0);
+        } else {
+            droneEntity.setDeltaMovement(motionX, motionY, motionZ);
+        }
 
         repelEnemiesOnCollision(droneEntity, owner);
 

@@ -4,6 +4,7 @@ import com.gy_mod.gy_trinket.core.attack_mode.PlayerAttackLockManager;
 import com.gy_mod.gy_trinket.core.attack_mode.charged_attack.ChargedAttackDamageTracker;
 import com.gy_mod.gy_trinket.core.attack_mode.charged_attack.ChargedAttackManager;
 import com.gy_mod.gy_trinket.core.attack_mode.charged_attack.ChargedAttackSweepHandler;
+import com.gy_mod.gy_trinket.core.attack_mode.charged_attack.ChargedAttackEvent;
 import com.gy_mod.gy_trinket.network.NetworkHandler;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
@@ -63,9 +64,18 @@ public class ChargedAttackMessage {
                     ChargedAttackManager.updateCharging(uuid, player);
                 }
                 case 2 -> {
-                    // 释放攻击（releaseCharge内部已将充能值存入Tracker）
-                    double chargeValue = ChargedAttackManager.releaseCharge(uuid);
-                    // 射线群攻无生命实体（独立于LivingEntity攻击过滤）
+                    // 释放攻击（非剑类）
+                    // 修复时序竞争：tick可能已先调用releaseCharge将充能值存入Tracker，
+                    // 此处优先从Tracker获取；若Tracker无值则尝试releaseCharge（兼容开发环境时序）
+                    double chargeValue = ChargedAttackDamageTracker.getChargeValue(uuid);
+                    if (chargeValue <= 0) {
+                        chargeValue = ChargedAttackManager.releaseCharge(uuid);
+                    }
+                    // 发布充能释放事件（供幽灵机身等系统使用）
+                    if (chargeValue > 0) {
+                        net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(
+                            new ChargedAttackEvent(ChargedAttackEvent.Type.RELEASED, player));
+                    }
                     ChargedAttackSweepHandler.damageNonLivingTargetsAlongRaycast(player, chargeValue);
                     // 充能释放后的点射触发在 AttackModeManager.onPlayerAttack 中处理
                     // 同步0到客户端，清空HUD显示
@@ -80,13 +90,17 @@ public class ChargedAttackMessage {
                 }
                 case 4 -> {
                     // 充能横扫攻击释放（剑类物品，替代原版attack）
-                    double chargeValue = ChargedAttackManager.releaseCharge(uuid);
+                    double chargeValue = ChargedAttackDamageTracker.getChargeValue(uuid);
+                    if (chargeValue <= 0) {
+                        chargeValue = ChargedAttackManager.releaseCharge(uuid);
+                    }
                     if (chargeValue > 0) {
+                        // 发布充能释放事件（供幽灵机身等系统使用）
+                        net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(
+                            new ChargedAttackEvent(ChargedAttackEvent.Type.RELEASED, player));
                         ChargedAttackSweepHandler.executeChargedSweepAttack(player, chargeValue);
-                        // 射线群攻无生命实体（独立于LivingEntity攻击过滤）
                         ChargedAttackSweepHandler.damageNonLivingTargetsAlongRaycast(player, chargeValue);
                     }
-                    // 同步0到客户端，清空HUD显示
                     NetworkHandler.sendChargedAttackSyncToPlayer(player, 0);
                 }
             }

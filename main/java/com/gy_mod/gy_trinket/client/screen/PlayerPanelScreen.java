@@ -1,5 +1,7 @@
 package com.gy_mod.gy_trinket.client.screen;
 
+import com.gy_mod.gy_trinket.core.attribute.AttributeDefinition;
+import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
 import com.gy_mod.gy_trinket.core.level.ModLevelData;
 import com.gy_mod.gy_trinket.network.NetworkHandler;
 import com.gy_mod.gy_trinket.network.packet.RequestConfigDataMessage;
@@ -80,7 +82,11 @@ public class PlayerPanelScreen extends AbstractPanelScreen {
 
     private void rebuildSortedAttrs() {
         this.sortedAttrs = attributes.entrySet().stream()
-                .filter(e -> e.getValue() != 0.0)
+                .filter(e -> {
+                    AttributeDefinition def = AttributeManager.getAttributeDefinition(e.getKey());
+                    double defaultValue = def != null ? def.getDefaultValue() : 0.0;
+                    return Double.compare(e.getValue(), defaultValue) != 0;
+                })
                 .sorted(Comparator.comparing(e ->
                         Component.translatable("tooltip.gytrinket.attr." + e.getKey()).getString()))
                 .toList();

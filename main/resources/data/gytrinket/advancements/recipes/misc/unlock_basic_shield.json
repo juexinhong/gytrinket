@@ -142,7 +142,19 @@
       "gytrinket:taskmaster_part",
       "gytrinket:grudge_module",
       "gytrinket:mothership_body",
-      "gytrinket:totem"
+      "gytrinket:totem",
+      "gytrinket:wingman_part",
+      "gytrinket:interceptor_part",
+      "gytrinket:evolution_part",
+      "gytrinket:shockwave_part",
+      "gytrinket:nano_regen_part",
+      "gytrinket:suppression_part",
+      "gytrinket:wingman_module",
+      "gytrinket:interceptor_module",
+      "gytrinket:evolution_module",
+      "gytrinket:shockwave_module",
+      "gytrinket:nano_regen_module",
+      "gytrinket:suppression_module"
     ]
   }
 }

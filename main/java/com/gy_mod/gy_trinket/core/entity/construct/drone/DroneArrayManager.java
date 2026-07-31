@@ -5,6 +5,12 @@ import com.gy_mod.gy_trinket.core.entity.construct.ConstructData;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructManager;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructType;
 import com.gy_mod.gy_trinket.core.entity.construct.IEntityRestorer;
+import com.gy_mod.gy_trinket.core.entity.construct.swarm.SwarmConstructTypes;
+import com.gy_mod.gy_trinket.core.entity.construct.swarm.SwarmManager;
+import com.gy_mod.gy_trinket.core.entity.construct.wingman.WingmanConstructTypes;
+import com.gy_mod.gy_trinket.core.entity.construct.wingman.WingmanManager;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
@@ -142,6 +148,11 @@ public class DroneArrayManager {
 
         setPlayerArrayType(player, newArray);
         updatePlayerDronesArray(player, newArray);
+
+        player.displayClientMessage(
+                Component.literal("阵列: " + newArray.getName()).withStyle(ChatFormatting.GRAY),
+                true
+        );
     }
 
     public void switchToArray(Player player, DroneArrayType newArray) {
@@ -264,6 +275,21 @@ public class DroneArrayManager {
             boolean currentHasAssault = DroneManager.getInstance().hasAssaultModule(player);
             boolean currentHasDefense = DroneManager.getInstance().hasDefenseModule(player);
             updateStandbyBackupModules(player.getUUID(), currentHasAssault, currentHasDefense);
+
+            // 检查玩家是否仍拥有对应模块，如果没有则清除备份不恢复
+            UUID playerUUID = player.getUUID();
+            if (!DroneManager.getInstance().canBuildDroneInternal(player)) {
+                List<ConstructData> backup = getStandbyBackup(playerUUID, DroneConstructTypes.DRONE);
+                if (backup != null) backup.clear();
+            }
+            if (!WingmanManager.getInstance().canBuildWingmanInternal(player)) {
+                List<ConstructData> backup = getStandbyBackup(playerUUID, WingmanConstructTypes.WINGMAN);
+                if (backup != null) backup.clear();
+            }
+            if (!SwarmManager.getInstance().canBuildSwarmInternal(player)) {
+                List<ConstructData> backup = getStandbyBackup(playerUUID, SwarmConstructTypes.SWARM);
+                if (backup != null) backup.clear();
+            }
 
             List<ConstructData> droneBackup = getStandbyBackup(player.getUUID(), DroneConstructTypes.DRONE);
             if (droneBackup != null) {

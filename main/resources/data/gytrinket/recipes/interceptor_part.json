@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "BCB",
+    "CWC",
+    "BCB"
+  ],
+  "key": {
+    "B": { "item": "minecraft:copper_block" },
+    "C": { "item": "minecraft:copper_ingot" },
+    "W": { "item": "gytrinket:wingman_part" }
+  },
+  "result": {
+    "item": "gytrinket:interceptor_part",
+    "count": 1
+  }
+}

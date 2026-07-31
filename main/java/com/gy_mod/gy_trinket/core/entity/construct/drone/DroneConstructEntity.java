@@ -204,6 +204,13 @@ public class DroneConstructEntity extends AbstractConstructEntity {
         return super.makeBoundingBox();
     }
 
+    @Override
+    public boolean displayFireAnimation() {
+        // 防御无人机不显示着火效果，其他无人机保持默认行为
+        if (isDefenseDrone()) return false;
+        return super.displayFireAnimation();
+    }
+
     // ===== 效果标签管理 =====
 
     public void addEffectTag(DroneEffectTag tag) {
@@ -212,6 +219,10 @@ public class DroneConstructEntity extends AbstractConstructEntity {
             this.isCommander = true;
             this.addEffect(new net.minecraft.world.effect.MobEffectInstance(
                     net.minecraft.world.effect.MobEffects.GLOWING, Integer.MAX_VALUE, 0, false, false));
+        }
+        if (tag == DroneEffectTag.DEFENSE) {
+            // 防御无人机关闭noPhysics以阻挡弹射物，移动改用传送
+            this.noPhysics = false;
         }
         updateEffectData();
         applyAttributeModifiers();
@@ -223,6 +234,10 @@ public class DroneConstructEntity extends AbstractConstructEntity {
         if (tag == DroneEffectTag.COMMANDER) {
             this.isCommander = false;
             this.removeEffect(net.minecraft.world.effect.MobEffects.GLOWING);
+        }
+        if (tag == DroneEffectTag.DEFENSE) {
+            // 恢复noPhysics，无人机可穿透方块移动
+            this.noPhysics = true;
         }
         updateEffectData();
         applyAttributeModifiers();

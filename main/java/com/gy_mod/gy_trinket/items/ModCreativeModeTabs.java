@@ -24,6 +24,7 @@ public class ModCreativeModeTabs {
                         // 机身物品
                         output.accept(ModItems.GUARDIAN.get());
                         output.accept(ModItems.SWARM_MODULE.get());
+                        output.accept(ModItems.GHOST_FUSELAGE.get());
 
                         // 基础护盾物品
                         output.accept(ModItems.SHIELD_GY.get());
@@ -197,6 +198,12 @@ public class ModCreativeModeTabs {
                         output.accept(ModItems.COUNTER_PULSE_PART.get());
                         output.accept(ModItems.ARC_BARRIER_PART.get());
                         output.accept(ModItems.RESHAPING_PART.get());
+                        output.accept(ModItems.WINGMAN_PART.get());
+                        output.accept(ModItems.INTERCEPTOR_PART.get());
+                        output.accept(ModItems.EVOLUTION_PART.get());
+                        output.accept(ModItems.SHOCKWAVE_PART.get());
+                        output.accept(ModItems.NANO_REGEN_PART.get());
+                        output.accept(ModItems.SUPPRESSION_PART.get());
                     })
                     .build()
     );

@@ -24,7 +24,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * <p>
  * 机制：
  * 1. 玩家充能期间，损失生命或护盾值时，按比率累加到临时充能速率
- * 2. 临时充能速率始终快速消退：每tick消退 fadeBase + 当前值 * fadePercent
+ * 2. 临时充能速率始终快速消退：每tick消退 max(fadeBase, 当前值 * fadePercent)
  * 3. 退出充能状态时，立即清除临时充能速率
  */
 @Mod.EventBusSubscriber(modid = gytrinket.MODID)
@@ -114,11 +114,11 @@ public class GrudgeManager {
             data.prevHealth = currentHealth;
             data.prevShield = currentShield;
 
-            // 快速消退：每tick消退 fadeBase + 当前值 * fadePercent
+            // 快速消退：每tick消退 max(fadeBase, 当前值 * fadePercent)
             if (data.rateValue > 0) {
                 double fadeBase = Config.getGrudgeFadeBase();
                 double fadePercent = Config.getGrudgeFadePercent();
-                double decay = fadeBase + data.rateValue * fadePercent;
+                double decay = Math.max(fadeBase, data.rateValue * fadePercent);
                 data.rateValue -= decay;
                 if (data.rateValue <= 0) {
                     data.rateValue = 0;

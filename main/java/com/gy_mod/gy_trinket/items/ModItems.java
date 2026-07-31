@@ -16,6 +16,7 @@ public class ModItems {
     // 机身物品
     public static final RegistryObject<Item> GUARDIAN = ITEMS.register("guardian", () -> new Item(new Item.Properties())); // 哨卫机身
     public static final RegistryObject<Item> SWARM_MODULE = ITEMS.register("mothership_body", () -> new Item(new Item.Properties())); // 母舰机身
+    public static final RegistryObject<Item> GHOST_FUSELAGE = ITEMS.register("ghost_fuselage", () -> new Item(new Item.Properties())); // 幽灵机身
 
     // 基础护盾物品
     public static final RegistryObject<Item> SHIELD_GY = ITEMS.register("shield_gy", () -> new Item(new Item.Properties())); // 基础护盾
@@ -187,5 +188,11 @@ public class ModItems {
     public static final RegistryObject<Item> COUNTER_PULSE_PART = ITEMS.register("counter_pulse_part", () -> new Item(new Item.Properties())); // 反制脉冲零件
     public static final RegistryObject<Item> ARC_BARRIER_PART = ITEMS.register("arc_barrier_part", () -> new Item(new Item.Properties())); // 弧形屏障零件
     public static final RegistryObject<Item> RESHAPING_PART = ITEMS.register("reshaping_part", () -> new Item(new Item.Properties())); // 重塑零件
+    public static final RegistryObject<Item> WINGMAN_PART = ITEMS.register("wingman_part", () -> new Item(new Item.Properties())); // 僚机零件
+    public static final RegistryObject<Item> INTERCEPTOR_PART = ITEMS.register("interceptor_part", () -> new Item(new Item.Properties())); // 拦截机零件
+    public static final RegistryObject<Item> EVOLUTION_PART = ITEMS.register("evolution_part", () -> new Item(new Item.Properties())); // 进化零件
+    public static final RegistryObject<Item> SHOCKWAVE_PART = ITEMS.register("shockwave_part", () -> new Item(new Item.Properties())); // 震撼弹零件
+    public static final RegistryObject<Item> NANO_REGEN_PART = ITEMS.register("nano_regen_part", () -> new Item(new Item.Properties())); // 纳米再生零件
+    public static final RegistryObject<Item> SUPPRESSION_PART = ITEMS.register("suppression_part", () -> new Item(new Item.Properties())); // 压制零件
 
 }

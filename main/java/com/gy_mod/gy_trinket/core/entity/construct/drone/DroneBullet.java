@@ -88,6 +88,14 @@ public class DroneBullet extends ThrowableItemProjectile {
         return ModDamageSources.droneBullet(this.level(), this, this.getOwner() instanceof LivingEntity living ? living : null);
     }
 
+    /**
+     * 创建带有守卫阵列仇恨集中的伤害源
+     */
+    private DamageSource createDamageSourceWithGuardAggro() {
+        LivingEntity attacker = this.getOwner() instanceof LivingEntity living ? living : null;
+        return ModDamageSources.droneBulletWithGuardAggro(this.level(), this, attacker);
+    }
+
     @Override
     protected boolean canHitEntity(Entity entity) {
         // 无物理模式：禁用原版实体碰撞，由自定义检测处理
@@ -220,7 +228,7 @@ public class DroneBullet extends ThrowableItemProjectile {
                 target.setLastHurtByMob(ownerPlayer);
             }
         } else {
-            target.hurt(createDamageSource(), damage);
+            target.hurt(createDamageSourceWithGuardAggro(), damage);
         }
 
         if (owner instanceof DroneConstructEntity droneShooter && droneShooter.isCommanderDrone()) {

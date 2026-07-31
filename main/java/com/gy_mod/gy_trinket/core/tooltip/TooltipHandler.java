@@ -235,7 +235,8 @@ public class TooltipHandler {
             ChatFormatting.AQUA,
             () -> new Object[]{
                 (int)(Config.getChargedShieldChargeRatio() * 100),
-                (int)(Config.getChargedShieldMaxBonus() * 100)
+                (int)(Config.getChargedShieldMaxBonus() * 100),
+                (int)(Math.abs(Config.getChargedShieldMovementSpeedPenalty()) * 100)
             }
         ));
 
@@ -246,8 +247,40 @@ public class TooltipHandler {
             ChatFormatting.RED,
             () -> new Object[]{
                 Config.getGrudgeConversionRatio(),
+                (int)(Config.getGrudgeFadePercent() * 100),
                 Config.getGrudgeFadeBase(),
-                (int)(Config.getGrudgeFadePercent() * 100)
+                (int)(Math.abs(Config.getGrudgeMovementSpeedPenalty()) * 100)
+            }
+        ));
+
+        // 震撼弹
+        rules.add(new TooltipConfig(
+            Config.WINGMAN_SHOCKWAVE_MODULE_ITEMS,
+            "shockwave_module", "shockwave_module_desc",
+            ChatFormatting.GOLD,
+            () -> new Object[]{
+                (int)((Config.getWingmanShockwaveDamageMultiplier() - 1) * 100),
+                (int)((Config.getWingmanShockwaveSplashLengthMultiplier() - 1) * 100)
+            }
+        ));
+
+        // 进化
+        rules.add(new TooltipConfig(
+            Config.WINGMAN_EVOLUTION_MODULE_ITEMS,
+            "evolution_module", "evolution_module_desc",
+            ChatFormatting.LIGHT_PURPLE,
+            () -> new Object[]{
+                Config.getWingmanEvolutionBonusPerLevel() * 100
+            }
+        ));
+
+        // 幽灵机身
+        rules.add(new TooltipConfig(
+            Config.GHOST_FUSELAGE_MODULE_ITEMS,
+            "ghost_fuselage", "ghost_fuselage_desc",
+            ChatFormatting.DARK_PURPLE,
+            () -> new Object[]{
+                (int)(Config.getGhostFuselageBaseMaxDamageBonus() * 100)
             }
         ));
 
@@ -407,10 +440,17 @@ public class TooltipHandler {
 
         if (Config.ASSAULT_DRONE_MODULE_ITEMS.get().contains(itemId)) {
             addTooltip(event, "assault_drone_module", ChatFormatting.GOLD);
+            addTooltip(event, "assault_drone_module_desc", ChatFormatting.RED);
         }
 
         if (Config.DEFENSE_DRONE_MODULE_ITEMS.get().contains(itemId)) {
             addTooltip(event, "defense_drone_module", ChatFormatting.BLUE);
+            addTooltip(event, "defense_drone_module_desc", ChatFormatting.RED);
+        }
+
+        if (itemId.equals("gytrinket:quick_reconstruction_module")) {
+            addTooltip(event, "quick_reconstruction_module", ChatFormatting.GREEN);
+            addTooltip(event, "quick_reconstruction_module_desc", ChatFormatting.RED);
         }
 
         if (Config.WINGMAN_MODULE_ITEMS.get().contains(itemId)) {
@@ -551,18 +591,21 @@ public class TooltipHandler {
 
     /**
      * 带格式化参数的工具提示
+     * 直接使用 Component.translatable(key, args) 让Minecraft翻译系统完成格式化
+     * 避免 getString() + String.format() 两步处理导致的 %% 和 %s 冲突问题
      */
     private static void addFormattedTooltip(ItemTooltipEvent event, String key, ChatFormatting color,
                                             TooltipFormatter formatter) {
         String translationKey = TOOLTIP_PREFIX + key;
-        MutableComponent tooltip = Component.translatable(translationKey);
-
-        if (!isDefaultTranslation(tooltip, translationKey)) {
-            String formattedText = tooltip.getString();
-            try {
-                formattedText = String.format(formattedText, formatter.formatParameters());
-                event.getToolTip().add(Component.literal(formattedText).withStyle(color));
-            } catch (Exception e) {
+        try {
+            Object[] args = formatter.formatParameters();
+            MutableComponent tooltip = Component.translatable(translationKey, args);
+            if (!isDefaultTranslation(tooltip, translationKey)) {
+                event.getToolTip().add(tooltip.withStyle(color));
+            }
+        } catch (Exception e) {
+            MutableComponent tooltip = Component.translatable(translationKey);
+            if (!isDefaultTranslation(tooltip, translationKey)) {
                 event.getToolTip().add(tooltip.withStyle(color));
             }
         }

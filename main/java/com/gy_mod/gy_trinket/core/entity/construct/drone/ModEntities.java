@@ -57,7 +57,7 @@ public class ModEntities {
     public static final RegistryObject<EntityType<SwarmConstructEntity>> SWARM_CONSTRUCT = ENTITIES.register(
             "swarm_construct",
             () -> EntityType.Builder.<SwarmConstructEntity>of(SwarmConstructEntity::new, MobCategory.CREATURE)
-                    .sized(0.4f, 0.4f)
+                    .sized(0.6f, 0.6f)
                     .clientTrackingRange(8)
                     .updateInterval(3)
                     .build("swarm_construct")

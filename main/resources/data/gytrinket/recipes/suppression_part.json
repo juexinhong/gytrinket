@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "BCB",
+    "CIC",
+    "BCB"
+  ],
+  "key": {
+    "B": { "item": "minecraft:copper_block" },
+    "C": { "item": "minecraft:copper_ingot" },
+    "I": { "item": "gytrinket:interceptor_part" }
+  },
+  "result": {
+    "item": "gytrinket:suppression_part",
+    "count": 1
+  }
+}

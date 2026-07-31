@@ -360,6 +360,30 @@ public class NetworkHandler {
             EnergyWaveExplosionPacket::new,
             EnergyWaveExplosionPacket::handle
         );
+
+        INSTANCE.registerMessage(
+            messageId++,
+            SyncGhostStealthMessage.class,
+            SyncGhostStealthMessage::toBytes,
+            SyncGhostStealthMessage::new,
+            SyncGhostStealthMessage::handle
+        );
+
+        INSTANCE.registerMessage(
+            messageId++,
+            SyncGhostMoveSpeedMessage.class,
+            SyncGhostMoveSpeedMessage::toBytes,
+            SyncGhostMoveSpeedMessage::new,
+            SyncGhostMoveSpeedMessage::handle
+        );
+
+        INSTANCE.registerMessage(
+            messageId++,
+            GhostFuselageAttackMessage.class,
+            GhostFuselageAttackMessage::toBytes,
+            GhostFuselageAttackMessage::new,
+            GhostFuselageAttackMessage::handle
+        );
     }
 
     public static void sendShieldParticleToPlayer(ServerPlayer player, net.minecraft.world.entity.Entity trackedEntity,
@@ -562,14 +586,21 @@ public class NetworkHandler {
      * 发送能量波爆炸渲染包给所有玩家
      */
     public static void sendEnergyWaveExplosionToAll(net.minecraft.server.level.ServerLevel level, net.minecraft.world.phys.Vec3 center, net.minecraft.world.phys.Vec3 direction, double splashLength) {
-        sendEnergyWaveExplosionToAll(level, center, direction, splashLength, -1, 0);
+        sendEnergyWaveExplosionToAll(level, center, direction, splashLength, -1, 0, 0.0);
     }
 
     /**
      * 发送能量波爆炸渲染包给所有玩家（支持位置同步）
      */
     public static void sendEnergyWaveExplosionToAll(net.minecraft.server.level.ServerLevel level, net.minecraft.world.phys.Vec3 center, net.minecraft.world.phys.Vec3 direction, double splashLength, int positionSyncEntityId) {
-        sendEnergyWaveExplosionToAll(level, center, direction, splashLength, positionSyncEntityId, 0);
+        sendEnergyWaveExplosionToAll(level, center, direction, splashLength, positionSyncEntityId, 0, 0.0);
+    }
+
+    /**
+     * 发送能量波爆炸渲染包给所有玩家（支持位置同步和颜色）
+     */
+    public static void sendEnergyWaveExplosionToAll(net.minecraft.server.level.ServerLevel level, net.minecraft.world.phys.Vec3 center, net.minecraft.world.phys.Vec3 direction, double splashLength, int positionSyncEntityId, int colorType) {
+        sendEnergyWaveExplosionToAll(level, center, direction, splashLength, positionSyncEntityId, colorType, 0.0);
     }
 
     /**
@@ -577,14 +608,15 @@ public class NetworkHandler {
      *
      * @param positionSyncEntityId 位置同步实体ID（-1 = 固定位置，>= 0 = 跟随实体位置但保持初始方向）
      * @param colorType            颜色方案（0 = 默认黄橙红，1 = 蓝色系）
+     * @param offsetDistance        位置同步时的沿方向偏移距离（格）
      */
-    public static void sendEnergyWaveExplosionToAll(net.minecraft.server.level.ServerLevel level, net.minecraft.world.phys.Vec3 center, net.minecraft.world.phys.Vec3 direction, double splashLength, int positionSyncEntityId, int colorType) {
+    public static void sendEnergyWaveExplosionToAll(net.minecraft.server.level.ServerLevel level, net.minecraft.world.phys.Vec3 center, net.minecraft.world.phys.Vec3 direction, double splashLength, int positionSyncEntityId, int colorType, double offsetDistance) {
         // 仅在客户端物理端执行渲染调用，专用服务器上跳过
         DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () ->
             com.gy_mod.gy_trinket.client.effect.energywave.EnergyWaveVisualManager.addExplosionWave(
-                center.x, center.y, center.z, direction.x, direction.y, direction.z, splashLength, positionSyncEntityId, colorType
+                center.x, center.y, center.z, direction.x, direction.y, direction.z, splashLength, positionSyncEntityId, colorType, offsetDistance
             )
         );
-        INSTANCE.send(PacketDistributor.ALL.noArg(), new EnergyWaveExplosionPacket(center.x, center.y, center.z, direction.x, direction.y, direction.z, splashLength, positionSyncEntityId, colorType));
+        INSTANCE.send(PacketDistributor.ALL.noArg(), new EnergyWaveExplosionPacket(center.x, center.y, center.z, direction.x, direction.y, direction.z, splashLength, positionSyncEntityId, colorType, offsetDistance));
     }
 }

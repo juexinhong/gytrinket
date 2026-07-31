@@ -83,9 +83,9 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
     private static final double SLOW_APPROACH_SPEED_MULT = 0.5;
 
     // Boid 参数（蜂群更紧凑）
-    private static final double BOID_COMFORT_RANGE = 0.6;
-    private static final double BOID_SEPARATION_RANGE = 1.2;
-    private static final double BOID_SEPARATION_STRENGTH = 0.035;
+    private static final double BOID_COMFORT_RANGE = 1.0;
+    private static final double BOID_SEPARATION_RANGE = 2.0;
+    private static final double BOID_SEPARATION_STRENGTH = 0.045;
     private static final double BOID_COHESION_RANGE = 4.0;
     private static final double BOID_COHESION_STRENGTH = 0.02;
     private static final double BOID_ALIGNMENT_RANGE = 3.0;
@@ -519,8 +519,8 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
             .collect(Collectors.toSet());
 
         // 使用能量波爆炸处理伤害判定（不显示爆炸特效，蜂群有自己的能量波视觉）
-        // mobAttack 使 getEntity()=蜂群 → 仇恨归蜂群自身；斩杀时由 EnergyWaveExplosion 切换为玩家归属
-        DamageSource baseDamageSource = this.damageSources().mobAttack((LivingEntity) swarm);
+        // 通过守卫阵列仇恨集中机制决定伤害归属
+        DamageSource baseDamageSource = ModDamageSources.mobAttackWithGuardAggro((LivingEntity) swarm, target);
         boolean hitAny = EnergyWaveExplosion.execute(
             this.level(), blastCenter, lookDir, baseAttackRange,
             damage, baseDamageSource,
@@ -534,7 +534,8 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
                     );
                 }
             },
-            false // 蜂群自带能量波视觉，不叠加爆炸特效
+            false, // 蜂群自带能量波视觉，不叠加爆炸特效
+            0.0   // 无身后判定
         );
 
         if (hitAny) {

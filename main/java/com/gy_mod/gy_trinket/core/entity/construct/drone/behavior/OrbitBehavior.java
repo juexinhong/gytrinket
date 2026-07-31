@@ -102,8 +102,18 @@ public class OrbitBehavior implements IDroneBehavior {
         Vec3 dronePos = drone.position();
         Vec3 direction = targetPos.subtract(dronePos);
         double distance = direction.length();
-        
-        if (distance > 0.1) {
+
+        if (drone instanceof DroneConstructEntity droneEntity && droneEntity.isDefenseDrone()) {
+            // 防御无人机：直接传送到目标位置，避免增量移动导致的抖动
+            // 距离过大时限制每tick移动距离模拟平滑接近
+            if (distance > 10.0) {
+                Vec3 limitedDir = direction.normalize().scale(10.0);
+                droneEntity.setPos(dronePos.x + limitedDir.x, dronePos.y + limitedDir.y, dronePos.z + limitedDir.z);
+            } else if (distance > 0.01) {
+                droneEntity.setPos(targetPos.x, targetPos.y, targetPos.z);
+            }
+            droneEntity.setDeltaMovement(Vec3.ZERO);
+        } else if (distance > 0.1) {
             direction = direction.normalize();
             float moveDistance = (float)(MOVE_SPEED * deltaTime);
             if (moveDistance > distance) {

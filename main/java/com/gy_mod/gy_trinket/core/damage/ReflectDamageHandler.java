@@ -23,10 +23,10 @@ import java.util.UUID;
  * <p>
  * 爆炸参数：
  * - 初始溅射长度：1格
- * - 爆心：被攻击实体身高一半处
+ * - 爆心：被攻击实体身高一半处，朝攻击方向延伸1格
  * - 朝向：攻击者方向
- * - 初始爆炸伤害：1
- * - 受到伤害大于2时，每超出1点伤害，等量提高1点爆炸伤害和1格溅射长度
+ * - 初始爆炸伤害：2
+ * - 受到伤害大于2时，每超出1点伤害，提高0.3点爆炸伤害和0.3格溅射长度
  * <p>
  * 反射粒子：
  * - 初始7个粒子，朝向攻击者方向，带随机偏移
@@ -43,7 +43,7 @@ public class ReflectDamageHandler implements DamageHandler {
     /** 初始溅射长度（格） */
     private static final double BASE_SPUTTER_LENGTH = 1.0;
     /** 伤害阈值，超出此值才开始增加爆炸参数 */
-    private static final float DAMAGE_THRESHOLD = 2.0f;
+    private static final float DAMAGE_THRESHOLD = 1.0f;
     /** 初始粒子数量 */
     private static final int BASE_PARTICLE_COUNT = 10;
     /** 每超出1点伤害增加的粒子数 */
@@ -51,7 +51,7 @@ public class ReflectDamageHandler implements DamageHandler {
     /** 每超出1点伤害增加的最大偏移角度（度） */
     private static final double ANGLE_PER_EXCESS = 2.0;
     /** 最大偏移角度上限（度） */
-    private static final double MAX_ANGLE_CAP = 90.0;
+    private static final double MAX_ANGLE_CAP = 180.0;
     /** 初始散射角度（度），无超出伤害时也有基础散射 */
     private static final double BASE_ANGLE = 30.0;
     /** 每超出1点伤害的速度增加5% */
@@ -96,9 +96,9 @@ public class ReflectDamageHandler implements DamageHandler {
         // 计算超出伤害（超过阈值的伤害量）
         double excessDamage = Math.max(0, originalDamage - DAMAGE_THRESHOLD);
 
-        // 计算爆炸伤害和溅射长度（伤害转化比降低为0.5）
-        float explosionDamage = (float)(BASE_EXPLOSION_DAMAGE + excessDamage * 0.5);
-        double sputterLength = BASE_SPUTTER_LENGTH + excessDamage;
+        // 计算爆炸伤害和溅射长度（每点超出伤害提升0.3爆炸伤害和0.3溅射长度）
+        float explosionDamage = (float)(BASE_EXPLOSION_DAMAGE + excessDamage * 0.3);
+        double sputterLength = BASE_SPUTTER_LENGTH + excessDamage * 0.3;
 
         // 护盾效果属性增强爆炸伤害
         double shieldEffect = AttributeManager.getGroupAttribute(shieldOwnerUUID, "shield_effect");
@@ -108,8 +108,8 @@ public class ReflectDamageHandler implements DamageHandler {
         double shieldEffectRadius = AttributeManager.getGroupAttribute(shieldOwnerUUID, "shield_effect_radius");
         sputterLength *= shieldEffectRadius;
 
-        // 爆心：被攻击实体身高一半处
-        Vec3 center = new Vec3(
+        // 基础位置：被攻击实体身高一半处
+        Vec3 baseCenter = new Vec3(
             attackedEntity.getX(),
             attackedEntity.getY() + attackedEntity.getBbHeight() / 2.0,
             attackedEntity.getZ()
@@ -125,12 +125,15 @@ public class ReflectDamageHandler implements DamageHandler {
                 attackerEntity.getY() + attackerEntity.getBbHeight() / 2.0,
                 attackerEntity.getZ()
             );
-            direction = attackerPos.subtract(center).normalize();
+            direction = attackerPos.subtract(baseCenter).normalize();
         } else {
             direction = attackedEntity.getLookAngle().normalize();
         }
 
-        // 执行能量波爆炸（不显示默认特效，使用位置同步特效）
+        // 爆心：基础位置朝攻击方向延伸1格
+        Vec3 center = baseCenter.add(direction.scale(1.0));
+
+        // 执行能量波爆炸（不显示默认特效，使用位置同步特效，身后判定1格）
         EnergyWaveExplosion.execute(
             shieldOwner.level(),
             center,
@@ -142,7 +145,8 @@ public class ReflectDamageHandler implements DamageHandler {
             true,
             shieldOwner,
             null,
-            false
+            false,
+            1.0
         );
 
         // 发送带位置同步的能量波爆炸特效（护盾移植时跟随被保护实体，否则跟随玩家位置，保持初始方向）
@@ -150,7 +154,7 @@ public class ReflectDamageHandler implements DamageHandler {
             int positionSyncId = ShieldTransferManager.hasTransferredShield(shieldOwnerUUID)
                 ? attackedEntity.getId()
                 : shieldOwner.getId();
-            NetworkHandler.sendEnergyWaveExplosionToAll(serverLevel, center, direction, sputterLength, positionSyncId, 1);
+            NetworkHandler.sendEnergyWaveExplosionToAll(serverLevel, center, direction, sputterLength, positionSyncId, 1, 1.0);
         }
 
         // 计算粒子参数

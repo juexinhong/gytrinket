@@ -284,8 +284,11 @@ public class DroneBulletTrail {
 
             float t0 = (i - 1) / (float) (MAX_LENGTH - 1);
             float t1 = i / (float) (MAX_LENGTH - 1);
-            float alpha0 = (1.0F - t0) * effectiveAlphaMult;
-            float alpha1 = (1.0F - t1) * effectiveAlphaMult;
+            // 亮度从头到尾依次降低：头部最亮(1.0)，尾部最暗(0.5)
+            float brightness0 = 1.0F - t0 * 0.5F;
+            float brightness1 = 1.0F - t1 * 0.5F;
+            float alpha0 = brightness0 * effectiveAlphaMult;
+            float alpha1 = brightness1 * effectiveAlphaMult;
             float scale0 = maxWidth * (1.0F - t0);
             float scale1 = maxWidth * (1.0F - t1);
 
@@ -295,11 +298,13 @@ public class DroneBulletTrail {
             addQuad(bufferBuilder, matrix, pos0, pos1,
                     n0.rx, n0.ry, n0.rz,
                     n1.rx, n1.ry, n1.rz,
-                    scale0, scale1, r, g, b, alpha0, alpha1);
+                    scale0, scale1, r * brightness0, g * brightness0, b * brightness0, alpha0,
+                                       r * brightness1, g * brightness1, b * brightness1, alpha1);
             addQuad(bufferBuilder, matrix, pos0, pos1,
                     n0.ux, n0.uy, n0.uz,
                     n1.ux, n1.uy, n1.uz,
-                    scale0, scale1, r, g, b, alpha0, alpha1);
+                    scale0, scale1, r * brightness0, g * brightness0, b * brightness0, alpha0,
+                                       r * brightness1, g * brightness1, b * brightness1, alpha1);
         }
 
         poseStack.popPose();
@@ -315,27 +320,28 @@ public class DroneBulletTrail {
                          float ax0, float ay0, float az0,
                          float ax1, float ay1, float az1,
                          float scale0, float scale1,
-                         float r, float g, float b, float alpha0, float alpha1) {
+                         float r0, float g0, float b0, float alpha0,
+                         float r1, float g1, float b1, float alpha1) {
         buffer.vertex(matrix,
                 (float) (pos0.x - ax0 * scale0),
                 (float) (pos0.y - ay0 * scale0),
                 (float) (pos0.z - az0 * scale0)
-        ).color(r, g, b, alpha0).endVertex();
+        ).color(r0, g0, b0, alpha0).endVertex();
         buffer.vertex(matrix,
                 (float) (pos0.x + ax0 * scale0),
                 (float) (pos0.y + ay0 * scale0),
                 (float) (pos0.z + az0 * scale0)
-        ).color(r, g, b, alpha0).endVertex();
+        ).color(r0, g0, b0, alpha0).endVertex();
         buffer.vertex(matrix,
                 (float) (pos1.x + ax1 * scale1),
                 (float) (pos1.y + ay1 * scale1),
                 (float) (pos1.z + az1 * scale1)
-        ).color(r, g, b, alpha1).endVertex();
+        ).color(r1, g1, b1, alpha1).endVertex();
         buffer.vertex(matrix,
                 (float) (pos1.x - ax1 * scale1),
                 (float) (pos1.y - ay1 * scale1),
                 (float) (pos1.z - az1 * scale1)
-        ).color(r, g, b, alpha1).endVertex();
+        ).color(r1, g1, b1, alpha1).endVertex();
     }
 
     public boolean shouldBeRemoved() {

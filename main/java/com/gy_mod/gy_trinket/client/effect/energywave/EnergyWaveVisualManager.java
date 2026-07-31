@@ -1,13 +1,14 @@
 package com.gy_mod.gy_trinket.client.effect.energywave;
 
 import com.gy_mod.gy_trinket.client.compat.ShaderModCompat;
-import com.gy_mod.gy_trinket.core.entity.construct.swarm.client.EnergyWaveRenderManager;
-import com.gy_mod.gy_trinket.core.entity.construct.swarm.client.EnergyWaveShaderRenderer;
+import com.gy_mod.gy_trinket.core.entity.construct.swarm.client.EnergyWaveVolumetricRenderer;
+import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.client.event.RenderLevelStageEvent;
+import org.joml.Matrix4f;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -16,7 +17,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * 能量波视觉特效公共管理器。
  * <p>
  * 统一管理蜂群和能量波爆炸的视觉特效，支持着色器和矢量两种渲染后端。
- * 光影模式下自动降级为矢量渲染。
+ * 光影模式下使用体积渲染器，通过保存/恢复矩阵兼容Iris composite pass。
  */
 public class EnergyWaveVisualManager {
 
@@ -74,6 +75,12 @@ public class EnergyWaveVisualManager {
 
     private static final List<WaveVisualData> waves = new CopyOnWriteArrayList<>();
 
+    // ===== 光影兼容：保存的矩阵状态 =====
+    // 在AFTER_PARTICLES（Iris composite之前）保存，在AFTER_LEVEL（composite之后）使用
+    private static Matrix4f savedProjectionMatrix = null;
+    private static Matrix4f savedModelViewMatrix = null;
+    private static Matrix4f savedPoseStackMatrix = null;
+
     /**
      * 添加蜂群能量波视觉（使用蜂群默认尺寸参数）
      */
@@ -96,7 +103,7 @@ public class EnergyWaveVisualManager {
             0.9f, 0.6f, 0.0f, 0.8f,   // color layer
             0.9f, 0.35f, 0.0f, 0.7f,  // outer layer
             0.9f, 0.35f, 0.0f, 0.7f,  // bloom color
-            END_SCALE
+            END_SCALE, TOTAL_DURATION_TICKS, 0.0f  // 蜂群波尺寸小，使用基础持续时间，无偏移
         ));
     }
 
@@ -106,7 +113,7 @@ public class EnergyWaveVisualManager {
     public static void addExplosionWave(double x, double y, double z,
                                          double dirX, double dirY, double dirZ,
                                          double splashLength) {
-        addExplosionWave(x, y, z, dirX, dirY, dirZ, splashLength, -1, 0);
+        addExplosionWave(x, y, z, dirX, dirY, dirZ, splashLength, -1, 0, 0.0);
     }
 
     /**
@@ -115,7 +122,16 @@ public class EnergyWaveVisualManager {
     public static void addExplosionWave(double x, double y, double z,
                                          double dirX, double dirY, double dirZ,
                                          double splashLength, int positionSyncEntityId) {
-        addExplosionWave(x, y, z, dirX, dirY, dirZ, splashLength, positionSyncEntityId, 0);
+        addExplosionWave(x, y, z, dirX, dirY, dirZ, splashLength, positionSyncEntityId, 0, 0.0);
+    }
+
+    /**
+     * 添加能量波爆炸视觉（支持位置同步和颜色）。
+     */
+    public static void addExplosionWave(double x, double y, double z,
+                                         double dirX, double dirY, double dirZ,
+                                         double splashLength, int positionSyncEntityId, int colorType) {
+        addExplosionWave(x, y, z, dirX, dirY, dirZ, splashLength, positionSyncEntityId, colorType, 0.0);
     }
 
     /**
@@ -124,14 +140,15 @@ public class EnergyWaveVisualManager {
      *
      * @param positionSyncEntityId 位置同步实体ID（-1 = 固定位置，>= 0 = 跟随实体位置但保持初始方向）
      * @param colorType            颜色方案（0 = 默认黄橙红，1 = 蓝色系）
+     * @param offsetDistance        位置同步时的沿方向偏移距离（格）
      */
     public static void addExplosionWave(double x, double y, double z,
                                          double dirX, double dirY, double dirZ,
-                                         double splashLength, int positionSyncEntityId, int colorType) {
+                                         double splashLength, int positionSyncEntityId, int colorType, double offsetDistance) {
         long currentTime = Minecraft.getInstance().level != null ? Minecraft.getInstance().level.getGameTime() : 0;
 
-        // 溅射长度 × 0.3 转化为能量波长度
-        double convertedLen = splashLength * 0.3;
+        // 溅射长度 × 0.4 转化为能量波长度
+        double convertedLen = splashLength * 0.75;
         // 长度截断
         double cappedLen = Math.min(convertedLen, EXPLOSION_LENGTH_CAP);
         // 宽度规则：
@@ -151,34 +168,57 @@ public class EnergyWaveVisualManager {
 
         float[] colors = getColors(colorType);
 
+        // 根据波大小动态计算持续时间：越大存在越久
+        // 基础11 ticks + 中心层长度 × 2.0，使大波有足够时间展示
+        int durationTicks = TOTAL_DURATION_TICKS + Math.round(targetCenterLen * 0.5f);
+
         waves.add(new WaveVisualData(-1, positionSyncEntityId, x, y, z, dirX, dirY, dirZ, false, currentTime,
             targetCenterHW, targetCenterLen, targetColorHW, targetColorLen, targetOuterHW, targetOuterLen,
             colors[0], colors[1], colors[2], colors[3],     // center color
             colors[4], colors[5], colors[6], colors[7],     // color layer
             colors[8], colors[9], colors[10], colors[11],   // outer layer
             colors[12], colors[13], colors[14], colors[15], // bloom color
-            EXPLOSION_END_SCALE
+            EXPLOSION_END_SCALE, durationTicks, (float) offsetDistance
         ));
     }
 
     /**
-     * 渲染事件处理器：自动分发到着色器或矢量渲染器
+     * 渲染事件处理器：自动分发到体积或矢量渲染器。
+     * 光影模式下使用保存矩阵机制兼容Iris composite pass：
+     * - AFTER_PARTICLES：保存正确的矩阵（Iris composite之前）
+     * - AFTER_LEVEL：使用保存的矩阵渲染（Iris composite之后）
      */
     public static void onRenderLevelLast(RenderLevelStageEvent event) {
-        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_PARTICLES) return;
-
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null) return;
+
+        // 阴影pass中跳过渲染
+        if (ShaderModCompat.isRenderingShadows()) return;
 
         long currentTime = mc.level.getGameTime();
         waves.removeIf(w -> w.isExpired(currentTime));
         if (waves.isEmpty()) return;
 
-        // 光影模式降级为矢量渲染
-        if (ShaderModCompat.isShaderPackInUse()) {
-            EnergyWaveRenderManager.renderWaves(event, waves);
+        boolean shaderActive = ShaderModCompat.isShaderPackInUse();
+
+        if (shaderActive) {
+            // 光影模式：保存矩阵 + 延迟到AFTER_LEVEL渲染
+            if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_PARTICLES) {
+                // Iris composite之前：保存正确的矩阵状态
+                savedProjectionMatrix = new Matrix4f(RenderSystem.getProjectionMatrix());
+                savedModelViewMatrix = new Matrix4f(RenderSystem.getModelViewStack().last().pose());
+                savedPoseStackMatrix = new Matrix4f(event.getPoseStack().last().pose());
+            } else if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_LEVEL) {
+                // Iris composite之后：使用保存的矩阵渲染体积能量波
+                EnergyWaveVolumetricRenderer.renderWavesWithSavedMatrices(
+                    event, waves,
+                    savedProjectionMatrix, savedModelViewMatrix, savedPoseStackMatrix);
+            }
         } else {
-            EnergyWaveShaderRenderer.renderWaves(event, waves);
+            // 非光影模式：直接在AFTER_PARTICLES渲染
+            if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_PARTICLES) {
+                EnergyWaveVolumetricRenderer.renderWaves(event, waves);
+            }
         }
     }
 
@@ -210,16 +250,17 @@ public class EnergyWaveVisualManager {
                 return new WaveTransform(pos, dir);
             }
         }
-        // 位置同步模式：跟随实体位置，但保持初始方向
+        // 位置同步模式：跟随实体位置，但保持初始方向，并沿方向应用偏移
         if (mc.level != null && wave.positionSyncEntityId >= 0) {
             Entity entity = mc.level.getEntity(wave.positionSyncEntityId);
             if (entity != null && entity.isAlive()) {
-                Vec3 pos = new Vec3(
+                Vec3 dir = new Vec3(wave.dirX, wave.dirY, wave.dirZ).normalize();
+                Vec3 basePos = new Vec3(
                     Mth.lerp(partialTick, entity.xOld, entity.getX()),
                     Mth.lerp(partialTick, entity.yOld, entity.getY()) + entity.getBbHeight() / 2.0,
                     Mth.lerp(partialTick, entity.zOld, entity.getZ())
                 );
-                Vec3 dir = new Vec3(wave.dirX, wave.dirY, wave.dirZ).normalize();
+                Vec3 pos = basePos.add(dir.scale(wave.offsetDistance));
                 return new WaveTransform(pos, dir);
             }
         }
@@ -233,23 +274,31 @@ public class EnergyWaveVisualManager {
      * 计算动画进度
      */
     public static float getProgress(WaveVisualData wave, long currentTime, float partialTick) {
-        return Math.min((currentTime - wave.startTime + partialTick) / (float) TOTAL_DURATION_TICKS, 1.0f);
+        return Math.min((currentTime - wave.startTime + partialTick) / (float) wave.durationTicks, 1.0f);
     }
 
     /**
      * 计算生长和膨胀阶段进度
+     *
+     * @param totalProgress 总进度（0~1）
+     * @param durationTicks 该波的总持续时间（ticks）
+     * @param endScale      膨胀阶段最终缩放倍率
      */
-    public static AnimationState computeAnimation(float totalProgress) {
-        float growthProgress = Math.min(totalProgress * TOTAL_DURATION_TICKS / GROWTH_TICKS, 1.0f);
-        float expandProgress = totalProgress > (float) GROWTH_TICKS / TOTAL_DURATION_TICKS
-            ? (totalProgress - (float) GROWTH_TICKS / TOTAL_DURATION_TICKS) / ((float) EXPAND_TICKS / TOTAL_DURATION_TICKS)
+    public static AnimationState computeAnimation(float totalProgress, int durationTicks, float endScale) {
+        // 保持原始的生长/膨胀比例（3:8）
+        float growthFraction = (float) GROWTH_TICKS / TOTAL_DURATION_TICKS;
+        float expandFraction = (float) EXPAND_TICKS / TOTAL_DURATION_TICKS;
+
+        float growthProgress = Math.min(totalProgress / growthFraction, 1.0f);
+        float expandProgress = totalProgress > growthFraction
+            ? (totalProgress - growthFraction) / expandFraction
             : 0.0f;
         expandProgress = Math.min(expandProgress, 1.0f);
 
         // 生长阶段：尺寸从0到1；膨胀阶段：尺寸从1到endScale
         float sizeMultiplier = growthProgress < 1.0f
             ? growthProgress
-            : 1.0f + (END_SCALE - 1.0f) * expandProgress;
+            : 1.0f + (endScale - 1.0f) * expandProgress;
 
         float fadeAlpha = expandProgress > 0 ? 1.0f - expandProgress : 1.0f;
         float darkenFactor = expandProgress > 0 ? 1.0f - expandProgress * 0.5f : 1.0f;
@@ -293,6 +342,12 @@ public class EnergyWaveVisualManager {
         // 膨胀阶段最终缩放倍率
         public final float endScale;
 
+        // 该波的总持续时间（ticks），根据波大小动态计算
+        public final int durationTicks;
+
+        // 位置同步时的沿方向偏移距离（格）
+        public final float offsetDistance;
+
         public WaveVisualData(int entityId, int positionSyncEntityId, double x, double y, double z,
                               double dirX, double dirY, double dirZ,
                               boolean isRepair, long startTime,
@@ -303,7 +358,7 @@ public class EnergyWaveVisualManager {
                               float colorR, float colorG, float colorB, float colorAlpha,
                               float outerR, float outerG, float outerB, float outerAlpha,
                               float bloomR, float bloomG, float bloomB, float bloomAlpha,
-                              float endScale) {
+                              float endScale, int durationTicks, float offsetDistance) {
             this.entityId = entityId;
             this.positionSyncEntityId = positionSyncEntityId;
             this.x = x; this.y = y; this.z = z;
@@ -318,10 +373,12 @@ public class EnergyWaveVisualManager {
             this.outerR = outerR; this.outerG = outerG; this.outerB = outerB; this.outerAlpha = outerAlpha;
             this.bloomR = bloomR; this.bloomG = bloomG; this.bloomB = bloomB; this.bloomAlpha = bloomAlpha;
             this.endScale = endScale;
+            this.durationTicks = durationTicks;
+            this.offsetDistance = offsetDistance;
         }
 
         public boolean isExpired(long currentTime) {
-            return currentTime - startTime >= TOTAL_DURATION_TICKS;
+            return currentTime - startTime >= durationTicks;
         }
     }
 }

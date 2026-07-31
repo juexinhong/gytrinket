@@ -7,7 +7,7 @@ import javax.annotation.Nullable;
 public class ModShaders {
 
     private static ShaderInstance shieldGlassShader;
-    private static ShaderInstance energyWaveShader;
+    private static ShaderInstance energyWaveVolShader;
 
     public static void setShieldGlassShader(ShaderInstance shader) {
         shieldGlassShader = shader;
@@ -18,12 +18,12 @@ public class ModShaders {
         return shieldGlassShader;
     }
 
-    public static void setEnergyWaveShader(ShaderInstance shader) {
-        energyWaveShader = shader;
+    public static void setEnergyWaveVolShader(ShaderInstance shader) {
+        energyWaveVolShader = shader;
     }
 
     @Nullable
-    public static ShaderInstance getEnergyWaveShader() {
-        return energyWaveShader;
+    public static ShaderInstance getEnergyWaveVolShader() {
+        return energyWaveVolShader;
     }
 }

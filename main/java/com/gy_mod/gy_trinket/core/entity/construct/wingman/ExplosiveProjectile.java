@@ -77,6 +77,17 @@ public class ExplosiveProjectile extends ThrowableItemProjectile {
         return this.damageSources().thrown(this, owner);
     }
 
+    /**
+     * 创建带有守卫阵列仇恨集中的伤害源
+     */
+    private DamageSource createDamageSourceWithGuardAggro() {
+        Entity owner = this.getOwner();
+        if (owner instanceof LivingEntity livingOwner) {
+            return ModDamageSources.droneBulletWithGuardAggro(this.level(), this, livingOwner);
+        }
+        return this.damageSources().thrown(this, owner);
+    }
+
     @Override
     protected boolean canHitEntity(Entity entity) {
         return false;
@@ -208,7 +219,7 @@ public class ExplosiveProjectile extends ThrowableItemProjectile {
     private void dealDamageToTarget(LivingEntity target) {
         target.invulnerableTime = 0;
         KnockbackManager.markNoKnockback(target.getUUID());
-        target.hurt(createDamageSource(), damage);
+        target.hurt(createDamageSourceWithGuardAggro(), damage);
         target.invulnerableTime = 0;
     }
 

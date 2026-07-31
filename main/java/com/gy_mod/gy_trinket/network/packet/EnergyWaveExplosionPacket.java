@@ -13,23 +13,29 @@ public class EnergyWaveExplosionPacket {
     private double splashLength;
     private int positionSyncEntityId;
     private int colorType;
+    private double offsetDistance;
 
     public EnergyWaveExplosionPacket() {}
 
     public EnergyWaveExplosionPacket(double x, double y, double z, double dirX, double dirY, double dirZ, double splashLength) {
-        this(x, y, z, dirX, dirY, dirZ, splashLength, -1, 0);
+        this(x, y, z, dirX, dirY, dirZ, splashLength, -1, 0, 0.0);
     }
 
     public EnergyWaveExplosionPacket(double x, double y, double z, double dirX, double dirY, double dirZ, double splashLength, int positionSyncEntityId) {
-        this(x, y, z, dirX, dirY, dirZ, splashLength, positionSyncEntityId, 0);
+        this(x, y, z, dirX, dirY, dirZ, splashLength, positionSyncEntityId, 0, 0.0);
     }
 
     public EnergyWaveExplosionPacket(double x, double y, double z, double dirX, double dirY, double dirZ, double splashLength, int positionSyncEntityId, int colorType) {
+        this(x, y, z, dirX, dirY, dirZ, splashLength, positionSyncEntityId, colorType, 0.0);
+    }
+
+    public EnergyWaveExplosionPacket(double x, double y, double z, double dirX, double dirY, double dirZ, double splashLength, int positionSyncEntityId, int colorType, double offsetDistance) {
         this.x = x; this.y = y; this.z = z;
         this.dirX = dirX; this.dirY = dirY; this.dirZ = dirZ;
         this.splashLength = splashLength;
         this.positionSyncEntityId = positionSyncEntityId;
         this.colorType = colorType;
+        this.offsetDistance = offsetDistance;
     }
 
     public EnergyWaveExplosionPacket(FriendlyByteBuf buf) {
@@ -42,6 +48,7 @@ public class EnergyWaveExplosionPacket {
         this.splashLength = buf.readDouble();
         this.positionSyncEntityId = buf.readInt();
         this.colorType = buf.readInt();
+        this.offsetDistance = buf.readDouble();
     }
 
     public void toBytes(FriendlyByteBuf buf) {
@@ -50,6 +57,7 @@ public class EnergyWaveExplosionPacket {
         buf.writeDouble(splashLength);
         buf.writeInt(positionSyncEntityId);
         buf.writeInt(colorType);
+        buf.writeDouble(offsetDistance);
     }
 
     public void handle(Supplier<NetworkEvent.Context> contextSupplier) {
@@ -57,7 +65,7 @@ public class EnergyWaveExplosionPacket {
         context.enqueueWork(() -> {
             DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> {
                 com.gy_mod.gy_trinket.client.effect.energywave.EnergyWaveVisualManager.addExplosionWave(
-                    x, y, z, dirX, dirY, dirZ, splashLength, positionSyncEntityId, colorType
+                    x, y, z, dirX, dirY, dirZ, splashLength, positionSyncEntityId, colorType, offsetDistance
                 );
             });
         });

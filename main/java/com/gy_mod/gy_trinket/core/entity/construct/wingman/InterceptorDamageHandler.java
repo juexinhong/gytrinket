@@ -39,27 +39,18 @@ public class InterceptorDamageHandler {
 
     /**
      * 判断伤害来源是否来自拦截机
-     * <p>
-     * 包括：
-     * <ul>
-     *   <li>直接攻击者（doHurtTarget）是拦截机</li>
-     *   <li>弹射物（箭矢等）的射击者是拦截机</li>
-     * </ul>
      */
     private static boolean isInterceptorDamage(net.minecraft.world.damagesource.DamageSource source) {
-        // 直接攻击者是拦截机
         if (source.getEntity() instanceof WingmanConstructEntity) {
             return true;
         }
 
-        // 弹射物的射击者是拦截机
         if (source.getDirectEntity() instanceof Projectile projectile) {
             if (projectile.getOwner() instanceof WingmanConstructEntity) {
                 return true;
             }
         }
 
-        // 箭矢类特殊处理：AbstractArrow 的射击者
         if (source.getDirectEntity() instanceof AbstractArrow arrow) {
             if (arrow.getOwner() instanceof WingmanConstructEntity) {
                 return true;

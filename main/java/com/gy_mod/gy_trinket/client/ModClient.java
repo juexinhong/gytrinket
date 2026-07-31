@@ -14,8 +14,6 @@ import com.gy_mod.gy_trinket.core.entity.construct.drone.client.renderer.ArmorSh
 import com.gy_mod.gy_trinket.core.entity.construct.wingman.WingmanRenderer;
 import com.gy_mod.gy_trinket.core.entity.construct.wingman.ExplosiveProjectileRenderer;
 import com.gy_mod.gy_trinket.core.entity.construct.swarm.SwarmRenderer;
-import com.gy_mod.gy_trinket.core.entity.construct.swarm.client.EnergyWaveRenderManager;
-import com.gy_mod.gy_trinket.core.entity.construct.swarm.client.EnergyWaveShaderRenderer;
 import com.gy_mod.gy_trinket.key.KeyInputHandler;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneInputHandler;
 import com.gy_mod.gy_trinket.core.entity.construct.wingman.InterceptorConfigContainer;
@@ -65,7 +63,7 @@ public class ModClient {
     /**
      * 注册自定义着色器
      * shield_glass: Alpha 混合（玻璃表面）
-     * energy_wave: 能量波着色器渲染
+     * energy_wave_vol: 能量波体积渲染（3D raymarching）
      */
     @SubscribeEvent
     public static void onRegisterShaders(RegisterShadersEvent event) throws java.io.IOException {
@@ -80,10 +78,10 @@ public class ModClient {
         event.registerShader(
             new ShaderInstance(
                 event.getResourceProvider(),
-                new ResourceLocation(com.gy_mod.gy_trinket.gytrinket.MODID, "gytrinket_energy_wave"),
+                new ResourceLocation(com.gy_mod.gy_trinket.gytrinket.MODID, "gytrinket_energy_wave_vol"),
                 com.mojang.blaze3d.vertex.DefaultVertexFormat.POSITION_TEX
             ),
-            ModShaders::setEnergyWaveShader
+            ModShaders::setEnergyWaveVolShader
         );
     }
     

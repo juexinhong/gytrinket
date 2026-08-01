@@ -3,6 +3,7 @@ package com.gytrinket.gytrinket.core.entity.construct;
 import net.minecraft.world.entity.LivingEntity;
 
 import javax.annotation.Nullable;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -33,6 +34,18 @@ public interface IConstructEntity {
     /** 获取当前攻速倍率 */
     double getAttackSpeedMultiplier();
 
+    /** 设置武器攻速倍率（仅影响武器攻击，不影响爆破弹攻速） */
+    void setWeaponAttackSpeedMultiplier(double multiplier);
+
+    /** 获取当前武器攻速倍率 */
+    double getWeaponAttackSpeedMultiplier();
+
     /** 刷新构造体属性（重算并应用 construct_* 属性） */
     void refreshConstructAttributes();
+
+    /** 获取构造体类型 ID（用于属性目标匹配） */
+    String getConstructTypeId();
+
+    /** 获取实例标签（用于属性目标匹配，如突击/防御/指挥官等） */
+    Set<String> getInstanceTags();
 }

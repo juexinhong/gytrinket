@@ -5,6 +5,7 @@ import com.gytrinket.gytrinket.client.attack_mode.burst_fire.BurstFireClientHand
 import com.gytrinket.gytrinket.client.attack_mode.charged_attack.ChargedAttackInputHandler;
 import com.gytrinket.gytrinket.gytrinket;
 import com.gytrinket.gytrinket.network.NetworkHandler;
+import com.gytrinket.gytrinket.network.packet.AssaultAttackPayload;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
@@ -92,7 +93,7 @@ public class AssaultInputHandler {
             if (target instanceof LivingEntity) {
                 minecraft.gameMode.attack(player, target);
 
-                PacketDistributor.sendToServer(new NetworkHandler.AssaultAttackPayload());
+                PacketDistributor.sendToServer(new AssaultAttackPayload());
 
                 AttackModeClientUtil.resetAttackStrengthTicker(player);
 

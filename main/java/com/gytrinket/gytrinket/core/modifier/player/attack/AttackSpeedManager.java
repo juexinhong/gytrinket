@@ -134,6 +134,17 @@ public class AttackSpeedManager {
     }
 
     /**
+     * 获取本模组攻击速度属性对拦截机的乘数（排除强袭命名空间的动态贡献）
+     */
+    public static double getInterceptorAttackSpeedMultiplier(UUID playerUUID) {
+        double attackSpeedPercent = AttributeManager.getPlayerAttributeExcludingNamespace(
+                playerUUID, "attack_speed_percent", "assault:");
+        double attackSpeedIndependent = AttributeManager.getPlayerAttributeExcludingNamespace(
+                playerUUID, "attack_speed_independent", "assault:");
+        return attackSpeedPercent * attackSpeedIndependent;
+    }
+
+    /**
      * 获取不含模组修正的攻击速度
      * <p>
      * 临时移除模组修正器，读取基础值，再恢复。

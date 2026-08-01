@@ -1,6 +1,7 @@
 package com.gytrinket.gytrinket.core.attack_mode.burst_fire;
 
 import com.gytrinket.gytrinket.core.attack_mode.AttackModeManager;
+import com.gytrinket.gytrinket.core.attack_mode.PlayerAttackLockManager;
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
 import com.gytrinket.gytrinket.gytrinket;
 import net.minecraft.server.level.ServerPlayer;
@@ -83,6 +84,11 @@ public class BurstFireManager {
         }
 
         UUID playerUUID = player.getUUID();
+
+        // 攻击锁定时禁用点射
+        if (PlayerAttackLockManager.isLocked(playerUUID)) {
+            return;
+        }
 
         // 检查玩家是否处于连击冷却状态
         if (isInComboCooldown(playerUUID)) {
@@ -298,6 +304,11 @@ public class BurstFireManager {
     public static void startBurstFromAssault(ServerPlayer player, LivingEntity target) {
         UUID playerUUID = player.getUUID();
 
+        // 攻击锁定时禁用点射
+        if (PlayerAttackLockManager.isLocked(playerUUID)) {
+            return;
+        }
+
         // 如果已在点射中或冷却中，不重复触发
         if (IS_AUTO_ATTACKING.getOrDefault(playerUUID, false) || isInComboCooldown(playerUUID)) {
             return;
@@ -346,6 +357,17 @@ public class BurstFireManager {
      */
     public static boolean isInBurstFireState(Player player) {
         return IS_AUTO_ATTACKING.getOrDefault(player.getUUID(), false);
+    }
+
+    /**
+     * 取消玩家的点射状态（由攻击锁定调用）
+     */
+    public static void cancelBurstFire(UUID playerUUID) {
+        IS_AUTO_ATTACKING.remove(playerUUID);
+        CURRENT_TARGETS.remove(playerUUID);
+        REMAINING_COMBO.remove(playerUUID);
+        AUTO_ATTACK_DELAY.remove(playerUUID);
+        COMBO_COOLDOWN.remove(playerUUID);
     }
 
     /**

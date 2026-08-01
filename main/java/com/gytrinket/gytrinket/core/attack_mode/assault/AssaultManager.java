@@ -1,8 +1,9 @@
 package com.gytrinket.gytrinket.core.attack_mode.assault;
 
+import com.gytrinket.gytrinket.core.attack_mode.PlayerAttackLockManager;
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
 import com.gytrinket.gytrinket.core.modifier.player.knockback.KnockbackManager;
-import com.gytrinket.gytrinket.damage.ModDamageTypes;
+import com.gytrinket.gytrinket.core.damage.ModDamageTypes;
 import com.gytrinket.gytrinket.gytrinket;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
@@ -53,15 +54,20 @@ public class AssaultManager {
             return;
         }
 
+        // 攻击锁定时禁用强袭
+        if (PlayerAttackLockManager.isLocked(player)) {
+            return;
+        }
+
         UUID uuid = player.getUUID();
         AssaultData data = PLAYER_ASSAULT_DATA.computeIfAbsent(uuid, k -> new AssaultData());
 
         data.stacks++;
 
-        double attackSpeedBonus = com.gytrinket.gytrinket.Config.getAssaultAttackSpeedPerStack() * data.stacks;
+        double attackSpeedBonus = com.gytrinket.gytrinket.config.Config.getAssaultAttackSpeedPerStack() * data.stacks;
         AttributeManager.setDynamicAttribute(uuid, "assault", "attack_speed_independent", attackSpeedBonus);
 
-        float selfDamage = (float) (com.gytrinket.gytrinket.Config.getAssaultSelfDamagePerStack() * data.stacks);
+        float selfDamage = (float) (com.gytrinket.gytrinket.config.Config.getAssaultSelfDamagePerStack() * data.stacks);
         if (selfDamage > 0) {
             KnockbackManager.markNoKnockback(uuid);
             player.hurt(ModDamageTypes.getPlayerSelfDamageSource(player.level()), selfDamage);

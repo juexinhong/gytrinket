@@ -1,6 +1,6 @@
 package com.gytrinket.gytrinket.client.shield.type;
 
-import com.gytrinket.gytrinket.Config;
+import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.gytrinket;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.bus.api.SubscribeEvent;

@@ -1,0 +1,19 @@
+﻿{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " % ",
+    "#&#",
+    " @ "
+  ],
+  "key": {
+    "#": { "item": "minecraft:string" },
+    "%": { "item": "gytrinket:construct_frame" },
+    "&": { "item": "gytrinket:evolution_part" },
+    "@": { "item": "minecraft:blue_wool" }
+  },
+  "result": {
+    "id": "gytrinket:evolution_module",
+    "count": 1
+  }
+}

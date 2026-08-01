@@ -1,6 +1,5 @@
 package com.gytrinket.gytrinket.core.entity.construct;
 
-import com.gytrinket.gytrinket.core.entity.construct.drone.DroneConstructTypes;
 import net.minecraft.world.entity.player.Player;
 
 import java.util.*;
@@ -487,7 +486,6 @@ public class ConstructManager {
         UUID playerUUID = player.getUUID();
         if (disabled) {
             buildingDisabledPlayers.add(playerUUID);
-            cancelBuilding(player, DroneConstructTypes.DRONE);
         } else {
             buildingDisabledPlayers.remove(playerUUID);
         }
@@ -520,6 +518,11 @@ public class ConstructManager {
 
                 if (!canCreateConstruct(player, constructId)) {
                     cancelledBuilds.add(constructId);
+                    continue;
+                }
+
+                // 构建禁用时暂停但不取消构建进度
+                if (buildingDisabledPlayers.contains(playerUUID)) {
                     continue;
                 }
 
@@ -659,6 +662,7 @@ public class ConstructManager {
         activeConstructEntities.remove(playerUUID);
         playerBuilders.remove(playerUUID);
         buildingDisabledPlayers.remove(playerUUID);
+        ConstructGroupCache.getInstance().clearPlayerCache(playerUUID);
     }
 
     /**

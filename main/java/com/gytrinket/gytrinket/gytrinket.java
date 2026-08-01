@@ -3,6 +3,8 @@ package com.gytrinket.gytrinket;
 import com.mojang.logging.LogUtils;
 import com.gytrinket.gytrinket.blocks.ModBlockEntities;
 import com.gytrinket.gytrinket.blocks.ModBlocks;
+import com.gytrinket.gytrinket.config.ClientConfig;
+import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.TickScheduler;
 import com.gytrinket.gytrinket.particle.ModParticles;
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
@@ -10,7 +12,6 @@ import com.gytrinket.gytrinket.core.damage.DamageManager;
 import com.gytrinket.gytrinket.core.damage.InvincibilityMarkerManager;
 import com.gytrinket.gytrinket.core.damage_last.LastDamageManager;
 import com.gytrinket.gytrinket.core.entity.construct.ConstructTypeRegistry;
-import com.gytrinket.gytrinket.core.entity.construct.ConstructAttributeRegistry;
 import com.gytrinket.gytrinket.core.entity.construct.drone.DroneRegistry;
 import com.gytrinket.gytrinket.core.entity.construct.drone.ModEntities;
 import com.gytrinket.gytrinket.core.entity.construct.drone.behavior.DroneSpecialBehaviorManager;
@@ -20,12 +21,15 @@ import com.gytrinket.gytrinket.core.entity.construct.drone.behavior.ReshapingBeh
 import com.gytrinket.gytrinket.core.entity.construct.drone.behavior.CounterPulseBehavior;
 import com.gytrinket.gytrinket.core.entity.construct.drone.behavior.SelfDestructBehavior;
 import com.gytrinket.gytrinket.core.entity.construct.swarm.SwarmRegistry;
+import com.gytrinket.gytrinket.core.entity.construct.wingman.NanoRegenManager;
 import com.gytrinket.gytrinket.core.entity.construct.wingman.WingmanRegistry;
 import com.gytrinket.gytrinket.core.shield.type.ReflectShieldType;
 import com.gytrinket.gytrinket.core.shield.type.ShieldTypeManager;
+import com.gytrinket.gytrinket.core.sound.ModSounds;
 import com.gytrinket.gytrinket.event.LightPointStoreEventHandler;
 import com.gytrinket.gytrinket.items.ModCreativeModeTabs;
 import com.gytrinket.gytrinket.items.ModItems;
+import com.gytrinket.gytrinket.items.ModMenus;
 import com.gytrinket.gytrinket.network.NetworkHandler;
 import com.gytrinket.gytrinket.storage.datacenter.DataCenterLifecycleHandler;
 import com.gytrinket.gytrinket.storage.datacenter.ModAttachments;
@@ -52,6 +56,8 @@ public class gytrinket {
         ModParticles.PARTICLE_TYPES.register(modEventBus);
         ModEntities.register(modEventBus);
         ModAttachments.register(modEventBus);
+        ModMenus.MENUS.register(modEventBus);
+        ModSounds.SOUND_EVENTS.register(modEventBus);
 
         NeoForge.EVENT_BUS.register(TickScheduler.class);
         NeoForge.EVENT_BUS.register(InvincibilityMarkerManager.class);
@@ -93,7 +99,7 @@ public class gytrinket {
 
         ConstructTypeRegistry.executeRegistries();
 
-        ConstructAttributeRegistry.registerDefaults();
+        NanoRegenManager.init();
 
         DroneSpecialBehaviorManager.getInstance().registerBehavior(new NearDeathProtectionBehavior());
         DroneSpecialBehaviorManager.getInstance().registerBehavior(new NearDeathExplosionBehavior());

@@ -1,8 +1,9 @@
 package com.gytrinket.gytrinket.core.attack_mode.charged_attack;
 
-import com.gytrinket.gytrinket.Config;
+import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.attack_mode.AttackStateManager;
-import com.gytrinket.gytrinket.core.grudge.GrudgeManager;
+import com.gytrinket.gytrinket.core.attack_mode.PlayerAttackLockManager;
+import com.gytrinket.gytrinket.core.attack_mode.GrudgeManager;
 import com.gytrinket.gytrinket.gytrinket;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
@@ -106,6 +107,11 @@ public class ChargedAttackManager {
      * 如果已经在充能中，不重置充能值（幂等操作）
      */
     public static void startCharging(UUID playerUUID) {
+        // 攻击锁定时禁用充能
+        if (PlayerAttackLockManager.isLocked(playerUUID)) {
+            return;
+        }
+
         ChargedAttackData data = PLAYER_CHARGE_DATA.computeIfAbsent(playerUUID, k -> new ChargedAttackData());
         if (data.charging) {
             // 已经在充能中，不重置
@@ -187,6 +193,15 @@ public class ChargedAttackManager {
 
         ChargedAttackData data = PLAYER_CHARGE_DATA.get(uuid);
         if (data == null) {
+            return;
+        }
+
+        // 攻击锁定时取消充能
+        if (PlayerAttackLockManager.isLocked(uuid)) {
+            if (data.charging || data.releasing) {
+                cancelCharging(uuid);
+                com.gytrinket.gytrinket.network.NetworkHandler.sendChargedAttackSyncToPlayer(player, 0);
+            }
             return;
         }
 

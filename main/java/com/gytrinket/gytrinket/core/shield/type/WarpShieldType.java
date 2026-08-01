@@ -1,10 +1,10 @@
 package com.gytrinket.gytrinket.core.shield.type;
 
-import com.gytrinket.gytrinket.Config;
+import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
 import com.gytrinket.gytrinket.core.damage.InvincibilityMarkerManager;
 import com.gytrinket.gytrinket.core.explosion.SimulatedExplosion;
-import com.gytrinket.gytrinket.core.hostile_target.HostileTargetManager;
+import com.gytrinket.gytrinket.core.entity.construct.HostileTargetManager;
 import com.gytrinket.gytrinket.core.shield_transfer.ShieldTransferManager;
 import com.gytrinket.gytrinket.event.ShieldBreakEvent;
 import com.gytrinket.gytrinket.gytrinket;

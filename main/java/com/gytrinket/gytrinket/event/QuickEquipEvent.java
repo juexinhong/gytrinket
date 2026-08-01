@@ -1,6 +1,6 @@
 package com.gytrinket.gytrinket.event;
 
-import com.gytrinket.gytrinket.Config;
+import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
 import com.gytrinket.gytrinket.core.level.ModLevelManager;
 import com.gytrinket.gytrinket.gytrinket;
@@ -205,7 +205,12 @@ public class QuickEquipEvent {
                 || Config.isAdvancedEngineeringItem(item)
                 || Config.isPursuitArrayItem(item)
                 || Config.isFormationArrayItem(item)
-                || Config.isGuardArrayItem(item);
+                || Config.isGuardArrayItem(item)
+                || Config.isSelfDestructItem(item)
+                || Config.isTaskmasterItem(item)
+                || Config.isWingmanModuleItem(item)
+                || Config.isSwarmModuleItem(item)
+                || Config.isBodyItem(item);
     }
 
     private static boolean hasSameItemInStore(ItemStackHandler handler, Item item) {

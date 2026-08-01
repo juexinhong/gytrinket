@@ -1,7 +1,8 @@
 package com.gytrinket.gytrinket.core.entity.construct.wingman;
 
-import com.gytrinket.gytrinket.Config;
-import com.gytrinket.gytrinket.core.disable.DisableSystem;
+import com.gytrinket.gytrinket.config.Config;
+import com.gytrinket.gytrinket.core.shield.DisableSystem;
+import com.gytrinket.gytrinket.core.entity.construct.ConstructBuilder;
 import com.gytrinket.gytrinket.core.entity.construct.ConstructManager;
 import com.gytrinket.gytrinket.core.entity.construct.ConstructType;
 import com.gytrinket.gytrinket.event.PlayerAttributesCalculatedEvent;
@@ -30,6 +31,9 @@ public class WingmanManager {
     /** 玩家构建条件缓存 */
     private static final Set<UUID> PLAYER_CAN_BUILD_WINGMAN = new HashSet<>();
 
+    /** 玩家拦截机模块缓存 */
+    private static final Set<UUID> PLAYER_HAS_INTERCEPTOR_MODULE = new HashSet<>();
+
     private WingmanManager() {
         ConstructManager.getInstance().registerBuildConditionChecker(
                 WingmanConstructTypes.WINGMAN,
@@ -48,7 +52,7 @@ public class WingmanManager {
         ConstructType type = ConstructManager.getInstance().getConstructType(WingmanConstructTypes.WINGMAN);
         if (type == null) return;
 
-        WingmanBuilder builder = new WingmanBuilder(player, type);
+        ConstructBuilder builder = new ConstructBuilder(player, type);
         ConstructManager.getInstance().startBuilding(player, builder);
     }
 
@@ -84,6 +88,7 @@ public class WingmanManager {
         }
 
         boolean hasWingmanModule = false;
+        boolean hasInterceptorModule = false;
 
         for (int i = 0; i < store.getItemHandler().getSlots(); i++) {
             ItemStack stack = store.getItemHandler().getStackInSlot(i);
@@ -93,7 +98,23 @@ public class WingmanManager {
                 if (Config.isWingmanModuleItem(item)) {
                     hasWingmanModule = true;
                 }
+                if (Config.isInterceptorModuleItem(item)) {
+                    hasInterceptorModule = true;
+                }
             }
+        }
+
+        // 更新拦截机模块缓存
+        if (hasInterceptorModule) {
+            PLAYER_HAS_INTERCEPTOR_MODULE.add(playerUUID);
+        } else {
+            PLAYER_HAS_INTERCEPTOR_MODULE.remove(playerUUID);
+        }
+
+        // 刷新所有活跃僚机实体的拦截机模式
+        ServerPlayer playerForEffects = event.getPlayer();
+        if (playerForEffects != null) {
+            updateExistingWingmanInterceptorMode(playerForEffects, hasInterceptorModule);
         }
 
         boolean canBuildBefore = PLAYER_CAN_BUILD_WINGMAN.contains(playerUUID);
@@ -156,5 +177,27 @@ public class WingmanManager {
 
     private static void clearPlayerCache(UUID playerUUID) {
         PLAYER_CAN_BUILD_WINGMAN.remove(playerUUID);
+        PLAYER_HAS_INTERCEPTOR_MODULE.remove(playerUUID);
+    }
+
+    /**
+     * 刷新所有活跃僚机实体的拦截机数据（事件驱动，与DroneManager.updateExistingDroneEffects对齐）
+     */
+    private static void updateExistingWingmanInterceptorMode(ServerPlayer player, boolean hasInterceptorModule) {
+        Map<UUID, net.minecraft.world.entity.Entity> wingmanEntities =
+                ConstructManager.getInstance().getActiveConstructEntities(player.getUUID(), WingmanConstructTypes.WINGMAN);
+
+        for (net.minecraft.world.entity.Entity entity : wingmanEntities.values()) {
+            if (entity instanceof WingmanConstructEntity wingmanEntity && wingmanEntity.isAlive()) {
+                wingmanEntity.refreshInterceptorData();
+            }
+        }
+    }
+
+    /**
+     * 检查玩家是否拥有拦截机模块（缓存查询）
+     */
+    public boolean hasInterceptorModule(Player player) {
+        return PLAYER_HAS_INTERCEPTOR_MODULE.contains(player.getUUID());
     }
 }

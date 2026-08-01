@@ -1,6 +1,7 @@
 package com.gytrinket.gytrinket.client.screen;
 
 import com.gytrinket.gytrinket.network.NetworkHandler;
+import com.gytrinket.gytrinket.network.packet.*;
 import net.neoforged.neoforge.network.PacketDistributor;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -82,7 +83,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
 
         this.addRenderableWidget(Button.builder(
                 Component.translatable("screen.gytrinket.reset_defaults"),
-                button -> PacketDistributor.sendToServer(new NetworkHandler.ConfigResetPayload())
+                button -> PacketDistributor.sendToServer(new ConfigResetPayload())
         ).bounds(panelX + 90, btnY, 80, 16).build());
 
         this.addRenderableWidget(Button.builder(
@@ -183,7 +184,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
                 itemConfigData.add(newItem);
 
                 PacketDistributor.sendToServer(
-                    new NetworkHandler.ConfigAddItemPayload(addingItemId));
+                    new ConfigAddItemPayload(addingItemId));
             }
         }
         isAddingItem = false;
@@ -202,7 +203,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
                     CompoundTag attr = attrs.getCompound(editingAttrIndex);
                     attr.putDouble("value", val);
                     PacketDistributor.sendToServer(
-                        new NetworkHandler.ConfigUpdatePayload(itemTag.getString("itemId"), attr.getString("name"), val));
+                        new ConfigUpdatePayload(itemTag.getString("itemId"), attr.getString("name"), val));
                 } catch (NumberFormatException ignored) {}
             }
         }
@@ -222,7 +223,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
                 attrs.remove(editingAttrIndex);
                 itemTag.put("attributes", attrs);
                 PacketDistributor.sendToServer(
-                    new NetworkHandler.ConfigRemoveAttrPayload(itemId, editingAttrName));
+                    new ConfigRemoveAttrPayload(itemId, editingAttrName));
             }
         }
         isEditing = false;
@@ -739,7 +740,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
                     attrs.remove(hoveredAttrIndex);
                     itemTag.put("attributes", attrs);
                     PacketDistributor.sendToServer(
-                        new NetworkHandler.ConfigRemoveAttrPayload(itemId, attrName));
+                        new ConfigRemoveAttrPayload(itemId, attrName));
                 }
                 isDeletingAttr = false;
                 return true;
@@ -751,7 +752,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
         if (hoveredDelete && hoveredItemIndex >= 0) {
             CompoundTag itemTag = itemConfigData.getCompound(hoveredItemIndex);
             String itemId = itemTag.getString("itemId");
-            PacketDistributor.sendToServer(new NetworkHandler.ConfigDeleteItemPayload(itemId));
+            PacketDistributor.sendToServer(new ConfigDeleteItemPayload(itemId));
             itemConfigData.remove(hoveredItemIndex);
             if (selectedItemIndex == hoveredItemIndex) selectedItemIndex = -1;
             else if (selectedItemIndex > hoveredItemIndex) selectedItemIndex--;
@@ -813,7 +814,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
                 else if (selectedItemIndex < dragFromIndex && selectedItemIndex >= insertIdx) selectedItemIndex++;
 
                 PacketDistributor.sendToServer(
-                    new NetworkHandler.ConfigReorderPayload(dragFromIndex, dragTargetIndex));
+                    new ConfigReorderPayload(dragFromIndex, dragTargetIndex));
             }
             isDraggingItem = false;
             dragFromIndex = -1;
@@ -850,7 +851,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
 
             String itemId = itemTag.getString("itemId");
             PacketDistributor.sendToServer(
-                new NetworkHandler.ConfigUpdatePayload(itemId, attrName, value));
+                new ConfigUpdatePayload(itemId, attrName, value));
         }
     }
 

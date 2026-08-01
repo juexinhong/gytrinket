@@ -1,6 +1,6 @@
 package com.gytrinket.gytrinket.client.network;
 
-import com.gytrinket.gytrinket.Config;
+import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.client.screen.AbstractPanelScreen;
 import com.gytrinket.gytrinket.client.screen.ConfigPanelScreen;
 import com.gytrinket.gytrinket.client.screen.PlayerPanelScreen;
@@ -8,6 +8,7 @@ import com.gytrinket.gytrinket.client.screen.UpgradeSelectScreen;
 import com.gytrinket.gytrinket.client.screen.UpgradeTargetScreen;
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
 import com.gytrinket.gytrinket.network.NetworkHandler;
+import com.gytrinket.gytrinket.network.packet.*;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.nbt.CompoundTag;
@@ -19,7 +20,7 @@ import java.util.Map;
 public final class ClientPacketHandler {
     private ClientPacketHandler() {}
 
-    public static void handleResponsePanelData(NetworkHandler.ResponsePanelDataPayload msg) {
+    public static void handleResponsePanelData(ResponsePanelDataPayload msg) {
         Minecraft mc = Minecraft.getInstance();
         Screen currentScreen = mc.screen;
         PlayerPanelScreen panelScreen = null;
@@ -66,7 +67,7 @@ public final class ClientPacketHandler {
         }
     }
 
-    public static void handleResponseConfigData(NetworkHandler.ResponseConfigDataPayload msg) {
+    public static void handleResponseConfigData(ResponseConfigDataPayload msg) {
         syncLocalAttributeManager(msg.itemConfigData());
         Config.saveItemAttributesConfig();
 

@@ -11,11 +11,11 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class LightningRenderManager {
-    private static final List<LightningRenderData> lightningDataList = new ArrayList<>();
+    private static final List<LightningRenderData> lightningDataList = new CopyOnWriteArrayList<>();
 
     public static void addLightning(List<ElectricDischargeManager.LightningSegment> segments) {
         addLightning(segments, 8, -1.0f);

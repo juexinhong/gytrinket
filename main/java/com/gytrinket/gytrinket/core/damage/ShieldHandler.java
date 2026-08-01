@@ -1,11 +1,14 @@
 package com.gytrinket.gytrinket.core.damage;
 
-import com.gytrinket.gytrinket.Config;
+import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.shield.ShieldData;
 import com.gytrinket.gytrinket.core.shield.ShieldManager;
 import com.gytrinket.gytrinket.core.shield.type.ShieldTypeManager;
 import com.gytrinket.gytrinket.core.shield_transfer.ShieldTransferManager;
+import com.gytrinket.gytrinket.core.sound.ModSounds;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 
@@ -86,10 +89,29 @@ public class ShieldHandler implements DamageHandler {
         if (!isShieldSelfDamage) {
             ShieldTypeManager.processReflectAfterShieldDamage(shieldOwner, attackedEntity);
         }
+
+        // 播放护盾受击音效
+        if (!isShieldSelfDamage) {
+            playShieldHitSound(attackedEntity);
+        }
     }
 
     @Override
     public int getPriority() {
         return PRIORITY;
+    }
+
+    private static void playShieldHitSound(LivingEntity entity) {
+        String soundType = Config.getShieldHitSound();
+        if ("none".equals(soundType)) {
+            return;
+        }
+        if ("vanilla_hurt".equals(soundType)) {
+            entity.level().playSound(null, entity.getX(), entity.getY(), entity.getZ(),
+                    SoundEvents.PLAYER_HURT, SoundSource.PLAYERS, 0.5F, 1.0F);
+        } else if ("shield_hit".equals(soundType)) {
+            entity.level().playSound(null, entity.getX(), entity.getY(), entity.getZ(),
+                    ModSounds.SHIELD_HIT.get(), SoundSource.PLAYERS, 0.8F, 1.0F);
+        }
     }
 }

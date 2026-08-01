@@ -1,6 +1,6 @@
 package com.gytrinket.gytrinket.core.shield.type;
 
-import com.gytrinket.gytrinket.Config;
+import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
 import com.gytrinket.gytrinket.core.shield.ShieldManager;
 import net.minecraft.world.damagesource.DamageSource;

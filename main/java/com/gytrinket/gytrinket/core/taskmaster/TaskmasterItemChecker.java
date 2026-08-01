@@ -1,6 +1,6 @@
 package com.gytrinket.gytrinket.core.taskmaster;
 
-import com.gytrinket.gytrinket.Config;
+import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.event.PlayerAttributesCalculatedEvent;
 import com.gytrinket.gytrinket.gytrinket;
 import com.gytrinket.gytrinket.storage.PlayerStoreUtils;

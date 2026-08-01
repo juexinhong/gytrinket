@@ -1,11 +1,11 @@
 package com.gytrinket.gytrinket.core.entity.construct.wingman;
 
-import com.gytrinket.gytrinket.Config;
+import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.entity.construct.drone.DroneConstructEntity;
 import com.gytrinket.gytrinket.core.entity.construct.drone.ModDamageSources;
 import com.gytrinket.gytrinket.core.entity.construct.drone.ModEntities;
-import com.gytrinket.gytrinket.core.explosion.SimulatedExplosion;
-import com.gytrinket.gytrinket.core.hostile_target.HostileTargetManager;
+import com.gytrinket.gytrinket.core.explosion.EnergyWaveExplosion;
+import com.gytrinket.gytrinket.core.entity.construct.HostileTargetManager;
 import com.gytrinket.gytrinket.core.modifier.player.knockback.KnockbackManager;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.damagesource.DamageSource;
@@ -21,10 +21,6 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
-import software.bernie.geckolib.animatable.GeoEntity;
-import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
-import software.bernie.geckolib.animation.AnimatableManager;
-import software.bernie.geckolib.util.GeckoLibUtil;
 
 import java.util.List;
 
@@ -35,9 +31,7 @@ import java.util.List;
  * 销毁时产生模拟爆炸（半径1格，0.5爆炸伤害）。
  * 无物理模式：穿墙，自行实现碰撞检测。
  */
-public class ExplosiveProjectile extends ThrowableItemProjectile implements GeoEntity {
-
-    private final AnimatableInstanceCache animatableInstanceCache = GeckoLibUtil.createInstanceCache(this);
+public class ExplosiveProjectile extends ThrowableItemProjectile {
 
     private float damage;
     /** 命中实体时在碰撞箱表面的交点位置，用于优化爆炸点位 */
@@ -46,6 +40,7 @@ public class ExplosiveProjectile extends ThrowableItemProjectile implements GeoE
     public ExplosiveProjectile(EntityType<? extends ExplosiveProjectile> type, Level level) {
         super(type, level);
         this.noPhysics = true;
+        this.setNoGravity(true);
         this.damage = (float) Config.getWingmanExplosiveDamage();
     }
 
@@ -53,6 +48,7 @@ public class ExplosiveProjectile extends ThrowableItemProjectile implements GeoE
         super(ModEntities.EXPLOSIVE_PROJECTILE.get(), owner, level);
         this.damage = damage;
         this.noPhysics = true;
+        this.setNoGravity(true);
     }
 
     @Override
@@ -81,6 +77,17 @@ public class ExplosiveProjectile extends ThrowableItemProjectile implements GeoE
         return this.damageSources().thrown(this, owner);
     }
 
+    /**
+     * 创建带有守卫阵列仇恨集中的伤害源
+     */
+    private DamageSource createDamageSourceWithGuardAggro() {
+        Entity owner = this.getOwner();
+        if (owner instanceof LivingEntity livingOwner) {
+            return ModDamageSources.droneBulletWithGuardAggro(this.level(), this, livingOwner);
+        }
+        return this.damageSources().thrown(this, owner);
+    }
+
     @Override
     protected boolean canHitEntity(Entity entity) {
         return false;
@@ -104,10 +111,10 @@ public class ExplosiveProjectile extends ThrowableItemProjectile implements GeoE
             Vec3 currentPos = this.position();
             Vec3 nextPos = currentPos.add(velocity);
 
-            LivingEntity hitTarget = findTargetInPath(currentPos, nextPos);
+            Vec3[] hitPosOut = new Vec3[1];
+            LivingEntity hitTarget = findTargetInPath(currentPos, nextPos, hitPosOut);
             if (hitTarget != null) {
-                // 爆炸位置使用目标实体position（与SimulatedExplosion的距离计算一致）
-                this.explosionPos = hitTarget.position();
+                this.explosionPos = hitPosOut[0] != null ? hitPosOut[0] : hitTarget.position();
 
                 dealDamageToTarget(hitTarget);
                 triggerExplosionAndDiscard();
@@ -125,10 +132,19 @@ public class ExplosiveProjectile extends ThrowableItemProjectile implements GeoE
     }
 
     /**
-     * 沿弹道路径寻找第一个可攻击的实体
+     * 沿弹道路径寻找第一个可攻击的实体，同时返回命中交点
      */
     @Nullable
     private LivingEntity findTargetInPath(Vec3 currentPos, Vec3 nextPos) {
+        return findTargetInPath(currentPos, nextPos, null);
+    }
+
+    /**
+     * 沿弹道路径寻找第一个可攻击的实体
+     * @param hitPosOut 若非null，写入射线与碰撞箱的交点位置（重叠时取子弹当前位置）
+     */
+    @Nullable
+    private LivingEntity findTargetInPath(Vec3 currentPos, Vec3 nextPos, @Nullable Vec3[] hitPosOut) {
         Entity owner = this.getOwner();
         Player ownerPlayer = getOwnerPlayer();
 
@@ -145,6 +161,7 @@ public class ExplosiveProjectile extends ThrowableItemProjectile implements GeoE
 
         LivingEntity closest = null;
         double closestDist = Double.MAX_VALUE;
+        Vec3 closestHitPos = null;
 
         AABB bulletBox = this.getBoundingBox();
 
@@ -159,6 +176,7 @@ public class ExplosiveProjectile extends ThrowableItemProjectile implements GeoE
                 if (dist < closestDist) {
                     closestDist = dist;
                     closest = target;
+                    closestHitPos = currentPos;
                 }
                 continue;
             }
@@ -171,8 +189,13 @@ public class ExplosiveProjectile extends ThrowableItemProjectile implements GeoE
                 if (dist < closestDist) {
                     closestDist = dist;
                     closest = target;
+                    closestHitPos = intersection;
                 }
             }
+        }
+
+        if (closest != null && hitPosOut != null && hitPosOut.length > 0) {
+            hitPosOut[0] = closestHitPos;
         }
 
         return closest;
@@ -196,33 +219,44 @@ public class ExplosiveProjectile extends ThrowableItemProjectile implements GeoE
     private void dealDamageToTarget(LivingEntity target) {
         target.invulnerableTime = 0;
         KnockbackManager.markNoKnockback(target.getUUID());
-        target.hurt(createDamageSource(), damage);
+        target.hurt(createDamageSourceWithGuardAggro(), damage);
         target.invulnerableTime = 0;
     }
 
     /**
-     * 销毁时产生模拟爆炸（在子弹自身位置）
+     * 销毁时产生能量波爆炸（方向为爆破弹飞行方向，溅射长度1.5格）
+     * 若玩家拥有震撼弹模块，伤害和溅射长度提升
      */
     private void triggerExplosionAndDiscard() {
         if (!this.level().isClientSide) {
             Vec3 pos = this.position();
             Vec3 explosionCenter = this.explosionPos != null ? this.explosionPos : pos;
             float explosionDamage = (float) Config.getWingmanExplosionDamage();
-            double explosionRadius = Config.getWingmanExplosionRadius();
+            double splashLength = 1.5;
+            Vec3 splashDirection = this.getDeltaMovement();
 
             Player ownerPlayer = getOwnerPlayer();
+
+            // 震撼弹模块加成
+            if (ownerPlayer != null && ShockwaveModuleManager.hasShockwaveModule(ownerPlayer.getUUID())) {
+                explosionDamage *= Config.getWingmanShockwaveDamageMultiplier();
+                splashLength *= Config.getWingmanShockwaveSplashLengthMultiplier();
+            }
+
+            // 爆炸伤害归属僚机（非斩杀时）；斩杀时由 EnergyWaveExplosion 内部切换为玩家归属
+            Entity owner = this.getOwner();
             DamageSource damageSource;
-            if (ownerPlayer != null) {
-                damageSource = this.damageSources().explosion(this, ownerPlayer);
+            if (owner instanceof LivingEntity livingOwner) {
+                damageSource = this.damageSources().explosion(this, livingOwner);
             } else {
-                Entity owner = this.getOwner();
                 damageSource = this.damageSources().explosion(this, owner);
             }
 
-            SimulatedExplosion.execute(
+            EnergyWaveExplosion.execute(
                 this.level(),
                 explosionCenter,
-                explosionRadius,
+                splashDirection,
+                splashLength,
                 explosionDamage,
                 damageSource,
                 entity -> entity.isAlive()
@@ -232,8 +266,7 @@ public class ExplosiveProjectile extends ThrowableItemProjectile implements GeoE
                         && !(entity instanceof WingmanConstructEntity)
                         && (ownerPlayer == null || HostileTargetManager.shouldAttackPlayer(entity, ownerPlayer)),
                 true,
-                ownerPlayer,
-                0.0  // 爆破弹爆炸斥力修正为0
+                ownerPlayer
             );
         }
 
@@ -256,14 +289,6 @@ public class ExplosiveProjectile extends ThrowableItemProjectile implements GeoE
         super.readAdditionalSaveData(tag);
         this.damage = tag.getFloat("damage");
         this.noPhysics = true;
-    }
-
-    @Override
-    public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
-    }
-
-    @Override
-    public AnimatableInstanceCache getAnimatableInstanceCache() {
-        return this.animatableInstanceCache;
+        this.setNoGravity(true);
     }
 }

@@ -1,12 +1,12 @@
 package com.gytrinket.gytrinket.client.effect.particle;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class ShieldParticleTimerManager {
 
     private static ShieldParticleTimerManager instance;
-    private final List<PendingParticle> pendingParticles = new ArrayList<>();
+    private final List<PendingParticle> pendingParticles = new CopyOnWriteArrayList<>();
 
     private ShieldParticleTimerManager() {}
 

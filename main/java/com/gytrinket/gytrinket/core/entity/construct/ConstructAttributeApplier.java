@@ -1,16 +1,17 @@
 package com.gytrinket.gytrinket.core.entity.construct;
 
-import com.gytrinket.gytrinket.core.attribute.AttributeDefinition;
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
+import com.gytrinket.gytrinket.core.attribute.AttributeType;
 import com.gytrinket.gytrinket.core.entity.construct.drone.DroneConstructEntity;
 import com.gytrinket.gytrinket.core.entity.construct.drone.DroneConstructTypes;
 import com.gytrinket.gytrinket.core.entity.construct.swarm.SwarmConstructEntity;
 import com.gytrinket.gytrinket.core.entity.construct.swarm.SwarmConstructTypes;
 import com.gytrinket.gytrinket.core.entity.construct.swarm.MothershipManager;
-import com.gytrinket.gytrinket.Config;
+import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.entity.construct.wingman.WingmanConstructEntity;
 import com.gytrinket.gytrinket.core.entity.construct.wingman.WingmanConstructTypes;
 import com.gytrinket.gytrinket.core.modifier.ModifierHelper;
+import com.gytrinket.gytrinket.event.PlayerAttributesCalculatedEvent;
 import com.gytrinket.gytrinket.event.PlayerLightPointStoreChangedEvent;
 import com.gytrinket.gytrinket.gytrinket;
 import net.minecraft.resources.ResourceLocation;
@@ -20,6 +21,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.server.ServerLifecycleHooks;
@@ -48,6 +50,24 @@ public class ConstructAttributeApplier {
         }
 
         refreshForPlayer(playerUUID, player);
+    }
+
+    // ===== 事件监听（LOW 优先级：确保动态属性提供者先执行） =====
+
+    @SubscribeEvent(priority = EventPriority.LOW)
+    public static void onAttributesCalculated(PlayerAttributesCalculatedEvent event) {
+        ServerPlayer player = event.getPlayer();
+        if (player == null) return;
+
+        UUID playerUUID = player.getUUID();
+
+        if (event.isFullRecalculation()) {
+            // 全量重算：刷新所有构造体
+            refreshForPlayer(playerUUID, player);
+        } else {
+            // 局部重算：仅刷新受影响的构造体类型
+            partialRefreshForPlayer(playerUUID, player, event.getDirtyAttributes());
+        }
     }
 
     public static void refreshForPlayer(UUID playerUUID, ServerPlayer player) {
@@ -88,14 +108,89 @@ public class ConstructAttributeApplier {
         }
     }
 
-    public static Map<String, Double> computeConstructAttributes(UUID playerUUID) {
-        Map<String, Double> result = new HashMap<>();
-        Map<String, ConstructAttributeTarget> targets = ConstructAttributeRegistry.getAllTargets();
+    /**
+     * 局部刷新：根据脏属性集合，仅刷新受影响的构造体类型。
+     * <p>
+     * 解析脏属性的目标标签，只对这些类型的构造体重新应用属性。
+     * 如果脏属性含非构造体属性或无法确定类型，刷新所有构造体。
+     */
+    private static void partialRefreshForPlayer(UUID playerUUID, ServerPlayer player, Set<String> dirtyAttributes) {
+        // 更新缓存
+        Map<String, Double> constructAttrs = computeConstructAttributes(playerUUID);
+        PLAYER_CONSTRUCT_ATTR_CACHE.put(playerUUID, constructAttrs);
 
-        for (Map.Entry<String, ConstructAttributeTarget> entry : targets.entrySet()) {
-            String attrName = entry.getKey();
-            double value = AttributeManager.getPlayerAttribute(playerUUID, attrName);
-            result.put(attrName, value);
+        // 如果脏属性中含非构造体属性，刷新所有构造体
+        if (!dirtyAttributes.stream().allMatch(ConstructAttributeNameParser::isConstructAttribute)) {
+            applyAttributesToConstructs(playerUUID, player, constructAttrs);
+            return;
+        }
+
+        // 从脏属性中解析受影响的构造体类型
+        Set<String> affectedTypeIds = new HashSet<>();
+        boolean affectsAll = false;
+        for (String attrName : dirtyAttributes) {
+            ConstructAttributeNameParser.ParsedAttribute parsed = ConstructAttributeNameParser.parse(attrName);
+            if (parsed == null) continue;
+
+            // 无类型限制 = 影响所有构造体类型
+            if (parsed.getConstructTypes().isEmpty()) {
+                affectsAll = true;
+                break;
+            }
+            affectedTypeIds.addAll(parsed.getConstructTypes());
+        }
+
+        // 如果无法确定类型或影响所有类型，刷新所有构造体
+        if (affectsAll || affectedTypeIds.isEmpty()) {
+            applyAttributesToConstructs(playerUUID, player, constructAttrs);
+            return;
+        }
+
+        // 仅刷新受影响的构造体类型
+        for (String typeId : affectedTypeIds) {
+            if (DroneConstructTypes.DRONE.equals(typeId)) {
+                applyToType(playerUUID, typeId, DroneConstructEntity.class,
+                        ConstructAttributeApplier::collectDroneTags, constructAttrs);
+            } else if (WingmanConstructTypes.WINGMAN.equals(typeId)) {
+                applyToType(playerUUID, typeId, WingmanConstructEntity.class,
+                        ConstructAttributeApplier::collectWingmanTags, constructAttrs);
+            } else if (SwarmConstructTypes.SWARM.equals(typeId)) {
+                applyToType(playerUUID, typeId, SwarmConstructEntity.class,
+                        ConstructAttributeApplier::collectSwarmTags, constructAttrs);
+            }
+        }
+    }
+
+    /**
+     * 构造体主动获取自身属性（三种场景：构建完毕、玩家重登恢复、待机恢复）。
+     * <p>
+     * 构造体通过此方法获取当前已计算的属性并应用到自身。
+     * 如果缓存中没有属性数据，则从 AttributeManager 实时计算。
+     */
+    public static void fetchAttributesForConstruct(AbstractConstructEntity construct, LivingEntity livingEntity) {
+        UUID ownerUUID = construct.getOwnerUUID();
+        if (ownerUUID == null) return;
+
+        Map<String, Double> constructAttrs = PLAYER_CONSTRUCT_ATTR_CACHE.get(ownerUUID);
+        if (constructAttrs == null) {
+            constructAttrs = computeConstructAttributes(ownerUUID);
+            PLAYER_CONSTRUCT_ATTR_CACHE.put(ownerUUID, constructAttrs);
+        }
+
+        String typeId = construct.getConstructTypeId();
+        ConstructType type = ConstructManager.getInstance().getConstructType(typeId);
+        Set<String> instanceTags = construct.getInstanceTags();
+        applyAttributesToConstruct(construct, instanceTags, type, constructAttrs);
+    }
+
+    public static Map<String, Double> computeConstructAttributes(UUID playerUUID) {
+        Map<String, Double> allAttrs = AttributeManager.getPlayerAttributes(playerUUID);
+        Map<String, Double> result = new HashMap<>();
+
+        for (Map.Entry<String, Double> entry : allAttrs.entrySet()) {
+            if (ConstructAttributeNameParser.isConstructAttribute(entry.getKey())) {
+                result.put(entry.getKey(), entry.getValue());
+            }
         }
 
         return result;
@@ -175,6 +270,7 @@ public class ConstructAttributeApplier {
      */
     public static void applyAttributesToConstruct(IConstructEntity entity, Set<String> instanceTags,
                                                    ConstructType type, Map<String, Double> constructAttrs) {
+        String typeId = entity.getConstructTypeId();
         double healthBase = 0;
         double healthPercent = 1.0;
         double healthIndependent = 1.0;
@@ -183,39 +279,51 @@ public class ConstructAttributeApplier {
         double damageIndependent = 1.0;
         double attackSpeedPercent = 1.0;
         double attackSpeedIndependent = 1.0;
+        double weaponAttackSpeedPercent = 1.0;
+        double weaponAttackSpeedIndependent = 1.0;
 
         for (Map.Entry<String, Double> entry : constructAttrs.entrySet()) {
             String attrName = entry.getKey();
             double value = entry.getValue();
 
-            ConstructAttributeTarget target = ConstructAttributeRegistry.getTarget(attrName);
-            if (target == null) continue;
-            if (type == null || !target.matches(type, instanceTags)) continue;
+            ConstructAttributeNameParser.ParsedAttribute parsed = ConstructAttributeNameParser.parse(attrName);
+            if (parsed == null || type == null || !parsed.matches(typeId, type, instanceTags)) {
+                continue;
+            }
 
-            AttributeDefinition def = AttributeManager.getAttributeDefinition(attrName);
-            if (def == null) continue;
+            AttributeType valueType = parsed.getValueType();
+            if (valueType == null || parsed.getEffectType() == null) continue;
 
-            switch (target.getEffectType()) {
+            switch (parsed.getEffectType()) {
                 case HEALTH -> {
-                    switch (def.getType()) {
+                    switch (valueType) {
                         case BASE -> healthBase += value;
                         case PERCENT -> healthPercent *= value;
                         case INDEPENDENT_MULTIPLY -> healthIndependent *= value;
                     }
                 }
                 case DAMAGE -> {
-                    switch (def.getType()) {
+                    switch (valueType) {
                         case BASE -> damageBase += value;
                         case PERCENT -> damagePercent *= value;
                         case INDEPENDENT_MULTIPLY -> damageIndependent *= value;
                     }
                 }
                 case ATTACK_SPEED -> {
-                    switch (def.getType()) {
+                    switch (valueType) {
+                        case BASE -> {} // 攻击速度无 BASE 类型
                         case PERCENT -> attackSpeedPercent *= value;
                         case INDEPENDENT_MULTIPLY -> attackSpeedIndependent *= value;
                     }
                 }
+                case WEAPON_ATTACK_SPEED -> {
+                    switch (valueType) {
+                        case BASE -> {} // 武器攻击速度无 BASE 类型
+                        case PERCENT -> weaponAttackSpeedPercent *= value;
+                        case INDEPENDENT_MULTIPLY -> weaponAttackSpeedIndependent *= value;
+                    }
+                }
+                default -> {} // MAX_COUNT, BUILD_SPEED, EXPLOSIVE_COUNT 不应用到实体属性
             }
         }
 
@@ -224,11 +332,13 @@ public class ConstructAttributeApplier {
         double baseAttackDamage = entity.getBaseAttackDamage();
         double finalAttackDamage = (baseAttackDamage + damageBase) * damagePercent * damageIndependent;
         double finalAttackSpeedMultiplier = attackSpeedPercent * attackSpeedIndependent;
+        double finalWeaponAttackSpeedMultiplier = weaponAttackSpeedPercent * weaponAttackSpeedIndependent;
 
         LivingEntity livingEntity = (LivingEntity) entity;
         applyHealthModifier(livingEntity, baseMaxHealth, finalMaxHealth);
         applyDamageModifier(livingEntity, baseAttackDamage, finalAttackDamage);
         entity.setAttackSpeedMultiplier(finalAttackSpeedMultiplier);
+        entity.setWeaponAttackSpeedMultiplier(finalWeaponAttackSpeedMultiplier);
     }
 
     /**
@@ -325,19 +435,22 @@ public class ConstructAttributeApplier {
         double baseBonus = 0;
         double percent = 1.0;
         double independent = 1.0;
+        String typeId = type.getId();
 
-        Set<String> countAttrs = ConstructAttributeRegistry.getAttributesByEffectType(ConstructAttributeTarget.EffectType.MAX_COUNT);
-        for (String attrName : countAttrs) {
-            ConstructAttributeTarget target = ConstructAttributeRegistry.getTarget(attrName);
-            if (target == null || !target.matches(type)) {
-                continue;
-            }
-            double value = AttributeManager.getPlayerAttribute(playerUUID, attrName);
-            AttributeDefinition def = AttributeManager.getAttributeDefinition(attrName);
-            if (def == null) {
-                continue;
-            }
-            switch (def.getType()) {
+        Map<String, Double> allAttrs = AttributeManager.getPlayerAttributes(playerUUID);
+        for (Map.Entry<String, Double> entry : allAttrs.entrySet()) {
+            String attrName = entry.getKey();
+            if (!ConstructAttributeNameParser.isConstructAttribute(attrName)) continue;
+
+            ConstructAttributeNameParser.ParsedAttribute parsed = ConstructAttributeNameParser.parse(attrName);
+            if (parsed == null || parsed.getEffectType() != ConstructAttributeNameParser.EffectType.MAX_COUNT) continue;
+            if (!parsed.matches(typeId, type, Collections.emptySet())) continue;
+
+            AttributeType valueType = parsed.getValueType();
+            if (valueType == null) continue;
+
+            double value = entry.getValue();
+            switch (valueType) {
                 case BASE -> baseBonus += value;
                 case PERCENT -> percent *= value;
                 case INDEPENDENT_MULTIPLY -> independent *= value;
@@ -351,23 +464,58 @@ public class ConstructAttributeApplier {
     public static double getEffectiveBuildSpeed(UUID playerUUID, ConstructType type) {
         double percent = 1.0;
         double independent = 1.0;
+        String typeId = type.getId();
 
-        Set<String> buildAttrs = ConstructAttributeRegistry.getAttributesByEffectType(ConstructAttributeTarget.EffectType.BUILD_SPEED);
-        for (String attrName : buildAttrs) {
-            ConstructAttributeTarget target = ConstructAttributeRegistry.getTarget(attrName);
-            if (target != null && target.matches(type)) {
-                double value = AttributeManager.getPlayerAttribute(playerUUID, attrName);
-                AttributeDefinition def = AttributeManager.getAttributeDefinition(attrName);
-                if (def != null) {
-                    switch (def.getType()) {
-                        case PERCENT -> percent *= value;
-                        case INDEPENDENT_MULTIPLY -> independent *= value;
-                    }
-                }
+        Map<String, Double> allAttrs = AttributeManager.getPlayerAttributes(playerUUID);
+        for (Map.Entry<String, Double> entry : allAttrs.entrySet()) {
+            String attrName = entry.getKey();
+            if (!ConstructAttributeNameParser.isConstructAttribute(attrName)) continue;
+
+            ConstructAttributeNameParser.ParsedAttribute parsed = ConstructAttributeNameParser.parse(attrName);
+            if (parsed == null || parsed.getEffectType() != ConstructAttributeNameParser.EffectType.BUILD_SPEED) continue;
+            if (!parsed.matches(typeId, type, Collections.emptySet())) continue;
+
+            AttributeType valueType = parsed.getValueType();
+            if (valueType == null) continue;
+
+            double value = entry.getValue();
+            switch (valueType) {
+                case PERCENT -> percent *= value;
+                case INDEPENDENT_MULTIPLY -> independent *= value;
             }
         }
 
         return percent * independent;
+    }
+
+    /**
+     * 获取有效爆破弹数量
+     * 基础值来自 Config，加上 wingman_explosive_count 属性的加成
+     */
+    public static int getEffectiveExplosiveCount(UUID playerUUID, ConstructType type) {
+        int baseCount = Config.getWingmanExplosiveCount();
+        double baseBonus = 0;
+        String typeId = type.getId();
+
+        Map<String, Double> allAttrs = AttributeManager.getPlayerAttributes(playerUUID);
+        for (Map.Entry<String, Double> entry : allAttrs.entrySet()) {
+            String attrName = entry.getKey();
+            if (!ConstructAttributeNameParser.isConstructAttribute(attrName)) continue;
+
+            ConstructAttributeNameParser.ParsedAttribute parsed = ConstructAttributeNameParser.parse(attrName);
+            if (parsed == null || parsed.getEffectType() != ConstructAttributeNameParser.EffectType.EXPLOSIVE_COUNT) continue;
+            if (!parsed.matches(typeId, type, Collections.emptySet())) continue;
+
+            AttributeType valueType = parsed.getValueType();
+            if (valueType == null) continue;
+
+            double value = entry.getValue();
+            if (valueType == AttributeType.BASE) {
+                baseBonus += value;
+            }
+        }
+
+        return Math.max(1, (int) Math.floor(baseCount + baseBonus));
     }
 
     public static void clearPlayerCache(UUID playerUUID) {

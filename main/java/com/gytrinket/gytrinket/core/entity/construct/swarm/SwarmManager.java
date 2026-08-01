@@ -1,7 +1,7 @@
 package com.gytrinket.gytrinket.core.entity.construct.swarm;
 
-import com.gytrinket.gytrinket.Config;
-import com.gytrinket.gytrinket.core.disable.DisableSystem;
+import com.gytrinket.gytrinket.config.Config;
+import com.gytrinket.gytrinket.core.shield.DisableSystem;
 import com.gytrinket.gytrinket.core.entity.construct.ConstructManager;
 import com.gytrinket.gytrinket.core.entity.construct.ConstructType;
 import com.gytrinket.gytrinket.event.PlayerAttributesCalculatedEvent;

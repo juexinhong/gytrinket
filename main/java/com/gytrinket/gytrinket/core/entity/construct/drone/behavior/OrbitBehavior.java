@@ -1,6 +1,7 @@
 package com.gytrinket.gytrinket.core.entity.construct.drone.behavior;
 
-import com.gytrinket.gytrinket.Config;
+import com.gytrinket.gytrinket.config.Config;
+import com.gytrinket.gytrinket.core.entity.construct.ConstructGroupCache;
 import com.gytrinket.gytrinket.core.entity.construct.ConstructManager;
 import com.gytrinket.gytrinket.core.entity.construct.drone.DroneArrayType;
 import com.gytrinket.gytrinket.core.entity.construct.drone.DroneBullet;
@@ -97,60 +98,32 @@ public class OrbitBehavior implements IDroneBehavior {
             owner.getZ() + ORBIT_RADIUS * Math.sin(finalAngle)
         );
 
-        // 无人机自己移动到目标位置（不是直接传送）
-        Vec3 dronePos = drone.position();
-        Vec3 direction = targetPos.subtract(dronePos);
-        double distance = direction.length();
-
-        if (distance > 0.1) {
-            direction = direction.normalize();
-            float moveDistance = (float)(MOVE_SPEED * deltaTime);
-            if (moveDistance > distance) {
-                moveDistance = (float) distance;
+        // 检查与玩家的距离，超出40格视为丢失，移除无人机
+        double distanceToOwner = drone.distanceTo(owner);
+        if (distanceToOwner > 40.0) {
+            if (drone instanceof DroneConstructEntity droneEntity) {
+                UUID ownerUUID = owner.getUUID();
+                String constructId = droneEntity.getConstructTypeId();
+                UUID entityUUID = droneEntity.getUUID();
+                droneEntity.remove(Entity.RemovalReason.DISCARDED);
+                ConstructManager manager = ConstructManager.getInstance();
+                manager.unregisterConstructEntity(ownerUUID, constructId, entityUUID);
+                manager.removeConstruct(ownerUUID, entityUUID);
             }
-            Vec3 moveVector = direction.scale(moveDistance);
-            drone.setDeltaMovement(moveVector);
-        } else {
-            drone.setDeltaMovement(Vec3.ZERO);
+            return Vec3.ZERO;
         }
+
+        // 所有无人机直接定位到目标位置，确保阵列刚性与连贯性
+        drone.setPos(targetPos.x, targetPos.y, targetPos.z);
+        drone.setDeltaMovement(Vec3.ZERO);
 
         return Vec3.ZERO;
     }
 
     @Override
     public List<LivingEntity> searchTargets(Entity drone, LivingEntity owner, float range) {
-        Level level = drone.level();
-
-        // 使用无人机的位置作为搜索中心
-        Vec3 dronePos = drone.position();
-        AABB searchBox = new AABB(
-            dronePos.x - SEARCH_RANGE,
-            dronePos.y - SEARCH_RANGE,
-            dronePos.z - SEARCH_RANGE,
-            dronePos.x + SEARCH_RANGE,
-            dronePos.y + SEARCH_RANGE,
-            dronePos.z + SEARCH_RANGE
-        );
-
-        List<LivingEntity> entities = level.getEntitiesOfClass(LivingEntity.class, searchBox,
-                entity -> {
-                    if (entity == owner || entity == drone) return false;
-                    if (!entity.isAlive()) return false;
-                    // 只攻击敌对生物
-                    if (entity.getType().getCategory() != net.minecraft.world.entity.MobCategory.MONSTER) return false;
-                    // 不攻击铁傀儡等友方实体
-                    if (entity instanceof net.minecraft.world.entity.animal.AbstractGolem) return false;
-                    // 不攻击玩家
-                    if (entity instanceof net.minecraft.world.entity.player.Player) return false;
-                    // 不检查视线（视线检查放在攻击时）
-                    return true;
-                });
-
-        List<LivingEntity> sortedEntities = entities.stream()
-                .sorted(Comparator.comparingDouble(entity -> entity.distanceToSqr(drone)))
-                .collect(Collectors.toList());
-
-        return sortedEntities;
+        return ConstructGroupCache.getInstance().findTargetsInRange(
+            owner.getUUID(), owner, drone.position(), SEARCH_RANGE);
     }
 
     @Override

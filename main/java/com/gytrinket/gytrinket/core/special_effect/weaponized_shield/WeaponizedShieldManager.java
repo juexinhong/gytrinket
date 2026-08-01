@@ -1,9 +1,9 @@
 package com.gytrinket.gytrinket.core.special_effect.weaponized_shield;
 
-import com.gytrinket.gytrinket.Config;
+import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
-import com.gytrinket.gytrinket.core.disable.DisableSystem;
-import com.gytrinket.gytrinket.core.hostile_target.HostileTargetManager;
+import com.gytrinket.gytrinket.core.shield.DisableSystem;
+import com.gytrinket.gytrinket.core.entity.construct.HostileTargetManager;
 import com.gytrinket.gytrinket.core.shield.ShieldManager;
 import com.gytrinket.gytrinket.core.shield_transfer.ShieldTransferManager;
 import com.gytrinket.gytrinket.core.vulnerability.VulnerabilityApplyEvent;

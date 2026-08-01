@@ -1,0 +1,17 @@
+﻿{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " # ",
+    "#@#",
+    " # "
+  ],
+  "key": {
+    "#": { "item": "minecraft:copper_ingot" },
+    "@": { "item": "minecraft:ender_eye" }
+  },
+  "result": {
+    "id": "gytrinket:totem",
+    "count": 1
+  }
+}

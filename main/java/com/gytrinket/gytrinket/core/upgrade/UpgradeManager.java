@@ -1,6 +1,6 @@
 package com.gytrinket.gytrinket.core.upgrade;
 
-import com.gytrinket.gytrinket.Config;
+import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.gytrinket;
 import com.gytrinket.gytrinket.storage.datacenter.PlayerDataCenter;
 import net.minecraft.core.RegistryAccess;

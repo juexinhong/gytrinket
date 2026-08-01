@@ -5,7 +5,6 @@ import com.gytrinket.gytrinket.core.attack_mode.burst_fire.BurstFireManager;
 import com.gytrinket.gytrinket.core.attack_mode.charged_attack.ChargedAttackDamageTracker;
 import com.gytrinket.gytrinket.core.attack_mode.charged_attack.ChargedAttackManager;
 import com.gytrinket.gytrinket.core.attack_mode.electric_discharge.ElectricDischargeManager;
-import com.gytrinket.gytrinket.core.taskmaster.TaskmasterManager;
 import com.gytrinket.gytrinket.gytrinket;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
@@ -228,13 +227,17 @@ public class AttackModeManager {
             return;
         }
 
-        // 督战者禁用玩家攻击
-        if (TaskmasterManager.hasTaskmaster(player)) {
-            event.setCanceled(true);
+        UUID uuid = player.getUUID();
+
+        // 攻击锁定：仅取消对 LivingEntity 的攻击，非 LivingEntity（船、矿车等）允许通过
+        if (PlayerAttackLockManager.isLocked(uuid)) {
+            if (event.getTarget() instanceof LivingEntity) {
+                event.setCanceled(true);
+                return;
+            }
+            // 非生命实体攻击放行，但特殊攻击模式不触发
             return;
         }
-
-        UUID uuid = player.getUUID();
         PlayerAttackModes modes = getPlayerModes(uuid);
         AttackModeCombo combo = getCombo(uuid);
 
@@ -292,6 +295,16 @@ public class AttackModeManager {
         }
 
         UUID uuid = player.getUUID();
+
+        // ===== 攻击锁定：取消进行中的特殊攻击模式 =====
+        if (PlayerAttackLockManager.isLocked(uuid)) {
+            PlayerAttackLockManager.cancelActiveModes(uuid);
+            // 跳过所有特殊攻击模式逻辑
+            PLAYER_ATTACKED_THIS_TICK.remove(uuid);
+            ELECTRIC_TRIGGERED_THIS_TICK.remove(uuid);
+            return;
+        }
+
         PlayerAttackModes modes = getPlayerModes(uuid);
         AttackModeCombo combo = getCombo(uuid);
 
@@ -378,11 +391,6 @@ public class AttackModeManager {
      * 则判定为挥空，触发电能释放。
      */
     private static void handleSwingDetection(ServerPlayer player) {
-        // 督战者禁用玩家攻击，不处理挥空检测
-        if (TaskmasterManager.hasTaskmaster(player)) {
-            return;
-        }
-
         UUID uuid = player.getUUID();
         float currentStrength = player.getAttackStrengthScale(0.0F);
         Float previousStrength = PREVIOUS_ATTACK_STRENGTH.get(uuid);

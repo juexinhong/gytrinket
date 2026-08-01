@@ -1,6 +1,6 @@
 package com.gytrinket.gytrinket.event;
 
-import com.gytrinket.gytrinket.ClientConfig;
+import com.gytrinket.gytrinket.config.ClientConfig;
 import com.gytrinket.gytrinket.core.shield.ShieldManager;
 import com.gytrinket.gytrinket.gytrinket;
 import com.gytrinket.gytrinket.network.NetworkHandler;

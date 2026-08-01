@@ -33,14 +33,15 @@ import java.util.List;
  */
 public class DroneBulletTrail {
     /** 节点数 */
-    public static final int MAX_LENGTH = 3;
-    public static final float SPAWN_INTERVAL = 1.0F;
+    public static final int MAX_LENGTH = 8;
+    public static final float SPAWN_INTERVAL = 0.5F;
     public static final float MAX_IDLE_TICKS = 40.0F;
     public static final float MAX_DELTA_TICKS_PER_FRAME = 4.0F;
     /** 分离后持续渲染的最大tick数 */
     private static final float DETACHED_FADE_TICKS = 5.0F;
 
     private final ThrowableItemProjectile bullet;
+    private final TrailType trailType;
     private final TrailNode[] nodes;
     private float spawnCooldown = SPAWN_INTERVAL;
     private long lastUpdateMs = 0;
@@ -57,7 +58,12 @@ public class DroneBulletTrail {
     private Vec3 detachedVelocity;
 
     public DroneBulletTrail(ThrowableItemProjectile bullet) {
+        this(bullet, TrailType.DRONE_BULLET);
+    }
+
+    public DroneBulletTrail(ThrowableItemProjectile bullet, TrailType trailType) {
         this.bullet = bullet;
+        this.trailType = trailType;
         this.nodes = new TrailNode[MAX_LENGTH];
         resetNodes();
     }
@@ -250,12 +256,11 @@ public class DroneBulletTrail {
         Tesselator tessellator = Tesselator.getInstance();
         BufferBuilder buffer = tessellator.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
 
-        // 亮黄色
-        final float r = 1.0F;
-        final float g = 1.0F;
-        final float b = 0.0F;
-        final float maxWidth = 0.08F;
-        final float alphaMult = 0.7F;
+        final float r = trailType.r;
+        final float g = trailType.g;
+        final float b = trailType.b;
+        final float maxWidth = trailType.maxWidth;
+        final float alphaMult = trailType.alphaMult;
 
         // 分离模式的整体透明度衰减
         float detachedFade = detached ? Math.max(0, 1.0F - detachedTicks / DETACHED_FADE_TICKS) : 1.0F;
@@ -274,16 +279,19 @@ public class DroneBulletTrail {
 
             float t0 = (i - 1) / (float) (MAX_LENGTH - 1);
             float t1 = i / (float) (MAX_LENGTH - 1);
-            float alpha0 = (1.0F - t0) * effectiveAlphaMult;
-            float alpha1 = (1.0F - t1) * effectiveAlphaMult;
+            // 亮度从头到尾依次降低：头部最亮(1.0)，尾部最暗(0.5)
+            float brightness0 = 1.0F - t0 * 0.5F;
+            float brightness1 = 1.0F - t1 * 0.5F;
+            float alpha0 = brightness0 * effectiveAlphaMult;
+            float alpha1 = brightness1 * effectiveAlphaMult;
             float scale0 = maxWidth * (1.0F - t0);
             float scale1 = maxWidth * (1.0F - t1);
 
             Vec3 pos0 = new Vec3(x0 - cameraPos.x, y0 - cameraPos.y, z0 - cameraPos.z);
             Vec3 pos1 = new Vec3(x1 - cameraPos.x, y1 - cameraPos.y, z1 - cameraPos.z);
 
-            int c0 = packColor(r, g, b, alpha0);
-            int c1 = packColor(r, g, b, alpha1);
+            int c0 = packColor(r * brightness0, g * brightness0, b * brightness0, alpha0);
+            int c1 = packColor(r * brightness1, g * brightness1, b * brightness1, alpha1);
 
             addQuad(buffer, pos0, pos1,
                     n0.rx, n0.ry, n0.rz,

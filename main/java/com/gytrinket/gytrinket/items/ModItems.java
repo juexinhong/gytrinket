@@ -15,6 +15,8 @@ public class ModItems {
     // 机身物品
     public static final DeferredItem<Item> GUARDIAN = ITEMS.registerSimpleItem("guardian", new Item.Properties()); // 哨卫机身
     public static final DeferredItem<Item> SWARM_MODULE = ITEMS.registerSimpleItem("mothership_body", new Item.Properties()); // 母舰机身
+    public static final DeferredItem<Item> GHOST_FUSELAGE = ITEMS.registerSimpleItem("ghost_fuselage", new Item.Properties()); // 幽灵机身
+    public static final DeferredItem<Item> ENGINEERING_FUSELAGE = ITEMS.registerSimpleItem("engineering_fuselage", new Item.Properties()); // 工程机身
 
     // 基础护盾物品
     public static final DeferredItem<Item> SHIELD_GY = ITEMS.registerSimpleItem("shield_gy", new Item.Properties()); // 基础护盾
@@ -59,6 +61,7 @@ public class ModItems {
     public static final DeferredItem<Item> LIFE_FRAME = ITEMS.registerSimpleItem("life_frame", new Item.Properties()); // 生命框架
     public static final DeferredItem<Item> ATTACK_FRAME = ITEMS.registerSimpleItem("attack_frame", new Item.Properties()); // 攻击框架
     public static final DeferredItem<Item> SHIELD_RECEIVER = ITEMS.register("shield_receiver", () -> new ShieldReceiverItem(new Item.Properties())); // 护盾接收器
+    public static final DeferredItem<Item> WRENCH = ITEMS.register("wrench", () -> new WrenchItem(new Item.Properties())); // 扳手
 
     // 护盾值物品
     public static final DeferredItem<Item> SHIELD_AMPLIFIER_MODULE = ITEMS.registerSimpleItem("shield_amplifier_module", new Item.Properties()); // 护盾值提升模块
@@ -136,12 +139,19 @@ public class ModItems {
 
     // 僚机物品
     public static final DeferredItem<Item> WINGMAN_MODULE = ITEMS.registerSimpleItem("wingman_module", new Item.Properties()); // 僚机模块
+    public static final DeferredItem<Item> INTERCEPTOR_MODULE = ITEMS.registerSimpleItem("interceptor_module", new Item.Properties()); // 拦截机模块
+    public static final DeferredItem<Item> EVOLUTION_MODULE = ITEMS.registerSimpleItem("evolution_module", new Item.Properties()); // 进化模块
+    public static final DeferredItem<Item> NANO_REGEN_MODULE = ITEMS.registerSimpleItem("nano_regen_module", new Item.Properties()); // 纳米再生模块
+    public static final DeferredItem<Item> SUPPRESSION_MODULE = ITEMS.registerSimpleItem("suppression_module", new Item.Properties()); // 压制模块
+    public static final DeferredItem<Item> SHOCKWAVE_MODULE = ITEMS.registerSimpleItem("shockwave_module", new Item.Properties()); // 震撼弹模块
 
     // 超越模块
     public static final DeferredItem<Item> CHARGED_SHIELD_MODULE = ITEMS.registerSimpleItem("charged_shield_module", new Item.Properties()); // 充能护盾模块
     public static final DeferredItem<Item> GRUDGE_MODULE = ITEMS.registerSimpleItem("grudge_module", new Item.Properties()); // 积怨模块
+    public static final DeferredItem<Item> APEX_APPARATUS_MODULE = ITEMS.registerSimpleItem("apex_apparatus_module", new Item.Properties()); // 尖端器械模块
 
     // 零件
+    public static final DeferredItem<Item> TOTEM = ITEMS.registerSimpleItem("totem", new Item.Properties()); // 图腾
     public static final DeferredItem<Item> BEAM = ITEMS.registerSimpleItem("beam", new Item.Properties()); // 光束
     public static final DeferredItem<Item> BARRIER = ITEMS.registerSimpleItem("barrier", new Item.Properties()); // 屏障
     public static final DeferredItem<Item> ULTIMATE_SHIELD = ITEMS.registerSimpleItem("ultimate_shield", new Item.Properties()); // 至高之盾
@@ -181,6 +191,12 @@ public class ModItems {
     public static final DeferredItem<Item> COUNTER_PULSE_PART = ITEMS.registerSimpleItem("counter_pulse_part", new Item.Properties()); // 反制脉冲零件
     public static final DeferredItem<Item> ARC_BARRIER_PART = ITEMS.registerSimpleItem("arc_barrier_part", new Item.Properties()); // 弧形屏障零件
     public static final DeferredItem<Item> RESHAPING_PART = ITEMS.registerSimpleItem("reshaping_part", new Item.Properties()); // 重塑零件
+    public static final DeferredItem<Item> WINGMAN_PART = ITEMS.registerSimpleItem("wingman_part", new Item.Properties()); // 僚机零件
+    public static final DeferredItem<Item> INTERCEPTOR_PART = ITEMS.registerSimpleItem("interceptor_part", new Item.Properties()); // 拦截机零件
+    public static final DeferredItem<Item> EVOLUTION_PART = ITEMS.registerSimpleItem("evolution_part", new Item.Properties()); // 进化零件
+    public static final DeferredItem<Item> SHOCKWAVE_PART = ITEMS.registerSimpleItem("shockwave_part", new Item.Properties()); // 震撼弹零件
+    public static final DeferredItem<Item> NANO_REGEN_PART = ITEMS.registerSimpleItem("nano_regen_part", new Item.Properties()); // 纳米再生零件
+    public static final DeferredItem<Item> SUPPRESSION_PART = ITEMS.registerSimpleItem("suppression_part", new Item.Properties()); // 压制零件
 
     // 督战者零件
     public static final DeferredItem<Item> TASKMASTER_PART = ITEMS.registerSimpleItem("taskmaster_part", new Item.Properties()); // 督战者零件

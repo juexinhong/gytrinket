@@ -1,9 +1,20 @@
 package com.gytrinket.gytrinket.core.entity.construct.drone;
 
-import com.gytrinket.gytrinket.Config;
+import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.entity.construct.ConstructCategory;
+import com.gytrinket.gytrinket.core.entity.construct.ConstructData;
 import com.gytrinket.gytrinket.core.entity.construct.ConstructManager;
 import com.gytrinket.gytrinket.core.entity.construct.ConstructType;
+import com.gytrinket.gytrinket.core.entity.construct.IConstructFactory;
+import com.gytrinket.gytrinket.core.entity.construct.IEntityRestorer;
+
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
+
+import com.gytrinket.gytrinket.core.entity.construct.drone.effect.IDroneEffect;
+import com.gytrinket.gytrinket.core.entity.construct.drone.effect.AssaultEffect;
+import com.gytrinket.gytrinket.core.entity.construct.drone.effect.DefenseEffect;
 
 import java.util.Set;
 
@@ -20,7 +31,60 @@ public class DroneConstructTypes {
                 .buildTime(100)
                 .maxHealth(Config.getDroneBaseHealth())
                 .maxCount(Config.getDroneMaxCount())
-                .constructClass(DroneConstruct.class)
+                .constructFactory((player, type) -> {
+                    DroneArrayType arrayType = DroneArrayManager.getInstance().getPlayerArrayType(player);
+                    boolean hasAssault = DroneManager.getInstance().hasAssaultModule(player);
+                    boolean hasDefense = DroneManager.getInstance().hasDefenseModule(player);
+
+                    java.util.List<IDroneEffect> effects = new java.util.ArrayList<>();
+                    if (hasAssault) effects.add(new AssaultEffect());
+                    if (hasDefense) effects.add(new DefenseEffect());
+
+                    return new DroneConstruct(type.getId(), arrayType, effects, player, type.getMaxHealth());
+                })
+                .entityRestorer(new DroneEntityRestorer())
                 .build());
+    }
+
+    private static class DroneEntityRestorer implements IEntityRestorer {
+        @Override
+        public Entity restore(ServerPlayer player, ConstructData data, ServerLevel level) {
+            if (!(data instanceof DroneConstructData droneData)) return null;
+
+            DroneArrayType arrayType = DroneArrayManager.getInstance().getPlayerArrayType(player);
+            if (arrayType == null) arrayType = DroneArrayType.Types.ORBIT;
+
+            DroneConstructEntity droneEntity = new DroneConstructEntity(ModEntities.DRONE_CONSTRUCT.get(), level);
+
+            String currentDimension = player.level().dimension().location().toString();
+            if (droneData.hasPosition() && droneData.getDimension().equals(currentDimension)) {
+                droneEntity.setPos(droneData.getPosX(), droneData.getPosY(), droneData.getPosZ());
+            } else {
+                droneEntity.setPos(player.getX(), player.getY() + 1, player.getZ());
+            }
+
+            droneEntity.setOwnerUUID(player.getUUID());
+            droneEntity.setArrayType(arrayType);
+            droneEntity.setBaseMaxHealth(droneData.getMaxHealth());
+            droneEntity.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH).setBaseValue(droneData.getMaxHealth());
+
+            if (droneData.hasAssaultModule()) {
+                droneEntity.addEffectTag(DroneConstructEntity.DroneEffectTag.ASSAULT);
+            }
+            if (droneData.hasDefenseModule()) {
+                droneEntity.addEffectTag(DroneConstructEntity.DroneEffectTag.DEFENSE);
+            }
+            if (!droneData.hasAssaultModule() && !droneData.hasDefenseModule()) {
+                droneEntity.refreshConstructAttributes();
+            }
+
+            float healthRatio = (float) droneData.getHealthRatio();
+            float newMaxHealth = droneEntity.getMaxHealth();
+            droneEntity.setHealth(newMaxHealth * healthRatio);
+
+            level.addFreshEntity(droneEntity);
+            droneData.setEntityUUID(droneEntity.getUUID());
+            return droneEntity;
+        }
     }
 }

@@ -12,7 +12,8 @@
   ],
   "mixins": [
     "LivingEntityMixin",
-    "PlayerMixin"
+    "PlayerMixin",
+    "TargetingConditionsMixin"
   ],
   "injectors": {
     "defaultRequire": 1

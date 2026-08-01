@@ -3,12 +3,16 @@ package com.gytrinket.gytrinket.client.attack_mode.charged_attack;
 import com.gytrinket.gytrinket.client.attack_mode.AttackModeClientUtil;
 import com.gytrinket.gytrinket.client.attack_mode.AttackStateInputHandler;
 import com.gytrinket.gytrinket.core.attack_mode.AttackStateManager;
+import com.gytrinket.gytrinket.core.attack_mode.charged_attack.ChargedAttackSweepHandler;
 import com.gytrinket.gytrinket.gytrinket;
 import com.gytrinket.gytrinket.network.NetworkHandler;
+import com.gytrinket.gytrinket.network.packet.ChargedAttackPayload;
 import net.minecraft.client.Minecraft;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -82,7 +86,7 @@ public class ChargedAttackInputHandler {
         // 等待 2 tick，确保 AttackStateInputHandler 已将状态更新为 PRESSED/HELD
         chargeStartDelay = 2;
         // 通知服务端开始充能
-        PacketDistributor.sendToServer(new NetworkHandler.ChargedAttackPayload(0));
+        PacketDistributor.sendToServer(new ChargedAttackPayload(0));
     }
 
     private static void releaseAttack(Player player, Minecraft minecraft) {
@@ -91,17 +95,23 @@ public class ChargedAttackInputHandler {
         // 寻找准星对准的目标
         Entity target = AttackModeClientUtil.findTargetInCrosshair(player);
         if (target instanceof LivingEntity) {
-            // 有目标：发送释放消息
-            PacketDistributor.sendToServer(new NetworkHandler.ChargedAttackPayload(2));
-
-            // 客户端执行攻击
-            minecraft.gameMode.attack(player, target);
-
-            // 重置攻击强度
-            AttackModeClientUtil.resetAttackStrengthTicker(player);
+            ItemStack mainHandItem = player.getMainHandItem();
+            if (ChargedAttackSweepHandler.isSwordItem(mainHandItem)) {
+                // 剑类充能攻击：发送action=4，服务端执行自定义横扫伤害
+                // 不调用原版attack，服务端处理一切
+                PacketDistributor.sendToServer(new ChargedAttackPayload(4));
+                // 仍需挥动手臂和重置攻击强度
+                player.swing(InteractionHand.MAIN_HAND);
+                AttackModeClientUtil.resetAttackStrengthTicker(player);
+            } else {
+                // 非剑类充能攻击：使用原版攻击+充能加成
+                PacketDistributor.sendToServer(new ChargedAttackPayload(2));
+                minecraft.gameMode.attack(player, target);
+                AttackModeClientUtil.resetAttackStrengthTicker(player);
+            }
         } else {
             // 无目标：发送取消消息，清空充能
-            PacketDistributor.sendToServer(new NetworkHandler.ChargedAttackPayload(3));
+            PacketDistributor.sendToServer(new ChargedAttackPayload(3));
         }
     }
 

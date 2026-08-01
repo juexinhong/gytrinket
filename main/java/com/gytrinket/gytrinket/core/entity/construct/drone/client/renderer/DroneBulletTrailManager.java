@@ -22,8 +22,12 @@ public class DroneBulletTrailManager {
      * 若该子弹尚未有拖尾对象则创建一个。
      */
     public static void registerTrail(ThrowableItemProjectile bullet) {
+        registerTrail(bullet, TrailType.DRONE_BULLET);
+    }
+
+    public static void registerTrail(ThrowableItemProjectile bullet, TrailType trailType) {
         if (bullet.isRemoved()) return;
-        trailMap.computeIfAbsent(bullet, b -> new DroneBulletTrail(b));
+        trailMap.computeIfAbsent(bullet, b -> new DroneBulletTrail(b, trailType));
     }
 
     /**

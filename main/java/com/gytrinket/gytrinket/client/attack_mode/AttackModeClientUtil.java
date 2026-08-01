@@ -1,6 +1,6 @@
 package com.gytrinket.gytrinket.client.attack_mode;
 
-import com.gytrinket.gytrinket.Config;
+import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.client.datacenter.ClientDataCenter;
 import com.gytrinket.gytrinket.gytrinket;
 import net.minecraft.client.Minecraft;

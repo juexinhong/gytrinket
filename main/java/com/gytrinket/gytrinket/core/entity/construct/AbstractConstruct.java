@@ -122,6 +122,11 @@ public abstract class AbstractConstruct implements IConstruct {
     public void onBuildProgress(int progress, int total) {
     }
 
+    @Override
+    public ConstructData createData(UUID entityUUID) {
+        return new ConstructData(constructId, entityUUID, maxHealth);
+    }
+
     public UUID getEntityUUID() {
         return entityUUID;
     }

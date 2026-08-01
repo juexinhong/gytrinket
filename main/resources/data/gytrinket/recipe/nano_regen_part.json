@@ -1,0 +1,18 @@
+﻿{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " A ",
+    " D ",
+    "RRR"
+  ],
+  "key": {
+    "A": { "item": "minecraft:golden_apple" },
+    "D": { "item": "minecraft:glowstone_dust" },
+    "R": { "item": "minecraft:redstone" }
+  },
+  "result": {
+    "id": "gytrinket:nano_regen_part",
+    "count": 1
+  }
+}

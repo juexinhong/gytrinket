@@ -1,0 +1,35 @@
+{
+    "blend": {
+        "func": "add",
+        "srcrgb": "one",
+        "dstrgb": "oneminussrcalpha"
+    },
+    "vertex": "gytrinket:gytrinket_energy_wave_vol",
+    "fragment": "gytrinket:gytrinket_energy_wave_vol",
+    "samplers": [],
+    "uniforms": [
+        { "name": "ModelViewMat", "type": "matrix4x4", "count": 16, "values": [ 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0 ] },
+        { "name": "ProjMat", "type": "matrix4x4", "count": 16, "values": [ 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0 ] },
+        { "name": "InvModelViewMat", "type": "matrix4x4", "count": 16, "values": [ 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0 ] },
+        { "name": "CamRight", "type": "float", "count": 3, "values": [ 1.0, 0.0, 0.0 ] },
+        { "name": "CamUp", "type": "float", "count": 3, "values": [ 0.0, 1.0, 0.0 ] },
+        { "name": "Forward", "type": "float", "count": 3, "values": [ 0.0, 0.0, 1.0 ] },
+        { "name": "WaveCenter", "type": "float", "count": 3, "values": [ 0.0, 0.0, 0.0 ] },
+        { "name": "MaxSpan", "type": "float", "count": 1, "values": [ 1.0 ] },
+        { "name": "MaxBack", "type": "float", "count": 1, "values": [ 1.0 ] },
+        { "name": "MaxForward", "type": "float", "count": 1, "values": [ 1.0 ] },
+        { "name": "OuterHW", "type": "float", "count": 1, "values": [ 1.0 ] },
+        { "name": "OuterLen", "type": "float", "count": 1, "values": [ 1.0 ] },
+        { "name": "ColorHW", "type": "float", "count": 1, "values": [ 1.0 ] },
+        { "name": "ColorLen", "type": "float", "count": 1, "values": [ 1.0 ] },
+        { "name": "CenterHW", "type": "float", "count": 1, "values": [ 1.0 ] },
+        { "name": "CenterLen", "type": "float", "count": 1, "values": [ 1.0 ] },
+        { "name": "CenterColor", "type": "float", "count": 4, "values": [ 0.9, 0.9, 0.0, 1.0 ] },
+        { "name": "ColorLayerColor", "type": "float", "count": 4, "values": [ 0.9, 0.6, 0.0, 0.8 ] },
+        { "name": "OuterLayerColor", "type": "float", "count": 4, "values": [ 0.9, 0.35, 0.0, 0.7 ] },
+        { "name": "BloomColor", "type": "float", "count": 4, "values": [ 0.9, 0.35, 0.0, 0.7 ] },
+        { "name": "BloomMaxDist", "type": "float", "count": 1, "values": [ 0.5 ] },
+        { "name": "GlowRadius", "type": "float", "count": 1, "values": [ 1.0 ] },
+        { "name": "GlowStrength", "type": "float", "count": 1, "values": [ 1.0 ] }
+    ]
+}

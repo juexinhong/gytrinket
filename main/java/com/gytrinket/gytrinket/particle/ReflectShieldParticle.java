@@ -22,15 +22,13 @@ public class ReflectShieldParticle extends TextureSheetParticle {
         this.lifeTime = 30.0F;
         this.lifetime = (int) this.lifeTime;
 
-        double speed = Math.sqrt(dx * dx + dy * dy + dz * dz);
-        this.quadSize = (float) (0.01 + speed * 0.05);
+        this.quadSize = (float) (0.005);
 
         this.hasPhysics = false;
 
-        float brightness = 12.0F / 15.0F;
-        this.rCol = 1.0F * brightness;
-        this.gCol = 1.0F * brightness;
-        this.bCol = 1.0F * brightness;
+        this.rCol = 1.0F;
+        this.gCol = 1.0F;
+        this.bCol = 1.0F;
         this.alpha = 1.0F;
     }
 
@@ -46,9 +44,14 @@ public class ReflectShieldParticle extends TextureSheetParticle {
 
         float progress = (float) this.age / this.lifeTime;
 
-        this.quadSize = Mth.lerp(progress, 0.2F, 0.0F);
+        this.quadSize = Mth.lerp(progress, 0.1F, 0.0F);
 
         this.alpha = Mth.lerp(progress, 1.0F, 0.0F);
+    }
+
+    @Override
+    public int getLightColor(float partialTick) {
+        return 15728880; // LightTexture.FULL_BRIGHT: sky=15, block=15
     }
 
     @Override

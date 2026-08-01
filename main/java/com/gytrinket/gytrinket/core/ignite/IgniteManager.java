@@ -1,7 +1,7 @@
 package com.gytrinket.gytrinket.core.ignite;
 
-import com.gytrinket.gytrinket.Config;
-import com.gytrinket.gytrinket.damage.ModDamageTypes;
+import com.gytrinket.gytrinket.config.Config;
+import com.gytrinket.gytrinket.core.damage.ModDamageTypes;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
@@ -282,12 +282,12 @@ public class IgniteManager {
      */
     private static boolean isExecuteAttributionEnabled(Entity initiator) {
         if (initiator instanceof net.minecraft.world.entity.player.Player player) {
-            return com.gytrinket.gytrinket.core.execute.ExecuteToggleManager.isExecuteEnabled(player);
+            return com.gytrinket.gytrinket.core.attack_mode.ExecuteToggleManager.isExecuteEnabled(player);
         }
         if (initiator instanceof com.gytrinket.gytrinket.core.entity.construct.drone.DroneConstructEntity drone) {
             net.minecraft.world.entity.Entity owner = drone.getOwner();
             if (owner instanceof net.minecraft.world.entity.player.Player player) {
-                return com.gytrinket.gytrinket.core.execute.ExecuteToggleManager.isExecuteEnabled(player);
+                return com.gytrinket.gytrinket.core.attack_mode.ExecuteToggleManager.isExecuteEnabled(player);
             }
         }
         return true;

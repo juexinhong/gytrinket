@@ -21,7 +21,7 @@ import software.bernie.geckolib.renderer.layer.GeoRenderLayer;
 public class DroneRenderer extends GeoEntityRenderer<DroneConstructEntity> {
     public DroneRenderer(EntityRendererProvider.Context context) {
         super(context, new DroneModel());
-        withScale(1.0F, 1.0F);
+        withScale(0.8F, 0.8F);
 
         addRenderLayer(new GeoRenderLayer<DroneConstructEntity>(this) {
             @Override
@@ -58,6 +58,8 @@ public class DroneRenderer extends GeoEntityRenderer<DroneConstructEntity> {
         poseStack.pushPose();
         if (entity.isDefenseDrone()) {
             poseStack.translate(0, -0.2D, 0);
+            // 防御无人机渲染模型缩小20%（0.8 * 0.8 = 0.64）
+            poseStack.scale(0.8F, 0.8F, 0.8F);
         } else {
             poseStack.translate(0, 0.3D, 0);
         }

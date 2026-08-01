@@ -3,6 +3,7 @@ package com.gytrinket.gytrinket.client.attack_mode;
 import com.gytrinket.gytrinket.core.attack_mode.AttackStateManager;
 import com.gytrinket.gytrinket.gytrinket;
 import com.gytrinket.gytrinket.network.NetworkHandler;
+import com.gytrinket.gytrinket.network.packet.AttackStatePayload;
 import net.minecraft.client.Minecraft;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
@@ -58,7 +59,7 @@ public class AttackStateInputHandler {
 
     private static void syncToServer() {
         PacketDistributor.sendToServer(
-            new NetworkHandler.AttackStatePayload(currentState.ordinal(), holdTicks)
+            new AttackStatePayload(currentState.ordinal(), holdTicks)
         );
     }
 

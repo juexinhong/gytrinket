@@ -1,6 +1,7 @@
 package com.gytrinket.gytrinket.core.entity.construct.drone;
 
 import com.gytrinket.gytrinket.core.entity.construct.AbstractConstruct;
+import com.gytrinket.gytrinket.core.entity.construct.ConstructData;
 import com.gytrinket.gytrinket.core.entity.construct.ConstructManager;
 import com.gytrinket.gytrinket.core.entity.construct.drone.behavior.IDroneBehavior;
 import com.gytrinket.gytrinket.core.entity.construct.drone.effect.IDroneEffect;
@@ -120,6 +121,16 @@ public class DroneConstruct extends AbstractConstruct {
 
     public void setCommander(boolean commander) {
         this.commander = commander;
+    }
+
+    @Override
+    public ConstructData createData(java.util.UUID entityUUID) {
+        DroneConstructData data = new DroneConstructData(
+                constructId, entityUUID, maxHealth, arrayType
+        );
+        data.setHasAssaultModule(isAssaultDrone());
+        data.setHasDefenseModule(isDefenseDrone());
+        return data;
     }
 
     @Override

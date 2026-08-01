@@ -1,6 +1,6 @@
 package com.gytrinket.gytrinket.client.shield;
 
-import com.gytrinket.gytrinket.ClientConfig;
+import com.gytrinket.gytrinket.config.ClientConfig;
 import com.gytrinket.gytrinket.gytrinket;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.player.Player;

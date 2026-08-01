@@ -1,8 +1,9 @@
 package com.gytrinket.gytrinket.core.entity.construct.drone;
 
-import com.gytrinket.gytrinket.Config;
-import com.gytrinket.gytrinket.core.disable.DisableSystem;
+import com.gytrinket.gytrinket.config.Config;
+import com.gytrinket.gytrinket.core.shield.DisableSystem;
 import com.gytrinket.gytrinket.event.PlayerAttributesCalculatedEvent;
+import com.gytrinket.gytrinket.core.entity.construct.ConstructBuilder;
 import com.gytrinket.gytrinket.core.entity.construct.ConstructManager;
 import com.gytrinket.gytrinket.core.entity.construct.ConstructType;
 import com.gytrinket.gytrinket.storage.PlayerStore;
@@ -82,8 +83,7 @@ public class DroneManager {
             return;
         }
         
-        DroneArrayType arrayType = DroneArrayManager.getInstance().getPlayerArrayType(player);
-        DroneBuilder builder = new DroneBuilder(player, type, arrayType);
+        ConstructBuilder builder = new ConstructBuilder(player, type);
         ConstructManager.getInstance().startBuilding(player, builder);
     }
 

@@ -96,32 +96,81 @@ public class ClientNetworkHandler {
         }
     }
 
-    public static void handleReflectParticlesMessage(double x, double y, double z, double radius, double dirX, double dirY, double dirZ) {
+    public static void handleReflectParticlesMessage(double x, double y, double z, double dirX, double dirY, double dirZ,
+                                                      int particleCount, double maxAngleDegrees, double speedMultiplier) {
         var minecraft = Minecraft.getInstance();
         var level = minecraft.level;
         if (level != null) {
-            generateReflectParticles(level, x, y, z, radius, dirX, dirY, dirZ);
+            generateReflectParticles(level, x, y, z, dirX, dirY, dirZ, particleCount, maxAngleDegrees, speedMultiplier);
         }
     }
 
-    private static void generateReflectParticles(ClientLevel level, double x, double y, double z, double radius, double dirX, double dirY, double dirZ) {
-        int particleCount = (int) Math.max(8, Math.round((radius / 3.0) * 12));
+    private static void generateReflectParticles(ClientLevel level, double x, double y, double z,
+                                                  double dirX, double dirY, double dirZ,
+                                                  int particleCount, double maxAngleDegrees, double speedMultiplier) {
         var particleType = ModParticles.REFLECT_SHIELD_PARTICLE.get();
 
+        // 归一化方向向量
+        double dirLen = Math.sqrt(dirX * dirX + dirY * dirY + dirZ * dirZ);
+        if (dirLen < 1e-6) return;
+        double normDirX = dirX / dirLen;
+        double normDirY = dirY / dirLen;
+        double normDirZ = dirZ / dirLen;
+
+        // 将最大偏移角度转换为弧度
+        double maxAngleRadians = Math.toRadians(maxAngleDegrees);
+
         for (int i = 0; i < particleCount; i++) {
-            double spreadAngle = (Math.random() - 0.5) * 0.5;
+            // 在 [0, maxAngleRadians] 范围内随机偏移角度
+            double offsetAngle = Math.random() * maxAngleRadians;
 
-            double perpX = -dirZ;
-            double perpZ = dirX;
+            // 随机选择偏移方向（在方向向量的垂直平面内）
+            // 构建正交基：direction, perpendicular1, perpendicular2
+            double perp1X, perp1Y, perp1Z;
+            if (Math.abs(normDirY) < 0.9) {
+                // 用 (0,1,0) 叉积 direction
+                perp1X = -normDirZ;
+                perp1Y = 0;
+                perp1Z = normDirX;
+            } else {
+                // 用 (1,0,0) 叉积 direction
+                perp1X = 0;
+                perp1Y = normDirZ;
+                perp1Z = -normDirY;
+            }
+            double perp1Len = Math.sqrt(perp1X * perp1X + perp1Y * perp1Y + perp1Z * perp1Z);
+            perp1X /= perp1Len; perp1Y /= perp1Len; perp1Z /= perp1Len;
 
-            double offsetX = perpX * spreadAngle;
-            double offsetZ = perpZ * spreadAngle;
+            // perpendicular2 = direction × perpendicular1
+            double perp2X = normDirY * perp1Z - normDirZ * perp1Y;
+            double perp2Y = normDirZ * perp1X - normDirX * perp1Z;
+            double perp2Z = normDirX * perp1Y - normDirY * perp1X;
 
-            double speed = 0.4 + Math.random() * 0.3;
+            // 随机旋转偏移方向（0到360度）
+            double rotationAngle = Math.random() * 2 * Math.PI;
+            double cosR = Math.cos(rotationAngle);
+            double sinR = Math.sin(rotationAngle);
 
-            double vx = (dirX + offsetX) * speed;
-            double vy = dirY * speed + (Math.random() - 0.5) * 0.1;
-            double vz = (dirZ + offsetZ) * speed;
+            // 偏移向量 = cos(rotation) * perp1 + sin(rotation) * perp2，缩放为 tan(offsetAngle)
+            double tanAngle = Math.tan(offsetAngle);
+            double offsetVX = (cosR * perp1X + sinR * perp2X) * tanAngle;
+            double offsetVY = (cosR * perp1Y + sinR * perp2Y) * tanAngle;
+            double offsetVZ = (cosR * perp1Z + sinR * perp2Z) * tanAngle;
+
+            // 最终方向 = normalize(direction + offset)
+            double finalDirX = normDirX + offsetVX;
+            double finalDirY = normDirY + offsetVY;
+            double finalDirZ = normDirZ + offsetVZ;
+            double finalLen = Math.sqrt(finalDirX * finalDirX + finalDirY * finalDirY + finalDirZ * finalDirZ);
+            finalDirX /= finalLen; finalDirY /= finalLen; finalDirZ /= finalLen;
+
+            // 基础速度 + 随机扰动，乘以速度倍率
+            double baseSpeed = 0.1 + Math.random() * 0.35;
+            double speed = baseSpeed * speedMultiplier;
+
+            double vx = finalDirX * speed;
+            double vy = finalDirY * speed;
+            double vz = finalDirZ * speed;
 
             level.addParticle(particleType, x, y, z, vx, vy, vz);
         }

@@ -1,0 +1,68 @@
+package com.gytrinket.gytrinket.network.packet;
+
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+
+import java.util.HashMap;
+import java.util.Map;
+
+public record ResponsePanelDataPayload(Map<String, Double> attributes, ListTag items, int slotCount,
+                                        CompoundTag upgradeData, ListTag upgradeTargets,
+                                        int modLevel, int upgradeExp, int upgradePoints) implements CustomPacketPayload {
+    public static final Type<ResponsePanelDataPayload> TYPE = new Type<>(
+        ResourceLocation.fromNamespaceAndPath("gytrinket", "response_panel_data"));
+
+    public static final StreamCodec<RegistryFriendlyByteBuf, ResponsePanelDataPayload> STREAM_CODEC = new StreamCodec<>() {
+        @Override
+        public ResponsePanelDataPayload decode(RegistryFriendlyByteBuf buf) {
+            Map<String, Double> attributes = new HashMap<>();
+            int size = buf.readInt();
+            for (int i = 0; i < size; i++) {
+                String name = buf.readUtf();
+                double value = buf.readDouble();
+                attributes.put(name, value);
+            }
+            CompoundTag tag = buf.readNbt();
+            ListTag items = tag != null ? tag.getList("items", 10) : new ListTag();
+            int slotCount = tag != null ? tag.getInt("slotCount") : 0;
+            CompoundTag upgradeData = tag != null ? tag.getCompound("upgradeData") : new CompoundTag();
+            ListTag upgradeTargets = tag != null ? tag.getList("upgradeTargets", 10) : new ListTag();
+            int modLevel = tag != null ? tag.getInt("modLevel") : 0;
+            int upgradeExp = tag != null ? tag.getInt("upgradeExp") : 0;
+            int upgradePoints = tag != null ? tag.getInt("upgradePoints") : 0;
+            return new ResponsePanelDataPayload(attributes, items, slotCount, upgradeData, upgradeTargets, modLevel, upgradeExp, upgradePoints);
+        }
+
+        @Override
+        public void encode(RegistryFriendlyByteBuf buf, ResponsePanelDataPayload msg) {
+            buf.writeInt(msg.attributes.size());
+            for (var entry : msg.attributes.entrySet()) {
+                buf.writeUtf(entry.getKey());
+                buf.writeDouble(entry.getValue());
+            }
+            CompoundTag tag = new CompoundTag();
+            tag.put("items", msg.items);
+            tag.putInt("slotCount", msg.slotCount);
+            tag.put("upgradeData", msg.upgradeData);
+            tag.put("upgradeTargets", msg.upgradeTargets);
+            tag.putInt("modLevel", msg.modLevel);
+            tag.putInt("upgradeExp", msg.upgradeExp);
+            tag.putInt("upgradePoints", msg.upgradePoints);
+            buf.writeNbt(tag);
+        }
+    };
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() { return TYPE; }
+
+    public static void handle(ResponsePanelDataPayload payload, IPayloadContext context) {
+        context.enqueueWork(() -> {
+            com.gytrinket.gytrinket.client.network.ClientPacketHandler.handleResponsePanelData(payload);
+        });
+    }
+}

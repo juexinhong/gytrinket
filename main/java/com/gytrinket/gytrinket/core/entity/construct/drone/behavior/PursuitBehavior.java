@@ -1,20 +1,18 @@
 package com.gytrinket.gytrinket.core.entity.construct.drone.behavior;
 
-import com.gytrinket.gytrinket.Config;
+import com.gytrinket.gytrinket.config.Config;
+import com.gytrinket.gytrinket.core.entity.construct.ConstructGroupCache;
 import com.gytrinket.gytrinket.core.entity.construct.drone.DroneArrayType;
 import com.gytrinket.gytrinket.core.entity.construct.drone.DroneBullet;
 import com.gytrinket.gytrinket.core.entity.construct.drone.DroneConstructEntity;
-import com.gytrinket.gytrinket.core.hostile_target.HostileTargetManager;
+import com.gytrinket.gytrinket.core.entity.construct.drone.DroneConstructTypes;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.Attributes;
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -111,21 +109,10 @@ public class PursuitBehavior implements IDroneBehavior {
      */
     private void collectNeighborData(Entity drone, LivingEntity owner,
                                       List<Vec3> neighborPositions, List<Vec3> neighborVelocities) {
-        Level level = drone.level();
-        Vec3 dronePos = drone.position();
-        double scanRange = 8.0;
-        List<DroneConstructEntity> nearbyDrones = level.getEntitiesOfClass(
-            DroneConstructEntity.class,
-            new AABB(dronePos.x - scanRange, dronePos.y - scanRange, dronePos.z - scanRange,
-                     dronePos.x + scanRange, dronePos.y + scanRange, dronePos.z + scanRange),
-            other -> other != drone && other.isAlive()
-                     && other.getOwnerUUID() != null && other.getOwnerUUID().equals(owner.getUUID())
-        );
-
-        for (DroneConstructEntity other : nearbyDrones) {
-            neighborPositions.add(other.position());
-            neighborVelocities.add(other.getDeltaMovement());
-        }
+        ConstructGroupCache.NeighborData neighborData = ConstructGroupCache.getInstance().getNeighborData(
+            owner.getUUID(), DroneConstructTypes.DRONE, drone.getUUID(), drone.level(), drone.position());
+        neighborPositions.addAll(neighborData.positions);
+        neighborVelocities.addAll(neighborData.velocities);
     }
 
     /**
@@ -214,58 +201,30 @@ public class PursuitBehavior implements IDroneBehavior {
      */
     private LivingEntity findTarget(Entity drone, LivingEntity owner) {
         Level level = drone.level();
-        Vec3 dronePos = drone.position();
         long currentTick = level.getGameTime();
         UUID droneUUID = drone.getUUID();
 
-        AABB searchBox = new AABB(
-            dronePos.x - SEARCH_RANGE,
-            dronePos.y - SEARCH_RANGE,
-            dronePos.z - SEARCH_RANGE,
-            dronePos.x + SEARCH_RANGE,
-            dronePos.y + SEARCH_RANGE,
-            dronePos.z + SEARCH_RANGE
-        );
+        // 使用共享缓存索敌
+        LivingEntity cachedTarget = ConstructGroupCache.getInstance().findNearestTarget(
+            owner.getUUID(), owner, drone.position(), SEARCH_RANGE);
 
-        Player player = owner instanceof Player ? (Player) owner : null;
-
-        List<LivingEntity> allTargets = level.getEntitiesOfClass(LivingEntity.class, searchBox,
-                entity -> {
-                    if (entity == owner || entity == drone) return false;
-                    if (!entity.isAlive()) return false;
-                    if (entity instanceof net.minecraft.world.entity.animal.AbstractGolem) return false;
-                    if (player != null && HostileTargetManager.isEntityProtectedByPlayer(entity, player)) return false;
-                    return HostileTargetManager.shouldAttackPlayer(entity, player);
-                });
-
-        if (!allTargets.isEmpty()) {
-            // 索敌范围内有目标，取最近的
-            LivingEntity newTarget = allTargets.stream()
-                    .min(Comparator.comparingDouble(t -> dronePos.distanceTo(t.position())))
-                    .orElse(null);
-
-            if (newTarget != null) {
-                // 更新或创建目标记忆
-                TargetMemory existing = targetMemoryMap.get(droneUUID);
-                if (existing != null && existing.target == newTarget) {
-                    // 同一目标，刷新记忆
-                    existing.endTick = currentTick + TARGET_MEMORY_DURATION;
-                } else {
-                    // 新目标，覆盖记忆
-                    targetMemoryMap.put(droneUUID, new TargetMemory(newTarget, currentTick + TARGET_MEMORY_DURATION));
-                }
-                return newTarget;
+        if (cachedTarget != null) {
+            // 更新或创建目标记忆
+            TargetMemory existing = targetMemoryMap.get(droneUUID);
+            if (existing != null && existing.target == cachedTarget) {
+                existing.endTick = currentTick + TARGET_MEMORY_DURATION;
+            } else {
+                targetMemoryMap.put(droneUUID, new TargetMemory(cachedTarget, currentTick + TARGET_MEMORY_DURATION));
             }
+            return cachedTarget;
         }
 
         // 索敌范围内无目标，检查记忆
         TargetMemory memory = targetMemoryMap.get(droneUUID);
         if (memory != null) {
             if (memory.endTick > currentTick && memory.target.isAlive()) {
-                // 记忆有效且目标存活，继续追击
                 return memory.target;
             } else {
-                // 记忆过期或目标死亡，清除
                 targetMemoryMap.remove(droneUUID);
             }
         }
@@ -280,53 +239,27 @@ public class PursuitBehavior implements IDroneBehavior {
      */
     public LivingEntity findPriorityTarget(Entity drone, LivingEntity owner) {
         Level level = drone.level();
-        Vec3 ownerPos = owner.position();
         long currentTick = level.getGameTime();
-
-        AABB searchBox = new AABB(
-            ownerPos.x - PRIORITY_RANGE,
-            ownerPos.y - PRIORITY_RANGE,
-            ownerPos.z - PRIORITY_RANGE,
-            ownerPos.x + PRIORITY_RANGE,
-            ownerPos.y + PRIORITY_RANGE,
-            ownerPos.z + PRIORITY_RANGE
-        );
-
-        Player player = owner instanceof Player ? (Player) owner : null;
-
-        List<LivingEntity> nearbyTargets = level.getEntitiesOfClass(LivingEntity.class, searchBox,
-                entity -> {
-                    if (entity == owner || entity == drone) return false;
-                    if (!entity.isAlive()) return false;
-                    if (entity instanceof net.minecraft.world.entity.animal.AbstractGolem) return false;
-                    if (player != null && HostileTargetManager.isEntityProtectedByPlayer(entity, player)) return false;
-                    return HostileTargetManager.shouldAttackPlayer(entity, player);
-                });
-
         UUID ownerUUID = owner.getUUID();
 
-        if (nearbyTargets.isEmpty()) {
+        LivingEntity nearest = ConstructGroupCache.getInstance().findNearestTarget(
+            ownerUUID, owner, owner.position(), PRIORITY_RANGE);
+
+        if (nearest == null) {
             priorityTargetMap.remove(ownerUUID);
             return null;
         }
 
-        LivingEntity newTarget = nearbyTargets.stream()
-                .min(Comparator.comparingDouble(t -> ownerPos.distanceTo(t.position())))
-                .orElse(null);
-
-        if (newTarget != null) {
-            PriorityTargetInfo existingInfo = priorityTargetMap.get(ownerUUID);
-
-            if (existingInfo != null) {
-                if (existingInfo.target == newTarget) {
-                    existingInfo.endTick = currentTick + PRIORITY_TARGET_DURATION;
-                } else {
-                    priorityTargetMap.remove(ownerUUID);
-                    priorityTargetMap.put(ownerUUID, new PriorityTargetInfo(newTarget, currentTick + PRIORITY_TARGET_DURATION));
-                }
+        PriorityTargetInfo existingInfo = priorityTargetMap.get(ownerUUID);
+        if (existingInfo != null) {
+            if (existingInfo.target == nearest) {
+                existingInfo.endTick = currentTick + PRIORITY_TARGET_DURATION;
             } else {
-                priorityTargetMap.put(ownerUUID, new PriorityTargetInfo(newTarget, currentTick + PRIORITY_TARGET_DURATION));
+                priorityTargetMap.remove(ownerUUID);
+                priorityTargetMap.put(ownerUUID, new PriorityTargetInfo(nearest, currentTick + PRIORITY_TARGET_DURATION));
             }
+        } else {
+            priorityTargetMap.put(ownerUUID, new PriorityTargetInfo(nearest, currentTick + PRIORITY_TARGET_DURATION));
         }
 
         PriorityTargetInfo info = priorityTargetMap.get(ownerUUID);
@@ -490,20 +423,14 @@ public class PursuitBehavior implements IDroneBehavior {
         Vec3 finalMovement = Vec3.ZERO;
 
         if (horizontalDist > STANDBY_RANGE) {
-            // 距离玩家较远，使用集群中心对齐逻辑
-            Level level = drone.level();
-            List<DroneConstructEntity> allDrones = level.getEntitiesOfClass(
-                DroneConstructEntity.class,
-                new AABB(ownerPos.x - 30, ownerPos.y - 30, ownerPos.z - 30,
-                         ownerPos.x + 30, ownerPos.y + 30, ownerPos.z + 30),
-                other -> other.isAlive() && other.getOwnerUUID() != null && other.getOwnerUUID().equals(owner.getUUID())
-            );
+            // 使用共享Boid缓存获取无人机位置数据来做集群中心计算
+            ConstructGroupCache cache = ConstructGroupCache.getInstance();
+            ConstructGroupCache.CachedBoidSnapshot snapshot = cache.getBoidSnapshot(
+                owner.getUUID(), DroneConstructTypes.DRONE, drone.level(), owner.position());
 
             List<Vec3> movingPositions = new ArrayList<>();
             movingPositions.add(dronePos);
-            for (DroneConstructEntity other : allDrones) {
-                if (other == drone) continue;
-                Vec3 otherPos = other.position();
+            for (Vec3 otherPos : snapshot.positions) {
                 double otherDist = Math.sqrt(
                     Math.pow(otherPos.x - ownerPos.x, 2) +
                     Math.pow(otherPos.z - ownerPos.z, 2)
@@ -568,33 +495,8 @@ public class PursuitBehavior implements IDroneBehavior {
 
     @Override
     public List<LivingEntity> searchTargets(Entity drone, LivingEntity owner, float range) {
-        Level level = drone.level();
-        Vec3 dronePos = drone.position();
-
-        AABB searchBox = new AABB(
-            dronePos.x - range,
-            dronePos.y - range,
-            dronePos.z - range,
-            dronePos.x + range,
-            dronePos.y + range,
-            dronePos.z + range
-        );
-
-        Player player = owner instanceof Player ? (Player) owner : null;
-
-        List<LivingEntity> entities = level.getEntitiesOfClass(LivingEntity.class, searchBox,
-                entity -> {
-                    if (entity == owner || entity == drone) return false;
-                    if (!entity.isAlive()) return false;
-                    if (entity instanceof net.minecraft.world.entity.animal.AbstractGolem) return false;
-                    if (player != null && HostileTargetManager.isEntityProtectedByPlayer(entity, player)) return false;
-                    if (!HostileTargetManager.shouldAttackPlayer(entity, player)) return false;
-                    return drone.distanceTo(entity) <= range;
-                });
-
-        return entities.stream()
-                .sorted(Comparator.comparingDouble(entity -> entity.distanceToSqr(drone)))
-                .collect(Collectors.toList());
+        return ConstructGroupCache.getInstance().findTargetsInRange(
+            owner.getUUID(), owner, drone.position(), range);
     }
 
     @Override

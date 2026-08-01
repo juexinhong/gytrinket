@@ -1,7 +1,10 @@
 package com.gytrinket.gytrinket.client.screen;
 
+import com.gytrinket.gytrinket.core.attribute.AttributeDefinition;
+import com.gytrinket.gytrinket.core.attribute.AttributeManager;
 import com.gytrinket.gytrinket.core.level.ModLevelData;
 import com.gytrinket.gytrinket.network.NetworkHandler;
+import com.gytrinket.gytrinket.network.packet.RequestConfigDataPayload;
 import net.neoforged.neoforge.network.PacketDistributor;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -81,7 +84,11 @@ public class PlayerPanelScreen extends AbstractPanelScreen {
 
     private void rebuildSortedAttrs() {
         this.sortedAttrs = attributes.entrySet().stream()
-                .filter(e -> e.getValue() != 0.0)
+                .filter(e -> {
+                    AttributeDefinition def = AttributeManager.getAttributeDefinition(e.getKey());
+                    double defaultValue = def != null ? def.getDefaultValue() : 0.0;
+                    return Double.compare(e.getValue(), defaultValue) != 0;
+                })
                 .sorted(Comparator.comparing(e ->
                         Component.translatable("tooltip.gytrinket.attr." + e.getKey()).getString()))
                 .toList();
@@ -120,7 +127,7 @@ public class PlayerPanelScreen extends AbstractPanelScreen {
     private void openConfigScreen() {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player != null) {
-            PacketDistributor.sendToServer(new NetworkHandler.RequestConfigDataPayload());
+            PacketDistributor.sendToServer(new RequestConfigDataPayload());
         }
     }
 

@@ -1,7 +1,7 @@
 package com.gytrinket.gytrinket.core.damage_last;
 
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
-import com.gytrinket.gytrinket.damage.ModDamageTypes;
+import com.gytrinket.gytrinket.core.damage.ModDamageTypes;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.damagesource.DamageType;
 import net.minecraft.world.entity.player.Player;

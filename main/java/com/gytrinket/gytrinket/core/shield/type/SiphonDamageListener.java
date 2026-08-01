@@ -1,8 +1,8 @@
 package com.gytrinket.gytrinket.core.shield.type;
 
-import com.gytrinket.gytrinket.Config;
+import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.shield.ShieldManager;
-import com.gytrinket.gytrinket.damage.ModDamageTypes;
+import com.gytrinket.gytrinket.core.damage.ModDamageTypes;
 import com.gytrinket.gytrinket.gytrinket;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.damagesource.DamageType;

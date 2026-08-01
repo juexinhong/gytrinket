@@ -1,6 +1,6 @@
 package com.gytrinket.gytrinket.core.shield.type;
 
-import com.gytrinket.gytrinket.Config;
+import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.gytrinket;
 import com.gytrinket.gytrinket.storage.PlayerStore;
 import com.gytrinket.gytrinket.storage.PlayerStoreManager;
@@ -235,27 +235,63 @@ public class ShieldTypeManager {
 
     private static Set<String> resolveConflicts(List<IShieldType.ShieldTypeData> types) {
         Set<String> disabledItemIds = new HashSet<>();
-        boolean disableAllFromHere = false;
+        // 追踪上一个生效的护盾是否为兼容类型
+        // null = 尚未有生效的护盾（第一个护盾总是生效）
+        // true = 上一个生效的是兼容类型，链可以继续
+        // false = 上一个生效的是不兼容类型，链已断裂
+        Boolean lastActiveWasCompatible = null;
 
         for (int i = 0; i < types.size(); i++) {
             IShieldType.ShieldTypeData data = types.get(i);
             String typeName = data.type().getName();
+            boolean isCompatible = Config.isShieldTypeCompatible(typeName);
+            ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(data.source().getItem());
 
-            if (disableAllFromHere) {
+            if (lastActiveWasCompatible != null && !lastActiveWasCompatible) {
+                // 链已断裂，后续所有护盾都不生效
                 types.set(i, data.withActive(false));
-                ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(data.source().getItem());
                 if (itemId != null) {
                     disabledItemIds.add(itemId.toString());
                 }
                 continue;
             }
 
-            if (!Config.isShieldTypeCompatible(typeName)) {
-                disableAllFromHere = true;
+            // lastActiveWasCompatible == null（第一个）或 true（兼容链中）
+            if (isCompatible) {
+                // 兼容类型：生效，链继续
+                lastActiveWasCompatible = true;
+            } else {
+                if (lastActiveWasCompatible == null) {
+                    // 第一个护盾是不兼容类型：生效，但链断裂
+                    lastActiveWasCompatible = false;
+                } else {
+                    // 兼容链中遇到不兼容类型：不生效，链断裂
+                    types.set(i, data.withActive(false));
+                    if (itemId != null) {
+                        disabledItemIds.add(itemId.toString());
+                    }
+                    lastActiveWasCompatible = false;
+                }
             }
         }
-        
+
         return disabledItemIds;
+    }
+
+    public static void clearPlayerShieldTypes(UUID playerUUID) {
+        List<IShieldType.ShieldTypeData> oldTypes = PLAYER_SHIELD_TYPES.getOrDefault(playerUUID, Collections.emptyList());
+        for (IShieldType.ShieldTypeData data : oldTypes) {
+            if (data.active()) {
+                MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+                if (server != null) {
+                    ServerPlayer player = server.getPlayerList().getPlayer(playerUUID);
+                    if (player != null) {
+                        data.type().onRemoved(player);
+                    }
+                }
+            }
+        }
+        PLAYER_SHIELD_TYPES.remove(playerUUID);
     }
 
     @SubscribeEvent

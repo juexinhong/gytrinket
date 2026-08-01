@@ -2,6 +2,8 @@ package com.gytrinket.gytrinket.core.entity.construct.drone;
 
 import com.gytrinket.gytrinket.gytrinket;
 import com.gytrinket.gytrinket.network.NetworkHandler;
+import com.gytrinket.gytrinket.network.packet.SwitchDroneArrayPayload;
+import com.gytrinket.gytrinket.network.packet.ToggleExecutePayload;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
@@ -58,11 +60,11 @@ public class DroneInputHandler {
         }
 
         if (arraySwitchKey.consumeClick()) {
-            PacketDistributor.sendToServer(new NetworkHandler.SwitchDroneArrayPayload());
+            PacketDistributor.sendToServer(new SwitchDroneArrayPayload());
         }
 
         if (executeToggleKey.consumeClick()) {
-            PacketDistributor.sendToServer(new NetworkHandler.ToggleExecutePayload());
+            PacketDistributor.sendToServer(new ToggleExecutePayload());
         }
     }
 }

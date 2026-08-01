@@ -1,9 +1,12 @@
 package com.gytrinket.gytrinket.core.entity.construct.swarm;
 
 import com.gytrinket.gytrinket.core.entity.construct.AbstractConstruct;
+import com.gytrinket.gytrinket.core.entity.construct.ConstructData;
 import com.gytrinket.gytrinket.core.entity.construct.ConstructManager;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
+
+import java.util.UUID;
 
 /**
  * 蜂群构造体逻辑类
@@ -37,6 +40,13 @@ public class SwarmConstruct extends AbstractConstruct {
             case SwarmConstructTypes.TIER_ADVANCED: return 2.0;
             default: return 1.0;
         }
+    }
+
+    @Override
+    public ConstructData createData(UUID entityUUID) {
+        SwarmConstructData data = new SwarmConstructData(constructId, entityUUID, maxHealth);
+        data.setTier(tier);
+        return data;
     }
 
     @Override

@@ -1,5 +1,7 @@
 package com.gytrinket.gytrinket.core.entity.construct;
 
+import com.gytrinket.gytrinket.core.entity.construct.drone.ModDamageSources;
+import com.gytrinket.gytrinket.core.entity.construct.drone.behavior.SelfDestructBehavior;
 import com.gytrinket.gytrinket.core.entity.construct.drone.behavior.TargetMemory;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
@@ -29,6 +31,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Predicate;
 
@@ -81,6 +84,9 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
     /** 攻速倍率（来自 construct_attack_speed 属性），默认 1.0 */
     protected double attackSpeedMultiplier = 1.0;
 
+    /** 武器攻速倍率（仅影响武器攻击，不影响爆破弹攻速），默认 1.0 */
+    protected double weaponAttackSpeedMultiplier = 1.0;
+
     // ===== 索敌通用参数与状态 =====
     /** 玩家最大索敌距离限制：不可选择玩家此范围外的敌人 */
     protected static final float PLAYER_MAX_TARGET_RANGE = 35.0f;
@@ -93,6 +99,7 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
         super(type, level);
         this.setNoGravity(true);
         this.noPhysics = true;
+        this.blocksBuilding = false;
     }
 
     @Override
@@ -106,9 +113,10 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
     @Nullable
     @Override
     public UUID getOwnerUUID() {
-        if (this.ownerUUID != null) return this.ownerUUID;
-        // 客户端回退：从同步数据读取
-        return this.entityData.get(DATA_OWNER_UUID).orElse(null);
+        // 优先从SynchedEntityData读取（客户端也能获取同步后的值）
+        Optional<UUID> synced = entityData.get(DATA_OWNER_UUID);
+        if (synced.isPresent()) return synced.get();
+        return this.ownerUUID;
     }
 
     public void setOwnerUUID(@Nullable UUID uuid) {
@@ -144,9 +152,19 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
     // ===== 碰撞规则 =====
 
     /**
-     * 构造体无刚体碰撞（canBeCollidedWith=false），确保不会阻挡实体移动。
-     * isPickable 由子类决定（无人机/蜂群=true 可被弹射物命中，僚机=false）。
+     * 构造体不阻挡玩家射线追踪，使玩家可以穿过构造体交互方块/攻击实体。
+     * 弹射物仍可命中构造体（canBeHitByProjectile=true），玩家弹射物穿透由 ConstructPenetrationHandler 处理。
      */
+    @Override
+    public boolean isPickable() {
+        return false;
+    }
+
+    @Override
+    public boolean canBeHitByProjectile() {
+        return true;
+    }
+
     @Override
     public boolean canBeCollidedWith() {
         return false;
@@ -180,6 +198,16 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
     @Override
     public void setAttackSpeedMultiplier(double multiplier) {
         this.attackSpeedMultiplier = multiplier;
+    }
+
+    @Override
+    public double getWeaponAttackSpeedMultiplier() {
+        return weaponAttackSpeedMultiplier;
+    }
+
+    @Override
+    public void setWeaponAttackSpeedMultiplier(double multiplier) {
+        this.weaponAttackSpeedMultiplier = multiplier;
     }
 
     // ===== 朝向控制 =====
@@ -227,10 +255,22 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
      */
     public void faceOwnerDirection(LivingEntity owner) {
         float ownerYaw = owner.getYRot();
-        this.setYRot(ownerYaw);
-        this.setYHeadRot(ownerYaw);
-        this.yBodyRot = ownerYaw;
-        this.yHeadRot = ownerYaw;
+        float currentYaw = this.getYRot();
+
+        float deltaYaw = ownerYaw - currentYaw;
+        while (deltaYaw > 180.0f) deltaYaw -= 360.0f;
+        while (deltaYaw < -180.0f) deltaYaw += 360.0f;
+
+        float rotationSpeed = 15.0f;
+        float yawStep = Math.min(Math.abs(deltaYaw), rotationSpeed);
+        if (deltaYaw < 0) yawStep = -yawStep;
+        float newYaw = currentYaw + yawStep;
+
+        this.setYRot(newYaw);
+        this.setXRot(0);
+        this.setYHeadRot(newYaw);
+        this.yBodyRot = newYaw;
+        this.yHeadRot = newYaw;
     }
 
     // ===== 友方构造体判定 =====
@@ -326,11 +366,46 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
     // ===== 伤害和死亡 =====
 
     /**
+     * 近战攻击：使用守卫阵列仇恨集中机制决定伤害归属，并施加击退。
+     */
+    @Override
+    public boolean doHurtTarget(net.minecraft.world.entity.Entity target) {
+        if (target instanceof LivingEntity livingTarget) {
+            float damage = (float) this.getAttributeValue(Attributes.ATTACK_DAMAGE);
+            net.minecraft.world.damagesource.DamageSource damageSource =
+                    ModDamageSources.mobAttackWithGuardAggro(this, livingTarget);
+            boolean hit = livingTarget.hurt(damageSource, damage);
+            if (hit) {
+                livingTarget.setLastHurtByMob(this);
+                // 击退
+                livingTarget.knockback(0.4F,
+                        net.minecraft.util.Mth.sin(this.getYRot() * ((float) Math.PI / 180F)),
+                        -net.minecraft.util.Mth.cos(this.getYRot() * ((float) Math.PI / 180F)));
+            }
+            return hit;
+        }
+        return super.doHurtTarget(target);
+    }
+
+    /**
      * 归属者攻击穿透自身构造体（不阻挡），其他伤害正常结算。
+     * 免疫窒息和挤压伤害，60%爆炸伤害减免。
      * 子类可重写以添加额外逻辑（如无人机的特殊行为触发），但应调用 super.hurt。
      */
     @Override
     public boolean hurt(DamageSource source, float amount) {
+        // 免疫窒息伤害（卡在方块里）
+        if ("inWall".equals(source.getMsgId())) {
+            return false;
+        }
+        // 免疫挤压伤害（实体过多导致的伤害）
+        if ("cramming".equals(source.getMsgId())) {
+            return false;
+        }
+        // 60%爆炸伤害减免
+        if (source.typeHolder().is(net.minecraft.tags.DamageTypeTags.IS_EXPLOSION)) {
+            amount *= 0.4F;
+        }
         Entity attacker = source.getEntity();
         if (attacker instanceof Player playerAttacker) {
             if (this.getOwnerUUID() != null && this.getOwnerUUID().equals(playerAttacker.getUUID())) {
@@ -346,8 +421,24 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
      */
     @Override
     public void die(DamageSource source) {
+        triggerSelfDestructIfAvailable();
         super.die(source);
         removeFromConstructManager();
+    }
+
+    /**
+     * 自毁装置：当构造体死亡时触发爆炸。
+     * 爆炸基础伤害为0，基础半径为0。每点最大生命值增加1点爆炸伤害和0.3格爆炸半径。
+     * 仅当玩家光点核心中携有自毁装置物品时触发。
+     * <p>
+     * 子类需在死亡时进行额外判定（如宽限协作/最终指令），
+     * 应在重写 die() 时先调用此方法，若返回则提前返回；
+     * 之后再调用 super.die()，从而阻止自毁触发。
+     */
+    protected void triggerSelfDestructIfAvailable() {
+        if (SelfDestructBehavior.hasRequiredItems(this)) {
+            SelfDestructBehavior.triggerSelfDestructExplosion(this);
+        }
     }
 
     /**
@@ -474,20 +565,19 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
     // ===== 属性应用 =====
 
     /**
-     * 刷新构造体属性：应用 construct_* 属性系统提供的加成。
-     * 子类通过实现 {@link #applyConstructAttributes} 调用类型特定的应用方法。
+     * 刷新构造体属性：构造体主动获取自身对应的属性。
+     * <p>
+     * 三种调用场景：
+     * <ol>
+     *   <li>构造体构建完毕</li>
+     *   <li>玩家重登恢复</li>
+     *   <li>待机阵列恢复</li>
+     * </ol>
+     * 通过 {@link ConstructAttributeApplier#fetchAttributesForConstruct} 从属性缓存或实时计算获取属性。
      */
     @Override
     public void refreshConstructAttributes() {
-        if (this.ownerUUID == null) return;
-        UUID playerUUID = this.ownerUUID;
-        ServerPlayer player = null;
-        if (this.level().getServer() != null) {
-            player = this.level().getServer().getPlayerList().getPlayer(playerUUID);
-        }
-        if (player != null) {
-            applyConstructAttributes(playerUUID, ConstructAttributeApplier.computeConstructAttributes(playerUUID));
-        }
+        ConstructAttributeApplier.fetchAttributesForConstruct(this, this);
     }
 
     /**
@@ -507,10 +597,57 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
     // ===== 抽象方法 =====
 
     /** 返回构造体类型 ID（如 "drone"/"wingman"/"swarm"） */
-    protected abstract String getConstructTypeId();
+    @Override
+    public abstract String getConstructTypeId();
+
+    /**
+     * 获取实例标签（用于属性目标匹配，如突击/防御/指挥官等）。
+     * 子类可覆写以添加实例特有标签。
+     */
+    @Override
+    public Set<String> getInstanceTags() {
+        return new java.util.HashSet<>();
+    }
 
     /** 创建注册到构造体管理器用的数据对象（不含 healthRatio，由基类设置） */
     protected abstract ConstructData createConstructDataForRegistration(ServerPlayer ownerPlayer);
+
+    /**
+     * 从当前实体状态创建数据快照，用于待机保存或玩家退出保存。
+     * <p>
+     * 基类填充通用字段（healthRatio, position, dimension, active），
+     * 子类覆写 {@link #populateTypeSpecificData(ConstructData)} 填充类型特有字段。
+     *
+     * @return 包含当前实体状态的 ConstructData 快照
+     */
+    public ConstructData snapshotToData() {
+        ConstructData data = createConstructDataForRegistration(
+                this.getOwner() instanceof ServerPlayer sp ? sp : null);
+        if (data == null) return null;
+
+        // 通用字段
+        double currentMaxHealth = this.getMaxHealth();
+        float currentHealth = this.getHealth();
+        data.setHealthRatio(currentMaxHealth > 0 ? currentHealth / currentMaxHealth : 1.0);
+        data.setSavedPos(this.getX(), this.getY(), this.getZ());
+        data.setDimension(this.level().dimension().location().toString());
+        data.setActive(true);
+
+        // 类型特有字段
+        populateTypeSpecificData(data);
+
+        return data;
+    }
+
+    /**
+     * 子类覆写此方法以填充类型特有的数据字段。
+     * 默认实现为空。
+     *
+     * @param data 待填充的构造体数据
+     */
+    protected void populateTypeSpecificData(ConstructData data) {
+        // 默认无类型特有字段
+    }
 
     // ===== GeckoLib =====
 

@@ -1,10 +1,10 @@
 package com.gytrinket.gytrinket.core.attack_mode;
 
-import com.gytrinket.gytrinket.Config;
+import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.attack_mode.assault.AssaultManager;
 import com.gytrinket.gytrinket.core.attack_mode.charged_attack.ChargedAttackManager;
-import com.gytrinket.gytrinket.core.charged_shield.ChargedShieldManager;
-import com.gytrinket.gytrinket.core.grudge.GrudgeManager;
+import com.gytrinket.gytrinket.core.shield.ChargedShieldManager;
+import com.gytrinket.gytrinket.core.attack_mode.GrudgeManager;
 import com.gytrinket.gytrinket.core.modifier.ModifierHelper;
 import com.gytrinket.gytrinket.gytrinket;
 import net.minecraft.resources.ResourceLocation;

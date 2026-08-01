@@ -1,6 +1,6 @@
 package com.gytrinket.gytrinket.core.tooltip;
 
-import com.gytrinket.gytrinket.Config;
+import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.entity.construct.ConstructManager;
 import com.gytrinket.gytrinket.core.entity.construct.ConstructType;
 import com.gytrinket.gytrinket.core.entity.construct.drone.DroneBullet;
@@ -235,7 +235,8 @@ public class TooltipHandler {
             ChatFormatting.AQUA,
             () -> new Object[]{
                 (int)(Config.getChargedShieldChargeRatio() * 100),
-                (int)(Config.getChargedShieldMaxBonus() * 100)
+                (int)(Config.getChargedShieldMaxBonus() * 100),
+                (int)(Math.abs(Config.getChargedShieldMovementSpeedPenalty()) * 100)
             }
         ));
 
@@ -246,8 +247,44 @@ public class TooltipHandler {
             ChatFormatting.RED,
             () -> new Object[]{
                 Config.getGrudgeConversionRatio(),
+                (int)(Config.getGrudgeFadePercent() * 100),
                 Config.getGrudgeFadeBase(),
-                (int)(Config.getGrudgeFadePercent() * 100)
+                (int)(Math.abs(Config.getGrudgeMovementSpeedPenalty()) * 100)
+            }
+        ));
+
+        // 震撼弹
+        rules.add(new TooltipConfig(
+            Config.WINGMAN_SHOCKWAVE_MODULE_ITEMS,
+            "shockwave_module", "shockwave_module_desc",
+            ChatFormatting.GOLD,
+            () -> new Object[]{
+                (int)((Config.getWingmanShockwaveDamageMultiplier() - 1) * 100),
+                (int)((Config.getWingmanShockwaveSplashLengthMultiplier() - 1) * 100)
+            }
+        ));
+
+        // 进化
+        rules.add(new TooltipConfig(
+            Config.WINGMAN_EVOLUTION_MODULE_ITEMS,
+            "evolution_module", "evolution_module_desc",
+            ChatFormatting.LIGHT_PURPLE,
+            () -> new Object[]{
+                Config.getWingmanEvolutionBonusPerLevel() * 100
+            }
+        ));
+
+        // 幽灵机身
+        rules.add(new TooltipConfig(
+            Config.GHOST_FUSELAGE_ITEMS,
+            "ghost_fuselage", "ghost_fuselage_desc",
+            ChatFormatting.DARK_PURPLE,
+            () -> new Object[]{
+                Config.getGhostFuselageFullStealthTicks() / 20.0,
+                (int)(Config.getGhostFuselageBaseMaxDamageBonus() * 100),
+                (int)(Config.getGhostFuselageAttackReduction() * 100),
+                (int)(Config.getGhostFuselageDeployReduction() * 100),
+                Config.getGhostFuselageStealthSpeedBonusPerLevel() * 100
             }
         ));
 
@@ -407,15 +444,32 @@ public class TooltipHandler {
 
         if (Config.ASSAULT_DRONE_MODULE_ITEMS.get().contains(itemId)) {
             addTooltip(event, "assault_drone_module", ChatFormatting.GOLD);
+            addTooltip(event, "assault_drone_module_desc", ChatFormatting.RED);
         }
 
         if (Config.DEFENSE_DRONE_MODULE_ITEMS.get().contains(itemId)) {
             addTooltip(event, "defense_drone_module", ChatFormatting.BLUE);
+            addTooltip(event, "defense_drone_module_desc", ChatFormatting.RED);
+        }
+
+        if (itemId.equals("gytrinket:quick_reconstruction_module")) {
+            addTooltip(event, "quick_reconstruction_module", ChatFormatting.GREEN);
+            addTooltip(event, "quick_reconstruction_module_desc", ChatFormatting.RED);
         }
 
         if (Config.WINGMAN_MODULE_ITEMS.get().contains(itemId)) {
             addTooltip(event, "wingman_module", ChatFormatting.GRAY);
             addWingmanModuleDescTooltip(event);
+        }
+
+        if (Config.WINGMAN_INTERCEPTOR_MODULE_ITEMS.get().contains(itemId)) {
+            addTooltip(event, "interceptor_module", ChatFormatting.GRAY);
+            addInterceptorModuleDescTooltip(event);
+        }
+
+        if (Config.WINGMAN_NANO_REGEN_MODULE_ITEMS.get().contains(itemId)) {
+            addTooltip(event, "nano_regen_module", ChatFormatting.GREEN);
+            addNanoRegenModuleDescTooltip(event);
         }
 
         if (Config.SWARM_MODULE_ITEMS.get().contains(itemId)) {
@@ -479,6 +533,22 @@ public class TooltipHandler {
                 event.getToolTip().add(tooltip.withStyle(ChatFormatting.GRAY));
             }
         }
+    }
+
+    /**
+     * 拦截机模块描述工具提示
+     */
+    private static void addInterceptorModuleDescTooltip(ItemTooltipEvent event) {
+        addTooltip(event, "interceptor_module_desc", ChatFormatting.GRAY);
+    }
+
+    /**
+     * 纳米再生模块描述工具提示
+     */
+    private static void addNanoRegenModuleDescTooltip(ItemTooltipEvent event) {
+        addFormattedTooltip(event, "nano_regen_module_desc", ChatFormatting.GRAY,
+            () -> new Object[]{Config.getWingmanNanoRegenPercent() * 100}
+        );
     }
 
     /**

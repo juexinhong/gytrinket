@@ -1,19 +1,17 @@
 package com.gytrinket.gytrinket.core.entity.construct.swarm;
 
-import com.gytrinket.gytrinket.Config;
+import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.entity.construct.AbstractConstructEntity;
 import com.gytrinket.gytrinket.core.entity.construct.ConstructAttributeApplier;
 import com.gytrinket.gytrinket.core.entity.construct.ConstructData;
+import com.gytrinket.gytrinket.core.entity.construct.ConstructGroupCache;
 import com.gytrinket.gytrinket.core.entity.construct.ConstructManager;
 import com.gytrinket.gytrinket.core.entity.construct.drone.ModEntities;
 import com.gytrinket.gytrinket.core.entity.construct.drone.ModDamageSources;
-import com.gytrinket.gytrinket.core.entity.construct.drone.behavior.BoidConfig;
-import com.gytrinket.gytrinket.core.entity.construct.drone.behavior.BoidHelper;
-import com.gytrinket.gytrinket.core.execute.ExecuteToggleManager;
-import com.gytrinket.gytrinket.core.hostile_target.HostileTargetManager;
+import com.gytrinket.gytrinket.core.entity.construct.drone.behavior.BoidCalculator;
+import com.gytrinket.gytrinket.core.attack_mode.ExecuteToggleManager;
 import com.gytrinket.gytrinket.core.modifier.player.knockback.KnockbackManager;
 import com.gytrinket.gytrinket.network.NetworkHandler;
-import com.gytrinket.gytrinket.core.shield.ShieldData;
 import com.gytrinket.gytrinket.core.shield.ShieldManager;
 import com.gytrinket.gytrinket.core.vulnerability.VulnerabilityApplyEvent;
 import net.minecraft.nbt.CompoundTag;
@@ -32,11 +30,9 @@ import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.common.NeoForge;
 
-import javax.annotation.Nullable;
 import java.util.*;
 
 /**
@@ -47,6 +43,9 @@ import java.util.*;
  * 玩家护盾受损时部分蜂群转为修复模式（伤害转化为护盾恢复）；
  * 玩家护盾破裂时全员获得攻速/移速增益，且不修复护盾。
  * 单实例构建时有小概率提升等阶（标准/高阶），获得生命与伤害加成。
+ * <p>
+ * 性能优化：通过 ConstructGroupCache 共享 Boid 邻居数据、索敌结果、护盾状态和修复分配，
+ * 避免每实体独立重复查询导致的 O(N²) 开销。
  */
 public class SwarmConstructEntity extends AbstractConstructEntity {
 
@@ -68,8 +67,10 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
     private static final float STANDBY_HEIGHT = 3.5f;
     /** 待机跟随触发距离 */
     private static final float STANDBY_RANGE = 5.0f;
-    /** 护盾破裂增益倍率 */
-    private static final double SHIELD_BROKEN_BOOST = 1.5;
+    /** 护盾破裂时攻速倍率（攻击冷却减半） */
+    private static final double SHIELD_BROKEN_ATTACK_SPEED_MULT = 2.0;
+    /** 护盾破裂时移速倍率 */
+    private static final double SHIELD_BROKEN_MOVE_SPEED_MULT = 1.5;
 
     // 追击距离分级（与目标的水平距离，单位：格）
     /** d < DIST_LEAVE：太近，尝试离开（远离目标） */
@@ -82,21 +83,21 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
     private static final double SLOW_APPROACH_SPEED_MULT = 0.5;
 
     // Boid 参数（蜂群更紧凑）
-    private static final BoidConfig BOID_CONFIG = new BoidConfig(
-            0.6,  // comfortRange
-            1.2,  // separationRange
-            0.035,// separationStrength
-            4.0,  // cohesionRange
-            0.02, // cohesionStrength
-            3.0,  // alignmentRange
-            0.025 // alignmentStrength
-    );
+    private static final double BOID_COMFORT_RANGE = 0.6;
+    private static final double BOID_SEPARATION_RANGE = 1.2;
+    private static final double BOID_SEPARATION_STRENGTH = 0.035;
+    private static final double BOID_COHESION_RANGE = 4.0;
+    private static final double BOID_COHESION_STRENGTH = 0.02;
+    private static final double BOID_ALIGNMENT_RANGE = 3.0;
+    private static final double BOID_ALIGNMENT_STRENGTH = 0.025;
     private static final double VELOCITY_DAMPING = 0.85;
 
     public SwarmConstructEntity(EntityType<? extends PathfinderMob> type, Level level) {
         super(type, level);
         this.baseMaxHealth = Config.getSwarmBaseHealth();
         this.baseAttackDamage = Config.getSwarmBaseDamage();
+        // 攻击冷却错峰：创建时随机偏移初始冷却，避免所有蜂群同一帧攻击
+        this.attackCooldown = level.random.nextInt(Math.max(1, (int)(Config.getSwarmAttackInterval() * 20)));
     }
 
     public SwarmConstructEntity(Level level, UUID ownerUUID, SwarmConstruct swarmConstruct) {
@@ -112,11 +113,6 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
         super.defineSynchedData(builder);
         builder.define(DATA_REPAIR_MODE, false);
         builder.define(DATA_SHIELD_BROKEN, false);
-    }
-
-    @Override
-    public boolean isPickable() {
-        return true;
     }
 
     public SwarmConstruct getSwarmConstruct() {
@@ -159,8 +155,8 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
         LivingEntity owner = (LivingEntity) ownerEntity;
 
         // ===== 护盾状态判定 =====
-        // 服务端：从 ShieldManager 计算并同步给客户端
-        // 客户端：ShieldManager 数据不可用，读取同步标志
+        // 服务端：从 ConstructGroupCache 计算并同步给客户端
+        // 客户端：读取同步标志
         boolean shieldBroken;
         boolean repairMode;
         double speedMult;
@@ -170,22 +166,19 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
             // 客户端：使用服务端同步的标志
             shieldBroken = this.entityData.get(DATA_SHIELD_BROKEN);
             repairMode = this.entityData.get(DATA_REPAIR_MODE);
-            speedMult = shieldBroken ? SHIELD_BROKEN_BOOST : 1.0;
+            speedMult = shieldBroken ? SHIELD_BROKEN_MOVE_SPEED_MULT : 1.0;
             attackSpeedMult = 1.0; // 客户端不执行攻击，无需
         } else {
-            // 服务端：从护盾数据计算
-            ShieldData shieldData = ShieldManager.getShieldData(owner.getUUID());
-            double currentShield = shieldData != null ? shieldData.getCurrentShield() : 0.0;
-            double maxShield = shieldData != null ? shieldData.getMaxShield() : 0.0;
+            // 服务端：从 ConstructGroupCache 获取护盾状态
+            ConstructGroupCache cache = ConstructGroupCache.getInstance();
+            ConstructGroupCache.CachedShieldState shieldState = cache.getShieldState(owner.getUUID(), this.level());
 
-            // 护盾破裂：未激活护盾（maxShield <= 0）或护盾值耗尽（currentShield <= 0）
-            shieldBroken = maxShield <= 0.0 || currentShield <= 0.0;
-            boolean shieldDamaged = maxShield > 0.0 && currentShield > 0.0 && currentShield < maxShield;
-            speedMult = shieldBroken ? SHIELD_BROKEN_BOOST : 1.0;
-            attackSpeedMult = shieldBroken ? SHIELD_BROKEN_BOOST : 1.0;
+            shieldBroken = shieldState.broken;
+            speedMult = shieldBroken ? SHIELD_BROKEN_MOVE_SPEED_MULT : 1.0;
+            attackSpeedMult = shieldBroken ? SHIELD_BROKEN_ATTACK_SPEED_MULT : 1.0;
 
-            // 修复模式：仅在护盾受损（未破裂）时分配部分蜂群
-            repairMode = shieldDamaged && isAssignedToRepair(owner, currentShield, maxShield);
+            // 修复模式：仅在护盾可修复时分配部分蜂群
+            repairMode = shieldState.canRepair && cache.getRepairAssignment(owner.getUUID(), this.level()).isAssigned(this.getUUID());
 
             // 同步给客户端（避免客户端因无护盾数据而误入待机分支覆盖朝向）
             this.entityData.set(DATA_SHIELD_BROKEN, shieldBroken);
@@ -217,85 +210,43 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
         }
     }
 
-    // ===== 护盾修复分配 =====
+    // ===== 索敌（使用共享缓存） =====
 
     /**
-     * 判定本蜂群是否被分配到护盾修复模式。
-     * <p>
-     * 取同一玩家所有存活蜂群，按 UUID 排序。
-     * 修复数量随护盾受损程度从 0% 线性提高到 50%（最多 totalCount/2）。
-     * 护盾受损时至少分配 1 只修复（只要存在蜂群）。
-     */
-    private boolean isAssignedToRepair(LivingEntity owner, double currentShield, double maxShield) {
-        UUID myUUID = this.getUUID();
-        UUID ownerUUID = owner.getUUID();
-
-        // 从 ConstructManager 注册表获取同玩家所有蜂群实体（避免 64 格 AABB 扫描）
-        List<SwarmConstructEntity> swarms = new ArrayList<>();
-        for (net.minecraft.world.entity.Entity entity : ConstructManager.getInstance()
-                .getActiveConstructEntities(ownerUUID, SwarmConstructTypes.SWARM).values()) {
-            if (entity instanceof SwarmConstructEntity swarm
-                    && swarm.isAlive()
-                    && swarm.level() == this.level()) {
-                swarms.add(swarm);
-            }
-        }
-
-        if (swarms.isEmpty()) return false;
-
-        swarms.sort(Comparator.comparing(Entity::getUUID));
-
-        int totalCount = swarms.size();
-
-        // 护盾受损程度 (0.0 ~ 1.0)
-        double damageRatio = maxShield > 0.0 ? (maxShield - currentShield) / maxShield : 0.0;
-        if (damageRatio <= 0.0) return false;
-
-        // 修复比例：随受损程度从 25% 线性提高到 50%
-        double repairRatio = 0.25 + 0.25 * damageRatio;
-        int repairCount = (int) Math.round(totalCount * repairRatio);
-
-        // 护盾受损时至少 1 只修复（只要存在蜂群）
-        if (repairCount < 1) repairCount = 1;
-        if (repairCount > totalCount) repairCount = totalCount;
-
-        int myIndex = -1;
-        for (int i = 0; i < swarms.size(); i++) {
-            if (swarms.get(i).getUUID().equals(myUUID)) {
-                myIndex = i;
-                break;
-            }
-        }
-        return myIndex >= 0 && myIndex < repairCount;
-    }
-
-    // ===== 索敌 =====
-
-    /**
-     * 搜索目标：以自身为中心 searchRange 内查找，但不可选择玩家 PLAYER_MAX_TARGET_RANGE 格外的敌人。
+     * 使用 ConstructGroupCache 共享索敌结果。
+     * 同玩家的所有蜂群共享一次以玩家为中心的索敌查询，
+     * 此方法仅做距离过滤取最近目标。
      */
     private LivingEntity findTarget(LivingEntity owner) {
-        Player player = owner instanceof Player p ? p : null;
         float searchRange = (float) Config.getSwarmSearchRange();
-        return findTarget(owner, searchRange, entity -> isValidAttackTarget(entity, owner, player));
+        return ConstructGroupCache.getInstance().findNearestTarget(
+            owner.getUUID(), owner, this.position(), searchRange);
     }
 
+    // ===== Boid 集群力（使用共享缓存） =====
+
     /**
-     * 判断实体是否为合法攻击目标。
-     * 排除：自身、归属者、死亡、傀儡、玩家保护的实体、非敌对实体、玩家自己的构造体。
+     * 计算Boid集群力，使用 ConstructGroupCache 共享邻居数据。
+     * 同玩家的所有蜂群共享一次 getEntitiesOfClass 查询结果。
      */
-    private boolean isValidAttackTarget(LivingEntity entity, LivingEntity owner, @Nullable Player player) {
-        if (entity == owner || entity == this) return false;
-        if (!entity.isAlive()) return false;
-        if (entity instanceof net.minecraft.world.entity.animal.AbstractGolem) return false;
-        // 排除玩家自己的构造体（避免友伤）
-        if (isOwnConstruct(entity, owner.getUUID())) return false;
-        if (player != null) {
-            if (HostileTargetManager.isEntityProtectedByPlayer(entity, player)) return false;
-            if (!HostileTargetManager.shouldAttackPlayer(entity, player)) return false;
-            if (entity.distanceTo(owner) > PLAYER_MAX_TARGET_RANGE) return false;
-        }
-        return true;
+    private Vec3 calculateBoidForce(Entity swarm, LivingEntity owner) {
+        ConstructGroupCache cache = ConstructGroupCache.getInstance();
+
+        // 使用缓存获取排除自身的邻居数据
+        ConstructGroupCache.NeighborData neighborData = cache.getNeighborData(
+            owner.getUUID(), SwarmConstructTypes.SWARM, swarm.getUUID(), swarm.level(), owner.position());
+
+        Vec3 pos = swarm.position();
+        Vec3 velocity = swarm.getDeltaMovement();
+
+        Vec3 separation = BoidCalculator.separation(pos, neighborData.positions,
+                BOID_COMFORT_RANGE, BOID_SEPARATION_RANGE, BOID_SEPARATION_STRENGTH);
+        Vec3 cohesion = BoidCalculator.cohesion(pos, neighborData.positions,
+                BOID_COMFORT_RANGE, BOID_COHESION_RANGE, BOID_COHESION_STRENGTH);
+        Vec3 alignment = BoidCalculator.alignment(velocity, neighborData.velocities,
+                BOID_ALIGNMENT_RANGE, BOID_ALIGNMENT_STRENGTH);
+
+        return separation.add(cohesion).add(alignment);
     }
 
     // ===== 移动逻辑 =====
@@ -371,7 +322,7 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
         }
 
         // 叠加 Boid 集群力
-        Vec3 boidForce = BoidHelper.calculateBoidForce(swarm, owner, SwarmConstructEntity.class, BOID_CONFIG);
+        Vec3 boidForce = calculateBoidForce(swarm, owner);
         finalMovement = finalMovement.add(boidForce);
 
         // 限制最大速度
@@ -428,7 +379,7 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
             finalMovement = finalMovement.add(new Vec3(0, Math.signum(heightDiff) * heightSpeed, 0));
         }
 
-        Vec3 boidForce = BoidHelper.calculateBoidForce(swarm, owner, SwarmConstructEntity.class, BOID_CONFIG);
+        Vec3 boidForce = calculateBoidForce(swarm, owner);
         finalMovement = finalMovement.add(boidForce);
 
         double maxSpeed = moveSpeed * 5.0 * speedMult;
@@ -473,7 +424,7 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
             finalMovement = finalMovement.add(new Vec3(0, Math.signum(heightDiff) * heightSpeed, 0));
         }
 
-        Vec3 boidForce = BoidHelper.calculateBoidForce(swarm, owner, SwarmConstructEntity.class, BOID_CONFIG);
+        Vec3 boidForce = calculateBoidForce(swarm, owner);
         finalMovement = finalMovement.add(boidForce);
 
         double maxSpeed = moveSpeed * 5.0;
@@ -495,27 +446,31 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
         if (this.level().isClientSide) return;
         if (this.attackCooldown > 0) return;
 
-        double attackRange = Config.getSwarmAttackRange();
-        double distance = swarm.distanceTo(target);
-        if (distance > attackRange) return;
+        double baseAttackRange = Config.getSwarmAttackRange();
+        // 使用目标身高7/10处为检查点
+        Vec3 targetCheckPos = target.position().add(0, target.getBbHeight() * 0.7, 0);
+        // 大碰撞箱优化：目标碰撞箱宽度每有1格，攻击范围增加1格
+        double effectiveAttackRange = baseAttackRange + (int) target.getBbWidth();
+
+        double distance = swarm.position().distanceTo(targetCheckPos);
+        if (distance > effectiveAttackRange) return;
 
         Player player = owner instanceof Player p ? p : null;
         float damage = (float) this.baseAttackDamage;
         float vulnValue = (float) (Config.getSwarmVulnerabilityValue() * MothershipManager.getOverflowMultiplier(owner.getUUID()));
 
-        // 范围攻击：攻击范围内所有合法敌人
-        Vec3 swarmPos = swarm.position();
-        AABB arcBox = new AABB(
-            swarmPos.x - attackRange, swarmPos.y - attackRange, swarmPos.z - attackRange,
-            swarmPos.x + attackRange, swarmPos.y + attackRange, swarmPos.z + attackRange
-        );
-
-        List<LivingEntity> hits = this.level().getEntitiesOfClass(LivingEntity.class, arcBox,
-                entity -> isValidAttackTarget(entity, owner, player)
-                        && swarm.distanceTo(entity) <= attackRange);
+        // 使用共享索敌缓存获取攻击范围内目标，而非独立做 getEntitiesOfClass
+        float arcSearchRange = (float) (baseAttackRange + 4.0);
+        List<LivingEntity> hits = ConstructGroupCache.getInstance().findTargetsInRange(
+            owner.getUUID(), owner, swarm.position(), arcSearchRange);
 
         boolean hitAny = false;
         for (LivingEntity hit : hits) {
+            // 使用目标身高7/10处为检查点，并根据碰撞箱宽度调整攻击范围
+            Vec3 hitCheckPos = hit.position().add(0, hit.getBbHeight() * 0.7, 0);
+            double hitEffectiveRange = baseAttackRange + (int) hit.getBbWidth();
+            if (swarm.position().distanceTo(hitCheckPos) > hitEffectiveRange) continue;
+
             // 攻击前：取消击退标记和无敌时间（参考光束炮/无人机子弹）
             KnockbackManager.markNoKnockback(hit.getUUID());
             hit.invulnerableTime = 0;
@@ -643,7 +598,7 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
     // ===== 抽象方法实现 =====
 
     @Override
-    protected String getConstructTypeId() {
+    public String getConstructTypeId() {
         return SwarmConstructTypes.SWARM;
     }
 

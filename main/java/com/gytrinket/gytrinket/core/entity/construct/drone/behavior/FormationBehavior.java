@@ -1,6 +1,6 @@
 package com.gytrinket.gytrinket.core.entity.construct.drone.behavior;
 
-import com.gytrinket.gytrinket.Config;
+import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.entity.construct.drone.DroneConstructEntity;
 import com.gytrinket.gytrinket.core.entity.construct.drone.DroneBeamProjectile;
 import com.gytrinket.gytrinket.core.entity.construct.drone.DroneConstructTypes;

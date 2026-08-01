@@ -191,12 +191,12 @@ public class DroneBeamProjectile extends Entity implements GeoEntity {
                     if (realAttacker instanceof DroneConstructEntity droneShooter && droneShooter.isCommanderDrone()) {
                         net.neoforged.neoforge.common.NeoForge.EVENT_BUS.post(
                             new com.gytrinket.gytrinket.core.vulnerability.VulnerabilityApplyEvent(
-                                "commander", com.gytrinket.gytrinket.Config.COMMANDER_VULNERABILITY.get().floatValue(), entity, true
+                                "commander", com.gytrinket.gytrinket.config.Config.COMMANDER_VULNERABILITY.get().floatValue(), entity, true
                             )
                         );
                     }
 
-                    if (isFatalHit && com.gytrinket.gytrinket.core.execute.ExecuteToggleManager.isExecuteEnabled(damageOwner)) {
+                    if (isFatalHit && com.gytrinket.gytrinket.core.attack_mode.ExecuteToggleManager.isExecuteEnabled(damageOwner)) {
                         entity.setLastHurtByMob(damageOwner);
                     }
 

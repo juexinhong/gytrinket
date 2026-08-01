@@ -24,6 +24,8 @@ public class ModCreativeModeTabs {
                         // 机身物品
                         output.accept(ModItems.GUARDIAN.get());
                         output.accept(ModItems.SWARM_MODULE.get());
+                        output.accept(ModItems.GHOST_FUSELAGE.get());
+                        output.accept(ModItems.ENGINEERING_FUSELAGE.get());
 
                         // 基础护盾物品
                         output.accept(ModItems.SHIELD_GY.get());
@@ -145,12 +147,20 @@ public class ModCreativeModeTabs {
 
                         // 僚机物品
                         output.accept(ModItems.WINGMAN_MODULE.get());
+                        output.accept(ModItems.INTERCEPTOR_MODULE.get());
+                        output.accept(ModItems.EVOLUTION_MODULE.get());
+                        output.accept(ModItems.NANO_REGEN_MODULE.get());
+                        output.accept(ModItems.SUPPRESSION_MODULE.get());
+                        output.accept(ModItems.SHOCKWAVE_MODULE.get());
+                        output.accept(ModItems.WRENCH.get());
 
                         // 超越模块
                         output.accept(ModItems.CHARGED_SHIELD_MODULE.get());
                         output.accept(ModItems.GRUDGE_MODULE.get());
+                        output.accept(ModItems.APEX_APPARATUS_MODULE.get());
 
                         // 零件
+                        output.accept(ModItems.TOTEM.get());
                         output.accept(ModItems.BEAM.get());
                         output.accept(ModItems.BARRIER.get());
                         output.accept(ModItems.ULTIMATE_SHIELD.get());
@@ -191,6 +201,12 @@ public class ModCreativeModeTabs {
                         output.accept(ModItems.COUNTER_PULSE_PART.get());
                         output.accept(ModItems.ARC_BARRIER_PART.get());
                         output.accept(ModItems.RESHAPING_PART.get());
+                        output.accept(ModItems.WINGMAN_PART.get());
+                        output.accept(ModItems.INTERCEPTOR_PART.get());
+                        output.accept(ModItems.EVOLUTION_PART.get());
+                        output.accept(ModItems.SHOCKWAVE_PART.get());
+                        output.accept(ModItems.NANO_REGEN_PART.get());
+                        output.accept(ModItems.SUPPRESSION_PART.get());
                     })
                     .build()
     );

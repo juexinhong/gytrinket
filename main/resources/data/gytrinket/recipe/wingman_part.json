@@ -1,0 +1,17 @@
+﻿{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " CC",
+    "CGC",
+    "CC "
+  ],
+  "key": {
+    "C": { "item": "minecraft:copper_ingot" },
+    "G": { "item": "minecraft:glowstone" }
+  },
+  "result": {
+    "id": "gytrinket:wingman_part",
+    "count": 1
+  }
+}

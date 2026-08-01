@@ -1,6 +1,6 @@
 package com.gytrinket.gytrinket.core.entity.construct.drone;
 
-import com.gytrinket.gytrinket.Config;
+import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.entity.construct.AbstractConstructEntity;
 import com.gytrinket.gytrinket.core.entity.construct.ConstructAttributeApplier;
 import com.gytrinket.gytrinket.core.entity.construct.ConstructData;
@@ -11,7 +11,7 @@ import com.gytrinket.gytrinket.core.entity.construct.drone.behavior.PursuitBehav
 import com.gytrinket.gytrinket.core.entity.construct.drone.behavior.FormationBehavior;
 import com.gytrinket.gytrinket.core.entity.construct.drone.behavior.SelfDestructBehavior;
 import com.gytrinket.gytrinket.core.explosion.SimulatedExplosion;
-import com.gytrinket.gytrinket.core.hostile_target.HostileTargetManager;
+import com.gytrinket.gytrinket.core.entity.construct.HostileTargetManager;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
@@ -97,6 +97,8 @@ public class DroneConstructEntity extends AbstractConstructEntity {
         this(ModEntities.DRONE_CONSTRUCT.get(), level);
         setOwnerUUID(ownerUUID);
         this.droneConstruct = droneConstruct;
+        // 攻击冷却错峰：随机偏移0-40 tick，避免所有无人机同时开火
+        this.attackCooldown = level.random.nextInt(40);
     }
 
     // ===== 同步数据 =====
@@ -189,12 +191,6 @@ public class DroneConstructEntity extends AbstractConstructEntity {
 
     // ===== 碰撞规则 =====
 
-    @Override
-    public boolean isPickable() {
-        // 所有的构造体都应该可以被弹射物攻击，而不只是防御无人机
-        return true;
-    }
-
     /**
      * 防御无人机使用扩大的碰撞箱以拦截弹射物。
      * 在1.21.1中 getDimensions(Pose) 是 final 的，无法重写。
@@ -219,6 +215,10 @@ public class DroneConstructEntity extends AbstractConstructEntity {
             this.addEffect(new net.minecraft.world.effect.MobEffectInstance(
                     net.minecraft.world.effect.MobEffects.GLOWING, Integer.MAX_VALUE, 0, false, false));
         }
+        if (tag == DroneEffectTag.DEFENSE) {
+            // 防御无人机关闭noPhysics以阻挡弹射物，移动改用传送
+            this.noPhysics = false;
+        }
         updateEffectData();
         applyAttributeModifiers();
         this.refreshDimensions();
@@ -230,9 +230,20 @@ public class DroneConstructEntity extends AbstractConstructEntity {
             this.isCommander = false;
             this.removeEffect(net.minecraft.world.effect.MobEffects.GLOWING);
         }
+        if (tag == DroneEffectTag.DEFENSE) {
+            // 恢复noPhysics，无人机可穿透方块移动
+            this.noPhysics = true;
+        }
         updateEffectData();
         applyAttributeModifiers();
         this.refreshDimensions();
+    }
+
+    @Override
+    public boolean displayFireAnimation() {
+        // 防御无人机客户端不显示着火（其他正常）
+        if (isDefenseDrone()) return false;
+        return super.displayFireAnimation();
     }
 
     public boolean hasEffectTag(DroneEffectTag tag) {
@@ -357,7 +368,7 @@ public class DroneConstructEntity extends AbstractConstructEntity {
     // ===== 抽象方法实现 =====
 
     @Override
-    protected String getConstructTypeId() {
+    public String getConstructTypeId() {
         return DroneConstructTypes.DRONE;
     }
 
@@ -565,9 +576,7 @@ public class DroneConstructEntity extends AbstractConstructEntity {
                         if (targetToAttack != null) {
                             boolean canAttack = this.distanceTo(targetToAttack) <= behavior.getAttackRange();
 
-                            if (canAttack) {
-                                faceTargetWithInterpolation(targetToAttack);
-                            }
+                            faceTargetWithInterpolation(targetToAttack);
 
                             behavior.executeAttack(this, (LivingEntity) owner, targetToAttack, canAttack);
                         } else {

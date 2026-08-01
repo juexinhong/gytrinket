@@ -3,11 +3,9 @@ package com.gytrinket.gytrinket.core.attack_mode.charged_attack;
 import com.gytrinket.gytrinket.gytrinket;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.ItemStack;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.common.ItemAbilities;
 import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
 
 import java.util.UUID;
@@ -19,7 +17,9 @@ import java.util.UUID;
  * 2. 充能释放后，每次攻击都可以消耗当前充能值获得伤害加成
  * 3. 充能值随tick快速消退，自然处理衰减
  * 4. 首次释放攻击全额生效（充能值尚未消退）
- * 5. 横扫伤害额外受充能值加成（每点+10%，最高100%）
+ * <p>
+ * 注意：剑类物品的充能横扫已由 ChargedAttackSweepHandler.executeChargedSweepAttack 处理，
+ * 此处仅处理非剑类物品的充能加成。
  */
 @EventBusSubscriber(modid = gytrinket.MODID)
 public class ChargedAttackDamageHandler {
@@ -42,29 +42,18 @@ public class ChargedAttackDamageHandler {
             return;
         }
 
-        // 获取当前充能值（不移除，由tick消退处理）
         double chargeValue = ChargedAttackDamageTracker.getChargeValue(playerUUID);
 
         if (chargeValue <= 0) {
             return;
         }
 
-        // 移除目标无敌时间
         LivingEntity target = event.getEntity();
-        target.invulnerableTime = 0;
 
         // 充能值乘算加成：最终伤害 = 原始伤害 * (1 + 充能值)
         float newDamage = event.getNewDamage() * (1.0F + (float) chargeValue);
 
-        // 横扫伤害额外加成：剑类物品对横扫目标（非主要攻击目标）额外提升横扫伤害
-        // 通过 PlayerMixin 记录的主要攻击目标来区分直接攻击和横扫目标
-        ItemStack mainHandItem = player.getMainHandItem();
-        if (mainHandItem.canPerformAction(ItemAbilities.SWORD_SWEEP)
-                && ChargedAttackSweepHandler.isSweepTarget(playerUUID, target)) {
-            float sweepMultiplier = ChargedAttackSweepHandler.getSweepDamageMultiplier(chargeValue);
-            newDamage *= sweepMultiplier;
-        }
-
+        // 注意：剑类的充能横扫已由executeChargedSweepAttack处理，此处仅处理非剑类充能加成
         event.setNewDamage(newDamage);
     }
 }

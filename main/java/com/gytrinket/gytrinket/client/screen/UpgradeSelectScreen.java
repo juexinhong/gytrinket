@@ -1,6 +1,7 @@
 package com.gytrinket.gytrinket.client.screen;
 
 import com.gytrinket.gytrinket.network.NetworkHandler;
+import com.gytrinket.gytrinket.network.packet.*;
 import net.neoforged.neoforge.network.PacketDistributor;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -58,7 +59,7 @@ public class UpgradeSelectScreen extends AbstractPanelScreen {
         this.addRenderableWidget(Button.builder(
                 Component.translatable("screen.gytrinket.return_materials"),
                 button -> {
-                    PacketDistributor.sendToServer(new NetworkHandler.UpgradeReturnPayload(baseItemKey, upgradedItemKey));
+                    PacketDistributor.sendToServer(new UpgradeReturnPayload(baseItemKey, upgradedItemKey));
                     Minecraft.getInstance().setScreen(parentScreen);
                 }
         ).bounds(panelX + 5, btnY, 90, 16).build());
@@ -162,7 +163,7 @@ public class UpgradeSelectScreen extends AbstractPanelScreen {
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (button == 0 && hoveredSlotIndex >= 0 && !hoveredItem.isEmpty()) {
-            PacketDistributor.sendToServer(new NetworkHandler.UpgradeConsumePayload(hoveredSlotIndex, baseItemKey, upgradedItemKey));
+            PacketDistributor.sendToServer(new UpgradeConsumePayload(hoveredSlotIndex, baseItemKey, upgradedItemKey));
             return true;
         }
         return super.mouseClicked(mouseX, mouseY, button);

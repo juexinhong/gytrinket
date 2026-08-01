@@ -1,8 +1,8 @@
 package com.gytrinket.gytrinket.core.entity.construct.drone;
 
-import com.gytrinket.gytrinket.Config;
-import com.gytrinket.gytrinket.core.execute.ExecuteToggleManager;
-import com.gytrinket.gytrinket.core.hostile_target.HostileTargetManager;
+import com.gytrinket.gytrinket.config.Config;
+import com.gytrinket.gytrinket.core.attack_mode.ExecuteToggleManager;
+import com.gytrinket.gytrinket.core.entity.construct.HostileTargetManager;
 import com.gytrinket.gytrinket.core.modifier.player.knockback.KnockbackManager;
 import com.gytrinket.gytrinket.core.vulnerability.VulnerabilityApplyEvent;
 import net.minecraft.core.particles.ParticleTypes;
@@ -52,6 +52,7 @@ public class DroneBullet extends ThrowableItemProjectile implements GeoEntity {
     public DroneBullet(EntityType<? extends DroneBullet> type, Level level) {
         super(type, level);
         this.noPhysics = true;
+        this.setNoGravity(true);
     }
 
     public DroneBullet(Level level, LivingEntity owner) {
@@ -59,6 +60,7 @@ public class DroneBullet extends ThrowableItemProjectile implements GeoEntity {
         this.entityData.set(FROM_DRONE, true);
         this.entityData.set(DAMAGE, getBaseDamage());
         this.noPhysics = true;
+        this.setNoGravity(true);
     }
 
     public DroneBullet(Level level, LivingEntity owner, float damage) {
@@ -66,6 +68,7 @@ public class DroneBullet extends ThrowableItemProjectile implements GeoEntity {
         this.entityData.set(FROM_DRONE, true);
         this.entityData.set(DAMAGE, damage);
         this.noPhysics = true;
+        this.setNoGravity(true);
     }
 
     @Override
@@ -254,6 +257,7 @@ public class DroneBullet extends ThrowableItemProjectile implements GeoEntity {
         this.entityData.set(FROM_DRONE, tag.getBoolean("fromDrone"));
         this.entityData.set(DAMAGE, tag.getFloat("damage"));
         this.noPhysics = true;
+        this.setNoGravity(true);
     }
 
     @Override

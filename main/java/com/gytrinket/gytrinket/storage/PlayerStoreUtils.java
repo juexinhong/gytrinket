@@ -1,6 +1,6 @@
 package com.gytrinket.gytrinket.storage;
 
-import com.gytrinket.gytrinket.core.disable.DisableSystem;
+import com.gytrinket.gytrinket.core.shield.DisableSystem;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;

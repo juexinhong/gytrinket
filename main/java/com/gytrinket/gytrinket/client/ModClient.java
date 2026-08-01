@@ -3,9 +3,10 @@ package com.gytrinket.gytrinket.client;
 import com.gytrinket.gytrinket.blocks.ModBlockEntities;
 import com.gytrinket.gytrinket.core.attack_mode.electric_discharge.client.LightningRenderManager;
 import com.gytrinket.gytrinket.core.entity.construct.drone.client.renderer.DroneBulletTrailManager;
-import com.gytrinket.gytrinket.core.entity.construct.swarm.client.EnergyWaveRenderManager;
+import com.gytrinket.gytrinket.client.effect.energywave.EnergyWaveVisualManager;
 import com.gytrinket.gytrinket.client.effect.particle.ShieldParticleRenderEvent;
 import com.gytrinket.gytrinket.client.effect.particle.ShieldParticleTickEvent;
+import com.gytrinket.gytrinket.client.shader.ModShaders;
 import com.gytrinket.gytrinket.core.entity.construct.drone.ModEntities;
 import com.gytrinket.gytrinket.core.entity.construct.drone.DroneRenderer;
 import com.gytrinket.gytrinket.core.entity.construct.drone.DroneBulletRenderer;
@@ -13,12 +14,18 @@ import com.gytrinket.gytrinket.core.entity.construct.drone.client.renderer.Drone
 import com.gytrinket.gytrinket.core.entity.construct.drone.client.renderer.ArmorShardRenderer;
 import com.gytrinket.gytrinket.core.entity.construct.wingman.WingmanRenderer;
 import com.gytrinket.gytrinket.core.entity.construct.wingman.ExplosiveProjectileRenderer;
+import com.gytrinket.gytrinket.core.entity.construct.wingman.InterceptorConfigContainer;
+import com.gytrinket.gytrinket.client.screen.InterceptorConfigContainerScreen;
 import com.gytrinket.gytrinket.core.entity.construct.swarm.SwarmRenderer;
 import com.gytrinket.gytrinket.key.KeyInputHandler;
 import com.gytrinket.gytrinket.core.entity.construct.drone.DroneInputHandler;
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
+import net.minecraft.client.renderer.ShaderInstance;
+import net.minecraft.resources.ResourceLocation;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
+import net.neoforged.neoforge.client.event.RegisterShadersEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -36,16 +43,46 @@ public class ModClient {
     @SubscribeEvent
     public static void onClientSetup(FMLClientSetupEvent event) {
         NeoForge.EVENT_BUS.addListener(LightningRenderManager::onRenderLevelLast);
-        NeoForge.EVENT_BUS.addListener(EnergyWaveRenderManager::onRenderLevelLast);
+        NeoForge.EVENT_BUS.addListener(EnergyWaveVisualManager::onRenderLevelLast);
         NeoForge.EVENT_BUS.addListener(DroneBulletTrailManager::onRenderLevelLast);
         ShieldParticleRenderEvent.init();
         ShieldParticleTickEvent.init();
     }
 
     @SubscribeEvent
+    public static void onRegisterMenuScreens(net.neoforged.neoforge.client.event.RegisterMenuScreensEvent event) {
+        event.register(InterceptorConfigContainer.TYPE, InterceptorConfigContainerScreen::new);
+    }
+
+    @SubscribeEvent
     public static void onRegisterKeyMappings(RegisterKeyMappingsEvent event) {
         KeyInputHandler.onRegisterKeyMappings(event);
         DroneInputHandler.onRegisterKeyMappings(event);
+    }
+
+    /**
+     * 注册自定义着色器
+     * shield_glass: Alpha 混合（玻璃表面）
+     * gytrinket_energy_wave_vol: 能量波体积渲染（3D raymarching）
+     */
+    @SubscribeEvent
+    public static void onRegisterShaders(RegisterShadersEvent event) throws java.io.IOException {
+        event.registerShader(
+            new ShaderInstance(
+                event.getResourceProvider(),
+                ResourceLocation.fromNamespaceAndPath(com.gytrinket.gytrinket.gytrinket.MODID, "shield_glass"),
+                DefaultVertexFormat.POSITION_TEX_COLOR
+            ),
+            ModShaders::setShieldGlassShader
+        );
+        event.registerShader(
+            new ShaderInstance(
+                event.getResourceProvider(),
+                ResourceLocation.fromNamespaceAndPath(com.gytrinket.gytrinket.gytrinket.MODID, "gytrinket_energy_wave_vol"),
+                DefaultVertexFormat.POSITION_TEX
+            ),
+            ModShaders::setEnergyWaveVolShader
+        );
     }
 
     /**

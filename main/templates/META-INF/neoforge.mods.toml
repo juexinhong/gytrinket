@@ -91,7 +91,7 @@ config="${mod_id}.mixins.json"
 [[dependencies.${mod_id}]]
     modId="geckolib"
     type="required"
-    versionRange="[4.8.4,)"
+    versionRange="[4.8.2,)"
     ordering="AFTER"
     side="BOTH"
 

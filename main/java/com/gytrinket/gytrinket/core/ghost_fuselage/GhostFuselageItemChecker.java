@@ -4,11 +4,9 @@ import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.event.PlayerAttributesCalculatedEvent;
 import com.gytrinket.gytrinket.gytrinket;
 import com.gytrinket.gytrinket.storage.PlayerStoreUtils;
-import net.minecraft.world.entity.player.Player;
+import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
-
-import java.util.UUID;
 
 /**
  * 幽灵机身物品检测器
@@ -22,15 +20,13 @@ public class GhostFuselageItemChecker {
 
     @SubscribeEvent
     public static void onAttributesCalculated(PlayerAttributesCalculatedEvent event) {
-        UUID playerUUID = event.getPlayerUUID();
-        Player player = event.getPlayer();
+        ServerPlayer player = event.getPlayer();
         if (player == null) {
-            GhostFuselageManager.setHasGhostFuselage(playerUUID, false);
             return;
         }
 
         boolean hasGhostFuselage = PlayerStoreUtils.hasActiveItem(player, Config::isGhostFuselageItem);
 
-        GhostFuselageManager.setHasGhostFuselage(playerUUID, hasGhostFuselage);
+        GhostFuselageManager.setHasGhostFuselage(player, hasGhostFuselage);
     }
 }

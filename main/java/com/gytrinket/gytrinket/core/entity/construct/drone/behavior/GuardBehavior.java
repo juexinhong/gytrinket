@@ -36,8 +36,8 @@ public class GuardBehavior implements IDroneBehavior {
     private static final double FAST_VERTICAL_THRESHOLD = 1.5;
     private static final double SPEED_BOOST_DISTANCE = 3.0;
     private static final double SPEED_BOOST_PER_BLOCK = 0.2;
-    // 阵列整体旋转角速度限制：每tick最大6度
-    private static final double MAX_ANGULAR_VELOCITY_PER_TICK = Math.toRadians(6.0);
+    // 阵列整体旋转角速度限制：每tick最大2度
+    private static final double MAX_ANGULAR_VELOCITY_PER_TICK = Math.toRadians(2.0);
     // 丢失距离：超出40格自毁
     private static final double LOST_DISTANCE = 40.0;
 

@@ -53,7 +53,8 @@ public class TickScheduler {
     public static void onServerTick(ServerTickEvent.Post event) {
             currentTick++;
 
-            for (ScheduledTask task : TASKS.values()) {
+            // 创建快照遍历，避免 task 执行期间调用 register() 修改 TASKS 导致 ConcurrentModificationException
+            for (ScheduledTask task : new ArrayList<>(TASKS.values())) {
                 if (task.shouldRun(currentTick)) {
                     task.run(currentTick);
                 }

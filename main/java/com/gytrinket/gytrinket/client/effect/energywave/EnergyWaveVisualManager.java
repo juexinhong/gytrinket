@@ -184,9 +184,13 @@ public class EnergyWaveVisualManager {
 
     /**
      * 渲染事件处理器：自动分发到体积或矢量渲染器。
-     * 光影模式下使用保存矩阵机制兼容Iris composite pass：
-     * - AFTER_PARTICLES：保存正确的矩阵（Iris composite之前）
-     * - AFTER_LEVEL：使用保存的矩阵渲染（Iris composite之后）
+     * 光影模式下采用两阶段渲染（与1.20.1对齐）：
+     * - AFTER_PARTICLES（Iris composite之前）：仅保存正确的矩阵，不渲染
+     * - AFTER_LEVEL（Iris composite之后）：使用保存的矩阵渲染
+     * <p>
+     * 原因：AFTER_PARTICLES 阶段 Iris 的 shouldOverrideShaders()=true，
+     * 未知着色器 apply() 的 TAIL 会调用 DepthColorStorage.disableDepthColor() 禁用 colorMask，
+     * 导致颜色无法写入。AFTER_LEVEL 阶段 shouldOverrideShaders()=false，colorMask 不受影响。
      */
     public static void onRenderLevelLast(RenderLevelStageEvent event) {
         Minecraft mc = Minecraft.getInstance();
@@ -202,17 +206,17 @@ public class EnergyWaveVisualManager {
         boolean shaderActive = ShaderModCompat.isShaderPackInUse();
 
         if (shaderActive) {
-            // 光影模式：保存矩阵 + 延迟到AFTER_LEVEL渲染
+            // 光影模式：两阶段矩阵保存/恢复（与1.20.1对齐）
             if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_PARTICLES) {
                 // Iris composite之前：保存正确的矩阵状态
                 savedProjectionMatrix = new Matrix4f(RenderSystem.getProjectionMatrix());
                 savedModelViewMatrix = new Matrix4f(RenderSystem.getModelViewStack());
                 savedPoseStackMatrix = new Matrix4f(event.getPoseStack().last().pose());
             } else if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_LEVEL) {
-                // Iris composite之后：使用保存的矩阵渲染体积能量波
+                // Iris composite之后：使用保存的矩阵渲染
                 EnergyWaveVolumetricRenderer.renderWavesWithSavedMatrices(
-                    event, waves,
-                    savedProjectionMatrix, savedModelViewMatrix, savedPoseStackMatrix);
+                        event, waves,
+                        savedProjectionMatrix, savedModelViewMatrix, savedPoseStackMatrix);
             }
         } else {
             // 非光影模式：直接在AFTER_PARTICLES渲染

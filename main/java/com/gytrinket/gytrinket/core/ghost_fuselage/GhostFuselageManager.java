@@ -84,14 +84,28 @@ public class GhostFuselageManager {
 
     /**
      * 设置玩家是否拥有幽灵机身能力
+     * <p>
+     * 当卸下幽灵机身（has=false）时：
+     * <ul>
+     *   <li>同步隐身进度=0 到客户端，清除客户端透明度缓存</li>
+     *   <li>恢复服务端 invisible 状态（排除药水隐身）</li>
+     * </ul>
+     * 否则客户端会保留旧进度导致透明度残留，且 invisible 标签不会因 onPlayerTick 提前返回而被恢复。
      */
-    public static void setHasGhostFuselage(UUID playerUUID, boolean has) {
+    public static void setHasGhostFuselage(ServerPlayer player, boolean has) {
+        UUID playerUUID = player.getUUID();
         if (has) {
             PLAYER_HAS_GHOST.add(playerUUID);
         } else {
             PLAYER_HAS_GHOST.remove(playerUUID);
             PLAYER_GHOST_DATA.remove(playerUUID);
             AttributeManager.removeDynamicAttribute(playerUUID, NAMESPACE, ATTR_DAMAGE_INDEPENDENT);
+            // 同步进度=0 到客户端，清除客户端透明度缓存
+            GhostFuselageSyncHelper.sendStealthProgress(player, 0);
+            // 恢复服务端 invisible 状态（排除药水隐身）
+            if (!player.hasEffect(net.minecraft.world.effect.MobEffects.INVISIBILITY)) {
+                player.setInvisible(false);
+            }
         }
     }
 

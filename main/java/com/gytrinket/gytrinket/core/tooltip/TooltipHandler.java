@@ -1,6 +1,9 @@
 package com.gytrinket.gytrinket.core.tooltip;
 
 import com.gytrinket.gytrinket.config.Config;
+import com.gytrinket.gytrinket.core.attribute.AttributeDefinition;
+import com.gytrinket.gytrinket.core.attribute.AttributeManager;
+import com.gytrinket.gytrinket.core.attribute.AttributeType;
 import com.gytrinket.gytrinket.core.entity.construct.ConstructManager;
 import com.gytrinket.gytrinket.core.entity.construct.ConstructType;
 import com.gytrinket.gytrinket.core.entity.construct.drone.DroneBullet;
@@ -362,12 +365,60 @@ public class TooltipHandler {
                         event.getToolTip().add(Component.literal("  +").withStyle(ChatFormatting.GREEN)
                             .append(attrTooltip)
                             .append(Component.literal(" ").withStyle(ChatFormatting.GRAY))
-                            .append(Component.literal(attrValue).withStyle(ChatFormatting.YELLOW)));
+                            .append(Component.literal(formatAttributeValue(attrName, attrValue)).withStyle(ChatFormatting.YELLOW)));
                     }
                 }
                 break;
             }
         }
+    }
+
+    /**
+     * 格式化属性值显示
+     * - 百分比/独立乘区属性：值×100，显示为百分数（最多保留两位小数，四舍五入）
+     * - 常规属性（BASE）：最多保留两位小数，四舍五入
+     */
+    private static String formatAttributeValue(String attrName, String rawValue) {
+        try {
+            double value = Double.parseDouble(rawValue);
+            AttributeType type = getAttributeType(attrName);
+
+            if (type == AttributeType.PERCENT || type == AttributeType.INDEPENDENT_MULTIPLY) {
+                // 百分比显示：值×100，最多保留两位小数
+                return formatDecimal(value * 100) + "%";
+            } else {
+                // 常规小数：最多保留两位小数
+                return formatDecimal(value);
+            }
+        } catch (NumberFormatException e) {
+            return rawValue;
+        }
+    }
+
+    /**
+     * 四舍五入到两位小数，并去掉末尾多余的0和小数点
+     * 示例：8.00->"8", 8.50->"8.5", 16.6666->"16.67", 20.01->"20.01"
+     */
+    private static String formatDecimal(double value) {
+        String formatted = String.format("%.2f", value);
+        if (formatted.contains(".")) {
+            formatted = formatted.replaceAll("0+$", "").replaceAll("\\.$", "");
+        }
+        return formatted;
+    }
+
+    /**
+     * 查询属性类型
+     * 优先从AttributeManager查询，后备从属性名后缀推断
+     */
+    private static AttributeType getAttributeType(String attrName) {
+        AttributeDefinition def = AttributeManager.getAttributeDefinition(attrName);
+        if (def != null) {
+            return def.getType();
+        }
+        if (attrName.endsWith("_percent")) return AttributeType.PERCENT;
+        if (attrName.endsWith("_independent")) return AttributeType.INDEPENDENT_MULTIPLY;
+        return AttributeType.BASE;
     }
 
     private static void addShieldTypesTooltip(ItemTooltipEvent event, String itemId) {

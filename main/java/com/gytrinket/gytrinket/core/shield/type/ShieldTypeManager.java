@@ -185,7 +185,13 @@ public class ShieldTypeManager {
 
         for (IShieldType.ShieldTypeData data : newTypes) {
             if (data.active()) {
-                data.type().onApplied(serverPlayer, newTypes);
+                // 同一类型只调用一次onApplied
+                boolean alreadyApplied = newTypes.stream()
+                    .filter(d -> d.active() && d.type().getName().equals(data.type().getName()))
+                    .anyMatch(d -> newTypes.indexOf(d) < newTypes.indexOf(data));
+                if (!alreadyApplied) {
+                    data.type().onApplied(serverPlayer, newTypes);
+                }
             }
         }
 
@@ -221,11 +227,7 @@ public class ShieldTypeManager {
             for (String typeName : typeNames) {
                 IShieldType type = getType(typeName);
                 if (type != null) {
-                    boolean alreadyHas = collected.stream()
-                        .anyMatch(d -> d.type().getName().equals(typeName));
-                    if (!alreadyHas) {
-                        collected.add(new IShieldType.ShieldTypeData(type, stack, true));
-                    }
+                    collected.add(new IShieldType.ShieldTypeData(type, stack, true));
                 }
             }
         }
@@ -280,18 +282,26 @@ public class ShieldTypeManager {
 
     public static void clearPlayerShieldTypes(UUID playerUUID) {
         List<IShieldType.ShieldTypeData> oldTypes = PLAYER_SHIELD_TYPES.getOrDefault(playerUUID, Collections.emptyList());
-        for (IShieldType.ShieldTypeData data : oldTypes) {
-            if (data.active()) {
-                MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
-                if (server != null) {
-                    ServerPlayer player = server.getPlayerList().getPlayer(playerUUID);
-                    if (player != null) {
-                        data.type().onRemoved(player);
+
+        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+        if (server != null) {
+            ServerPlayer serverPlayer = server.getPlayerList().getPlayer(playerUUID);
+            if (serverPlayer != null) {
+                for (IShieldType.ShieldTypeData data : oldTypes) {
+                    if (data.active()) {
+                        data.type().onRemoved(serverPlayer);
                     }
                 }
             }
         }
+
         PLAYER_SHIELD_TYPES.remove(playerUUID);
+
+        AuraShieldType.clearPlayerData(playerUUID);
+        SiphonShieldType.clearPlayerData(playerUUID);
+        ReflectShieldType.clearPlayerData(playerUUID);
+        AmplificationShieldType.clearPlayerData(playerUUID);
+        WarpShieldType.clearPlayerData(playerUUID);
     }
 
     @SubscribeEvent

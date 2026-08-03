@@ -239,16 +239,19 @@ public class ShieldParticleRenderer {
 
         // 保存当前Iris composite后的矩阵
         org.joml.Matrix4f irisProjection = new org.joml.Matrix4f(RenderSystem.getProjectionMatrix());
-        org.joml.Matrix4f irisModelView = new org.joml.Matrix4f(RenderSystem.getModelViewStack());
 
         // 恢复composite之前的正确矩阵
         RenderSystem.setProjectionMatrix(savedProjection, VertexSorting.DISTANCE_TO_ORIGIN);
         org.joml.Matrix4fStack modelViewStack = RenderSystem.getModelViewStack();
         modelViewStack.pushMatrix();
-        modelViewStack.set(savedModelView);
+        // 关键：将 modelViewStack 设为单位矩阵 I，让 ModelViewMat uniform = I
+        // 旋转 R 通过 savedModelView 传入 renderVolumetricWithPoseMatrix，
+        // 在那里构建 vertexMatrix = R × T(-camPos)，与非光影路径完全一致
+        // 这样 shader 的 ModelViewMat = I，InvModelViewMat = I（能量波shader需要）
+        modelViewStack.identity();
 
-        // 使用保存的PoseStack矩阵渲染（而非事件的PoseStack）
-        renderVolumetricWithPoseMatrix(savedPoseStackMat, bufferSource, camera, partialTicks);
+        // 传入 savedModelView(R) 作为顶点矩阵的旋转分量
+        renderVolumetricWithPoseMatrix(savedModelView, bufferSource, camera, partialTicks);
 
         // 恢复Iris的矩阵
         modelViewStack.popMatrix();
@@ -282,7 +285,9 @@ public class ShieldParticleRenderer {
 
         Vec3 cameraPos = mc.gameRenderer.getMainCamera().getPosition();
 
-        // 用保存的摄像机旋转矩阵 + translate(-cameraPos) 构建顶点变换矩阵
+        // 与非光影路径对齐：vertexMatrix = R(savedModelView) × T(-camPos)
+        // ModelViewMat uniform = I（modelViewStack已设为identity）
+        // shader计算：ProjMat × I × R × (vertex - camPos) = ProjMat × R × (vertex - camPos) ✓
         Matrix4f matrix = new Matrix4f(poseStackMat);
         matrix.translate((float) -cameraPos.x, (float) -cameraPos.y, (float) -cameraPos.z);
 
@@ -320,6 +325,7 @@ public class ShieldParticleRenderer {
 
             BufferBuilder bufferBuilder = Tesselator.getInstance().begin(VertexFormat.Mode.TRIANGLES, DefaultVertexFormat.POSITION_TEX_COLOR);
             renderPrism(bufferBuilder, matrix, geo, toCameraX, toCameraY, toCameraZ);
+
             BufferUploader.drawWithShader(bufferBuilder.buildOrThrow());
         }
     }
@@ -384,6 +390,7 @@ public class ShieldParticleRenderer {
 
             BufferBuilder bufferBuilder = Tesselator.getInstance().begin(VertexFormat.Mode.TRIANGLES, DefaultVertexFormat.POSITION_TEX_COLOR);
             renderPrism(bufferBuilder, matrix, geo, toCameraX, toCameraY, toCameraZ);
+
             BufferUploader.drawWithShader(bufferBuilder.buildOrThrow());
         }
 

@@ -211,6 +211,10 @@ public class ChargedAttackManager {
                 // 持续充能
                 updateCharging(uuid, player);
 
+                // 发布充能中事件（供幽灵机身等系统使用）
+                net.neoforged.neoforge.common.NeoForge.EVENT_BUS.post(
+                    new ChargedAttackEvent(ChargedAttackEvent.Type.CHARGING, player));
+
                 // 每3 tick同步充能值到客户端
                 data.syncTickCounter++;
                 if (data.syncTickCounter >= 3) {
@@ -221,6 +225,10 @@ public class ChargedAttackManager {
                 // 松开左键 - 释放充能攻击
                 double chargeValue = releaseCharge(uuid);
                 if (chargeValue > 0) {
+                    // 发布释放事件（供幽灵机身等系统使用）
+                    net.neoforged.neoforge.common.NeoForge.EVENT_BUS.post(
+                        new ChargedAttackEvent(ChargedAttackEvent.Type.RELEASED, player));
+
                     // 通知客户端释放攻击
                     com.gytrinket.gytrinket.network.NetworkHandler.sendChargedAttackSyncToPlayer(player, chargeValue);
                 }

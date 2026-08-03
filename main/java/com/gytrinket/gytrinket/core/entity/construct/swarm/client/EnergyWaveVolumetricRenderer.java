@@ -56,6 +56,7 @@ public class EnergyWaveVolumetricRenderer {
             float progress = EnergyWaveVisualManager.getProgress(wave, currentTime, partialTick);
             EnergyWaveVisualManager.AnimationState anim = EnergyWaveVisualManager.computeAnimation(progress, wave.durationTicks, wave.endScale);
             EnergyWaveVisualManager.WaveTransform t = EnergyWaveVisualManager.resolveTransform(wave, partialTick);
+
             renderWaveVolume(shader, poseStack, wave, anim, t, camPos);
         }
 
@@ -75,13 +76,17 @@ public class EnergyWaveVolumetricRenderer {
                                                      Matrix4f savedProjection,
                                                      Matrix4f savedModelView,
                                                      Matrix4f savedPoseStackMat) {
-        if (savedProjection == null || savedModelView == null || savedPoseStackMat == null) return;
+        if (savedProjection == null || savedModelView == null || savedPoseStackMat == null) {
+            return;
+        }
 
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null) return;
 
         ShaderInstance shader = ModShaders.getEnergyWaveVolShader();
-        if (shader == null) return;
+        if (shader == null) {
+            return;
+        }
 
         long currentTime = mc.level.getGameTime();
         float partialTick = event.getPartialTick().getGameTimeDeltaPartialTick(false);
@@ -89,18 +94,22 @@ public class EnergyWaveVolumetricRenderer {
 
         // 保存当前Iris composite后的矩阵
         Matrix4f irisProjection = new Matrix4f(RenderSystem.getProjectionMatrix());
-        Matrix4f irisModelView = new Matrix4f(RenderSystem.getModelViewStack());
 
         // 恢复composite之前的正确矩阵
         RenderSystem.setProjectionMatrix(savedProjection, VertexSorting.DISTANCE_TO_ORIGIN);
         org.joml.Matrix4fStack modelViewStack = RenderSystem.getModelViewStack();
         modelViewStack.pushMatrix();
-        modelViewStack.set(savedModelView);
+        // 关键：将 modelViewStack 设为单位矩阵 I，让 ModelViewMat uniform = I
+        // 旋转 R 通过 savedModelView 传入 renderWaveVolumeWithMatrix 作为 vertexMatrix，
+        // 这样 shader 的 ModelViewMat = I，InvModelViewMat 由 vertexMatrix.invert() 提供
+        // （能量波shader需要InvModelViewMat来重建世界坐标用于raymarching）
+        modelViewStack.identity();
 
-        // 使用保存的PoseStack矩阵作为顶点变换矩阵
-        // 注意：能量波顶点已是相机相对坐标（center = position - camPos），无需额外translate
-        // （与ShieldParticleRenderer不同，护盾粒子在正常路径中也做了translate(-camPos)）
-        Matrix4f vertexMatrix = new Matrix4f(savedPoseStackMat);
+        // 传入 savedModelView(R) 作为顶点矩阵的旋转分量
+        // 注意：renderWaveVolumeWithMatrix 内部会基于 vertexMatrix 构建包围盒，
+        // 能量波顶点是 center + offset，center = position - camPos（相机相对），
+        // 所以 vertexMatrix = R（不需要额外translate，因为顶点已经是相机相对坐标）
+        Matrix4f vertexMatrix = new Matrix4f(savedModelView);
 
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
@@ -113,6 +122,7 @@ public class EnergyWaveVolumetricRenderer {
             float progress = EnergyWaveVisualManager.getProgress(wave, currentTime, partialTick);
             EnergyWaveVisualManager.AnimationState anim = EnergyWaveVisualManager.computeAnimation(progress, wave.durationTicks, wave.endScale);
             EnergyWaveVisualManager.WaveTransform t = EnergyWaveVisualManager.resolveTransform(wave, partialTick);
+
             renderWaveVolumeWithMatrix(shader, vertexMatrix, wave, anim, t, camPos);
         }
 
@@ -157,7 +167,9 @@ public class EnergyWaveVolumetricRenderer {
         float maxBack = (outerHW + bloomMaxDist) * 1.2f;
         float maxForward = outerLen * 1.1f;
 
-        if (maxSpan <= 0 || maxForward <= 0) return;
+        if (maxSpan <= 0 || maxForward <= 0) {
+            return;
+        }
 
         setUniformSafe(shader, "MaxSpan", maxSpan);
         setUniformSafe(shader, "MaxBack", maxBack);
@@ -191,7 +203,12 @@ public class EnergyWaveVolumetricRenderer {
         setUniformSafe(shader, "Forward", (float) forward.x, (float) forward.y, (float) forward.z);
         setUniformSafe(shader, "WaveCenter", (float) center.x, (float) center.y, (float) center.z);
 
-        // 逆ModelView矩阵（使用保存的modelView矩阵，而非Iris修改后的）
+        // 逆ModelView矩阵
+        // 关键：shader 中 viewPos = ModelViewMat × vertex = I × R × vertex = R × vertex
+        // 要让 worldPos = InvModelViewMat × viewPos = vertex（未旋转的相机相对坐标），
+        // 必须 InvModelViewMat = R^-1 = vertexMatrix.invert()
+        // （modelViewStack 已被设为 I，其逆仍为 I，会导致 worldPos = R × vertex 被错误旋转，
+        // 而 WaveCenter/CamRight/CamUp/Forward 都是未旋转的世界空间值，坐标系不一致会使 raymarching 方向错误）
         Matrix4f invModelView = new Matrix4f(vertexMatrix).invert();
         if (shader.getUniform("InvModelViewMat") != null) {
             shader.getUniform("InvModelViewMat").set(invModelView);

@@ -61,7 +61,7 @@ import java.util.function.Predicate;
  *   <li>{@link #applyConstructAttributes(UUID, Map)} - 调用类型特定的属性应用方法</li>
  * </ul>
  */
-public abstract class AbstractConstructEntity extends PathfinderMob implements GeoEntity, IConstructEntity {
+public abstract class AbstractConstructEntity extends PathfinderMob implements GeoEntity, IConstructEntity, net.minecraft.world.entity.OwnableEntity {
 
     private static final EntityDataAccessor<Optional<UUID>> DATA_OWNER_UUID =
             SynchedEntityData.defineId(AbstractConstructEntity.class, EntityDataSerializers.OPTIONAL_UUID);
@@ -124,11 +124,14 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
         this.entityData.set(DATA_OWNER_UUID, Optional.ofNullable(uuid));
     }
 
+    @Override
     @Nullable
-    public Entity getOwner() {
+    public LivingEntity getOwner() {
         UUID uuid = this.getOwnerUUID();
         if (uuid == null) return null;
-        return this.level().getPlayerByUUID(uuid);
+        // 仅按 UUID 查 Player，构造体归属者必为玩家
+        Player player = this.level().getPlayerByUUID(uuid);
+        return player != null ? (LivingEntity) player : null;
     }
 
     // ===== 攻击冷却 =====

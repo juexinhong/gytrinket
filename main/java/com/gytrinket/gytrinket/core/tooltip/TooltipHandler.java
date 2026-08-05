@@ -135,6 +135,13 @@ public class TooltipHandler {
             ChatFormatting.GOLD
         ));
 
+        // 焰矛
+        rules.add(new TooltipConfig(
+            Config.FLAME_SPEAR_ITEMS,
+            "flame_spear", "flame_spear_desc",
+            ChatFormatting.GOLD
+        ));
+
         // 督战者
         rules.add(new TooltipConfig(
             Config.TASKMASTER_ITEMS,

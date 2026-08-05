@@ -6,11 +6,13 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 import org.joml.Matrix4f;
 
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
@@ -63,17 +65,72 @@ public class EnergyWaveVisualManager {
     private static final float SWARM_OUTER_LENGTH_MULT = 1.5f;
 
     // ===== 爆炸参数 =====
-    private static final float EXPLOSION_CENTER_WIDTH_MULT = 0.8f;
-    private static final float EXPLOSION_CENTER_LENGTH_MULT = 0.8f;
-    private static final float EXPLOSION_COLOR_WIDTH_MULT = 1.1f;
-    private static final float EXPLOSION_COLOR_LENGTH_MULT = 1.2f;
-    private static final float EXPLOSION_OUTER_WIDTH_MULT = 1.2f;
-    private static final float EXPLOSION_OUTER_LENGTH_MULT = 1.5f;
-    private static final double EXPLOSION_LENGTH_CAP = 15.0;
-    /** 爆炸能量波膨胀阶段最终倍率（蜂群用3.5因为基础尺寸很小，爆炸基础尺寸大所以用1.2） */
     private static final float EXPLOSION_END_SCALE = 1.2f;
 
+    // ===== 能量波统一机制 =====
+    /** 所有能量波的长度极限（格），同时也是攻击范围极限 */
+    public static final double WAVE_LENGTH_CAP = 20.0;
+
+    /**
+     * 能量波宽度 = 长度/20（长宽比 1:20），宽度极限 = 长度/12。
+     * 宽度跟随能量波机制动态变化。
+     */
+    public static double waveWidth(double length) {
+        return Math.min(length / 20.0, length / 12.0);
+    }
+
     private static final List<WaveVisualData> waves = new CopyOnWriteArrayList<>();
+
+    /** 动态能量波：ID（如玩家实体ID）→ 波数据 */
+    private static final Map<Integer, WaveVisualData> DYNAMIC_WAVES = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /**
+     * 添加或更新一个动态能量波（焰矛等持续武器）。
+     * 单个能量波可随时动态改变自身长度、宽度与朝向。
+     *
+     * @param id     唯一标识（通常为玩家实体ID）
+     * @param length 长度（格）
+     * @param width  宽度（格）
+     */
+    public static void addOrUpdateDynamicWave(int id, double x, double y, double z,
+                                              double dirX, double dirY, double dirZ,
+                                              double length, double width) {
+        WaveVisualData existing = DYNAMIC_WAVES.get(id);
+        if (existing != null) {
+            existing.updateDynamic(new Vec3(x, y, z), new Vec3(dirX, dirY, dirZ), (float) length, (float) width);
+            return;
+        }
+
+        long currentTime = Minecraft.getInstance().level != null ? Minecraft.getInstance().level.getGameTime() : 0;
+        float len = (float) Math.min(length, WAVE_LENGTH_CAP);
+        // 宽度直接使用服务端传入值（有限穿透时长度缩短但宽度不降低）
+        float hw = (float) Math.max(0, width);
+
+        WaveVisualData wave = new WaveVisualData(
+                -1, id, x, y, z, dirX, dirY, dirZ, false, currentTime,
+                hw * 0.6f, len * 0.6f, hw * 0.8f, len * 0.8f, hw, len,
+                0.9f, 0.9f, 0.0f, 1.0f,
+                0.9f, 0.6f, 0.0f, 0.8f,
+                0.9f, 0.35f, 0.0f, 0.7f,
+                0.9f, 0.35f, 0.0f, 0.7f,
+                1.0f, 72000, 0.0f
+        );
+        wave.dynamic = true;
+        wave.len = len;
+        wave.width = hw;
+        DYNAMIC_WAVES.put(id, wave);
+        waves.add(wave);
+    }
+
+    /**
+     * 移除动态能量波。
+     */
+    public static void removeDynamicWave(int id) {
+        WaveVisualData wave = DYNAMIC_WAVES.remove(id);
+        if (wave != null) {
+            waves.remove(wave);
+        }
+    }
 
     // ===== 光影兼容：保存的矩阵状态 =====
     // 在AFTER_PARTICLES（Iris composite之前）保存，在AFTER_LEVEL（composite之后）使用
@@ -136,7 +193,8 @@ public class EnergyWaveVisualManager {
 
     /**
      * 添加能量波爆炸视觉（完整参数）。
-     * 中心层长度 = 溅射长度 × 0.3（极限15格），宽度 = 转化后长度/12（宽度极限 = 转化后长度/6）
+     * 能量波长度 = 溅射长度（与伤害范围一致，长度极限20格），宽度 = 长度/16（宽度极限 = 长度/12）。
+     * 波锚定在原点上，向前延伸至 原点+长度 处（尖端与伤害范围终点重合）。
      *
      * @param positionSyncEntityId 位置同步实体ID（-1 = 固定位置，>= 0 = 跟随实体位置但保持初始方向）
      * @param colorType            颜色方案（0 = 默认黄橙红，1 = 蓝色系）
@@ -147,24 +205,17 @@ public class EnergyWaveVisualManager {
                                          double splashLength, int positionSyncEntityId, int colorType, double offsetDistance) {
         long currentTime = Minecraft.getInstance().level != null ? Minecraft.getInstance().level.getGameTime() : 0;
 
-        // 溅射长度 × 0.4 转化为能量波长度
-        double convertedLen = splashLength * 0.75;
-        // 长度截断
-        double cappedLen = Math.min(convertedLen, EXPLOSION_LENGTH_CAP);
-        // 宽度规则：
-        // 1. 未达极限：宽度 = 转化长度 / 14（随长度成长）
-        // 2. 达到极限后：基础宽度 = 极限值 / 14（停止成长），超出长度以 1/28 比例提升宽度
-        // 3. 宽度不超过 极限值 / 10
-        double excessLen = Math.max(0, convertedLen - EXPLOSION_LENGTH_CAP);
-        double hw = cappedLen / 14.0 + excessLen / 28.0;
-        hw = Math.min(hw, EXPLOSION_LENGTH_CAP / 10.0);
+        // 能量波长度 = 溅射长度（与伤害范围一致），长度极限20格
+        double cappedLen = Math.min(splashLength, WAVE_LENGTH_CAP);
+        // 宽度 = 长度/16（宽度极限 = 长度/12）
+        double hw = waveWidth(cappedLen);
 
-        float targetCenterHW = (float) hw * EXPLOSION_CENTER_WIDTH_MULT;
-        float targetCenterLen = (float) cappedLen * EXPLOSION_CENTER_LENGTH_MULT;
-        float targetColorHW = (float) hw * EXPLOSION_COLOR_WIDTH_MULT;
-        float targetColorLen = (float) cappedLen * EXPLOSION_COLOR_LENGTH_MULT;
-        float targetOuterHW = (float) hw * EXPLOSION_OUTER_WIDTH_MULT;
-        float targetOuterLen = (float) cappedLen * EXPLOSION_OUTER_LENGTH_MULT;
+        float targetCenterHW = (float) (hw * 0.6);
+        float targetCenterLen = (float) (cappedLen * 0.6);
+        float targetColorHW = (float) (hw * 0.8);
+        float targetColorLen = (float) (cappedLen * 0.8);
+        float targetOuterHW = (float) hw;
+        float targetOuterLen = (float) cappedLen;
 
         float[] colors = getColors(colorType);
 
@@ -274,6 +325,56 @@ public class EnergyWaveVisualManager {
     }
 
     /**
+     * 动态波客户端变换：锚定到归属玩家实体，用 xOld/x、yRotO/yRot 线性插值
+     * （与光环渲染贴图同款防抖），位置为身高一半处朝向前 1 格。
+     * 若归属实体不可用，回退到上一 tick 与当前 tick 的插值。
+     */
+    public static WaveTransform resolveDynamicTransform(WaveVisualData wave, float partialTick) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level != null && wave.isDynamic() && wave.positionSyncEntityId >= 0) {
+            Entity entity = mc.level.getEntity(wave.positionSyncEntityId);
+            if (entity instanceof LivingEntity living) {
+                double px = Mth.lerp(partialTick, entity.xOld, entity.getX());
+                double py = Mth.lerp(partialTick, entity.yOld, entity.getY()) + entity.getBbHeight() * 0.5;
+                double pz = Mth.lerp(partialTick, entity.zOld, entity.getZ());
+
+                float yaw = Mth.lerp(partialTick, entity.yRotO, entity.getYRot());
+                float pitch = Mth.lerp(partialTick, entity.xRotO, entity.getXRot());
+                float yawRad = yaw * (float) Math.PI / 180.0f;
+                float pitchRad = pitch * (float) Math.PI / 180.0f;
+                Vec3 dir = new Vec3(
+                        -Math.sin(yawRad) * Math.cos(pitchRad),
+                        -Math.sin(pitchRad),
+                        Math.cos(yawRad) * Math.cos(pitchRad)
+                ).normalize();
+
+                Vec3 pos = new Vec3(px, py, pz).add(dir.scale(1.0));
+                return new WaveTransform(pos, dir);
+            }
+        }
+        if (wave.isDynamic() && wave.hasPrev) {
+            Vec3 pos = new Vec3(
+                    Mth.lerp(partialTick, wave.prevX, wave.x),
+                    Mth.lerp(partialTick, wave.prevY, wave.y),
+                    Mth.lerp(partialTick, wave.prevZ, wave.z)
+            );
+            Vec3 dir = new Vec3(
+                    Mth.lerp(partialTick, wave.prevDirX, wave.dirX),
+                    Mth.lerp(partialTick, wave.prevDirY, wave.dirY),
+                    Mth.lerp(partialTick, wave.prevDirZ, wave.dirZ)
+            );
+            if (dir.lengthSqr() < 1e-8) {
+                dir = new Vec3(wave.dirX, wave.dirY, wave.dirZ);
+            }
+            dir = dir.normalize();
+            return new WaveTransform(pos, dir);
+        }
+        Vec3 pos = new Vec3(wave.x, wave.y, wave.z);
+        Vec3 dir = new Vec3(wave.dirX, wave.dirY, wave.dirZ).normalize();
+        return new WaveTransform(pos, dir);
+    }
+
+    /**
      * 计算动画进度
      */
     public static float getProgress(WaveVisualData wave, long currentTime, float partialTick) {
@@ -326,15 +427,15 @@ public class EnergyWaveVisualManager {
     public static class WaveVisualData {
         public final int entityId; // -1 = 固定位置（蜂群模式：>= 0 同步位置和方向）
         public final int positionSyncEntityId; // -1 = 固定位置，>= 0 = 同步位置但保持初始方向
-        public final double x, y, z;
-        public final double dirX, dirY, dirZ;
+        public double x, y, z;
+        public double dirX, dirY, dirZ;
         public final boolean isRepair;
-        public final long startTime;
+        public long startTime;
 
         // 目标尺寸（满生长时的尺寸，膨胀阶段在此基础上 × endScale）
-        public final float targetCenterHW, targetCenterLen;
-        public final float targetColorHW, targetColorLen;
-        public final float targetOuterHW, targetOuterLen;
+        public float targetCenterHW, targetCenterLen;
+        public float targetColorHW, targetColorLen;
+        public float targetOuterHW, targetOuterLen;
 
         // 层颜色
         public final float centerR, centerG, centerB, centerAlpha;
@@ -343,13 +444,28 @@ public class EnergyWaveVisualManager {
         public final float bloomR, bloomG, bloomB, bloomAlpha;
 
         // 膨胀阶段最终缩放倍率
-        public final float endScale;
+        public float endScale;
 
         // 该波的总持续时间（ticks），根据波大小动态计算
-        public final int durationTicks;
+        public int durationTicks;
 
         // 位置同步时的沿方向偏移距离（格）
         public final float offsetDistance;
+
+        /** 动态能量波：可随时更新长度/宽度/朝向，不随时间消退 */
+        public boolean dynamic = false;
+
+        // 动态波插值：上一 tick 的位置/朝向（客户端线性插值，消除旋转卡顿）
+        public double prevX, prevY, prevZ;
+        public double prevDirX, prevDirY, prevDirZ;
+        public boolean hasPrev = false;
+
+        // 动态波长度/宽度（当前与上一 tick），用于渲染时平滑尺寸变化
+        public float len, width;
+        public float prevLen, prevWidth;
+        // 客户端显示长度/宽度（向目标缓动，消除充能/消退时的长度抖动）
+        public float displayLen, displayWidth;
+        public boolean displayInitialized = false;
 
         public WaveVisualData(int entityId, int positionSyncEntityId, double x, double y, double z,
                               double dirX, double dirY, double dirZ,
@@ -380,7 +496,43 @@ public class EnergyWaveVisualManager {
             this.offsetDistance = offsetDistance;
         }
 
+        public boolean isDynamic() {
+            return dynamic;
+        }
+
+        /**
+         * 动态更新：位置、朝向、长度与宽度（用于焰矛等持续武器）。
+         * 长度极限 20 格，宽度 = 长度/16（宽度极限 = 长度/12）。
+         * 波锚定在原点（发射点），向前延伸至 原点+长度 处，尖端与伤害范围终点重合。
+         */
+        public void updateDynamic(Vec3 pos, Vec3 dir, float length, float width) {
+            // 保存上一 tick 状态用于客户端插值
+            this.prevX = this.x; this.prevY = this.y; this.prevZ = this.z;
+            this.prevDirX = this.dirX; this.prevDirY = this.dirY; this.prevDirZ = this.dirZ;
+            this.prevLen = this.len; this.prevWidth = this.width;
+            this.hasPrev = true;
+
+            this.x = pos.x; this.y = pos.y; this.z = pos.z;
+            this.dirX = dir.x; this.dirY = dir.y; this.dirZ = dir.z;
+
+            float len = Math.min(length, (float) WAVE_LENGTH_CAP);
+            // 宽度直接使用服务端传入值（有限穿透时长度缩短但宽度不降低）
+            float hw = (float) Math.max(0, width);
+            this.len = len;
+            this.width = hw;
+
+            this.targetCenterHW = hw * 0.6f;
+            this.targetCenterLen = len * 0.6f;
+            this.targetColorHW = hw * 0.8f;
+            this.targetColorLen = len * 0.8f;
+            this.targetOuterHW = hw;
+            this.targetOuterLen = len;
+        }
+
         public boolean isExpired(long currentTime) {
+            if (dynamic) {
+                return false;
+            }
             return currentTime - startTime >= durationTicks;
         }
     }

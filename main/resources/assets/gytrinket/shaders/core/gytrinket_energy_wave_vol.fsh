@@ -97,14 +97,24 @@ void main() {
     vec3 localOrigin = toLocal(worldPos);
     vec3 localCamPos = toLocal(camWorld);
     vec3 rd = normalize(localOrigin - localCamPos);
-    vec3 ro = localOrigin;
+
+    // 盒内视角：相机在包围盒内时从相机起跑（否则从盒面片段起跑，外部视角不变）。
+    // 这样波内也能看到波体，而非直接穿出盒子导致看不见。
+    bool camInBox = abs(localCamPos.x) <= MaxSpan && abs(localCamPos.y) <= MaxSpan
+            && localCamPos.z >= -MaxBack && localCamPos.z <= MaxForward;
+    vec3 ro = camInBox ? localCamPos : localOrigin;
+
+    // 判断相机相对各层的内外：相机在层外记录“进入”交叉，在层内记录“退出”交叉（支持波内视角）
+    bool camInsideOuter = revolutionSDF(localCamPos, OuterHW, OuterLen) >= 0.0;
+    bool camInsideColor = revolutionSDF(localCamPos, ColorHW, ColorLen) >= 0.0;
+    bool camInsideCenter = revolutionSDF(localCamPos, CenterHW, CenterLen) >= 0.0;
 
     float baseStep = min(min(MaxSpan, MaxForward), 1.0) * 0.035;
     float minStep = baseStep * 0.08;
     float maxDist = (MaxSpan + MaxBack + MaxForward) * 3.0;
 
     // ===== Phase 1: 光线行进，收集数据 =====
-    // 收集表面交叉（只记录进入交叉：SDF从负变正）
+    // 收集表面交叉（相机在层外只记录进入交叉：SDF从负变正；在层内只记录退出交叉：SDF从正变负）
     // 同时累积泛光体积
 
     const int MAX_CROSSINGS = 6;
@@ -135,9 +145,12 @@ void main() {
         float colorSDF = revolutionSDF(p, ColorHW, ColorLen);
         float centerSDF = revolutionSDF(p, CenterHW, CenterLen);
 
-        // --- 收集表面进入交叉 ---
+        // --- 收集表面交叉 ---
         // 外层交叉（最先遇到，将是合成时的最底层）
-        if (prevOuterSDF < 0.0 && outerSDF >= 0.0 && numCrossings < MAX_CROSSINGS) {
+        bool outerCross = camInsideOuter
+                ? (prevOuterSDF >= 0.0 && outerSDF < 0.0)
+                : (prevOuterSDF < 0.0 && outerSDF >= 0.0);
+        if (outerCross && numCrossings < MAX_CROSSINGS) {
             // edgeSoft范围改为(-0.02, 0.0)，交叉点outerSDF>=0时alpha完整
             float edgeSoft = smoothstep(-0.02, 0.0, outerSDF);
             crossingColors[numCrossings] = OuterLayerColor.rgb;
@@ -146,7 +159,10 @@ void main() {
         }
 
         // 颜色层交叉
-        if (prevColorSDF < 0.0 && colorSDF >= 0.0 && numCrossings < MAX_CROSSINGS) {
+        bool colorCross = camInsideColor
+                ? (prevColorSDF >= 0.0 && colorSDF < 0.0)
+                : (prevColorSDF < 0.0 && colorSDF >= 0.0);
+        if (colorCross && numCrossings < MAX_CROSSINGS) {
             float glow = glowFactor3D(p);
             crossingColors[numCrossings] = applyGlow(ColorLayerColor.rgb, glow);
             crossingAlphas[numCrossings] = ColorLayerColor.a;
@@ -154,7 +170,10 @@ void main() {
         }
 
         // 中心层交叉（最后遇到，将是合成时的最顶层）
-        if (prevCenterSDF < 0.0 && centerSDF >= 0.0 && numCrossings < MAX_CROSSINGS) {
+        bool centerCross = camInsideCenter
+                ? (prevCenterSDF >= 0.0 && centerSDF < 0.0)
+                : (prevCenterSDF < 0.0 && centerSDF >= 0.0);
+        if (centerCross && numCrossings < MAX_CROSSINGS) {
             float glow = glowFactor3D(p);
             crossingColors[numCrossings] = applyGlow(CenterColor.rgb, glow);
             crossingAlphas[numCrossings] = CenterColor.a;

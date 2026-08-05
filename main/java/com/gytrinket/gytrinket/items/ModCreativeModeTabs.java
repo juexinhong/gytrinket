@@ -62,6 +62,8 @@ public class ModCreativeModeTabs {
                         output.accept(ModItems.SHIELD_WARP1.get());
                         output.accept(ModItems.SHIELD_WARP2.get());
                         output.accept(ModItems.SHIELD_WARP3.get());
+                        // 焰矛
+                        output.accept(ModItems.FLAME_SPEAR.get());
 
                         // 框架物品
                         output.accept(ModItems.MODULAR_FRAMEWORK.get());

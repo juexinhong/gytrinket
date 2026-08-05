@@ -7,6 +7,7 @@ import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.*;
 import net.minecraft.client.Minecraft;
+import net.minecraft.util.Mth;
 import net.minecraft.client.renderer.ShaderInstance;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
@@ -25,6 +26,12 @@ import java.util.List;
 public class EnergyWaveVolumetricRenderer {
 
     private static final float BLOOM_MAX_RATIO = 0.8f;
+
+    /**
+     * 后移补偿：波整体前移量（格），随波长度增加而增加。
+     * 初始（长度0）为 0，达到长度极限20格时为 1.5 格，抵消波后泛光造成的整体后移感。
+     */
+    private static final float BACK_GLOW_SHIFT_MAX = 1.5f;
 
     /**
      * 渲染来自 EnergyWaveVisualManager 的 WaveVisualData 列表。
@@ -54,10 +61,14 @@ public class EnergyWaveVolumetricRenderer {
         for (WaveVisualData wave : waveDataList) {
             if (wave.isExpired(currentTime)) continue;
             float progress = EnergyWaveVisualManager.getProgress(wave, currentTime, partialTick);
-            EnergyWaveVisualManager.AnimationState anim = EnergyWaveVisualManager.computeAnimation(progress, wave.durationTicks, wave.endScale);
-            EnergyWaveVisualManager.WaveTransform t = EnergyWaveVisualManager.resolveTransform(wave, partialTick);
+            EnergyWaveVisualManager.AnimationState anim = wave.isDynamic()
+                    ? new EnergyWaveVisualManager.AnimationState(1.0f, 1.0f, 1.0f)
+                    : EnergyWaveVisualManager.computeAnimation(progress, wave.durationTicks, wave.endScale);
+            EnergyWaveVisualManager.WaveTransform t = wave.isDynamic()
+                    ? EnergyWaveVisualManager.resolveDynamicTransform(wave, partialTick)
+                    : EnergyWaveVisualManager.resolveTransform(wave, partialTick);
 
-            renderWaveVolume(shader, poseStack, wave, anim, t, camPos);
+            renderWaveVolume(shader, poseStack, wave, anim, t, camPos, partialTick);
         }
 
         poseStack.popPose();
@@ -120,10 +131,14 @@ public class EnergyWaveVolumetricRenderer {
         for (WaveVisualData wave : waveDataList) {
             if (wave.isExpired(currentTime)) continue;
             float progress = EnergyWaveVisualManager.getProgress(wave, currentTime, partialTick);
-            EnergyWaveVisualManager.AnimationState anim = EnergyWaveVisualManager.computeAnimation(progress, wave.durationTicks, wave.endScale);
-            EnergyWaveVisualManager.WaveTransform t = EnergyWaveVisualManager.resolveTransform(wave, partialTick);
+            EnergyWaveVisualManager.AnimationState anim = wave.isDynamic()
+                    ? new EnergyWaveVisualManager.AnimationState(1.0f, 1.0f, 1.0f)
+                    : EnergyWaveVisualManager.computeAnimation(progress, wave.durationTicks, wave.endScale);
+            EnergyWaveVisualManager.WaveTransform t = wave.isDynamic()
+                    ? EnergyWaveVisualManager.resolveDynamicTransform(wave, partialTick)
+                    : EnergyWaveVisualManager.resolveTransform(wave, partialTick);
 
-            renderWaveVolumeWithMatrix(shader, vertexMatrix, wave, anim, t, camPos);
+            renderWaveVolumeWithMatrix(shader, vertexMatrix, wave, anim, t, camPos, partialTick);
         }
 
         RenderSystem.depthMask(true);
@@ -145,27 +160,39 @@ public class EnergyWaveVolumetricRenderer {
                                                     WaveVisualData wave,
                                                     EnergyWaveVisualManager.AnimationState anim,
                                                     EnergyWaveVisualManager.WaveTransform t,
-                                                    Vec3 camPos) {
-        Vec3 center = t.position().subtract(camPos);
+                                                    Vec3 camPos, float partialTick) {
+        Vec3 anchor = t.position().subtract(camPos);
         Vec3 forward = t.direction();
 
         Vec3 up = EnergyWaveVisualManager.findUp(forward);
         Vec3 right = forward.cross(up).normalize();
         up = right.cross(forward).normalize();
 
-        float centerHW = wave.targetCenterHW * anim.sizeMultiplier();
-        float centerLen = wave.targetCenterLen * anim.sizeMultiplier();
-        float colorHW = wave.targetColorHW * anim.sizeMultiplier();
-        float colorLen = wave.targetColorLen * anim.sizeMultiplier();
-        float outerHW = wave.targetOuterHW * anim.sizeMultiplier();
-        float outerLen = wave.targetOuterLen * anim.sizeMultiplier();
+        WaveSizes s = computeWaveSizes(wave, anim, partialTick);
+        float centerHW = s.centerHW();
+        float centerLen = s.centerLen();
+        float colorHW = s.colorHW();
+        float colorLen = s.colorLen();
+        float outerHW = s.outerHW();
+        float outerLen = s.outerLen();
+
+        // 原点（发射点）为波后半圆的顶点（非圆心）：半圆圆心在 原点+外径 处，
+        // 波从原点向前延伸，尖端（顶点）落在 原点+长度 处，与伤害范围终点重合。
+        // 因此各层 SDF 长度 = 目标长度 - 半宽，尖端相对波心的长度为该值。
+        float tipLen = Math.max(outerLen - outerHW, 0.001f);
+        float colorTipLen = Math.max(colorLen - colorHW, 0.001f);
+        float centerTipLen = Math.max(centerLen - centerHW, 0.001f);
+        // 后移补偿：前移量随波长度增加而增加（0 → 长度极限20格 → 1.5格），抵消波后泛光后移感
+        float forwardShift = BACK_GLOW_SHIFT_MAX * (Math.min(outerLen, 20.0f) / 20.0f);
+        Vec3 waveCenter = anchor.add(forward.scale(outerHW + forwardShift));
 
         float bloomMaxDist = outerHW * BLOOM_MAX_RATIO;
         float glowRadius = centerLen * 0.5f;
 
         float maxSpan = (outerHW + bloomMaxDist) * 1.2f;
+        // 包围盒保留向后泛光（不裁剪）。整体后移由 waveCenter 前移补偿
         float maxBack = (outerHW + bloomMaxDist) * 1.2f;
-        float maxForward = outerLen * 1.1f;
+        float maxForward = tipLen * 1.1f;
 
         if (maxSpan <= 0 || maxForward <= 0) {
             return;
@@ -175,11 +202,11 @@ public class EnergyWaveVolumetricRenderer {
         setUniformSafe(shader, "MaxBack", maxBack);
         setUniformSafe(shader, "MaxForward", maxForward);
         setUniformSafe(shader, "OuterHW", outerHW);
-        setUniformSafe(shader, "OuterLen", outerLen);
+        setUniformSafe(shader, "OuterLen", tipLen);
         setUniformSafe(shader, "ColorHW", colorHW);
-        setUniformSafe(shader, "ColorLen", colorLen);
+        setUniformSafe(shader, "ColorLen", colorTipLen);
         setUniformSafe(shader, "CenterHW", centerHW);
-        setUniformSafe(shader, "CenterLen", centerLen);
+        setUniformSafe(shader, "CenterLen", centerTipLen);
 
         setUniformSafe(shader, "CenterColor",
             wave.centerR * anim.darkenFactor(), wave.centerG * anim.darkenFactor(),
@@ -201,7 +228,7 @@ public class EnergyWaveVolumetricRenderer {
         setUniformSafe(shader, "CamRight", (float) right.x, (float) right.y, (float) right.z);
         setUniformSafe(shader, "CamUp", (float) up.x, (float) up.y, (float) up.z);
         setUniformSafe(shader, "Forward", (float) forward.x, (float) forward.y, (float) forward.z);
-        setUniformSafe(shader, "WaveCenter", (float) center.x, (float) center.y, (float) center.z);
+        setUniformSafe(shader, "WaveCenter", (float) waveCenter.x, (float) waveCenter.y, (float) waveCenter.z);
 
         // 逆ModelView矩阵
         // 关键：shader 中 viewPos = ModelViewMat × vertex = I × R × vertex = R × vertex
@@ -216,7 +243,7 @@ public class EnergyWaveVolumetricRenderer {
 
         BufferBuilder buffer = Tesselator.getInstance().begin(VertexFormat.Mode.TRIANGLES, DefaultVertexFormat.POSITION_TEX);
 
-        renderBoundingBox(vertexMatrix, buffer, center, right, up, forward, maxSpan, maxBack, maxForward);
+        renderBoundingBox(vertexMatrix, buffer, waveCenter, right, up, forward, maxSpan, maxBack, maxForward);
 
         RenderSystem.setShader(() -> shader);
         BufferUploader.drawWithShader(buffer.buildOrThrow());
@@ -226,29 +253,41 @@ public class EnergyWaveVolumetricRenderer {
                                           WaveVisualData wave,
                                           EnergyWaveVisualManager.AnimationState anim,
                                           EnergyWaveVisualManager.WaveTransform t,
-                                          Vec3 camPos) {
-        Vec3 center = t.position().subtract(camPos);
+                                          Vec3 camPos, float partialTick) {
+        Vec3 anchor = t.position().subtract(camPos);
         Vec3 forward = t.direction();
 
         Vec3 up = EnergyWaveVisualManager.findUp(forward);
         Vec3 right = forward.cross(up).normalize();
         up = right.cross(forward).normalize();
 
-        // 当前尺寸 = 目标尺寸 × sizeMultiplier
-        float centerHW = wave.targetCenterHW * anim.sizeMultiplier();
-        float centerLen = wave.targetCenterLen * anim.sizeMultiplier();
-        float colorHW = wave.targetColorHW * anim.sizeMultiplier();
-        float colorLen = wave.targetColorLen * anim.sizeMultiplier();
-        float outerHW = wave.targetOuterHW * anim.sizeMultiplier();
-        float outerLen = wave.targetOuterLen * anim.sizeMultiplier();
+        // 当前尺寸 = 目标尺寸 × sizeMultiplier（动态波使用插值后的长度/宽度）
+        WaveSizes s = computeWaveSizes(wave, anim, partialTick);
+        float centerHW = s.centerHW();
+        float centerLen = s.centerLen();
+        float colorHW = s.colorHW();
+        float colorLen = s.colorLen();
+        float outerHW = s.outerHW();
+        float outerLen = s.outerLen();
+
+        // 原点（发射点）为波后半圆的顶点（非圆心）：半圆圆心在 原点+外径 处，
+        // 波从原点向前延伸，尖端（顶点）落在 原点+长度 处，与伤害范围终点重合。
+        // 因此各层 SDF 长度 = 目标长度 - 半宽，尖端相对波心的长度为该值。
+        float tipLen = Math.max(outerLen - outerHW, 0.001f);
+        float colorTipLen = Math.max(colorLen - colorHW, 0.001f);
+        float centerTipLen = Math.max(centerLen - centerHW, 0.001f);
+        // 后移补偿：前移量随波长度增加而增加（0 → 长度极限20格 → 1.5格），抵消波后泛光后移感
+        float forwardShift = BACK_GLOW_SHIFT_MAX * (Math.min(outerLen, 20.0f) / 20.0f);
+        Vec3 waveCenter = anchor.add(forward.scale(outerHW + forwardShift));
 
         float bloomMaxDist = outerHW * BLOOM_MAX_RATIO;
         float glowRadius = centerLen * 0.5f;
 
         // 包围盒范围（额外20%余量供泛光自然衰减，避免硬切边）
         float maxSpan = (outerHW + bloomMaxDist) * 1.2f;
+        // 保留向后泛光（不裁剪），整体后移由 waveCenter 前移补偿
         float maxBack = (outerHW + bloomMaxDist) * 1.2f;
-        float maxForward = outerLen * 1.1f;
+        float maxForward = tipLen * 1.1f;
 
         if (maxSpan <= 0 || maxForward <= 0) return;
 
@@ -257,11 +296,11 @@ public class EnergyWaveVolumetricRenderer {
         setUniformSafe(shader, "MaxBack", maxBack);
         setUniformSafe(shader, "MaxForward", maxForward);
         setUniformSafe(shader, "OuterHW", outerHW);
-        setUniformSafe(shader, "OuterLen", outerLen);
+        setUniformSafe(shader, "OuterLen", tipLen);
         setUniformSafe(shader, "ColorHW", colorHW);
-        setUniformSafe(shader, "ColorLen", colorLen);
+        setUniformSafe(shader, "ColorLen", colorTipLen);
         setUniformSafe(shader, "CenterHW", centerHW);
-        setUniformSafe(shader, "CenterLen", centerLen);
+        setUniformSafe(shader, "CenterLen", centerTipLen);
 
         // 层颜色
         setUniformSafe(shader, "CenterColor",
@@ -286,8 +325,8 @@ public class EnergyWaveVolumetricRenderer {
         setUniformSafe(shader, "CamUp", (float) up.x, (float) up.y, (float) up.z);
         setUniformSafe(shader, "Forward", (float) forward.x, (float) forward.y, (float) forward.z);
 
-        // 波中心位置（相机相对世界空间）
-        setUniformSafe(shader, "WaveCenter", (float) center.x, (float) center.y, (float) center.z);
+        // 波中心位置（相机相对世界空间）：半圆圆心在 原点+外径 处
+        setUniformSafe(shader, "WaveCenter", (float) waveCenter.x, (float) waveCenter.y, (float) waveCenter.z);
 
         // 逆ModelView矩阵
         // 关键：BufferUploader.drawWithShader() 自动设置的 ModelViewMat 来自 RenderSystem.getModelViewStack()
@@ -304,7 +343,7 @@ public class EnergyWaveVolumetricRenderer {
         // 渲染包围盒（长方体），6个面×2个三角形
         BufferBuilder buffer = Tesselator.getInstance().begin(VertexFormat.Mode.TRIANGLES, DefaultVertexFormat.POSITION_TEX);
 
-        renderBoundingBox(poseStackMat, buffer, center, right, up, forward, maxSpan, maxBack, maxForward);
+        renderBoundingBox(poseStackMat, buffer, waveCenter, right, up, forward, maxSpan, maxBack, maxForward);
 
         RenderSystem.setShader(() -> shader);
         BufferUploader.drawWithShader(buffer.buildOrThrow());
@@ -409,5 +448,38 @@ public class EnergyWaveVolumetricRenderer {
         if (shader.getUniform(name) != null) {
             shader.getUniform(name).set(v0, v1, v2);
         }
+    }
+
+    /** 动态波渲染尺寸 */
+    private record WaveSizes(float centerHW, float centerLen, float colorHW, float colorLen, float outerHW, float outerLen) {}
+
+    /**
+     * 计算渲染尺寸：动态波使用客户端缓动的长度/宽度（消除充能/消退时的长度抖动），普通波使用目标尺寸。
+     */
+    private static WaveSizes computeWaveSizes(WaveVisualData wave,
+                                              EnergyWaveVisualManager.AnimationState anim,
+                                              float partialTick) {
+        float mult = anim.sizeMultiplier();
+        if (wave.isDynamic()) {
+            // 显示长度/宽度向目标缓动（每帧），消除长度随充能/消退突变造成的抖动
+            if (!wave.displayInitialized) {
+                wave.displayLen = wave.len;
+                wave.displayWidth = wave.width;
+                wave.displayInitialized = true;
+            }
+            wave.displayLen += (wave.len - wave.displayLen) * 0.35f;
+            wave.displayWidth += (wave.width - wave.displayWidth) * 0.35f;
+            float len = wave.displayLen;
+            float hw = wave.displayWidth;
+            // 尖端（外层）落在 原点+长度 处，与伤害范围终点重合；中心/颜色层为 0.6/0.8
+            return new WaveSizes(
+                    hw * 0.6f * mult, len * 0.6f * mult,
+                    hw * 0.8f * mult, len * 0.8f * mult,
+                    hw * mult, len * mult);
+        }
+        return new WaveSizes(
+                wave.targetCenterHW * mult, wave.targetCenterLen * mult,
+                wave.targetColorHW * mult, wave.targetColorLen * mult,
+                wave.targetOuterHW * mult, wave.targetOuterLen * mult);
     }
 }

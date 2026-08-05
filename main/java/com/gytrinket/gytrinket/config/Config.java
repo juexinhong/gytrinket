@@ -240,6 +240,14 @@ public class Config {
     // ===== 24.5.1 炉心融解模块 (furnace_core) =====
     public static final ModConfigSpec.ConfigValue<List<? extends String>> FURNACE_CORE_ITEMS;
 
+    // ===== 24.5.2 焰矛 (flame_spear) =====
+    public static final ModConfigSpec.ConfigValue<List<? extends String>> FLAME_SPEAR_ITEMS;
+    public static final ModConfigSpec.DoubleValue FLAME_SPEAR_BASE_CHARGE_RATE;
+    public static final ModConfigSpec.DoubleValue FLAME_SPEAR_RESISTANCE;
+    public static final ModConfigSpec.DoubleValue FLAME_SPEAR_DAMAGE_MULTIPLIER;
+    public static final ModConfigSpec.IntValue FLAME_SPEAR_MELT_INTERVAL;
+    public static final ModConfigSpec.DoubleValue FLAME_SPEAR_MELT_VULNERABILITY;
+
     // ===== 24.6 督战者 (taskmaster) =====
     public static final ModConfigSpec.ConfigValue<List<? extends String>> TASKMASTER_ITEMS;
 
@@ -422,6 +430,15 @@ public class Config {
             "explosion_damage_independent:INDEPENDENT_MULTIPLY:explosion_damage," +
             "explosion_radius_percent:PERCENT:explosion_radius," +
             "explosion_radius_independent:INDEPENDENT_MULTIPLY:explosion_radius," +
+            "weapon_damage_base:BASE:weapon_damage," +
+            "weapon_attack_speed_percent:PERCENT:weapon_attack_speed," +
+            "weapon_projectile_size_percent:PERCENT:weapon_projectile_size," +
+            "weapon_projectile_speed_percent:PERCENT:weapon_projectile_speed," +
+            "weapon_projectile_count_base:BASE:weapon_projectile_count," +
+            "weapon_spread_angle_percent:PERCENT:weapon_spread_angle," +
+            "weapon_homing_angle_percent:PERCENT:weapon_homing_angle," +
+            "weapon_explosion_radius_percent:PERCENT:weapon_explosion_radius," +
+            "weapon_extra_damage_base:BASE:weapon_extra_damage," +
             "swarm_count_mothership:BASE:swarm_count_mothership," +
             "construct_swarm_count_base:BASE:construct_swarm_count," +
             "construct_swarm_count_percent:PERCENT:construct_swarm_count," +
@@ -1575,6 +1592,50 @@ public class Config {
 
         BUILDER.pop();
 
+        // ===== 24.5.2 焰矛（充能武器） =====
+        BUILDER.comment("焰矛充能武器配置").push("flame_spear");
+
+        FLAME_SPEAR_ITEMS = BUILDER.comment(
+            "焰矛物品",
+            "手持该物品时进行制衡充能，持续充能并维持一道热能矛攻击敌人",
+            "示例：gytrinket:flame_spear"
+        ).defineListAllowEmpty("flameSpearItems",
+            java.util.List.of("gytrinket:flame_spear"),
+            s -> true
+        );
+
+        FLAME_SPEAR_BASE_CHARGE_RATE = BUILDER.comment(
+            "焰矛基础充能速率（每刻）",
+            "充能值 = 焰矛长度（格）。攻击速度与爆炸半径属性会等量提高充能速率",
+            "默认0.1"
+        ).defineInRange("flameSpearBaseChargeRate", 0.1, 0.01, 10.0);
+
+        FLAME_SPEAR_RESISTANCE = BUILDER.comment(
+            "焰矛充能阻力系数",
+            "制衡充能：阻力 = 系数 × 当前充能值。阻力与充能速率平衡时达到充能上限（充能速率越快上限越高）",
+            "默认0.012"
+        ).defineInRange("flameSpearResistance", 0.06, 0.001, 1.0);
+
+        FLAME_SPEAR_DAMAGE_MULTIPLIER = BUILDER.comment(
+            "焰矛伤害倍率",
+            "限制焰矛每刻施加的灼烧量：灼烧 = 充能值 × 伤害倍率",
+            "默认0.1（1/10）"
+        ).defineInRange("flameSpearDamageMultiplier", 0.08, 0.0, 10.0);
+
+        FLAME_SPEAR_MELT_INTERVAL = BUILDER.comment(
+            "焰矛熔穿间隔（刻）",
+            "每 N 刻对伤害范围内的敌人施加 5% 可叠加易伤",
+            "默认10（0.5秒）"
+        ).defineInRange("flameSpearMeltInterval", 10, 1, 200);
+
+        FLAME_SPEAR_MELT_VULNERABILITY = BUILDER.comment(
+            "焰矛熔穿每次施加的易伤值",
+            "0.05 = 5% 可叠加易伤",
+            "默认0.05"
+        ).defineInRange("flameSpearMeltVulnerability", 0.05, 0.001, 1.0);
+
+        BUILDER.pop();
+
         // ===== 24.6 督战者 =====
         BUILDER.comment("督战者系统配置").push("taskmaster");
 
@@ -2100,6 +2161,7 @@ public class Config {
     private static final Set<Item> NEAR_DEATH_EXPLOSION_ITEM_SET = new HashSet<>();
     private static final Set<Item> SELF_DESTRUCT_ITEM_SET = new HashSet<>();
     private static final Set<Item> FURNACE_CORE_ITEM_SET = new HashSet<>();
+    private static final Set<Item> FLAME_SPEAR_ITEM_SET = new HashSet<>();
     private static final Set<Item> TASKMASTER_ITEM_SET = new HashSet<>();
     private static final Set<Item> COMMANDER_ITEM_SET = new HashSet<>();
     private static final Set<Item> ARC_BARRIER_ITEM_SET = new HashSet<>();
@@ -2288,6 +2350,7 @@ public class Config {
         loadItemSet(NEAR_DEATH_EXPLOSION_ITEM_SET, NEAR_DEATH_EXPLOSION_ITEMS.get(), "濒死自爆前置");
         loadItemSet(SELF_DESTRUCT_ITEM_SET, SELF_DESTRUCT_ITEMS.get(), "自毁装置前置");
         loadItemSet(FURNACE_CORE_ITEM_SET, FURNACE_CORE_ITEMS.get(), "炉心融解模块");
+        loadItemSet(FLAME_SPEAR_ITEM_SET, FLAME_SPEAR_ITEMS.get(), "焰矛");
         loadItemSet(TASKMASTER_ITEM_SET, TASKMASTER_ITEMS.get(), "督战者前置");
         loadItemSet(DRONE_MODULE_ITEM_SET, DRONE_MODULE_ITEMS.get(), "基础无人机构建");
         loadItemSet(ASSAULT_DRONE_MODULE_ITEM_SET, ASSAULT_DRONE_MODULE_ITEMS.get(), "突击无人机构建");
@@ -2555,6 +2618,10 @@ public class Config {
 
     public static boolean isFurnaceCoreItem(Item item) {
         return FURNACE_CORE_ITEM_SET.contains(item);
+    }
+
+    public static boolean isFlameSpearItem(Item item) {
+        return FLAME_SPEAR_ITEM_SET.contains(item);
     }
 
     public static boolean isTaskmasterItem(Item item) {

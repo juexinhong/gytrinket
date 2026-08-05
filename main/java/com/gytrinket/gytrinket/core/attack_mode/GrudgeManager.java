@@ -3,6 +3,7 @@ package com.gytrinket.gytrinket.core.attack_mode;
 import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.attack_mode.charged_attack.ChargedAttackManager;
 import com.gytrinket.gytrinket.core.shield.ShieldManager;
+import com.gytrinket.gytrinket.core.weapon.flamespear.FlameSpearManager;
 import com.gytrinket.gytrinket.gytrinket;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
@@ -84,7 +85,8 @@ public class GrudgeManager {
             return;
         }
 
-        if (ChargedAttackManager.isCharging(player)) {
+        // 积怨适配：充能攻击模块 或 焰矛充能 期间，损失的生命/护盾都转化为临时充能速率
+        if (ChargedAttackManager.isCharging(player) || FlameSpearManager.isSimulatedUsing(player)) {
             GrudgeData data = PLAYER_GRUDGE_DATA.computeIfAbsent(uuid, k -> new GrudgeData());
 
             // 首次进入充能状态，初始化生命和护盾值

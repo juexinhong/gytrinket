@@ -288,9 +288,15 @@ public class LightningRenderManager {
 
         jobs.sort((a, b) -> Float.compare(a.alpha, b.alpha));
 
+        // 两趟渲染：先画泛光底层（0），再画不透明的核心层（1）覆盖其上。
+        // 这样弯曲连接处由核心覆盖，泛光不产生连接描边。
         for (RenderJob job : jobs) {
             renderSegment(shader, vertexMatrix, invModelView, job.start, job.end,
-                    job.startRadius, job.endRadius, job.red, job.green, job.blue, job.alpha, job.brightness, camPos);
+                    job.startRadius, job.endRadius, job.red, job.green, job.blue, job.alpha, job.brightness, camPos, 0.0f);
+        }
+        for (RenderJob job : jobs) {
+            renderSegment(shader, vertexMatrix, invModelView, job.start, job.end,
+                    job.startRadius, job.endRadius, job.red, job.green, job.blue, job.alpha, job.brightness, camPos, 1.0f);
         }
     }
 
@@ -323,7 +329,7 @@ public class LightningRenderManager {
     private static void renderSegment(ShaderInstance shader, Matrix4f vertexMatrix, Matrix4f invModelView,
                                       Vec3 start, Vec3 end, float startRadius, float endRadius,
                                       float red, float green, float blue, float alpha, float brightness,
-                                      Vec3 camPos) {
+                                      Vec3 camPos, float renderMode) {
         Vec3 a = start.subtract(camPos);
         Vec3 b = end.subtract(camPos);
         Vec3 ab = b.subtract(a);
@@ -349,6 +355,7 @@ public class LightningRenderManager {
         setUniformSafe(shader, "CylColor", red, green, blue, alpha);
         setUniformSafe(shader, "Brightness", brightness);
         setUniformSafe(shader, "BoxRad", boxRad);
+        setUniformSafe(shader, "RenderMode", renderMode);
         if (shader.getUniform("InvModelViewMat") != null) {
             shader.getUniform("InvModelViewMat").set(invModelView);
         }

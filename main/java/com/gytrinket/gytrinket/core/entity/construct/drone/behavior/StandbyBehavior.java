@@ -49,7 +49,8 @@ public class StandbyBehavior implements IDroneBehavior {
         if (distance > FOLLOW_DISTANCE) {
             double excessDistance = distance - FOLLOW_DISTANCE;
             double speedMultiplier = 1.0 + (excessDistance * SPEED_INCREASE_PER_BLOCK);
-            float actualSpeed = (float)(FOLLOW_SPEED * speedMultiplier);
+            float moveMultiplier = (float) (drone instanceof com.gytrinket.gytrinket.core.entity.construct.IConstructEntity ce ? ce.getMoveSpeedMultiplier() : 1.0);
+            float actualSpeed = (float)(FOLLOW_SPEED * speedMultiplier * moveMultiplier);
 
             float yaw = drone.getYRot() * (float)Math.PI / 180.0f;
             Vec3 direction = new Vec3(

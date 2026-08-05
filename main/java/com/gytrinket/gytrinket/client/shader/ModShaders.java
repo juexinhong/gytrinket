@@ -14,6 +14,7 @@ public class ModShaders {
     // ===== ShaderInstance 对象缓存（运行时填充） =====
     private static ShaderInstance shieldGlassShader;
     private static ShaderInstance energyWaveVolShader;
+    private static ShaderInstance lightningVolShader;
 
     private static boolean initialized = false;
 
@@ -60,5 +61,16 @@ public class ModShaders {
         if (energyWaveVolShader == null) {
         }
         return energyWaveVolShader;
+    }
+
+    // ===== LightningVol 着色器（闪电3D圆柱体积渲染） =====
+
+    public static void setLightningVolShader(ShaderInstance shader) {
+        lightningVolShader = shader;
+    }
+
+    @Nullable
+    public static ShaderInstance getLightningVolShader() {
+        return lightningVolShader;
     }
 }

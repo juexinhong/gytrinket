@@ -83,6 +83,14 @@ public class ModClient {
             ),
             ModShaders::setEnergyWaveVolShader
         );
+        event.registerShader(
+            new ShaderInstance(
+                event.getResourceProvider(),
+                ResourceLocation.fromNamespaceAndPath(com.gytrinket.gytrinket.gytrinket.MODID, "gytrinket_lightning_vol"),
+                DefaultVertexFormat.POSITION_TEX
+            ),
+            ModShaders::setLightningVolShader
+        );
     }
 
     /**

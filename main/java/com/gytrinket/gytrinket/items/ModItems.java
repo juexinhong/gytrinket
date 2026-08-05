@@ -149,6 +149,7 @@ public class ModItems {
     public static final DeferredItem<Item> CHARGED_SHIELD_MODULE = ITEMS.registerSimpleItem("charged_shield_module", new Item.Properties()); // 充能护盾模块
     public static final DeferredItem<Item> GRUDGE_MODULE = ITEMS.registerSimpleItem("grudge_module", new Item.Properties()); // 积怨模块
     public static final DeferredItem<Item> APEX_APPARATUS_MODULE = ITEMS.registerSimpleItem("apex_apparatus_module", new Item.Properties()); // 尖端器械模块
+    public static final DeferredItem<Item> FURNACE_CORE_MODULE = ITEMS.registerSimpleItem("furnace_core_module", new Item.Properties()); // 炉心融解模块
 
     // 零件
     public static final DeferredItem<Item> TOTEM = ITEMS.registerSimpleItem("totem", new Item.Properties()); // 图腾

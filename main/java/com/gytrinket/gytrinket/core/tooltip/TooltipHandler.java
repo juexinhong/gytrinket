@@ -128,6 +128,13 @@ public class TooltipHandler {
             ChatFormatting.RED
         ));
 
+        // 炉心融解模块
+        rules.add(new TooltipConfig(
+            Config.FURNACE_CORE_ITEMS,
+            "furnace_core_module", "furnace_core_module_desc",
+            ChatFormatting.GOLD
+        ));
+
         // 督战者
         rules.add(new TooltipConfig(
             Config.TASKMASTER_ITEMS,

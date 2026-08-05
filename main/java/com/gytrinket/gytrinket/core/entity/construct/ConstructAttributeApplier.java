@@ -281,6 +281,9 @@ public class ConstructAttributeApplier {
         double attackSpeedIndependent = 1.0;
         double weaponAttackSpeedPercent = 1.0;
         double weaponAttackSpeedIndependent = 1.0;
+        double moveSpeedPercent = 1.0;
+        double orbitSpeedPercent = 1.0;
+        double rotationSpeedPercent = 1.0;
 
         for (Map.Entry<String, Double> entry : constructAttrs.entrySet()) {
             String attrName = entry.getKey();
@@ -323,6 +326,27 @@ public class ConstructAttributeApplier {
                         case INDEPENDENT_MULTIPLY -> weaponAttackSpeedIndependent *= value;
                     }
                 }
+                case MOVE_SPEED -> {
+                    switch (valueType) {
+                        case BASE -> {}
+                        case PERCENT -> moveSpeedPercent *= value;
+                        case INDEPENDENT_MULTIPLY -> {}
+                    }
+                }
+                case ORBIT_SPEED -> {
+                    switch (valueType) {
+                        case BASE -> {}
+                        case PERCENT -> orbitSpeedPercent *= value;
+                        case INDEPENDENT_MULTIPLY -> {}
+                    }
+                }
+                case ROTATION_SPEED -> {
+                    switch (valueType) {
+                        case BASE -> {}
+                        case PERCENT -> rotationSpeedPercent *= value;
+                        case INDEPENDENT_MULTIPLY -> {}
+                    }
+                }
                 default -> {} // MAX_COUNT, BUILD_SPEED, EXPLOSIVE_COUNT 不应用到实体属性
             }
         }
@@ -339,6 +363,11 @@ public class ConstructAttributeApplier {
         applyDamageModifier(livingEntity, baseAttackDamage, finalAttackDamage);
         entity.setAttackSpeedMultiplier(finalAttackSpeedMultiplier);
         entity.setWeaponAttackSpeedMultiplier(finalWeaponAttackSpeedMultiplier);
+        entity.setMoveSpeedMultiplier(moveSpeedPercent);
+        entity.setOrbitSpeedMultiplier(orbitSpeedPercent);
+        entity.setRotationSpeedMultiplier(rotationSpeedPercent);
+        // 重置低血量攻速独立乘区（炉心融解模块动态施加，属性重算时清除）
+        entity.setLowHpAttackSpeedMultiplier(1.0);
     }
 
     /**

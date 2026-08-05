@@ -487,12 +487,13 @@ public class WingmanConstructEntity extends AbstractConstructEntity {
         double speed = 0;
         Vec3 direction = Vec3.ZERO;
         float yaw = wingman.getYRot() * (float) Math.PI / 180.0f;
+        float moveMultiplier = (float) ((com.gytrinket.gytrinket.core.entity.construct.IConstructEntity) wingman).getMoveSpeedMultiplier();
 
         if (horizontalDist > farDist) {
             // 远距离：向朝向方向移动，速度随距离增加（每额外1格+10%）
             float excessDistance = (float) (horizontalDist - farDist);
             float speedMultiplier = 1.0f + excessDistance * 0.10f;
-            speed = MOVE_SPEED * speedMultiplier;
+            speed = MOVE_SPEED * speedMultiplier * moveMultiplier;
             direction = new Vec3(-Math.sin(yaw), 0, Math.cos(yaw)).normalize();
         } else if (horizontalDist > idealDistMax) {
             // 中远距离：慢速接近目标
@@ -540,6 +541,7 @@ public class WingmanConstructEntity extends AbstractConstructEntity {
     private void standbyMovement(Entity wingman, LivingEntity owner) {
         Vec3 pos = wingman.position();
         Vec3 ownerPos = owner.position();
+        float moveMultiplier = (float) ((com.gytrinket.gytrinket.core.entity.construct.IConstructEntity) wingman).getMoveSpeedMultiplier();
 
         Vec3 standbyTarget = ownerPos.add(0, STANDBY_HEIGHT, 0);
 
@@ -566,7 +568,7 @@ public class WingmanConstructEntity extends AbstractConstructEntity {
 
         if (horizontalDist > STANDBY_RANGE) {
             double speedBoost = 1.0 + (horizontalDist - STANDBY_RANGE) * 0.2;
-            finalMovement = horizontalDir.scale(MOVE_SPEED * speedBoost);
+            finalMovement = horizontalDir.scale(MOVE_SPEED * speedBoost * moveMultiplier);
         } else if (horizontalDist > 3.0) {
             finalMovement = horizontalDir.scale(LEAVE_SPEED);
         }

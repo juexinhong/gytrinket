@@ -69,6 +69,7 @@
   "tooltip.gytrinket.attr.construct_attack_speed_percent": "Construct Attack Speed %",
   "tooltip.gytrinket.attr.construct_attack_speed_independent": "Construct Attack Speed Independent",
   "tooltip.gytrinket.attr.construct_build_speed_percent": "Construct Build Speed %",
+  "tooltip.gytrinket.attr.construct_non_shield_build_speed_percent": "Non-shield Construct Build Speed %",
   "tooltip.gytrinket.attr.construct_build_speed_independent": "Construct Build Speed Independent",
   "tooltip.gytrinket.attr.drone_health": "Drone Health",
   "tooltip.gytrinket.attr.drone_health_percent": "Drone Health %",
@@ -275,6 +276,9 @@
   "item.gytrinket.charged_shield_module": "Charged Shield Module",
   "item.gytrinket.grudge_module": "Grudge Module",
   "item.gytrinket.apex_apparatus_module": "Apex Apparatus Module",
+  "item.gytrinket.furnace_core_module": "Furnace Core Module",
+  "tooltip.gytrinket.furnace_core_module": "Furnace Core Module (Transcendence)",
+  "tooltip.gytrinket.furnace_core_module_desc": "+30%% build speed for non-shield constructs\n+30%% construct move, attack, orbit and rotation speed\nOnly active in Light Point Core: constructs take 0.8 construct self-damage every 10 ticks; lower HP grants higher attack speed (up to +50%% independent at 30%% HP); self-destruct additionally applies equal burn and ignites",
 
   "item.gytrinket.thrust_boost_module": "Thrust Boost Module",
   "item.gytrinket.aerodynamic_framework_module": "Aerodynamic Framework Module",

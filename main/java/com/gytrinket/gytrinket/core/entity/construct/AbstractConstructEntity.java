@@ -87,6 +87,18 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
     /** 武器攻速倍率（仅影响武器攻击，不影响爆破弹攻速），默认 1.0 */
     protected double weaponAttackSpeedMultiplier = 1.0;
 
+    /** 移动速度倍率（来自 construct_move_speed 属性），默认 1.0 */
+    protected double moveSpeedMultiplier = 1.0;
+
+    /** 环绕/阵列转速倍率（来自 construct_orbit_speed 属性），默认 1.0 */
+    protected double orbitSpeedMultiplier = 1.0;
+
+    /** 自转/朝向旋转速度倍率（来自 construct_rotation_speed 属性），默认 1.0 */
+    protected double rotationSpeedMultiplier = 1.0;
+
+    /** 低血量攻速独立乘区倍率（炉心融解模块），默认 1.0 */
+    protected double lowHpAttackSpeedMultiplier = 1.0;
+
     // ===== 索敌通用参数与状态 =====
     /** 玩家最大索敌距离限制：不可选择玩家此范围外的敌人 */
     protected static final float PLAYER_MAX_TARGET_RANGE = 35.0f;
@@ -195,7 +207,7 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
 
     @Override
     public double getAttackSpeedMultiplier() {
-        return attackSpeedMultiplier;
+        return attackSpeedMultiplier * lowHpAttackSpeedMultiplier;
     }
 
     @Override
@@ -211,6 +223,48 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
     @Override
     public void setWeaponAttackSpeedMultiplier(double multiplier) {
         this.weaponAttackSpeedMultiplier = multiplier;
+    }
+
+    @Override
+    public double getMoveSpeedMultiplier() {
+        return moveSpeedMultiplier;
+    }
+
+    @Override
+    public void setMoveSpeedMultiplier(double multiplier) {
+        this.moveSpeedMultiplier = multiplier;
+    }
+
+    @Override
+    public double getOrbitSpeedMultiplier() {
+        return orbitSpeedMultiplier;
+    }
+
+    @Override
+    public void setOrbitSpeedMultiplier(double multiplier) {
+        this.orbitSpeedMultiplier = multiplier;
+    }
+
+    @Override
+    public double getRotationSpeedMultiplier() {
+        return rotationSpeedMultiplier;
+    }
+
+    @Override
+    public void setRotationSpeedMultiplier(double multiplier) {
+        this.rotationSpeedMultiplier = multiplier;
+    }
+
+    /** 设置低血量攻速独立乘区倍率（炉心融解模块） */
+    @Override
+    public void setLowHpAttackSpeedMultiplier(double multiplier) {
+        this.lowHpAttackSpeedMultiplier = multiplier;
+    }
+
+    /** 获取低血量攻速独立乘区倍率（炉心融解模块） */
+    @Override
+    public double getLowHpAttackSpeedMultiplier() {
+        return lowHpAttackSpeedMultiplier;
     }
 
     // ===== 朝向控制 =====
@@ -235,7 +289,9 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
         while (deltaYaw > 180.0f) deltaYaw -= 360.0f;
         while (deltaYaw < -180.0f) deltaYaw += 360.0f;
 
-        float yawStep = Math.min(Math.abs(deltaYaw), rotationSpeed);
+        // 自转速度受 rotationSpeedMultiplier 影响（炉心融解等模块）
+        float effectiveSpeed = rotationSpeed * (float) getRotationSpeedMultiplier();
+        float yawStep = Math.min(Math.abs(deltaYaw), effectiveSpeed);
         if (deltaYaw < 0) yawStep = -yawStep;
         float newYaw = currentYaw + yawStep;
 

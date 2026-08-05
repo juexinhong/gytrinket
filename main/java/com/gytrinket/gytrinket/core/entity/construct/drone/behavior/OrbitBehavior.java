@@ -3,6 +3,7 @@ package com.gytrinket.gytrinket.core.entity.construct.drone.behavior;
 import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.entity.construct.ConstructGroupCache;
 import com.gytrinket.gytrinket.core.entity.construct.ConstructManager;
+import com.gytrinket.gytrinket.core.entity.construct.IConstructEntity;
 import com.gytrinket.gytrinket.core.entity.construct.drone.DroneArrayType;
 import com.gytrinket.gytrinket.core.entity.construct.drone.DroneBullet;
 import com.gytrinket.gytrinket.core.entity.construct.drone.DroneConstructTypes;
@@ -77,7 +78,9 @@ public class OrbitBehavior implements IDroneBehavior {
 
         // 使用游戏时间计算旋转角度
         double gameTime = owner.level().getGameTime() / 20.0;
-        double rotationAngle = gameTime * ANGULAR_VELOCITY * Math.PI * 2;
+        // 环绕转速受 orbitSpeedMultiplier 影响（炉心融解等模块）
+        double orbitMultiplier = drone instanceof IConstructEntity cEntity ? cEntity.getOrbitSpeedMultiplier() : 1.0;
+        double rotationAngle = gameTime * ANGULAR_VELOCITY * Math.PI * 2 * orbitMultiplier;
 
         // 计算每个无人机的初始角度，确保均匀分布
         // 公式：2π * (droneIndex / totalDrones)

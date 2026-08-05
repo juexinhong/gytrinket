@@ -237,6 +237,9 @@ public class Config {
     public static final ModConfigSpec.DoubleValue SELF_DESTRUCT_DAMAGE_PER_MAX_HEALTH;
     public static final ModConfigSpec.DoubleValue SELF_DESTRUCT_RADIUS_PER_MAX_HEALTH;
 
+    // ===== 24.5.1 炉心融解模块 (furnace_core) =====
+    public static final ModConfigSpec.ConfigValue<List<? extends String>> FURNACE_CORE_ITEMS;
+
     // ===== 24.6 督战者 (taskmaster) =====
     public static final ModConfigSpec.ConfigValue<List<? extends String>> TASKMASTER_ITEMS;
 
@@ -401,6 +404,9 @@ public class Config {
             "construct_attack_speed_independent:INDEPENDENT_MULTIPLY:construct_attack_speed," +
             "construct_build_speed_percent:PERCENT:construct_build_speed," +
             "construct_build_speed_independent:INDEPENDENT_MULTIPLY:construct_build_speed," +
+            "construct_move_speed_percent:PERCENT:construct_move_speed," +
+            "construct_orbit_speed_percent:PERCENT:construct_orbit_speed," +
+            "construct_rotation_speed_percent:PERCENT:construct_rotation_speed," +
             "construct_drone_assault_attack_speed_percent:PERCENT:construct_drone_assault_attack_speed," +
             "construct_drone_assault_attack_speed_independent:INDEPENDENT_MULTIPLY:construct_drone_assault_attack_speed," +
             "construct_drone_defense_health_base:BASE:construct_drone_defense_health," +
@@ -542,6 +548,8 @@ public class Config {
                 "gytrinket:grudge_module|player_health_percent=0.05|attack_damage_percent=0.05|movement_speed_independent=-0.1",
 
                 "gytrinket:apex_apparatus_module|construct_attack_speed_percent=0.30|construct_health_percent=0.30|shield_effect_percent=0.20|construct_build_speed_independent=-0.75",
+
+                "gytrinket:furnace_core_module|construct_non_shield_build_speed_percent=0.30|construct_attack_speed_percent=0.30|construct_move_speed_percent=0.30|construct_orbit_speed_percent=0.30|construct_rotation_speed_percent=0.30",
 
                 "gytrinket:quick_reconstruction_module|recovery_efficiency_percent=1.0|player_health=10|coating=2",
 
@@ -1555,6 +1563,16 @@ public class Config {
             "默认0.3"
         ).defineInRange("selfDestructRadiusPerMaxHealth", 0.3, 0.0, 10.0);
 
+        // ===== 24.5.1 炉心融解模块 =====
+        FURNACE_CORE_ITEMS = BUILDER.comment(
+            "炉心融解模块物品",
+            "仅在光点核心中生效特殊效果：构造体每10刻受0.8构造体自伤、低血攻速加成、自毁装置附带灼烧与点燃",
+            "示例：gytrinket:furnace_core_module"
+        ).defineListAllowEmpty("furnaceCoreItems",
+            java.util.List.of("gytrinket:furnace_core_module"),
+            s -> true
+        );
+
         BUILDER.pop();
 
         // ===== 24.6 督战者 =====
@@ -2081,6 +2099,7 @@ public class Config {
     private static final Set<Item> NEAR_DEATH_PROTECTION_ITEM_SET = new HashSet<>();
     private static final Set<Item> NEAR_DEATH_EXPLOSION_ITEM_SET = new HashSet<>();
     private static final Set<Item> SELF_DESTRUCT_ITEM_SET = new HashSet<>();
+    private static final Set<Item> FURNACE_CORE_ITEM_SET = new HashSet<>();
     private static final Set<Item> TASKMASTER_ITEM_SET = new HashSet<>();
     private static final Set<Item> COMMANDER_ITEM_SET = new HashSet<>();
     private static final Set<Item> ARC_BARRIER_ITEM_SET = new HashSet<>();
@@ -2268,6 +2287,7 @@ public class Config {
         loadItemSet(NEAR_DEATH_PROTECTION_ITEM_SET, NEAR_DEATH_PROTECTION_ITEMS.get(), "濒死保护前置");
         loadItemSet(NEAR_DEATH_EXPLOSION_ITEM_SET, NEAR_DEATH_EXPLOSION_ITEMS.get(), "濒死自爆前置");
         loadItemSet(SELF_DESTRUCT_ITEM_SET, SELF_DESTRUCT_ITEMS.get(), "自毁装置前置");
+        loadItemSet(FURNACE_CORE_ITEM_SET, FURNACE_CORE_ITEMS.get(), "炉心融解模块");
         loadItemSet(TASKMASTER_ITEM_SET, TASKMASTER_ITEMS.get(), "督战者前置");
         loadItemSet(DRONE_MODULE_ITEM_SET, DRONE_MODULE_ITEMS.get(), "基础无人机构建");
         loadItemSet(ASSAULT_DRONE_MODULE_ITEM_SET, ASSAULT_DRONE_MODULE_ITEMS.get(), "突击无人机构建");
@@ -2531,6 +2551,10 @@ public class Config {
 
     public static boolean isSelfDestructItem(Item item) {
         return SELF_DESTRUCT_ITEM_SET.contains(item);
+    }
+
+    public static boolean isFurnaceCoreItem(Item item) {
+        return FURNACE_CORE_ITEM_SET.contains(item);
     }
 
     public static boolean isTaskmasterItem(Item item) {

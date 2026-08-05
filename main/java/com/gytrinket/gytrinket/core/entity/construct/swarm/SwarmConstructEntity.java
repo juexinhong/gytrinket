@@ -267,7 +267,7 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
             Math.pow(pos.x - targetPos.x, 2) + Math.pow(pos.z - targetPos.z, 2)
         );
 
-        double moveSpeed = Config.getSwarmMoveSpeed();
+        double moveSpeed = Config.getSwarmMoveSpeed() * getMoveSpeedMultiplier();
 
         double speed = 0;
         Vec3 direction = Vec3.ZERO;
@@ -359,7 +359,7 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
             return;
         }
 
-        double moveSpeed = Config.getSwarmMoveSpeed();
+        double moveSpeed = Config.getSwarmMoveSpeed() * getMoveSpeedMultiplier();
 
         // 水平移动：朝向玩家，超过 STANDBY_RANGE 时加速接近
         Vec3 toOwner = new Vec3(ownerPos.x - pos.x, 0, ownerPos.z - pos.z);
@@ -404,7 +404,7 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
             Math.pow(pos.x - ownerPos.x, 2) + Math.pow(pos.z - ownerPos.z, 2)
         );
 
-        double moveSpeed = Config.getSwarmMoveSpeed();
+        double moveSpeed = Config.getSwarmMoveSpeed() * getMoveSpeedMultiplier();
 
         Vec3 toOwner = new Vec3(ownerPos.x - pos.x, 0, ownerPos.z - pos.z);
         Vec3 horizontalDir = toOwner.lengthSqr() > 0.001 ? toOwner.normalize() : Vec3.ZERO;

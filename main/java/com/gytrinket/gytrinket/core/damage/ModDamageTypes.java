@@ -89,6 +89,11 @@ public class ModDamageTypes {
             Registries.DAMAGE_TYPE, ResourceLocation.fromNamespaceAndPath(NAMESPACE, "siphon_damage")
     );
 
+    /** 构造体自伤（炉心融解模块） */
+    public static final ResourceKey<DamageType> CONSTRUCT_SELF_DAMAGE = ResourceKey.create(
+            Registries.DAMAGE_TYPE, ResourceLocation.fromNamespaceAndPath(NAMESPACE, "construct_self_damage")
+    );
+
     // ==================== 伤害来源创建方法 ====================
 
     /**
@@ -308,6 +313,15 @@ public class ModDamageTypes {
                 level.registryAccess().registryOrThrow(Registries.DAMAGE_TYPE).getHolderOrThrow(SIPHON_DAMAGE),
                 causingEntity,
                 causingEntity
+        );
+    }
+
+    /**
+     * 创建构造体自伤伤害来源（炉心融解模块，无直接攻击者）
+     */
+    public static DamageSource getConstructSelfDamageSource(Level level) {
+        return new DamageSource(
+                level.registryAccess().registryOrThrow(Registries.DAMAGE_TYPE).getHolderOrThrow(CONSTRUCT_SELF_DAMAGE)
         );
     }
 }

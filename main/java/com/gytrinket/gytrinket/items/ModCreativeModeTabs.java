@@ -158,6 +158,7 @@ public class ModCreativeModeTabs {
                         output.accept(ModItems.CHARGED_SHIELD_MODULE.get());
                         output.accept(ModItems.GRUDGE_MODULE.get());
                         output.accept(ModItems.APEX_APPARATUS_MODULE.get());
+                        output.accept(ModItems.FURNACE_CORE_MODULE.get());
 
                         // 零件
                         output.accept(ModItems.TOTEM.get());

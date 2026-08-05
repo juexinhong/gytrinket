@@ -40,6 +40,30 @@ public interface IConstructEntity {
     /** 获取当前武器攻速倍率 */
     double getWeaponAttackSpeedMultiplier();
 
+    /** 设置移动速度倍率（来自 construct_move_speed 等属性） */
+    void setMoveSpeedMultiplier(double multiplier);
+
+    /** 获取当前移动速度倍率 */
+    double getMoveSpeedMultiplier();
+
+    /** 设置环绕/阵列转速倍率（来自 construct_orbit_speed 等属性） */
+    void setOrbitSpeedMultiplier(double multiplier);
+
+    /** 获取当前环绕/阵列转速倍率 */
+    double getOrbitSpeedMultiplier();
+
+    /** 设置自转/朝向旋转速度倍率（来自 construct_rotation_speed 等属性） */
+    void setRotationSpeedMultiplier(double multiplier);
+
+    /** 获取当前自转/朝向旋转速度倍率 */
+    double getRotationSpeedMultiplier();
+
+    /** 设置低血量攻速独立乘区倍率（炉心融解模块） */
+    void setLowHpAttackSpeedMultiplier(double multiplier);
+
+    /** 获取当前低血量攻速独立乘区倍率（炉心融解模块） */
+    double getLowHpAttackSpeedMultiplier();
+
     /** 刷新构造体属性（重算并应用 construct_* 属性） */
     void refreshConstructAttributes();
 

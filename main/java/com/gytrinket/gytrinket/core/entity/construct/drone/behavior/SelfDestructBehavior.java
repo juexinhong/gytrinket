@@ -1,20 +1,28 @@
 package com.gytrinket.gytrinket.core.entity.construct.drone.behavior;
 
 import com.gytrinket.gytrinket.config.Config;
-import com.gytrinket.gytrinket.core.shield.DisableSystem;
+import com.gytrinket.gytrinket.core.attribute.AttributeManager;
+import com.gytrinket.gytrinket.core.burn.BurnManager;
+import com.gytrinket.gytrinket.core.burn.IBurnSource;
 import com.gytrinket.gytrinket.core.entity.construct.IConstructEntity;
 import com.gytrinket.gytrinket.core.entity.construct.drone.DroneConstructEntity;
-import com.gytrinket.gytrinket.core.explosion.SimulatedExplosion;
 import com.gytrinket.gytrinket.core.entity.construct.HostileTargetManager;
+import com.gytrinket.gytrinket.core.explosion.SimulatedExplosion;
+import com.gytrinket.gytrinket.core.ignite.IIgniteSource;
+import com.gytrinket.gytrinket.core.ignite.IgniteManager;
+import com.gytrinket.gytrinket.core.shield.DisableSystem;
 import com.gytrinket.gytrinket.storage.PlayerStore;
 import com.gytrinket.gytrinket.storage.PlayerStoreManager;
+import com.gytrinket.gytrinket.storage.PlayerStoreUtils;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.Set;
@@ -113,6 +121,34 @@ public class SelfDestructBehavior implements IDroneSpecialBehavior {
                 true,
                 playerOwner
         );
+
+        // 炉心融解模块：自毁附带等量灼烧并默认点燃
+        if (playerOwner != null && PlayerStoreUtils.hasActiveItem(playerOwner, Config::isFurnaceCoreItem)) {
+            float burnDamage = damage;
+            if (playerOwner != null) {
+                double explosionDamageMultiplier = AttributeManager.getGroupAttribute(playerOwner.getUUID(), "explosion_damage");
+                burnDamage = (float) (damage * explosionDamageMultiplier);
+            }
+            IBurnSource burnSource = new IBurnSource.DefaultBurnSource(playerOwner);
+            IIgniteSource igniteSource = new IIgniteSource.DefaultIgniteSource(playerOwner);
+
+            AABB aabb = new AABB(
+                    pos.x - radius, pos.y - radius, pos.z - radius,
+                    pos.x + radius, pos.y + radius, pos.z + radius
+            );
+            for (LivingEntity entity : construct.level().getEntitiesOfClass(LivingEntity.class, aabb)) {
+                if (entity == construct || !entity.isAlive() || entity instanceof Player
+                        || !(entity instanceof Mob)
+                        || !HostileTargetManager.shouldAttackPlayer(entity, playerOwner)) {
+                    continue;
+                }
+                if (entity.position().distanceTo(pos) > radius) {
+                    continue;
+                }
+                BurnManager.applyBurnCharge(entity, burnDamage, burnSource);
+                IgniteManager.applyIgnite(entity, igniteSource, "self_destruct", true);
+            }
+        }
 
         if (construct.level() instanceof ServerLevel serverLevel) {
             serverLevel.sendParticles(ParticleTypes.EXPLOSION_EMITTER,

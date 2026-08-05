@@ -69,6 +69,7 @@
   "tooltip.gytrinket.attr.construct_attack_speed_percent": "构造体攻击速度百分比",
   "tooltip.gytrinket.attr.construct_attack_speed_independent": "构造体攻击速度独立乘区",
   "tooltip.gytrinket.attr.construct_build_speed_percent": "构造体构建速度百分比",
+  "tooltip.gytrinket.attr.construct_non_shield_build_speed_percent": "非护盾构造体构建速度百分比",
   "tooltip.gytrinket.attr.construct_build_speed_independent": "构造体构建速度独立乘区",
   "tooltip.gytrinket.attr.drone_health": "无人机生命",
   "tooltip.gytrinket.attr.drone_health_percent": "无人机生命百分比",
@@ -313,6 +314,9 @@
   "item.gytrinket.charged_shield_module": "充能护盾模块",
   "item.gytrinket.grudge_module": "积怨模块",
   "item.gytrinket.apex_apparatus_module": "尖端器械模块",
+  "item.gytrinket.furnace_core_module": "炉心融解模块",
+  "tooltip.gytrinket.furnace_core_module": "炉心融解模块（超越模块）",
+  "tooltip.gytrinket.furnace_core_module_desc": "+30%%非护盾构造体构建速度\n+30%%构造体移动、攻击速度、环绕与转速\n仅在光点核心时生效：构造体每10刻受0.8构造体自伤；血量越低攻速越高（生命值30%%时最高+50%%独立乘区）；自毁装置附带等量灼烧并默认点燃",
 
   "item.gytrinket.beam": "光束",
   "item.gytrinket.barrier": "屏障",

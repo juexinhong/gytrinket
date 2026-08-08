@@ -277,9 +277,6 @@
   "item.gytrinket.grudge_module": "Grudge Module",
   "item.gytrinket.apex_apparatus_module": "Apex Apparatus Module",
   "item.gytrinket.furnace_core_module": "Furnace Core Module",
-  "item.gytrinket.flame_spear": "Flame Spear",
-  "tooltip.gytrinket.flame_spear": "Flame Spear (Charge Weapon)",
-  "tooltip.gytrinket.flame_spear_desc": "Counterbalance-charges while held; charge value = spear length\nApplies burn equal to charge to enemies in the beam every tick, and ignites\nAttack speed and explosion radius attributes equally increase charge rate",
   "tooltip.gytrinket.furnace_core_module": "Furnace Core Module (Transcendence)",
   "tooltip.gytrinket.furnace_core_module_desc": "+30%% build speed for non-shield constructs\n+30%% construct move, attack, orbit and rotation speed\nOnly active in Light Point Core: constructs take 0.8 construct self-damage every 10 ticks; lower HP grants higher attack speed (up to +50%% independent at 30%% HP); self-destruct additionally applies equal burn and ignites",
 

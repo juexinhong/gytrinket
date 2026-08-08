@@ -33,16 +33,18 @@ public class AdvancedEngineeringEventHandler {
         UUID playerUUID = player.getUUID();
 
         if (!hasRequiredItem(playerUUID)) {
-            AttributeManager.removeDynamicAttribute(playerUUID, NAMESPACE, "drone_health_independent");
-            AttributeManager.removeDynamicAttribute(playerUUID, NAMESPACE, "drone_damage_independent");
+            // 卸下/不满足前置：按比例降低无人机生命值与伤害（移除独立乘区加成）
+            AttributeManager.removeDynamicAttribute(playerUUID, NAMESPACE, "construct_drone_health_independent");
+            AttributeManager.removeDynamicAttribute(playerUUID, NAMESPACE, "construct_drone_damage_independent");
             return;
         }
 
+        // 装备时按当前光点等级计算加成：倍率 = 1 + 等级 × 每级加成
         int level = Math.max(0, ModLevelManager.getModLevel(playerUUID));
         double bonus = level * Config.ADVANCED_ENGINEERING_BONUS_PER_LEVEL.get();
 
-        AttributeManager.setDynamicAttribute(playerUUID, NAMESPACE, "drone_health_independent", bonus);
-        AttributeManager.setDynamicAttribute(playerUUID, NAMESPACE, "drone_damage_independent", bonus);
+        AttributeManager.setDynamicAttribute(playerUUID, NAMESPACE, "construct_drone_health_independent", bonus);
+        AttributeManager.setDynamicAttribute(playerUUID, NAMESPACE, "construct_drone_damage_independent", bonus);
     }
 
     private static boolean hasRequiredItem(UUID playerUUID) {

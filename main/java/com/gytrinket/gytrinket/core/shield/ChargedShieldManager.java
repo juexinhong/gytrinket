@@ -3,7 +3,6 @@ package com.gytrinket.gytrinket.core.shield;
 import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
 import com.gytrinket.gytrinket.core.attack_mode.charged_attack.ChargedAttackManager;
-import com.gytrinket.gytrinket.core.weapon.flamespear.FlameSpearManager;
 import com.gytrinket.gytrinket.gytrinket;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
@@ -94,8 +93,7 @@ public class ChargedShieldManager {
         }
 
         double currentBonus = PLAYER_CURRENT_BONUS.getOrDefault(uuid, 0.0);
-        // 充能护盾适配：充能攻击模块 或 焰矛充能 都算作充能，充能值取对应来源
-        boolean isCharging = ChargedAttackManager.isCharging(player) || FlameSpearManager.isSimulatedUsing(player);
+        boolean isCharging = ChargedAttackManager.isCharging(player);
         boolean wasCharging = PLAYER_WAS_CHARGING.getOrDefault(uuid, false);
 
         // 检测充能→释放的瞬间，启动延迟计时器
@@ -108,9 +106,7 @@ public class ChargedShieldManager {
 
         if (isCharging) {
             // 充能中：线性过渡到目标值
-            double chargeValue = ChargedAttackManager.isCharging(player)
-                    ? ChargedAttackManager.getChargeValue(player)
-                    : FlameSpearManager.getCharge(uuid);
+            double chargeValue = ChargedAttackManager.getChargeValue(player);
             double targetBonus = Math.min(chargeValue * Config.getChargedShieldChargeRatio(), Config.getChargedShieldMaxBonus());
 
             // 充能中清除延迟计时器

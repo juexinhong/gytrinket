@@ -54,9 +54,6 @@ public class ModItems {
     public static final DeferredItem<Item> SHIELD_WARP2 = ITEMS.registerSimpleItem("shield_warp2", new Item.Properties()); // 跃传护盾++
     public static final DeferredItem<Item> SHIELD_WARP3 = ITEMS.registerSimpleItem("shield_warp3", new Item.Properties()); // 跃传护盾+++
 
-    // 焰矛（充能武器）
-    public static final DeferredItem<Item> FLAME_SPEAR = ITEMS.register("flame_spear", () -> new com.gytrinket.gytrinket.items.FlameSpearItem(new Item.Properties().stacksTo(1))); // 焰矛
-
     // 框架物品
     public static final DeferredItem<Item> MODULAR_FRAMEWORK = ITEMS.registerSimpleItem("modular_framework", new Item.Properties()); // 模块化框架
     public static final DeferredItem<Item> CONSTRUCT_FRAME = ITEMS.registerSimpleItem("construct_frame", new Item.Properties()); // 构造体框架

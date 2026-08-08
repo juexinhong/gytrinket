@@ -315,9 +315,6 @@
   "item.gytrinket.grudge_module": "积怨模块",
   "item.gytrinket.apex_apparatus_module": "尖端器械模块",
   "item.gytrinket.furnace_core_module": "炉心融解模块",
-  "item.gytrinket.flame_spear": "焰矛",
-  "tooltip.gytrinket.flame_spear": "焰矛（充能武器）",
-  "tooltip.gytrinket.flame_spear_desc": "手持时制衡充能，充能值 = 焰矛长度\n每刻对光束范围内的敌人施加充能值等量的灼烧并点燃\n攻击速度与爆炸半径属性等量提高充能速率",
   "tooltip.gytrinket.furnace_core_module": "炉心融解模块（超越模块）",
   "tooltip.gytrinket.furnace_core_module_desc": "+30%%非护盾构造体构建速度\n+30%%构造体移动、攻击速度、环绕与转速\n仅在光点核心时生效：构造体每10刻受0.8构造体自伤；血量越低攻速越高（生命值30%%时最高+50%%独立乘区）；自毁装置附带等量灼烧并默认点燃",
 

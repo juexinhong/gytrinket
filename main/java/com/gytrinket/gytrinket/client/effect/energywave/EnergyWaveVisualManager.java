@@ -72,6 +72,42 @@ public class EnergyWaveVisualManager {
     public static final double WAVE_LENGTH_CAP = 20.0;
 
     /**
+     * 能量波前移量（格），随长度增加而增加：0长度对应0，长度极限20格对应1。
+     * 抵消波后泛光后移感，并避免短波时相机处于波内外中间态产生视觉错误。
+     * 伤害范围长度需加上该前移量（与能量波使用同一长度计算）以对齐能量波尖端。
+     */
+    public static double computeForwardShift(double length) {
+        return Math.min(length, WAVE_LENGTH_CAP) / WAVE_LENGTH_CAP;
+    }
+
+    // ===== 焰矛动态透明度：长度0时正常（初始），长度达10格时降到最低 =====
+    /** 焰矛波透明度完全消退对应的长度（格） */
+    public static final float SPEAR_ALPHA_FULL_LENGTH = 10.0f;
+    /** 初始（长度0）透明度（正常） */
+    private static final float SPEAR_ALPHA_NORMAL_CENTER = 1.0f;
+    private static final float SPEAR_ALPHA_NORMAL_COLOR = 0.8f;
+    private static final float SPEAR_ALPHA_NORMAL_OUTER = 0.7f;
+    private static final float SPEAR_ALPHA_NORMAL_BLOOM = 0.7f;
+    /** 最低透明度（长度≥10格时） */
+    private static final float SPEAR_ALPHA_MIN_CENTER = 0.4f;
+    private static final float SPEAR_ALPHA_MIN_COLOR = 0.4f;
+    private static final float SPEAR_ALPHA_MIN_OUTER = 0.35f;
+    private static final float SPEAR_ALPHA_MIN_BLOOM = 0.4f;
+
+    /**
+     * 根据长度计算焰矛波各层透明度：长度0为正常，随长度增加线性降低，长度≥10格时降到最低。
+     */
+    private static float[] computeSpearAlphas(float length) {
+        float t = Math.min(length / SPEAR_ALPHA_FULL_LENGTH, 1.0f);
+        return new float[]{
+            SPEAR_ALPHA_NORMAL_CENTER + (SPEAR_ALPHA_MIN_CENTER - SPEAR_ALPHA_NORMAL_CENTER) * t,
+            SPEAR_ALPHA_NORMAL_COLOR + (SPEAR_ALPHA_MIN_COLOR - SPEAR_ALPHA_NORMAL_COLOR) * t,
+            SPEAR_ALPHA_NORMAL_OUTER + (SPEAR_ALPHA_MIN_OUTER - SPEAR_ALPHA_NORMAL_OUTER) * t,
+            SPEAR_ALPHA_NORMAL_BLOOM + (SPEAR_ALPHA_MIN_BLOOM - SPEAR_ALPHA_NORMAL_BLOOM) * t
+        };
+    }
+
+    /**
      * 能量波宽度 = 长度/20（长宽比 1:20），宽度极限 = 长度/12。
      * 宽度跟随能量波机制动态变化。
      */
@@ -105,14 +141,16 @@ public class EnergyWaveVisualManager {
         float len = (float) Math.min(length, WAVE_LENGTH_CAP);
         // 宽度直接使用服务端传入值（有限穿透时长度缩短但宽度不降低）
         float hw = (float) Math.max(0, width);
+        // 动态透明度：随长度增加透明度降低，长度达10格时降到最低
+        float[] alphas = computeSpearAlphas(len);
 
         WaveVisualData wave = new WaveVisualData(
                 -1, id, x, y, z, dirX, dirY, dirZ, false, currentTime,
                 hw * 0.6f, len * 0.6f, hw * 0.8f, len * 0.8f, hw, len,
-                0.9f, 0.9f, 0.0f, 1.0f,
-                0.9f, 0.6f, 0.0f, 0.8f,
-                0.9f, 0.35f, 0.0f, 0.7f,
-                0.9f, 0.35f, 0.0f, 0.7f,
+                0.9f, 0.9f, 0.0f, alphas[0],
+                0.9f, 0.6f, 0.0f, alphas[1],
+                0.9f, 0.35f, 0.0f, alphas[2],
+                0.9f, 0.35f, 0.0f, alphas[3],
                 1.0f, 72000, 0.0f
         );
         wave.dynamic = true;
@@ -438,10 +476,14 @@ public class EnergyWaveVisualManager {
         public float targetOuterHW, targetOuterLen;
 
         // 层颜色
-        public final float centerR, centerG, centerB, centerAlpha;
-        public final float colorR, colorG, colorB, colorAlpha;
-        public final float outerR, outerG, outerB, outerAlpha;
-        public final float bloomR, bloomG, bloomB, bloomAlpha;
+        public final float centerR, centerG, centerB;
+        public float centerAlpha;
+        public final float colorR, colorG, colorB;
+        public float colorAlpha;
+        public final float outerR, outerG, outerB;
+        public float outerAlpha;
+        public final float bloomR, bloomG, bloomB;
+        public float bloomAlpha;
 
         // 膨胀阶段最终缩放倍率
         public float endScale;
@@ -518,6 +560,12 @@ public class EnergyWaveVisualManager {
             float len = Math.min(length, (float) WAVE_LENGTH_CAP);
             // 宽度直接使用服务端传入值（有限穿透时长度缩短但宽度不降低）
             float hw = (float) Math.max(0, width);
+            // 动态透明度：随长度增加透明度降低，长度达10格时降到最低（可看穿、不遮挡视线）
+            float[] alphas = computeSpearAlphas(len);
+            this.centerAlpha = alphas[0];
+            this.colorAlpha = alphas[1];
+            this.outerAlpha = alphas[2];
+            this.bloomAlpha = alphas[3];
             this.len = len;
             this.width = hw;
 

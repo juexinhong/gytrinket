@@ -5,7 +5,6 @@ import com.gytrinket.gytrinket.core.attack_mode.burst_fire.BurstFireManager;
 import com.gytrinket.gytrinket.core.attack_mode.charged_attack.ChargedAttackDamageTracker;
 import com.gytrinket.gytrinket.core.attack_mode.charged_attack.ChargedAttackManager;
 import com.gytrinket.gytrinket.core.attack_mode.electric_discharge.ElectricDischargeManager;
-import com.gytrinket.gytrinket.core.weapon.flamespear.FlameSpearManager;
 import com.gytrinket.gytrinket.gytrinket;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
@@ -350,11 +349,6 @@ public class AttackModeManager {
 
             // 含充能的组合：充能期间维持强袭
             if (doesAssaultTriggerDuringCharging(combo) && isCharging) {
-                shouldMaintain = true;
-            }
-
-            // 焰矛充能：也维持强袭（焰矛充能期间由焰矛管理器每10刻触发一次强袭）
-            if (FlameSpearManager.isSimulatedUsing(player)) {
                 shouldMaintain = true;
             }
 

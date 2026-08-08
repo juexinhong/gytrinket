@@ -69,13 +69,10 @@ public class NetworkHandler {
         registrar.playToClient(ResponsePanelDataPayload.TYPE, ResponsePanelDataPayload.STREAM_CODEC, ResponsePanelDataPayload::handle);
         registrar.playToClient(ResponseConfigDataPayload.TYPE, ResponseConfigDataPayload.STREAM_CODEC, ResponseConfigDataPayload::handle);
         registrar.playToClient(SyncChargedAttackPayload.TYPE, SyncChargedAttackPayload.STREAM_CODEC, SyncChargedAttackPayload::handle);
-        registrar.playToClient(SyncFlameSpearPayload.TYPE, SyncFlameSpearPayload.STREAM_CODEC, SyncFlameSpearPayload::handle);
         registrar.playToClient(SyncBurstFiringPayload.TYPE, SyncBurstFiringPayload.STREAM_CODEC, SyncBurstFiringPayload::handle);
         registrar.playToClient(ChargedSweepParticlePacket.TYPE, ChargedSweepParticlePacket.STREAM_CODEC, ChargedSweepParticlePacket::handle);
         registrar.playToClient(SwarmEnergyWavePayload.TYPE, SwarmEnergyWavePayload.STREAM_CODEC, SwarmEnergyWavePayload::handle);
         registrar.playToClient(EnergyWaveExplosionPayload.TYPE, EnergyWaveExplosionPayload.STREAM_CODEC, EnergyWaveExplosionPayload::handle);
-        registrar.playToClient(DynamicEnergyWavePayload.TYPE, DynamicEnergyWavePayload.STREAM_CODEC, DynamicEnergyWavePayload::handle);
-        registrar.playToServer(SimulatedUsingPayload.TYPE, SimulatedUsingPayload.STREAM_CODEC, SimulatedUsingPayload::handle);
 
         // 幽灵机身
         registrar.playToClient(SyncGhostStealthPayload.TYPE, SyncGhostStealthPayload.STREAM_CODEC, SyncGhostStealthPayload::handle);
@@ -162,24 +159,6 @@ public class NetworkHandler {
         PacketDistributor.sendToAllPlayers(new EnergyWaveExplosionPayload(center.x, center.y, center.z, direction.x, direction.y, direction.z, splashLength, positionSyncEntityId, colorType, offsetDistance));
     }
 
-    /**
-     * 发送动态能量波（焰矛等持续武器）。
-     *
-     * @param active true=添加/更新，false=移除
-     */
-    public static void sendDynamicEnergyWaveToAll(net.minecraft.server.level.ServerLevel level, int id, boolean active,
-                                                  Vec3 center, Vec3 direction, double length, double width) {
-        PacketDistributor.sendToAllPlayers(new DynamicEnergyWavePayload(id, active,
-                center.x, center.y, center.z, direction.x, direction.y, direction.z, length, width));
-    }
-
-    /**
-     * 客户端→服务端：发送焰矛模拟充能状态（右键按下/松开）。
-     */
-    public static void sendSimulatedUsingToServer(int playerId, boolean using) {
-        PacketDistributor.sendToServer(new SimulatedUsingPayload(playerId, using));
-    }
-
     public static void sendExplosiveShieldFlashToAll(net.minecraft.server.level.ServerLevel level, net.minecraft.world.entity.Entity entity) {
         PacketDistributor.sendToAllPlayers(new ExplosiveShieldFlashPayload(entity.getX(), entity.getY() + entity.getBbHeight() / 2.0, entity.getZ()));
     }
@@ -214,13 +193,6 @@ public class NetworkHandler {
         double attackDamage = player.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE);
         double chargedDamage = attackDamage * (1.0 + chargeValue);
         PacketDistributor.sendToPlayer(player, new SyncChargedAttackPayload(chargeValue, chargedDamage));
-    }
-
-    /**
-     * 发送焰矛HUD同步数据（充能值 + 当前充能速率）。
-     */
-    public static void sendFlameSpearSyncToPlayer(ServerPlayer player, double chargeValue, double chargeRate) {
-        PacketDistributor.sendToPlayer(player, new SyncFlameSpearPayload(chargeValue, chargeRate));
     }
 
     public static void sendBurstFiringToPlayer(ServerPlayer player, boolean isBurstFiring) {

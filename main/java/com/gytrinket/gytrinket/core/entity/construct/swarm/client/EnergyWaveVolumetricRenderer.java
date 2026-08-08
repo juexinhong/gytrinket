@@ -28,12 +28,6 @@ public class EnergyWaveVolumetricRenderer {
     private static final float BLOOM_MAX_RATIO = 0.8f;
 
     /**
-     * 后移补偿：波整体前移量（格），随波长度增加而增加。
-     * 初始（长度0）为 0，达到长度极限20格时为 1.5 格，抵消波后泛光造成的整体后移感。
-     */
-    private static final float BACK_GLOW_SHIFT_MAX = 1.5f;
-
-    /**
      * 渲染来自 EnergyWaveVisualManager 的 WaveVisualData 列表。
      */
     public static void renderWaves(RenderLevelStageEvent event, List<WaveVisualData> waveDataList) {
@@ -182,8 +176,9 @@ public class EnergyWaveVolumetricRenderer {
         float tipLen = Math.max(outerLen - outerHW, 0.001f);
         float colorTipLen = Math.max(colorLen - colorHW, 0.001f);
         float centerTipLen = Math.max(centerLen - centerHW, 0.001f);
-        // 后移补偿：前移量随波长度增加而增加（0 → 长度极限20格 → 1.5格），抵消波后泛光后移感
-        float forwardShift = BACK_GLOW_SHIFT_MAX * (Math.min(outerLen, 20.0f) / 20.0f);
+        // 前移量随长度增加（0长度→0，20格→1），抵消波后泛光后移感并避免相机处于波内外中间态；
+        // 尖端落在 锚点+前移量+长度 处
+        float forwardShift = (float) EnergyWaveVisualManager.computeForwardShift(outerLen);
         Vec3 waveCenter = anchor.add(forward.scale(outerHW + forwardShift));
 
         float bloomMaxDist = outerHW * BLOOM_MAX_RATIO;
@@ -276,8 +271,9 @@ public class EnergyWaveVolumetricRenderer {
         float tipLen = Math.max(outerLen - outerHW, 0.001f);
         float colorTipLen = Math.max(colorLen - colorHW, 0.001f);
         float centerTipLen = Math.max(centerLen - centerHW, 0.001f);
-        // 后移补偿：前移量随波长度增加而增加（0 → 长度极限20格 → 1.5格），抵消波后泛光后移感
-        float forwardShift = BACK_GLOW_SHIFT_MAX * (Math.min(outerLen, 20.0f) / 20.0f);
+        // 前移量随长度增加（0长度→0，20格→1），抵消波后泛光后移感并避免相机处于波内外中间态；
+        // 尖端落在 锚点+前移量+长度 处
+        float forwardShift = (float) EnergyWaveVisualManager.computeForwardShift(outerLen);
         Vec3 waveCenter = anchor.add(forward.scale(outerHW + forwardShift));
 
         float bloomMaxDist = outerHW * BLOOM_MAX_RATIO;

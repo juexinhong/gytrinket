@@ -500,7 +500,7 @@ public class Config {
                 "gytrinket:shield_warp3|shield_base=18.0|shield_cooldown_time=6.0|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
 
                 "gytrinket:shield_amplifier_module|shield_percent=0.2",
-                "gytrinket:barrier_shield_module|shield_percent=0.05|shield_damage_reduction=-0.15|shield_cooldown_reduction_percent=-0.05",
+                "gytrinket:barrier_shield_module|shield_percent=0.05|shield_cooldown_reduction_percent=-0.05",
                 "gytrinket:reflect_shield_module|shield_percent=0.05",
                 "gytrinket:ultimate_shield_module|shield_base=11.0|shield_damage_reduction=-0.15|shield_effect_percent=0.15|shield_hit_cooldown_extend_final_multiplier=-0.65|player_health_independent=-0.85",
 

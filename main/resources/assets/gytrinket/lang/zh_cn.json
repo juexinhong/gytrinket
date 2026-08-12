@@ -123,7 +123,7 @@
 
   
   "tooltip.gytrinket.reflect_damage": "反射护盾",
-  "tooltip.gytrinket.reflect_damage_effect": "护盾受到攻击时，向攻击来源处发射灼烧粒子。灼烧敌人并点燃",
+  "tooltip.gytrinket.reflect_damage_effect": "护盾受到攻击时，向攻击来源方向发射能量攻击。灼烧敌人并点燃",
   
   "tooltip.gytrinket.explosive_shield": "易爆护盾",
   "tooltip.gytrinket.explosive_shield_effect": "护盾破裂时，对周围敌人造成%.1f点爆炸伤害",

@@ -136,7 +136,7 @@
   "tooltip.gytrinket.regen_shield_effect": "Enables shield natural recovery. When shield has value, player health regeneration efficiency is %d%%, shield regeneration efficiency is %d%%. When shield has no value, regeneration efficiency is 100%%",
 
   "tooltip.gytrinket.reflect_damage": "Reflect Shield",
-  "tooltip.gytrinket.reflect_damage_effect": "When shield takes damage, fires burning particles toward the attacker. Burns and ignites enemies",
+  "tooltip.gytrinket.reflect_damage_effect": "When shield takes damage, fires an energy attack toward the attack source. Burns and ignites enemies",
 
   "tooltip.gytrinket.explosive_shield": "Explosive Shield",
   "tooltip.gytrinket.explosive_shield_effect": "When shield breaks, deals %.1f explosion damage to nearby enemies",

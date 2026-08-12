@@ -42,7 +42,26 @@ public class NaturalRecoveryManager {
     /** 恢复触发间隔：每4刻触发一次（相当于1秒触发5次） */
     private static final int RECOVERY_INTERVAL = 4;
 
+    /**
+     * 自然恢复上限标准（格）：指最大护盾值或最大玩家生命。
+     * 最大值 ≤ 该值时正常恢复；超过该值的部分，恢复量折半（防止高最大值导致恢复数值崩坏）。
+     */
+    private static final double RECOVERY_BASE_LIMIT = 25.0;
+
     private NaturalRecoveryManager() {}
+
+    /**
+     * 计算有限制的恢复量：max ≤ 25 时正常（max × rate）；max > 25 时，
+     * 25 以内按正常比例，超过 25 的部分恢复量折半。
+     */
+    private static double computeLimitedRecovery(double maxValue, double rate) {
+        if (maxValue <= RECOVERY_BASE_LIMIT) {
+            return maxValue * rate;
+        }
+        double fullPart = RECOVERY_BASE_LIMIT * rate;
+        double halfPart = (maxValue - RECOVERY_BASE_LIMIT) * rate * 0.5;
+        return fullPart + halfPart;
+    }
 
     /**
      * 监听属性计算完毕事件
@@ -110,7 +129,8 @@ public class NaturalRecoveryManager {
         data.lastShieldRecovery = shieldRecovery;
 
         if (player.isAlive() && player.getHealth() > 0 && player.getHealth() < player.getMaxHealth()) {
-            float healAmount = (float)(player.getMaxHealth() * playerHealthRecovery);
+            // 恢复量限制：最大生命超过25的部分恢复量折半
+            float healAmount = (float) computeLimitedRecovery(player.getMaxHealth(), playerHealthRecovery);
             player.heal(healAmount);
         }
 
@@ -118,7 +138,8 @@ public class NaturalRecoveryManager {
             double currentShield = ShieldManager.getCurrentShield(playerUUID);
             double maxShield = ShieldManager.getMaxShield(playerUUID);
             if (currentShield > 0 && currentShield < maxShield) {
-                double shieldHealAmount = maxShield * shieldRecovery;
+                // 恢复量限制：最大护盾超过25的部分恢复量折半
+                double shieldHealAmount = computeLimitedRecovery(maxShield, shieldRecovery);
                 ShieldManager.addShield(playerUUID, shieldHealAmount);
             }
         }

@@ -27,10 +27,12 @@ public class ConversionEffectManager {
     private static class ConversionBaseValues {
         double shield;
         double health;
+        double healthMult;
 
-        ConversionBaseValues(double shield, double health) {
+        ConversionBaseValues(double shield, double health, double healthMult) {
             this.shield = shield;
             this.health = health;
+            this.healthMult = healthMult;
         }
     }
 
@@ -38,32 +40,13 @@ public class ConversionEffectManager {
     public static void onAttributesCalculated(PlayerAttributesCalculatedEvent event) {
         UUID playerUUID = event.getPlayerUUID();
 
-        PlayerStore store = PlayerStoreManager.getPlayerStore(playerUUID);
-        if (store == null) {
+        if (!hasConversionItem(playerUUID)) {
             removeConversionAttributes(playerUUID);
             PLAYER_BASE_VALUES.remove(playerUUID);
             return;
         }
 
-        boolean hasConversionItem = false;
-        for (int i = 0; i < store.getItemHandler().getSlots(); i++) {
-            ItemStack stack = store.getItemHandler().getStackInSlot(i);
-            if (!stack.isEmpty() && !DisableSystem.isItemDisabled(playerUUID, stack) && Config.isConversionItem(stack.getItem())) {
-                hasConversionItem = true;
-                break;
-            }
-        }
-
-        if (!hasConversionItem) {
-            removeConversionAttributes(playerUUID);
-            PLAYER_BASE_VALUES.remove(playerUUID);
-            return;
-        }
-
-        // 步骤1：立即清除转化施加的动态属性
-        removeConversionAttributes(playerUUID);
-
-        // 步骤2：确保获取到的是应用了所有修饰符后的生命值
+        // 确保生命修饰符已应用，maxHealth 为当前正确值（幂等，不触发重算）
         ServerPlayer player = event.getPlayer();
         if (player == null) {
             var server = ServerLifecycleHooks.getCurrentServer();
@@ -71,34 +54,37 @@ public class ConversionEffectManager {
                 player = server.getPlayerList().getPlayer(playerUUID);
             }
         }
-
-        // 获取护盾值（属性组计算后的值）
-        double shieldValue = AttributeManager.getGroupAttribute(playerUUID, "shield");
-
-        // 获取玩家最大生命值（确保应用了修饰符后的值）
-        double healthValue = 20.0;
-        if (player != null && player.isAlive()) {
-            // 先确保生命修饰符已应用
-            double healthBase = AttributeManager.getPlayerAttribute(playerUUID, "player_health");
-            double healthPercent = AttributeManager.getPlayerAttribute(playerUUID, "player_health_percent");
-            double healthIndependent = AttributeManager.getPlayerAttribute(playerUUID, "player_health_independent");
-
-            // 如果有生命属性需要应用，手动调用 PlayerHealthManager 的逻辑
-            if (healthBase != 0 || healthPercent != 1.0 || healthIndependent != 1.0) {
-                // 应用生命修饰符到玩家
-                PlayerHealthManager.onAttributesCalculated(event);
-            }
-
-            // 现在获取的就是应用了修饰符后的生命值
-            healthValue = player.getMaxHealth();
+        if (player == null || !player.isAlive()) {
+            return;
         }
+        PlayerHealthManager.onAttributesCalculated(event);
 
-        // 保存到映射中，防止循环膨胀
-        PLAYER_BASE_VALUES.put(playerUUID, new ConversionBaseValues(shieldValue, healthValue));
+        // 基础护盾：排除转化命名空间的贡献（不物理移除动态属性，避免触发重算循环）
+        double shieldBase = AttributeManager.getGroupAttributeExcludingNamespace(playerUUID, "shield", "conversion");
 
-        // 步骤3：执行转化
-        // 步骤4：设置动态属性
+        // 基础生命：用当前 maxHealth 反推，除以转化独立乘区贡献 (1 + 上次转化生命倍率)
+        ConversionBaseValues prev = PLAYER_BASE_VALUES.get(playerUUID);
+        double lastHealthMult = prev != null ? prev.healthMult : 0.0;
+        double healthBase = player.getMaxHealth() / (1.0 + lastHealthMult);
+
+        PLAYER_BASE_VALUES.put(playerUUID, new ConversionBaseValues(shieldBase, healthBase, lastHealthMult));
+
+        // 计算并设置转化倍率（setDynamicAttribute 值未变化时跳过，避免循环）
         performConversion(playerUUID);
+    }
+
+    private static boolean hasConversionItem(UUID playerUUID) {
+        PlayerStore store = PlayerStoreManager.getPlayerStore(playerUUID);
+        if (store == null) {
+            return false;
+        }
+        for (int i = 0; i < store.getItemHandler().getSlots(); i++) {
+            ItemStack stack = store.getItemHandler().getStackInSlot(i);
+            if (!stack.isEmpty() && !DisableSystem.isItemDisabled(playerUUID, stack) && Config.isConversionItem(stack.getItem())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static void performConversion(UUID playerUUID) {
@@ -130,7 +116,10 @@ public class ConversionEffectManager {
             healthMultiplier = (health + convertAmount) / health - 1;
         }
 
-        // 设置动态属性（独立乘区）
+        // 记录当前转化生命倍率，供下次反推基础生命
+        baseValues.healthMult = healthMultiplier;
+
+        // 设置动态属性（独立乘区）；值未变化时 setDynamicAttribute 会跳过，不会继续触发重算
         AttributeManager.setDynamicAttribute(playerUUID, DYNAMIC_ATTRIBUTE_KEY, "player_health_independent", healthMultiplier);
         AttributeManager.setDynamicAttribute(playerUUID, DYNAMIC_ATTRIBUTE_KEY, "shield_independent", shieldMultiplier);
     }

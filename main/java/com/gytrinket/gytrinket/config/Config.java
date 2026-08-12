@@ -469,10 +469,10 @@ public class Config {
             "示例：minecraft:diamond|shield_base=10.0|shield_percent=0.1"
         ).defineListAllowEmpty("itemAttributes",
             List.of(
-                "gytrinket:shield_gy|shield_base=8.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
-                "gytrinket:shield_gy1|shield_base=9.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
-                "gytrinket:shield_gy2|shield_base=10.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
-                "gytrinket:shield_gy3|shield_base=11.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
+                "gytrinket:shield_gy|shield_base=6.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
+                "gytrinket:shield_gy1|shield_base=7.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
+                "gytrinket:shield_gy2|shield_base=8.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
+                "gytrinket:shield_gy3|shield_base=9.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
 
                 "gytrinket:shield_aura_ring|shield_base=8.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
                 "gytrinket:shield_aura_ring1|shield_base=12.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
@@ -2027,8 +2027,8 @@ public class Config {
         SHIELD_BLOCK_INVULNERABLE_TICKS = BUILDER.comment(
             "护盾格挡时施加的无敌状态持续时间（刻）",
             "当护盾完全吸收伤害时，被攻击者获得短暂无敌帧",
-            "默认10刻（0.5秒）"
-        ).defineInRange("blockInvulnerableTicks", 10, 0, 100);
+            "默认5刻（0.25秒）"
+        ).defineInRange("blockInvulnerableTicks", 5, 0, 100);
 
         BUILDER.pop();
 

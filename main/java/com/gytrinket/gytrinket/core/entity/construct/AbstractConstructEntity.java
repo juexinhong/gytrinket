@@ -448,7 +448,7 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
 
     /**
      * 归属者攻击穿透自身构造体（不阻挡），其他伤害正常结算。
-     * 免疫窒息和挤压伤害，60%爆炸伤害减免。
+     * 免疫窒息、挤压与溺水伤害，60%爆炸伤害减免。
      * 子类可重写以添加额外逻辑（如无人机的特殊行为触发），但应调用 super.hurt。
      */
     @Override
@@ -459,6 +459,10 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
         }
         // 免疫挤压伤害（实体过多导致的伤害）
         if ("cramming".equals(source.getMsgId())) {
+            return false;
+        }
+        // 免疫溺水伤害
+        if ("drown".equals(source.getMsgId())) {
             return false;
         }
         // 60%爆炸伤害减免

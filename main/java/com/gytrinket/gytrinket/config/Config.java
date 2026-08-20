@@ -76,6 +76,7 @@ public class Config {
     public static final ModConfigSpec.DoubleValue AMPLIFICATION_CHECK_RADIUS;
     public static final ModConfigSpec.DoubleValue AMPLIFICATION_MAX_AMPLIFICATION;
     public static final ModConfigSpec.DoubleValue AMPLIFICATION_MOVEMENT_SPEED_BONUS;
+    public static final ModConfigSpec.DoubleValue AMPLIFICATION_HEALTH_AMPLIFICATION_PER_POINT;
 
     // ===== 5. 跃传护盾 (warp_shield) =====
     public static final ModConfigSpec.IntValue WARP_SHIELD_INVINCIBLE_DURATION;
@@ -108,6 +109,7 @@ public class Config {
     public static final ModConfigSpec.DoubleValue WEAPONIZED_SHIELD_RADIUS;
 
     // ===== 11. 镀层 (coating_system) =====
+    public static final ModConfigSpec.ConfigValue<List<? extends String>> COATING_ITEMS;
     public static final ModConfigSpec.DoubleValue COATING_REDUCTION_PER_LAYER;
 
     // ===== 12. 适应性装甲 (adaptive_armor) =====
@@ -293,11 +295,9 @@ public class Config {
     public static final ModConfigSpec.DoubleValue GHOST_FUSELAGE_BASE_MAX_DAMAGE_BONUS;
     public static final ModConfigSpec.DoubleValue GHOST_FUSELAGE_MOVE_SPEED_THRESHOLD;
     public static final ModConfigSpec.DoubleValue GHOST_FUSELAGE_MOVE_SPEED_REDUCTION;
-    public static final ModConfigSpec.DoubleValue GHOST_FUSELAGE_DEPLOY_REDUCTION;
-    public static final ModConfigSpec.DoubleValue GHOST_FUSELAGE_ATTACK_REDUCTION;
-    public static final ModConfigSpec.DoubleValue GHOST_FUSELAGE_USE_ITEM_REDUCTION_PER_TICK;
+    public static final ModConfigSpec.DoubleValue GHOST_FUSELAGE_DECAY_RATE;
+    public static final ModConfigSpec.DoubleValue GHOST_FUSELAGE_MIN_DECAY;
     public static final ModConfigSpec.IntValue GHOST_FUSELAGE_FULL_STEALTH_TICKS;
-    public static final ModConfigSpec.IntValue GHOST_FUSELAGE_BREAK_COOLDOWN_TICKS;
 
     // ===== 36. 积怨 (grudge) =====
     public static final ModConfigSpec.ConfigValue<List<? extends String>> GRUDGE_ITEMS;
@@ -743,9 +743,18 @@ public class Config {
 
         AMPLIFICATION_THREAT_AMPLIFICATION = BUILDER.comment(
             "增幅护盾威胁增幅值",
-            "每个危险目标增加的攻击伤害加成（独立乘区）",
-            "例如：0.5 表示每个威胁增加50%"
-        ).defineInRange("amplificationThreatAmplification", 0.5, 0.0, 1.0);
+            "每个敌人或危险物提供的固定攻击伤害加成（独立乘区）",
+            "例如：0.2 表示每个威胁增加20%",
+            "范围：0.0 ~ 1.0"
+        ).defineInRange("amplificationThreatAmplification", 0.2, 0.0, 1.0);
+
+        AMPLIFICATION_HEALTH_AMPLIFICATION_PER_POINT = BUILDER.comment(
+            "增幅护盾敌人最大生命增幅值",
+            "敌人最大生命每点提供的攻击伤害加成（独立乘区）",
+            "例如：0.01 表示每点最大生命增加1%，僵尸(20生命)提供20%增幅",
+            "该增幅计入每个敌人的贡献，总量不能超出最大增幅限制",
+            "范围：0.0 ~ 0.1"
+        ).defineInRange("amplificationHealthAmplificationPerPoint", 0.02, 0.0, 0.1);
 
         AMPLIFICATION_CHECK_RADIUS = BUILDER.comment(
             "增幅护盾威胁检测半径（格）",
@@ -927,6 +936,15 @@ public class Config {
 
         // ===== 11. 镀层 =====
         BUILDER.comment("镀层系统配置").push("coating_system");
+
+        COATING_ITEMS = BUILDER.comment(
+            "镀层效果启用物品",
+            "格式：物品ID",
+            "示例：gytrinket:coating_module"
+        ).defineListAllowEmpty("coatingItems",
+            java.util.List.of("gytrinket:coating_module"),
+            s -> true
+        );
 
         COATING_REDUCTION_PER_LAYER = BUILDER.comment("每层镀层减少的伤害量").defineInRange("coatingReductionPerLayer", 0.2, 0.0, 10.0);
 
@@ -1881,36 +1899,23 @@ public class Config {
             "范围：0.0 ~ 1.0"
         ).defineInRange("moveSpeedReduction", 0.2, 0.0, 1.0);
 
-        GHOST_FUSELAGE_DEPLOY_REDUCTION = BUILDER.comment(
-            "部署构造体时一次性扣除的隐身进度",
-            "默认0.35（即35%）",
-            "范围：0.0 ~ 1.0"
-        ).defineInRange("deployReduction", 0.35, 0.0, 1.0);
+        GHOST_FUSELAGE_DECAY_RATE = BUILDER.comment(
+            "破隐后隐身进度每tick消退的当前值比例",
+            "默认0.3（即每刻消退当前值的30%）",
+            "范围：0.01 ~ 0.99"
+        ).defineInRange("decayRate", 0.3, 0.01, 0.99);
 
-        GHOST_FUSELAGE_ATTACK_REDUCTION = BUILDER.comment(
-            "左键攻击时一次性扣除的隐身进度",
-            "默认0.35（即35%）",
-            "范围：0.0 ~ 1.0"
-        ).defineInRange("attackReduction", 0.50, 0.0, 1.0);
-
-        GHOST_FUSELAGE_USE_ITEM_REDUCTION_PER_TICK = BUILDER.comment(
-            "右键使用物品时每tick扣除的隐身进度",
-            "默认0.015（每tick扣1.5%进度）",
-            "范围：0.0 ~ 1.0"
-        ).defineInRange("useItemReductionPerTick", 0.015, 0.0, 1.0);
+        GHOST_FUSELAGE_MIN_DECAY = BUILDER.comment(
+            "破隐后隐身进度每tick的最低消退量",
+            "默认0.02（即每刻至少消退2%进度）",
+            "范围：0.0 ~ 0.1"
+        ).defineInRange("minDecay", 0.02, 0.0, 0.1);
 
         GHOST_FUSELAGE_FULL_STEALTH_TICKS = BUILDER.comment(
-            "达到完全隐身（80%进度）所需的tick数",
-            "默认60（即3秒）",
+            "达到完全隐身（100%进度）所需的tick数",
+            "默认40（即2秒）",
             "范围：1 ~ 600（0.05秒 ~ 30秒）"
-        ).defineInRange("fullStealthTicks", 60, 1, 600);
-
-        GHOST_FUSELAGE_BREAK_COOLDOWN_TICKS = BUILDER.comment(
-            "隐身进度被消减后暂停累加的tick数",
-            "移动、攻击、部署等行为会降低隐身进度并触发暂停",
-            "默认5（即0.25秒）",
-            "范围：0 ~ 100（0秒 ~ 5秒）"
-        ).defineInRange("breakCooldownTicks", 10, 0, 100);
+        ).defineInRange("fullStealthTicks", 40, 1, 600);
 
         BUILDER.pop();
 
@@ -2679,6 +2684,10 @@ public class Config {
         return AMPLIFICATION_MOVEMENT_SPEED_BONUS.get();
     }
 
+    public static double getAmplificationHealthAmplificationPerPoint() {
+        return AMPLIFICATION_HEALTH_AMPLIFICATION_PER_POINT.get();
+    }
+
     public static double getWarpShieldExplosionDamage() {
         return WARP_SHIELD_EXPLOSION_DAMAGE.get();
     }
@@ -2785,24 +2794,16 @@ public class Config {
         return GHOST_FUSELAGE_MOVE_SPEED_REDUCTION.get();
     }
 
-    public static double getGhostFuselageDeployReduction() {
-        return GHOST_FUSELAGE_DEPLOY_REDUCTION.get();
+    public static double getGhostFuselageDecayRate() {
+        return GHOST_FUSELAGE_DECAY_RATE.get();
     }
 
-    public static double getGhostFuselageAttackReduction() {
-        return GHOST_FUSELAGE_ATTACK_REDUCTION.get();
-    }
-
-    public static double getGhostFuselageUseItemReductionPerTick() {
-        return GHOST_FUSELAGE_USE_ITEM_REDUCTION_PER_TICK.get();
+    public static double getGhostFuselageMinDecay() {
+        return GHOST_FUSELAGE_MIN_DECAY.get();
     }
 
     public static int getGhostFuselageFullStealthTicks() {
         return GHOST_FUSELAGE_FULL_STEALTH_TICKS.get();
-    }
-
-    public static int getGhostFuselageBreakCooldownTicks() {
-        return GHOST_FUSELAGE_BREAK_COOLDOWN_TICKS.get();
     }
 
     public static boolean isGrudgeItem(Item item) {

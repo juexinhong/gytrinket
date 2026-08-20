@@ -161,7 +161,6 @@ public class ModCreativeModeTabs {
                         output.accept(ModItems.FURNACE_CORE_MODULE.get());
 
                         // 零件
-                        output.accept(ModItems.TOTEM.get());
                         output.accept(ModItems.BEAM.get());
                         output.accept(ModItems.BARRIER.get());
                         output.accept(ModItems.ULTIMATE_SHIELD.get());

@@ -9,7 +9,7 @@
   "tooltip.gytrinket.drone_module": "Drone Construction Material",
   "tooltip.gytrinket.drone_module_desc": "Allows building drone constructs\nMax Count: %d  Health: %d  Damage: %.1f  Attack Speed: %.0f/s\nDrone is a Standard Construct",
   "tooltip.gytrinket.wingman_module": "Wingman",
-  "tooltip.gytrinket.wingman_module_desc": "Allows building wingman constructs\nMax Count: %d  Health: %d  Explosives: ×%d  Bullet Dmg: %.1f  Explosion: %.1f/Radius: %.1f  Attack Speed: %.0f/s\nWingman is an Advanced Construct",
+  "tooltip.gytrinket.wingman_module_desc": "Allows building wingman constructs\nMax Count: %d  Health: %d  Explosives: ×%d  Bullet Dmg: %.1f  Explosion: %.1f/Radius: %.1f  Attack Speed: %.0f/s\nWingmen fire explosive projectiles to assist attacks\nWingman is an Advanced Construct",
   "tooltip.gytrinket.mothership_body": "Mothership Body",
   "tooltip.gytrinket.mothership_body_desc": "Allows building swarm constructs\nMax Count: %d  Health: %.1f  Damage: %.2f  Attack Speed: %.1f/s  Range: %.1f\nSwarm is a Basic Construct\nMothership: +1 max count per 4 light point levels",
   "tooltip.gytrinket.assault_drone_module": "Assault Drone Construction Material",
@@ -70,6 +70,9 @@
   "tooltip.gytrinket.attr.construct_attack_speed_independent": "Construct Attack Speed Independent",
   "tooltip.gytrinket.attr.construct_build_speed_percent": "Construct Build Speed %",
   "tooltip.gytrinket.attr.construct_non_shield_build_speed_percent": "Non-shield Construct Build Speed %",
+  "tooltip.gytrinket.attr.construct_move_speed_percent": "Construct Move Speed %",
+  "tooltip.gytrinket.attr.construct_orbit_speed_percent": "Construct Orbit Speed %",
+  "tooltip.gytrinket.attr.construct_rotation_speed_percent": "Construct Rotation Speed %",
   "tooltip.gytrinket.attr.construct_build_speed_independent": "Construct Build Speed Independent",
   "tooltip.gytrinket.attr.drone_health": "Drone Health",
   "tooltip.gytrinket.attr.drone_health_percent": "Drone Health %",
@@ -120,7 +123,7 @@
   "tooltip.gytrinket.shield_type.siphon_desc": "Every %d ticks, deals %.1f damage to nearby enemies and recovers %d%% of damage dealt as shield. (Damage is evenly distributed among enemies) Siphoning continuously increases shield effect and shield effect radius, up to %d%%. Quickly decays when no targets are present.",
 
   "tooltip.gytrinket.adaptive_armor_enabled": "Adaptive Armor Enabled",
-  "tooltip.gytrinket.adaptive_armor_effect": "Taking damage generates armor stacks. Each armor stack provides damage reduction",
+  "tooltip.gytrinket.adaptive_armor_effect": "Taking damage generates armor stacks. Each armor stack provides damage reduction. Adaptive armor lasts 2.5 seconds",
   "tooltip.gytrinket.adaptive_armor_bond": "Bond",
   "tooltip.gytrinket.adaptive_armor_bond_effect": "Armor stacks additionally provide shield effect and recovery efficiency properties",
 
@@ -160,13 +163,13 @@
   "tooltip.gytrinket.self_destruct_effect": "Constructs explode when destroyed. Explosion power scales with the construct's max health",
 
   "tooltip.gytrinket.taskmaster": "Taskmaster",
-  "tooltip.gytrinket.taskmaster_effect": "Gain x%% construct build speed, -x%% independent movement speed. x=2×(standard limit+advanced limit). Disables attack modes",
+  "tooltip.gytrinket.taskmaster_effect": "Gain x%% construct build speed, -x%% independent movement speed. x=2×(standard limit+advanced limit). Disables player attack",
 
   "tooltip.gytrinket.pursuit_array": "Pursuit Array",
-  "tooltip.gytrinket.pursuit_array_effect": "Upgrades drones to assault drones and unlocks Pursuit Array (press Tab to switch arrays). Drones in Pursuit Array have increased attack speed",
+  "tooltip.gytrinket.pursuit_array_effect": "Upgrades drones to assault drones and unlocks Pursuit Array (press Tab to switch arrays). Drones in Pursuit Array +50% attack speed",
 
   "tooltip.gytrinket.formation_array": "Formation Array",
-  "tooltip.gytrinket.formation_array_effect": "Unlocks Formation Array. Drones in Formation Array have increased damage, decreased attack speed, and switch to beam cannon attacks",
+  "tooltip.gytrinket.formation_array_effect": "Drones in Formation Array gain +100% damage, -20% attack speed, and will use beam cannon attacks",
 
   "tooltip.gytrinket.commander": "Commander",
   "tooltip.gytrinket.commander_effect": "Automatically appoints the healthiest drone as Commander (max %d). Appointment delay: %.1f seconds. Commanders gain bonus health and damage",
@@ -198,6 +201,7 @@
   "tooltip.gytrinket.grudge": "Grudge",
   "tooltip.gytrinket.grudge_effect": "While charging, each point of health or shield lost grants %s charge rate. Always decaying (%s%% of current value per tick, minimum %s). Clears on release. Additional -%s%% movement speed while charging",
 
+  "block.gytrinket.light_point_core": "Light Point Core",
   "item.gytrinket.light_point_core": "Light Point Core",
   "item.gytrinket.guardian": "Guardian Frame",
 
@@ -255,6 +259,8 @@
 
   "item.gytrinket.health_boost_module": "Health Boost Module",
   "item.gytrinket.coating_module": "Coating Module",
+  "tooltip.gytrinket.coating_module": "Coating",
+  "tooltip.gytrinket.coating_effect": "Each point of coating blocks %s damage for the player; damage won't be reduced below %s",
   "item.gytrinket.colossus_module": "Colossus Module",
 
   "item.gytrinket.adaptive_armor_module": "Adaptive Armor Module",
@@ -267,6 +273,8 @@
 
   "item.gytrinket.efficiency_module": "Efficiency Module",
   "item.gytrinket.transformation_module": "Transformation Module",
+  "tooltip.gytrinket.transformation_module": "Conversion",
+  "tooltip.gytrinket.transformation_module_desc": "Transforms %.0f%% of shield value into player health or vice versa (transforms the lower value toward the higher value)",
   "item.gytrinket.binary_protocol_module": "Binary Protocol Module",
 
   "item.gytrinket.fast_shooting_module": "Fast Shooting Module",
@@ -454,7 +462,7 @@
   "tooltip.gytrinket.quick_reconstruction_module": "Quick Reconstruction",
   "tooltip.gytrinket.quick_reconstruction_module_desc": "You no longer have a shield",
   "tooltip.gytrinket.ghost_fuselage": "Ghost Fuselage",
-  "tooltip.gytrinket.ghost_fuselage_desc": "%ss to full stealth (80%% progress). Grants independent multiplier damage bonus (up to +%s%%)\nMovement (walking balances), attacks (-%s%%), construct deploy (-%s%%), item use reduce stealth progress\nEach light point level: +%s%% stealth speed and damage cap",
+  "tooltip.gytrinket.ghost_fuselage_desc": "%ss to full stealth. Grants independent multiplier damage bonus (up to +%s%%)\nAttacking, deploying constructs, or using items instantly breaks stealth; progress decays %s%% of current value per tick (min %s%%)\nDamage bonus scales with stealth progress\nEach light point level: +%s%% stealth speed and damage cap",
   "tooltip.gytrinket.interceptor_module": "Interceptor",
   "tooltip.gytrinket.interceptor_module_desc": "Upgrades wingman to interceptor\nInterceptor can use your weapon for slow attacks",
   "tooltip.gytrinket.evolution_module": "Evolution",
@@ -521,7 +529,6 @@
 
   "item.gytrinket.ghost_fuselage": "Ghost Fuselage",
   "item.gytrinket.engineering_fuselage": "Engineering Fuselage",
-  "item.gytrinket.totem": "Totem",
   "item.gytrinket.wingman_part": "Wingman Part",
   "item.gytrinket.interceptor_part": "Interceptor Part",
   "item.gytrinket.evolution_part": "Evolution Part",
@@ -901,6 +908,10 @@
   "attribute.assault_module_base_damage": "Assault Module Base Damage",
 
   "entity.gytrinket.drone_construct": "Drone Construct",
+  "entity.gytrinket.wingman_construct": "Wingman",
+  "entity.gytrinket.swarm_construct": "Swarm",
+  "entity.gytrinket.armor_shard": "Armor Shard",
+  "entity.gytrinket.explosive_projectile": "Explosive Projectile",
   "entity.gytrinket.dual_sword_construct": "Dual Sword Construct",
   "entity.gytrinket.defense_drone": "Defense Drone",
   "entity.gytrinket.drone_beam": "Drone Beam",

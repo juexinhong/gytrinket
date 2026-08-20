@@ -17,15 +17,19 @@ import com.gytrinket.gytrinket.core.entity.construct.wingman.ExplosiveProjectile
 import com.gytrinket.gytrinket.core.entity.construct.wingman.InterceptorConfigContainer;
 import com.gytrinket.gytrinket.client.screen.InterceptorConfigContainerScreen;
 import com.gytrinket.gytrinket.core.entity.construct.swarm.SwarmRenderer;
+import com.gytrinket.gytrinket.items.ModItems;
 import com.gytrinket.gytrinket.key.KeyInputHandler;
 import com.gytrinket.gytrinket.core.entity.construct.drone.DroneInputHandler;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
+import net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer;
 import net.minecraft.client.renderer.ShaderInstance;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.neoforge.client.event.RegisterShadersEvent;
+import net.neoforged.neoforge.client.extensions.common.IClientItemExtensions;
+import net.neoforged.neoforge.client.extensions.common.RegisterClientExtensionsEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -47,6 +51,20 @@ public class ModClient {
         NeoForge.EVENT_BUS.addListener(DroneBulletTrailManager::onRenderLevelLast);
         ShieldParticleRenderEvent.init();
         ShieldParticleTickEvent.init();
+    }
+
+    /**
+     * 注册光点核心物品的自定义渲染器扩展
+     * 使 Minecraft 使用 BEWLR 渲染路径，让 GeckoLib 的 GeoItemRenderer 接管 3D 模型渲染
+     */
+    @SubscribeEvent
+    public static void onRegisterClientExtensions(RegisterClientExtensionsEvent event) {
+        event.registerItem(new IClientItemExtensions() {
+            @Override
+            public BlockEntityWithoutLevelRenderer getCustomRenderer() {
+                return LightPointCoreItemRenderer.getRenderer();
+            }
+        }, ModItems.LIGHT_POINT_CORE.get());
     }
 
     @SubscribeEvent

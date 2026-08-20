@@ -221,8 +221,12 @@ public class DroneBullet extends ThrowableItemProjectile implements GeoEntity {
         float damage = getDamage();
         KnockbackManager.markNoKnockback(target.getUUID());
         if (target.getHealth() < damage) {
-            DamageSource executeSource = ModDamageSources.getExecuteDamageSource(target, ownerPlayer, owner);
-            target.hurt(executeSource, damage * 2);
+            // 斩杀：伤害源统一为无人机子弹，斩杀归属启用时归属玩家，否则归属无人机
+            LivingEntity cause = ExecuteToggleManager.isExecuteEnabled(ownerPlayer)
+                    ? ownerPlayer
+                    : owner instanceof LivingEntity living ? living : null;
+            DamageSource executeSource = ModDamageSources.droneBullet(target.level(), this, cause);
+            target.hurt(executeSource, damage);
             if (ExecuteToggleManager.isExecuteEnabled(ownerPlayer)) {
                 target.setLastHurtByMob(ownerPlayer);
             }

@@ -9,7 +9,7 @@
   "tooltip.gytrinket.drone_module": "无人机",
   "tooltip.gytrinket.drone_module_desc": "允许构建无人机构造体\n上限%d  生命%d  伤害%.1f  攻速%.0f/s\n无人机是标准构造体",
   "tooltip.gytrinket.wingman_module": "僚机",
-  "tooltip.gytrinket.wingman_module_desc": "允许构建僚机构造体\n上限%d  生命%d  爆破弹×%d  弹伤%.1f  爆炸%.1f/半径%.1f  攻速%.0f/s\n僚机是高阶构造体",
+  "tooltip.gytrinket.wingman_module_desc": "允许构建僚机构造体\n上限%d  生命%d  爆破弹×%d  弹伤%.1f  爆炸%.1f/半径%.1f  攻速%.0f/s\n僚机会发射爆破弹辅助攻击\n僚机是高阶构造体",
   "tooltip.gytrinket.mothership_body": "母舰机身",
   "tooltip.gytrinket.mothership_body_desc": "允许构建蜂群构造体\n上限%d  生命%.1f  伤害%.2f  攻速%.1f/s  攻击范围%.1f\n蜂群是基础构造体\n母舰：每4级光点等级+1上限",
   "tooltip.gytrinket.assault_drone_module": "突击无人机",
@@ -70,6 +70,9 @@
   "tooltip.gytrinket.attr.construct_attack_speed_independent": "构造体攻击速度独立乘区",
   "tooltip.gytrinket.attr.construct_build_speed_percent": "构造体构建速度百分比",
   "tooltip.gytrinket.attr.construct_non_shield_build_speed_percent": "非护盾构造体构建速度百分比",
+  "tooltip.gytrinket.attr.construct_move_speed_percent": "构造体移动速度百分比",
+  "tooltip.gytrinket.attr.construct_orbit_speed_percent": "构造体环绕速度百分比",
+  "tooltip.gytrinket.attr.construct_rotation_speed_percent": "构造体旋转速度百分比",
   "tooltip.gytrinket.attr.construct_build_speed_independent": "构造体构建速度独立乘区",
   "tooltip.gytrinket.attr.drone_health": "无人机生命",
   "tooltip.gytrinket.attr.drone_health_percent": "无人机生命百分比",
@@ -135,7 +138,7 @@
   "tooltip.gytrinket.weaponized_shield_effect": "有护盾时，对周围敌人施加%d%%易伤（受护盾效果属性影响）",
 
   "tooltip.gytrinket.adaptive_armor_enabled": "适应性装甲启用",
-  "tooltip.gytrinket.adaptive_armor_effect": "受到攻击产生装甲叠层。每点装甲叠层提供伤害减免",
+  "tooltip.gytrinket.adaptive_armor_effect": "受到攻击产生装甲叠层。每点装甲叠层提供伤害减免。适应性装甲持续2.5秒",
   "tooltip.gytrinket.adaptive_armor_bond": "联结",
   "tooltip.gytrinket.adaptive_armor_bond_effect": "装甲叠层额外提供护盾效果和恢复效率属性",
   
@@ -161,7 +164,7 @@
   "tooltip.gytrinket.self_destruct_effect": "构造体被摧毁时产生爆炸。爆炸威力与构造体的最大生命值相关",
 
   "tooltip.gytrinket.taskmaster": "督战者",
-  "tooltip.gytrinket.taskmaster_effect": "获得x%%构造体构建速度，-x%%独立乘区移动速度。x=2×(标准构造体上限+高阶构造体上限)。禁用攻击模式",
+  "tooltip.gytrinket.taskmaster_effect": "获得x%%构造体构建速度，-x%%独立乘区移动速度。x=2×(标准构造体上限+高阶构造体上限)。禁用玩家攻击",
 
   "tooltip.gytrinket.shield_transfer": "护盾移植",
   "tooltip.gytrinket.shield_transfer_effect": "护盾不再保护你，而是保护你的构造体（可以使用护盾接收器来额外保护其他实体）。每保护一个实体，护盾效果和护盾效果半径降低%.1f%%",
@@ -176,10 +179,10 @@
   "tooltip.gytrinket.near_death_explosion_effect": "无人机死亡时，恢复1点生命并无敌%.1f秒。期间移出阵列并冲向敌人自爆（爆炸伤害=最大生命×速度×%.1f，半径%.1f格）。无敌时间结束后强制自爆",
 
   "tooltip.gytrinket.pursuit_array": "追击阵列",
-  "tooltip.gytrinket.pursuit_array_effect": "无人机升级为突击无人机，并解锁追击阵列（按下Tab键切换阵列）。处于追击阵列的无人机攻击速度提升",
+  "tooltip.gytrinket.pursuit_array_effect": "无人机升级为突击无人机，并解锁追击阵列（按下Tab键切换阵列）。处于追击阵列的无人机攻击速度+50%",
 
   "tooltip.gytrinket.formation_array": "列队阵列",
-  "tooltip.gytrinket.formation_array_effect": "解锁列队阵列，处于列队阵列的无人机伤害提高，攻击速度降低，并切换攻击为光束炮",
+  "tooltip.gytrinket.formation_array_effect": "无人机处于列队阵列时+100%伤害，-20%攻击速度，无人机将使用光束炮攻击",
 
   "tooltip.gytrinket.commander": "指挥官",
   "tooltip.gytrinket.commander_effect": "自动任命状态最好的无人机为指挥官（最多%d个）。任命延迟%.1f秒。指挥官获得额外的生命和伤害加成",
@@ -259,6 +262,8 @@
   
   "item.gytrinket.health_boost_module": "生命提升模块",
   "item.gytrinket.coating_module": "镀层模块",
+  "tooltip.gytrinket.coating_module": "镀层",
+  "tooltip.gytrinket.coating_effect": "每点镀层为玩家抵挡%s伤害，伤害不会降低至%s以下",
   "item.gytrinket.colossus_module": "巨像模块",
   
   "item.gytrinket.adaptive_armor_module": "适应性装甲模块",
@@ -271,6 +276,8 @@
   
   "item.gytrinket.efficiency_module": "效率模块",
   "item.gytrinket.transformation_module": "转化模块",
+  "tooltip.gytrinket.transformation_module": "转化",
+  "tooltip.gytrinket.transformation_module_desc": "将%.0f%%的护盾值转化为玩家生命或相反（将低值向高值转化）",
   "item.gytrinket.binary_protocol_module": "二原协议模块",
   
   "item.gytrinket.fast_shooting_module": "快速射击模块",
@@ -460,7 +467,7 @@
   "tooltip.gytrinket.quick_reconstruction_module": "快速重构",
   "tooltip.gytrinket.quick_reconstruction_module_desc": "你不再拥有护盾",
   "tooltip.gytrinket.ghost_fuselage": "幽灵机身",
-  "tooltip.gytrinket.ghost_fuselage_desc": "%s秒达到完全隐身（80%%进度），获得独立乘区伤害加成（最高+%s%%）\n移动（行走时持平）、攻击（-%s%%）、部署构造体（-%s%%）、使用物品会降低隐身进度\n每级光点等级+%s%%隐身速度和伤害上限",
+  "tooltip.gytrinket.ghost_fuselage_desc": "%s秒达到完全隐身，获得独立乘区伤害加成（最高+%s%%）\n攻击、部署构造体、使用物品会立即破隐，隐身进度每刻消退%s%%当前值（最低%s%%）\n隐身加伤随隐身进度同步变化\n每级光点等级+%s%%隐身速度和伤害上限",
   "tooltip.gytrinket.interceptor_module": "拦截机",
   "tooltip.gytrinket.interceptor_module_desc": "将僚机升级为拦截机\n拦截机可以使用你的武器慢速攻击",
   "tooltip.gytrinket.evolution_module": "进化",
@@ -527,7 +534,6 @@
 
   "item.gytrinket.ghost_fuselage": "幽灵机身",
   "item.gytrinket.engineering_fuselage": "工程机身",
-  "item.gytrinket.totem": "图腾",
   "item.gytrinket.wingman_part": "僚机零件",
   "item.gytrinket.interceptor_part": "拦截机零件",
   "item.gytrinket.evolution_part": "进化零件",
@@ -564,5 +570,13 @@
   "screen.gytrinket.no_ammo_set": "未设置",
   "screen.gytrinket.clear_ammo": "清除",
 
-  "message.gytrinket.wrench.need_interceptor": "你需要先装备拦截机模块"
+  "message.gytrinket.wrench.need_interceptor": "你需要先装备拦截机模块",
+
+  "entity.gytrinket.drone_construct": "无人机",
+  "entity.gytrinket.wingman_construct": "僚机",
+  "entity.gytrinket.swarm_construct": "蜂群",
+  "entity.gytrinket.drone_bullet": "无人机子弹",
+  "entity.gytrinket.drone_beam": "无人机光束",
+  "entity.gytrinket.explosive_projectile": "爆破弹",
+  "entity.gytrinket.armor_shard": "装甲碎片"
 }

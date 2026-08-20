@@ -402,5 +402,13 @@
   "screen.gytrinket.back": "Zurück",
   "screen.gytrinket.add_item_prompt": "Item-ID (z.B. minecraft:diamond):",
   "screen.gytrinket.no_attributes_registered": "Keine Attribute registriert",
-  "screen.gytrinket.reorder_hint": "Ziehen zum Umsortieren"
+  "screen.gytrinket.reorder_hint": "Ziehen zum Umsortieren",
+
+  "entity.gytrinket.drone_construct": "Drohnen-Konstrukt",
+  "entity.gytrinket.wingman_construct": "Flügelmann",
+  "entity.gytrinket.swarm_construct": "Schwarm",
+  "entity.gytrinket.drone_bullet": "Drohnen-Geschoss",
+  "entity.gytrinket.drone_beam": "Drohnen-Strahl",
+  "entity.gytrinket.explosive_projectile": "Explosives Geschoss",
+  "entity.gytrinket.armor_shard": "Panzerungssplitter"
 }

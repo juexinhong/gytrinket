@@ -402,5 +402,13 @@
   "screen.gytrinket.back": "뒤로",
   "screen.gytrinket.add_item_prompt": "아이템 ID (예: minecraft:diamond):",
   "screen.gytrinket.no_attributes_registered": "등록된 속성 없음",
-  "screen.gytrinket.reorder_hint": "드래그하여 순서 변경"
+  "screen.gytrinket.reorder_hint": "드래그하여 순서 변경",
+
+  "entity.gytrinket.drone_construct": "드론",
+  "entity.gytrinket.wingman_construct": "윙맨",
+  "entity.gytrinket.swarm_construct": "스웜",
+  "entity.gytrinket.drone_bullet": "드론 탄환",
+  "entity.gytrinket.drone_beam": "드론 빔",
+  "entity.gytrinket.explosive_projectile": "폭발성 발사체",
+  "entity.gytrinket.armor_shard": "장갑 파편"
 }

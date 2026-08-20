@@ -402,5 +402,13 @@
   "screen.gytrinket.back": "Назад",
   "screen.gytrinket.add_item_prompt": "ID предмета (напр. minecraft:diamond):",
   "screen.gytrinket.no_attributes_registered": "Нет зарегистрированных атрибутов",
-  "screen.gytrinket.reorder_hint": "Перетащите для изменения порядка"
+  "screen.gytrinket.reorder_hint": "Перетащите для изменения порядка",
+
+  "entity.gytrinket.drone_construct": "Дрон",
+  "entity.gytrinket.wingman_construct": "Ведомый",
+  "entity.gytrinket.swarm_construct": "Рой",
+  "entity.gytrinket.drone_bullet": "Пуля дрона",
+  "entity.gytrinket.drone_beam": "Луч дрона",
+  "entity.gytrinket.explosive_projectile": "Взрывной снаряд",
+  "entity.gytrinket.armor_shard": "Осколок брони"
 }

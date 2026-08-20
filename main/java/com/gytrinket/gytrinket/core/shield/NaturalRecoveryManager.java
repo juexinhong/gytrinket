@@ -44,23 +44,36 @@ public class NaturalRecoveryManager {
 
     /**
      * 自然恢复上限标准（格）：指最大护盾值或最大玩家生命。
-     * 最大值 ≤ 该值时正常恢复；超过该值的部分，恢复量折半（防止高最大值导致恢复数值崩坏）。
+     * 以 25 为周期：第一个 25 正常恢复，每超出一个周期，该周期的部分恢复量再减半。
+     * （25→正常，50→第二段减半，75→第三段1/4，以此类推），防止高最大值导致恢复数值崩坏。
      */
     private static final double RECOVERY_BASE_LIMIT = 25.0;
+
+    /**
+     * 最大周期数：超过此周期数后不再计算恢复（阈值限制，防止算力浪费）。
+     * 16 个周期（400 生命/护盾）后恢复效果收敛，后续数值不再提供有效恢复。
+     */
+    private static final int MAX_RECOVERY_CYCLES = 16;
 
     private NaturalRecoveryManager() {}
 
     /**
-     * 计算有限制的恢复量：max ≤ 25 时正常（max × rate）；max > 25 时，
-     * 25 以内按正常比例，超过 25 的部分恢复量折半。
+     * 计算有限制的恢复量：以 25 为周期，逐段恢复。
+     * 第 i 个周期的部分按 (0.5)^i 系数恢复，最多计算 MAX_RECOVERY_CYCLES 个周期。
      */
     private static double computeLimitedRecovery(double maxValue, double rate) {
-        if (maxValue <= RECOVERY_BASE_LIMIT) {
-            return maxValue * rate;
+        double total = 0;
+        double remaining = maxValue;
+        double factor = 1.0;
+        int cycle = 0;
+        while (remaining > 0 && cycle < MAX_RECOVERY_CYCLES) {
+            double portion = Math.min(remaining, RECOVERY_BASE_LIMIT);
+            total += portion * rate * factor;
+            remaining -= portion;
+            factor *= 0.5;
+            cycle++;
         }
-        double fullPart = RECOVERY_BASE_LIMIT * rate;
-        double halfPart = (maxValue - RECOVERY_BASE_LIMIT) * rate * 0.5;
-        return fullPart + halfPart;
+        return total;
     }
 
     /**

@@ -402,5 +402,13 @@
   "screen.gytrinket.back": "戻る",
   "screen.gytrinket.add_item_prompt": "アイテムID（例：minecraft:diamond）：",
   "screen.gytrinket.no_attributes_registered": "登録された属性なし",
-  "screen.gytrinket.reorder_hint": "ドラッグで並べ替え"
+  "screen.gytrinket.reorder_hint": "ドラッグで並べ替え",
+
+  "entity.gytrinket.drone_construct": "ドローン",
+  "entity.gytrinket.wingman_construct": "ウィングマン",
+  "entity.gytrinket.swarm_construct": "スウォーム",
+  "entity.gytrinket.drone_bullet": "ドローンの弾丸",
+  "entity.gytrinket.drone_beam": "ドローンビーム",
+  "entity.gytrinket.explosive_projectile": "爆発弾",
+  "entity.gytrinket.armor_shard": "装甲の破片"
 }

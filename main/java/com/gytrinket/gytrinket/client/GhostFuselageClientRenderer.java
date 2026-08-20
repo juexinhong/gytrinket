@@ -20,8 +20,7 @@ import net.neoforged.neoforge.client.event.RenderPlayerEvent;
  * 根据隐身进度调整玩家模型的透明度：
  * <ul>
  *   <li>进度0%时完全可见（alpha=1.0）</li>
- *   <li>进度80%（完全隐身）时alpha=0.3（最低值）</li>
- *   <li>进度80%~100%保持alpha=0.3</li>
+ *   <li>进度100%（完全隐身）时alpha=0.3（最低值）</li>
  * </ul>
  * <p>
  * 服务端在完全隐身时设置原版invisible标签（阻止怪物目标选取），
@@ -43,7 +42,7 @@ import net.neoforged.neoforge.client.event.RenderPlayerEvent;
 public class GhostFuselageClientRenderer {
 
     /** 完全隐身进度阈值 */
-    private static final float STEALTH_CAP = 0.8f;
+    private static final float STEALTH_CAP = 1.0f;
 
     /** 最低透明度（完全隐身时） */
     private static final float MIN_ALPHA = 0.3f;

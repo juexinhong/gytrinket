@@ -9,10 +9,12 @@ import com.gytrinket.gytrinket.core.entity.construct.swarm.SwarmConstructTypes;
 import com.gytrinket.gytrinket.core.entity.construct.wingman.WingmanConstructTypes;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -45,6 +47,7 @@ public class DroneArrayManager {
     }
 
     public DroneArrayType getPlayerArrayType(Player player) {
+        if (player == null) return DroneArrayType.Types.ORBIT;
         return playerArrayTypes.getOrDefault(player.getUUID(), DroneArrayType.Types.ORBIT);
     }
 
@@ -190,34 +193,40 @@ public class DroneArrayManager {
 
     /**
      * 备份指定类型的所有构造体到待机存储，并移除实体。
+     * 只处理玩家当前维度的构造体，其他维度遗留的构造体不受影响。
      * @param player 玩家
      * @param typeId 构造体类型ID
      */
     private void backupConstructs(Player player, String typeId) {
         UUID playerUUID = player.getUUID();
+        ResourceKey<Level> playerDim = player.level().dimension();
         Map<UUID, Entity> entitiesMap = ConstructManager.getInstance().getActiveConstructEntities(playerUUID, typeId);
 
         List<ConstructData> backupList = new ArrayList<>();
         for (Entity entity : entitiesMap.values()) {
-            if (entity instanceof AbstractConstructEntity constructEntity && constructEntity.isAlive()) {
-                ConstructData copy = constructEntity.snapshotToData();
-                double currentMaxHealth = constructEntity.getMaxHealth();
-                float currentHealth = constructEntity.getHealth();
-                copy.setHealthRatio(currentMaxHealth > 0 ? currentHealth / currentMaxHealth : 1.0);
-                copy.setActive(true);
-                copy.setSavedPos(entity.getX(), entity.getY(), entity.getZ());
-                copy.setDimension(entity.level().dimension().location().toString());
-                backupList.add(copy);
-            }
+            if (!(entity instanceof AbstractConstructEntity constructEntity) || !constructEntity.isAlive()) continue;
+            // 只备份玩家当前维度的构造体
+            if (entity.level() == null || !entity.level().dimension().equals(playerDim)) continue;
+
+            ConstructData copy = constructEntity.snapshotToData();
+            double currentMaxHealth = constructEntity.getMaxHealth();
+            float currentHealth = constructEntity.getHealth();
+            copy.setHealthRatio(currentMaxHealth > 0 ? currentHealth / currentMaxHealth : 1.0);
+            copy.setActive(true);
+            copy.setSavedPos(entity.getX(), entity.getY(), entity.getZ());
+            copy.setDimension(entity.level().dimension().location().toString());
+            backupList.add(copy);
         }
         setStandbyBackup(playerUUID, typeId, backupList);
 
         for (Entity entity : entitiesMap.values()) {
-            if (entity.isAlive()) {
-                entity.remove(Entity.RemovalReason.DISCARDED);
-            }
+            if (!entity.isAlive()) continue;
+            if (entity.level() == null || !entity.level().dimension().equals(playerDim)) continue;
+            entity.remove(Entity.RemovalReason.DISCARDED);
+            UUID entityUUID = entity.getUUID();
+            ConstructManager.getInstance().unregisterConstructEntity(playerUUID, typeId, entityUUID);
+            ConstructManager.getInstance().removeConstruct(playerUUID, entityUUID);
         }
-        ConstructManager.getInstance().removeConstructsByType(player, typeId);
     }
 
     /**

@@ -135,6 +135,25 @@ public class TooltipHandler {
             ChatFormatting.GOLD
         ));
 
+        // 转化模块
+        rules.add(new TooltipConfig(
+            Config.CONVERSION_ITEMS,
+            "transformation_module", "transformation_module_desc",
+            ChatFormatting.LIGHT_PURPLE,
+            () -> new Object[]{Config.CONVERSION_RATIO.get() * 100}
+        ));
+
+        // 镀层
+        rules.add(new TooltipConfig(
+            Config.COATING_ITEMS,
+            "coating_module", "coating_effect",
+            ChatFormatting.DARK_AQUA,
+            () -> new Object[]{
+                Config.getCoatingReductionPerLayer(),
+                Config.getCoatingReductionPerLayer()
+            }
+        ));
+
         // 督战者
         rules.add(new TooltipConfig(
             Config.TASKMASTER_ITEMS,
@@ -292,8 +311,8 @@ public class TooltipHandler {
             () -> new Object[]{
                 Config.getGhostFuselageFullStealthTicks() / 20.0,
                 (int)(Config.getGhostFuselageBaseMaxDamageBonus() * 100),
-                (int)(Config.getGhostFuselageAttackReduction() * 100),
-                (int)(Config.getGhostFuselageDeployReduction() * 100),
+                (int)(Config.getGhostFuselageDecayRate() * 100),
+                (int)(Config.getGhostFuselageMinDecay() * 100),
                 Config.getGhostFuselageStealthSpeedBonusPerLevel() * 100
             }
         ));

@@ -37,10 +37,13 @@ import java.util.concurrent.ConcurrentHashMap;
  * <p>
  * 机制：
  * <ul>
- *   <li>玩家持续进入隐身状态（不算为原版隐身），需要2秒达到完全隐身</li>
- *   <li>随着隐身进度增加，持续获得动态独立乘区玩家伤害属性加成</li>
+ *   <li>玩家持续进入隐身状态（不算为原版隐身），需要2秒达到完全隐身（100%进度）</li>
+ *   <li>达到完全隐身（100%进度）时才会完全隐身，阻挡敌人获取玩家为目标</li>
+ *   <li>随着隐身进度增加，持续获得动态独立乘区玩家伤害属性加成，加伤与进度同步变化</li>
  *   <li>达到完全隐身时，属性值到达+300%（受光点等级提升上限）</li>
- *   <li>高速移动、部署构造体、左键攻击（含空挥）、右键使用物品都会降低隐身进度</li>
+ *   <li>攻击、部署构造体、使用物品（含充能）会立即破隐，隐身进度不会立刻消失，
+ *       而是每刻按当前值的30%极速消退（最低消退2%），直至归零后重新累加</li>
+ *   <li>高速移动会小幅降低隐身进度，不会触发破隐，但扣除进度的这一刻暂停隐身进度增长</li>
  *   <li>玩家光点等级每级增加0.5%隐身速度和最大属性上限</li>
  * </ul>
  */
@@ -50,8 +53,8 @@ public class GhostFuselageManager {
     private static final String NAMESPACE = "ghost_fuselage";
     private static final String ATTR_DAMAGE_INDEPENDENT = "attack_damage_independent";
 
-    /** 隐身进度上限（80% = 完全隐身） */
-    private static final double STEALTH_CAP = 0.8;
+    /** 隐身进度上限（100% = 完全隐身） */
+    private static final double STEALTH_CAP = 1.0;
 
     /** 拥有幽灵机身能力的玩家集合 */
     private static final Set<UUID> PLAYER_HAS_GHOST = new java.util.concurrent.CopyOnWriteArraySet<>();
@@ -129,14 +132,15 @@ public class GhostFuselageManager {
     }
 
     /**
-     * 直接降低隐身进度（供外部调用，如构造体部署时）
+     * 触发破隐（供外部调用，如构造体部署、攻击、使用物品时）
+     * <p>
+     * 不立即修改隐身进度：保证本次行为仍按当前进度计算（攻击伤害取破隐前的满额加成），
+     * 由 onPlayerTick 每刻按当前值的30%极速消退，直至归零。
      */
-    public static void reduceProgress(UUID playerUUID, double amount) {
+    private static void breakStealth(UUID playerUUID) {
         GhostData data = PLAYER_GHOST_DATA.get(playerUUID);
         if (data != null) {
-            data.progress = Math.max(0, data.progress - amount);
-            data.breakCooldown = Config.getGhostFuselageBreakCooldownTicks();
-            updateDamageAttribute(playerUUID, data.progress);
+            data.breaking = true;
         }
     }
 
@@ -159,38 +163,41 @@ public class GhostFuselageManager {
 
         GhostData data = PLAYER_GHOST_DATA.computeIfAbsent(uuid, k -> new GhostData());
 
-        // 递减破隐冷却
-        if (data.breakCooldown > 0) {
-            data.breakCooldown--;
-        }
-
-        // 计算隐身速度加成：基础速度 × (1 + level × 0.005)
-        double stealthSpeedMultiplier = 1.0 + modLevel * Config.getGhostFuselageStealthSpeedBonusPerLevel();
-        // 每tick增加进度 = STEALTH_CAP / fullStealthTicks
-        int fullStealthTicks = Config.getGhostFuselageFullStealthTicks();
-        double progressIncreasePerTick = (STEALTH_CAP / fullStealthTicks) * stealthSpeedMultiplier;
-
-        // 破隐冷却期间不累加隐身进度
-        if (data.breakCooldown <= 0) {
-            data.progress = Math.min(1.0, data.progress + progressIncreasePerTick);
-        }
-
-        // 使用客户端同步的移动隐身消耗量（客户端已计算好）
-        double moveReduction = SYNCED_MOVE_REDUCTION.getOrDefault(uuid, 0f);
-        if (moveReduction > 0) {
-            data.progress = Math.max(0, data.progress - moveReduction);
-            data.breakCooldown = Config.getGhostFuselageBreakCooldownTicks();
-        }
-
-        // 右键使用物品持续扣除隐身进度
+        // 使用物品（含充能等持续行为）期间保持破隐状态
         if (player.isUsingItem()) {
-            data.progress = Math.max(0, data.progress - Config.getGhostFuselageUseItemReductionPerTick());
-            data.breakCooldown = Config.getGhostFuselageBreakCooldownTicks();
+            data.breaking = true;
         }
 
-        // 充能攻击充能/释放由 ChargedAttackEvent 事件处理，此处不再直接调用
+        double decayRate = Config.getGhostFuselageDecayRate();
+        double minDecay = Config.getGhostFuselageMinDecay();
 
-        // 更新伤害属性
+        // 使用客户端同步的移动隐身消耗量（直接小幅扣除，不触发破隐）。
+        // 高速移动扣除进度的这一刻，停止增加隐身进度。
+        double moveReduction = SYNCED_MOVE_REDUCTION.getOrDefault(uuid, 0f);
+        boolean movingFast = moveReduction > 0;
+        if (movingFast) {
+            data.progress = Math.max(0, data.progress - moveReduction);
+        }
+
+        if (data.breaking) {
+            // 破隐中：隐身进度每刻按当前值的比例极速消退（最低消退量 minDecay），不累加
+            double decay = Math.max(data.progress * decayRate, minDecay);
+            data.progress = Math.max(0, data.progress - decay);
+            if (data.progress <= 0) {
+                data.progress = 0;
+                data.breaking = false;
+            }
+        } else if (!movingFast) {
+            // 正常累加：仅当既非破隐也非高速移动时增加进度
+            // 计算隐身速度加成：基础速度 × (1 + level × 0.005)
+            double stealthSpeedMultiplier = 1.0 + modLevel * Config.getGhostFuselageStealthSpeedBonusPerLevel();
+            // 每tick增加进度 = STEALTH_CAP / fullStealthTicks
+            int fullStealthTicks = Config.getGhostFuselageFullStealthTicks();
+            double progressIncreasePerTick = (STEALTH_CAP / fullStealthTicks) * stealthSpeedMultiplier;
+            data.progress = Math.min(STEALTH_CAP, data.progress + progressIncreasePerTick);
+        }
+
+        // 更新伤害属性（隐身加伤随隐身进度同步变化）
         updateDamageAttribute(uuid, data.progress);
 
         // 完全隐身时设置原版invisible标签（供渲染/其他系统识别）
@@ -257,19 +264,15 @@ public class GhostFuselageManager {
         if (!PLAYER_HAS_GHOST.contains(uuid)) {
             return;
         }
-        GhostData data = PLAYER_GHOST_DATA.get(uuid);
-        if (data != null) {
-            data.progress = Math.max(0, data.progress - Config.getGhostFuselageAttackReduction());
-            data.breakCooldown = Config.getGhostFuselageBreakCooldownTicks();
-            // 不在此处立即调用 updateDamageAttribute：
-            // AttackEntityEvent 在 Player.attack() 伤害计算之前触发，
-            // 若立即更新修饰符会导致本次攻击伤害按降低后的进度计算。
-            // 延迟到下一tick的 onPlayerTick 中更新，确保本次攻击使用满隐身伤害。
-        }
+        // 触发破隐但不立即修改隐身进度：
+        // AttackEntityEvent 在 Player.attack() 伤害计算之前触发，
+        // 若立即消退进度会导致本次攻击伤害按降低后的进度计算。
+        // 进度在下一tick的 onPlayerTick 中开始极速消退，确保本次攻击使用破隐前的满额伤害。
+        breakStealth(uuid);
     }
 
     /**
-     * 充能攻击事件：充能期间每刻扣除隐身进度，释放时按攻击扣除
+     * 充能攻击事件：充能与释放均触发破隐
      */
     @SubscribeEvent
     public static void onChargedAttackEvent(ChargedAttackEvent event) {
@@ -278,30 +281,14 @@ public class GhostFuselageManager {
         if (!PLAYER_HAS_GHOST.contains(uuid)) {
             return;
         }
-        GhostData data = PLAYER_GHOST_DATA.get(uuid);
-        if (data == null) {
-            return;
-        }
-
-        switch (event.getType()) {
-            case CHARGING:
-                // 充能期间每刻扣除（与使用物品消减一致）
-                data.progress = Math.max(0, data.progress - Config.getGhostFuselageUseItemReductionPerTick());
-                data.breakCooldown = Config.getGhostFuselageBreakCooldownTicks();
-                updateDamageAttribute(uuid, data.progress);
-                break;
-            case RELEASED:
-                // 释放时按攻击扣除（与左键攻击一致）
-                data.progress = Math.max(0, data.progress - Config.getGhostFuselageAttackReduction());
-                data.breakCooldown = Config.getGhostFuselageBreakCooldownTicks();
-                // 不立即更新修饰符，原因同 handleLeftClickAttack：
-                // 释放事件在伤害计算之前触发，延迟到下一tick更新。
-                break;
-        }
+        // 充能与释放都触发破隐（充能期间 onPlayerTick 中 isUsingItem 也会保持破隐状态）
+        // 释放时不立即更新修饰符，原因同 handleLeftClickAttack：
+        // 释放事件在伤害计算之前触发，进度在下一tick开始消退，本次释放使用破隐前的满额伤害。
+        breakStealth(uuid);
     }
 
     /**
-     * 构造体加入世界时，降低玩家隐身进度（部署扣除）
+     * 构造体加入世界时，触发玩家破隐（部署扣除）
      */
     @SubscribeEvent
     public static void onEntityJoinLevel(EntityJoinLevelEvent event) {
@@ -319,10 +306,9 @@ public class GhostFuselageManager {
             return;
         }
 
+        breakStealth(ownerUUID);
         GhostData data = PLAYER_GHOST_DATA.get(ownerUUID);
         if (data != null) {
-            data.progress = Math.max(0, data.progress - Config.getGhostFuselageDeployReduction());
-            data.breakCooldown = Config.getGhostFuselageBreakCooldownTicks();
             updateDamageAttribute(ownerUUID, data.progress);
         }
     }
@@ -333,7 +319,7 @@ public class GhostFuselageManager {
     private static void updateDamageAttribute(UUID playerUUID, double progress) {
         int modLevel = Math.max(0, ModLevelManager.getModLevel(playerUUID));
         double maxDamageBonus = Config.getGhostFuselageBaseMaxDamageBonus() * (1.0 + modLevel * Config.getGhostFuselageMaxBonusPerLevel());
-        // progress归一化到0~1范围（STEALTH_CAP=0.8对应满伤害）
+        // progress归一化到0~1范围（STEALTH_CAP=1.0对应满伤害）
         double normalizedProgress = Math.min(progress, STEALTH_CAP) / STEALTH_CAP;
         double currentBonus = normalizedProgress * maxDamageBonus;
         AttributeManager.setDynamicAttribute(playerUUID, NAMESPACE, ATTR_DAMAGE_INDEPENDENT, currentBonus);
@@ -414,16 +400,16 @@ public class GhostFuselageManager {
      * 幽灵机身数据 - 每个玩家的隐身进度状态
      */
     private static class GhostData {
-        /** 隐身进度 0.0 ~ 1.0 */
+        /** 隐身进度 0.0 ~ 1.0（1.0 = 完全隐身） */
         double progress;
-        /** 破隐冷却（tick），进度被扣除时设为5，冷却期间不累加隐身进度 */
-        int breakCooldown;
+        /** 破隐状态：为true时隐身进度每刻按当前值比例极速消退，直至归零后重新累加 */
+        boolean breaking;
         /** 上一tick是否处于完全隐身状态（用于首次进入时清理仇恨） */
         boolean wasFullyStealthed;
 
         GhostData() {
             this.progress = 0;
-            this.breakCooldown = 0;
+            this.breaking = false;
             this.wasFullyStealthed = false;
         }
     }

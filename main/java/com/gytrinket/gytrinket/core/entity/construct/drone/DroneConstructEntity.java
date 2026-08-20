@@ -374,7 +374,9 @@ public class DroneConstructEntity extends AbstractConstructEntity {
 
     @Override
     protected ConstructData createConstructDataForRegistration(ServerPlayer ownerPlayer) {
-        DroneArrayType currentArrayType = DroneArrayManager.getInstance().getPlayerArrayType(ownerPlayer);
+        DroneArrayType currentArrayType = ownerPlayer != null
+                ? DroneArrayManager.getInstance().getPlayerArrayType(ownerPlayer)
+                : DroneArrayType.Types.ORBIT;
         if (currentArrayType == null) {
             currentArrayType = DroneArrayType.Types.ORBIT;
         }

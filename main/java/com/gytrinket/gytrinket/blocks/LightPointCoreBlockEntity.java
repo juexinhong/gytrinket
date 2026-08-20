@@ -47,7 +47,7 @@ public class LightPointCoreBlockEntity extends BlockEntity implements MenuProvid
      */
     @Override
     public Component getDisplayName() {
-        return Component.translatable("block.gytrinket.light_point_core_block_gy");
+        return Component.translatable("block.gytrinket.light_point_core");
     }
 
     /**

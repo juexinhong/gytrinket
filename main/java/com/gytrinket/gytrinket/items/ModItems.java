@@ -9,8 +9,9 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 public class ModItems {
     public static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(com.gytrinket.gytrinket.gytrinket.MODID);
 
-    // 基础方块
-    public static final DeferredItem<BlockItem> LIGHT_POINT_CORE = ITEMS.registerSimpleBlockItem("light_point_core", ModBlocks.LIGHT_POINT_CORE);
+    // 基础方块（使用 GeoItem 渲染3D模型）
+    public static final DeferredItem<BlockItem> LIGHT_POINT_CORE = ITEMS.register("light_point_core",
+            () -> new LightPointCoreBlockItem(ModBlocks.LIGHT_POINT_CORE.get(), new Item.Properties()));
 
     // 机身物品
     public static final DeferredItem<Item> GUARDIAN = ITEMS.registerSimpleItem("guardian", new Item.Properties()); // 哨卫机身
@@ -152,7 +153,6 @@ public class ModItems {
     public static final DeferredItem<Item> FURNACE_CORE_MODULE = ITEMS.registerSimpleItem("furnace_core_module", new Item.Properties()); // 炉心融解模块
 
     // 零件
-    public static final DeferredItem<Item> TOTEM = ITEMS.registerSimpleItem("totem", new Item.Properties()); // 图腾
     public static final DeferredItem<Item> BEAM = ITEMS.registerSimpleItem("beam", new Item.Properties()); // 光束
     public static final DeferredItem<Item> BARRIER = ITEMS.registerSimpleItem("barrier", new Item.Properties()); // 屏障
     public static final DeferredItem<Item> ULTIMATE_SHIELD = ITEMS.registerSimpleItem("ultimate_shield", new Item.Properties()); // 至高之盾

@@ -7,7 +7,7 @@
   "message.gytrinket.execute_disabled": "Атрибуция исполнения: Отключена",
   "category.gytrinket.gameplay": "Светлая Украшение",
   "tooltip.gytrinket.drone_module": "Материал строительства дронов",
-  "tooltip.gytrinket.drone_module_desc": "Позволяет строить конструкты дронов\nМакс. количество: %d  Здоровье: %d  Урон: %.1f  Скорость атаки: %.0f/с\nДрон — стандартный конструкт",
+  "tooltip.gytrinket.drone_module_desc": "Позволяет строить конструкты дронов\nМакс. количество: %d  Здоровье: %d  Урон: %.1f  Скорость атаки: %s/с\nДрон — стандартный конструкт",
   "tooltip.gytrinket.assault_drone_module": "Материал строительства штурмовых дронов",
   "tooltip.gytrinket.defense_drone_module": "Материал строительства оборонительных дронов",
   "tooltip.gytrinket.adaptive_armor": "Предмет с адаптивной бронёй",

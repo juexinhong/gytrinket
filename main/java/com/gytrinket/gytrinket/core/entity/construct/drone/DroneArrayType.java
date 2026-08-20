@@ -1,6 +1,7 @@
 package com.gytrinket.gytrinket.core.entity.construct.drone;
 
 import com.gytrinket.gytrinket.config.Config;
+import com.gytrinket.gytrinket.core.defs.DefsManager;
 import com.gytrinket.gytrinket.core.shield.DisableSystem;
 import com.gytrinket.gytrinket.core.entity.construct.drone.behavior.IDroneBehavior;
 import com.gytrinket.gytrinket.core.entity.construct.drone.behavior.OrbitBehavior;
@@ -56,9 +57,9 @@ public class DroneArrayType {
 
     private Set<String> getRequiredItemIdsFromConfig() {
         return switch (id) {
-            case "pursuit" -> new HashSet<>(Config.PURSUIT_ARRAY_REQUIRED_ITEMS.get());
-            case "formation" -> new HashSet<>(Config.FORMATION_ARRAY_REQUIRED_ITEMS.get());
-            case "guard" -> new HashSet<>(Config.GUARD_ARRAY_REQUIRED_ITEMS.get());
+            case "pursuit" -> new HashSet<>(DefsManager.getItemSet("pursuit_array_required_items"));
+            case "formation" -> new HashSet<>(DefsManager.getItemSet("formation_array_required_items"));
+            case "guard" -> new HashSet<>(DefsManager.getItemSet("guard_array_required_items"));
             default -> Collections.emptySet();
         };
     }

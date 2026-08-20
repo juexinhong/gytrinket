@@ -7,7 +7,7 @@
   "message.gytrinket.execute_disabled": "Ausführungsattribut: Deaktiviert",
   "category.gytrinket.gameplay": "Lichtpunkt-Schmuck",
   "tooltip.gytrinket.drone_module": "Drohnen-Konstruktionsmaterial",
-  "tooltip.gytrinket.drone_module_desc": "Ermöglicht den Bau von Drohnen-Konstrukten\nMax Anzahl: %d  Gesundheit: %d  Schaden: %.1f  Angriffsgeschw.: %.0f/s\nDrohne ist ein Standard-Konstrukt",
+  "tooltip.gytrinket.drone_module_desc": "Ermöglicht den Bau von Drohnen-Konstrukten\nMax Anzahl: %d  Gesundheit: %d  Schaden: %.1f  Angriffsgeschw.: %s/s\nDrohne ist ein Standard-Konstrukt",
   "tooltip.gytrinket.assault_drone_module": "Sturm-Drohnen-Konstruktionsmaterial",
   "tooltip.gytrinket.defense_drone_module": "Verteidigungs-Drohnen-Konstruktionsmaterial",
   "tooltip.gytrinket.adaptive_armor": "Adaptive Rüstung aktiviertes Item",

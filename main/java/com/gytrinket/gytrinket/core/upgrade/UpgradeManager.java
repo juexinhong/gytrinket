@@ -1,6 +1,7 @@
 package com.gytrinket.gytrinket.core.upgrade;
 
 import com.gytrinket.gytrinket.config.Config;
+import com.gytrinket.gytrinket.core.defs.DefsManager;
 import com.gytrinket.gytrinket.gytrinket;
 import com.gytrinket.gytrinket.storage.datacenter.PlayerDataCenter;
 import net.minecraft.core.RegistryAccess;
@@ -39,23 +40,18 @@ public class UpgradeManager {
         MATERIAL_TO_TARGETS.clear();
         reverseIndexBuilt = false;
 
-        List<? extends String> paths = Config.UPGRADE_PATHS.get();
-        for (String path : paths) {
-            if (path == null || path.trim().isEmpty()) continue;
-            String[] parts = path.trim().split("\\.");
-            if (parts.length != 2) {
-                gytrinket.LOGGER.warn("无效的升级路径格式: {} (应为 基础物品ID.升级物品ID)", path);
-                continue;
+        DefsManager.getUpgradePaths().forEach((baseId, upgradeIds) -> {
+            Item baseItem = BuiltInRegistries.ITEM.get(ResourceLocation.parse(baseId));
+            for (String upgradeId : upgradeIds) {
+                Item upgradedItem = BuiltInRegistries.ITEM.get(ResourceLocation.parse(upgradeId));
+                if (baseItem == null || upgradedItem == null) {
+                    gytrinket.LOGGER.warn("升级路径中的物品未找到: {} -> {}", baseId, upgradeId);
+                    continue;
+                }
+                UPGRADE_MAP.computeIfAbsent(baseItem, k -> new ArrayList<>()).add(upgradedItem);
+                gytrinket.LOGGER.info("注册升级路径: {} -> {}", baseId, upgradeId);
             }
-            Item baseItem = BuiltInRegistries.ITEM.get(ResourceLocation.parse(parts[0].trim()));
-            Item upgradedItem = BuiltInRegistries.ITEM.get(ResourceLocation.parse(parts[1].trim()));
-            if (baseItem == null || upgradedItem == null) {
-                gytrinket.LOGGER.warn("升级路径中的物品未找到: {}", path);
-                continue;
-            }
-            UPGRADE_MAP.computeIfAbsent(baseItem, k -> new ArrayList<>()).add(upgradedItem);
-            gytrinket.LOGGER.info("注册升级路径: {} -> {}", parts[0].trim(), parts[1].trim());
-        }
+        });
     }
 
     public static void buildReverseIndex(RecipeManager recipeManager, RegistryAccess registryAccess) {

@@ -7,7 +7,7 @@
   "message.gytrinket.execute_disabled": "처형 속성: 비활성화",
   "category.gytrinket.gameplay": "빛의 장신구",
   "tooltip.gytrinket.drone_module": "드론 건축 재료",
-  "tooltip.gytrinket.drone_module_desc": "드론 컨스트럭트 건축 가능\n최대 수량: %d  체력: %d  피해: %.1f  공격 속도: %.0f/s\n드론은 표준 컨스트럭트입니다",
+  "tooltip.gytrinket.drone_module_desc": "드론 컨스트럭트 건축 가능\n최대 수량: %d  체력: %d  피해: %.1f  공격 속도: %s/s\n드론은 표준 컨스트럭트입니다",
   "tooltip.gytrinket.assault_drone_module": "강습 드론 건축 재료",
   "tooltip.gytrinket.defense_drone_module": "방어 드론 건축 재료",
   "tooltip.gytrinket.adaptive_armor": "적응 아머 활성화 아이템",

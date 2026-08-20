@@ -7,7 +7,7 @@
   "message.gytrinket.execute_disabled": "実行属性：無効",
   "category.gytrinket.gameplay": "光点トリンケット",
   "tooltip.gytrinket.drone_module": "ドローン構築素材",
-  "tooltip.gytrinket.drone_module_desc": "ドローンコンストラクトの構築を可能にする\n最大数：%d  体力：%d  ダメージ：%.1f  攻撃速度：%.0f/s\nドローンはスタンダードコンストラクトです",
+  "tooltip.gytrinket.drone_module_desc": "ドローンコンストラクトの構築を可能にする\n最大数：%d  体力：%d  ダメージ：%.1f  攻撃速度：%s/s\nドローンはスタンダードコンストラクトです",
   "tooltip.gytrinket.assault_drone_module": "アサルトドローン構築素材",
   "tooltip.gytrinket.defense_drone_module": "ディフェンスドローン構築素材",
   "tooltip.gytrinket.adaptive_armor": "アダプティブアーマー有効アイテム",

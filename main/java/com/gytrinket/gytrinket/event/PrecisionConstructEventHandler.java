@@ -2,6 +2,7 @@ package com.gytrinket.gytrinket.event;
 
 import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
+import com.gytrinket.gytrinket.core.defs.DefsManager;
 import com.gytrinket.gytrinket.core.level.ModLevelManager;
 import com.gytrinket.gytrinket.gytrinket;
 import com.gytrinket.gytrinket.storage.PlayerStore;
@@ -44,7 +45,7 @@ public class PrecisionConstructEventHandler {
     }
 
     private static boolean hasRequiredItem(UUID playerUUID) {
-        List<? extends String> requiredItems = Config.PRECISION_CONSTRUCT_ITEMS.get();
+        Set<String> requiredItems = DefsManager.getItemSet("precision_construct_items");
         if (requiredItems.isEmpty()) {
             return false;
         }

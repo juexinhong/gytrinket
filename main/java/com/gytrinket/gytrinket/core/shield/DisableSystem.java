@@ -2,6 +2,7 @@ package com.gytrinket.gytrinket.core.shield;
 
 import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.attribute.BodyTypeManager;
+import com.gytrinket.gytrinket.core.defs.DefsManager;
 import com.gytrinket.gytrinket.core.shield.type.ShieldTypeManager;
 import com.gytrinket.gytrinket.gytrinket;
 import com.gytrinket.gytrinket.storage.PlayerStore;
@@ -26,38 +27,20 @@ public class DisableSystem {
 
     public static void loadConfig() {
         ITEM_DISABLE_TARGETS.clear();
-        for (String entry : Config.ITEM_DISABLE_TARGETS_CONFIG.get()) {
-            if (entry.trim().isEmpty()) continue;
-            String[] parts = entry.trim().split("\\|");
-            if (parts.length < 2) continue;
-            String itemId = parts[0].trim();
-            Set<String> targets = new HashSet<>();
-            for (String target : parts[1].trim().split(",")) {
-                String t = target.trim();
-                if (!t.isEmpty()) targets.add(t);
-            }
+        DefsManager.getDisableTargets().forEach((itemId, targets) -> {
             if (!targets.isEmpty()) {
-                ITEM_DISABLE_TARGETS.put(itemId, targets);
+                ITEM_DISABLE_TARGETS.put(itemId, new HashSet<>(targets));
                 gytrinket.LOGGER.info("注册禁用目标: {} -> {}", itemId, targets);
             }
-        }
+        });
 
         ITEM_DEPENDENCIES.clear();
-        for (String entry : Config.ITEM_DEPENDENCIES_CONFIG.get()) {
-            if (entry.trim().isEmpty()) continue;
-            String[] parts = entry.trim().split("\\|");
-            if (parts.length < 2) continue;
-            String itemId = parts[0].trim();
-            Set<String> deps = new HashSet<>();
-            for (String dep : parts[1].trim().split(",")) {
-                String d = dep.trim();
-                if (!d.isEmpty()) deps.add(d);
-            }
+        DefsManager.getDependencies().forEach((itemId, deps) -> {
             if (!deps.isEmpty()) {
-                ITEM_DEPENDENCIES.put(itemId, deps);
+                ITEM_DEPENDENCIES.put(itemId, new HashSet<>(deps));
                 gytrinket.LOGGER.info("注册物品依赖: {} -> {}", itemId, deps);
             }
-        }
+        });
 
         gytrinket.LOGGER.info("禁用系统配置加载完成，禁用目标: {} 项，依赖关系: {} 项",
                 ITEM_DISABLE_TARGETS.size(), ITEM_DEPENDENCIES.size());

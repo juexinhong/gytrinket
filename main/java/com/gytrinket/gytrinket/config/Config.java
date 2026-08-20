@@ -4,6 +4,7 @@ import com.gytrinket.gytrinket.gytrinket;
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
 import com.gytrinket.gytrinket.core.attribute.ItemAttributeConfig;
 import com.gytrinket.gytrinket.core.attribute.AttributeType;
+import com.gytrinket.gytrinket.core.defs.DefsManager;
 import com.gytrinket.gytrinket.core.shield.DisableSystem;
 import com.gytrinket.gytrinket.core.shield.type.ShieldTypeManager;
 import com.gytrinket.gytrinket.core.upgrade.UpgradeManager;
@@ -33,19 +34,16 @@ public class Config {
     private static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
 
     // ===== 1. 护盾基础属性 (attributes) =====
-    public static final ModConfigSpec.ConfigValue<String> ATTRIBUTES_CONFIG;
+
     public static final ModConfigSpec.ConfigValue<List<? extends String>> ITEM_ATTRIBUTES_CONFIG;
 
     // ===== 护盾类型系统 (shield_types) =====
-    public static final ModConfigSpec.ConfigValue<String> SHIELD_TYPES_CONFIG;
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> ITEM_SHIELD_TYPES_CONFIG;
+
 
     // ===== 机身类型系统 (body_types) =====
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> BODY_ITEMS_CONFIG;
 
     // ===== 禁用系统 (disable_system) =====
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> ITEM_DISABLE_TARGETS_CONFIG;
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> ITEM_DEPENDENCIES_CONFIG;
+
 
     // ===== 1. 光环护盾 (aura_shield) =====
     public static final ModConfigSpec.DoubleValue AURA_RADIUS;
@@ -70,7 +68,7 @@ public class Config {
     public static final ModConfigSpec.DoubleValue REFLECT_DAMAGE_EFFECT_MULTIPLIER;
 
     // ===== 4. 增幅护盾 (amplification_shield) =====
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> DANGEROUS_ENTITIES;
+
     public static final ModConfigSpec.DoubleValue AMPLIFICATION_BASE_AMPLIFICATION;
     public static final ModConfigSpec.DoubleValue AMPLIFICATION_THREAT_AMPLIFICATION;
     public static final ModConfigSpec.DoubleValue AMPLIFICATION_CHECK_RADIUS;
@@ -85,65 +83,62 @@ public class Config {
     public static final ModConfigSpec.DoubleValue WARP_SHIELD_WARP_DISTANCE;
 
     // ===== 6. 屏障 (barrier) =====
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> BARRIER_ITEMS;
+
     public static final ModConfigSpec.DoubleValue BARRIER_MAX_DAMAGE;
 
     // ===== 7. 反射护盾 (reflect_damage) =====
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> REFLECT_DAMAGE_ITEMS;
+
     public static final ModConfigSpec.DoubleValue REFLECT_DAMAGE_BASE_DAMAGE;
     public static final ModConfigSpec.DoubleValue REFLECT_DAMAGE_RAY_LENGTH;
 
     // ===== 8. 易爆护盾 (explosive_shield) =====
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> EXPLOSIVE_SHIELD_ITEMS;
+
     public static final ModConfigSpec.DoubleValue EXPLOSIVE_SHIELD_DAMAGE;
     public static final ModConfigSpec.DoubleValue EXPLOSIVE_SHIELD_RADIUS;
 
     // ===== 9. 电能释放 (electric_discharge) =====
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> ELECTRIC_DISCHARGE_ITEMS;
+
     public static final ModConfigSpec.DoubleValue ELECTRIC_DISCHARGE_BURN_CHARGE;
     public static final ModConfigSpec.IntValue ELECTRIC_DISCHARGE_BURN_DURATION;
 
     // ===== 10. 武器化护盾 (weaponized_shield) =====
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> WEAPONIZED_SHIELD_ITEMS;
+
     public static final ModConfigSpec.DoubleValue WEAPONIZED_SHIELD_VULNERABILITY;
     public static final ModConfigSpec.DoubleValue WEAPONIZED_SHIELD_RADIUS;
 
     // ===== 11. 镀层 (coating_system) =====
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> COATING_ITEMS;
+
     public static final ModConfigSpec.DoubleValue COATING_REDUCTION_PER_LAYER;
 
     // ===== 12. 适应性装甲 (adaptive_armor) =====
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> ADAPTIVE_ARMOR_ITEMS;
+
     public static final ModConfigSpec.IntValue ADAPTIVE_ARMOR_DURATION;
     public static final ModConfigSpec.IntValue ADAPTIVE_ARMOR_MAX_LAYERS_PER_HIT;
     public static final ModConfigSpec.DoubleValue ADAPTIVE_ARMOR_LAYERS_PER_DAMAGE;
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> ADAPTIVE_ARMOR_SHIELD_EFFECT_ITEMS;
 
     // ===== 13. 再生护盾 (shield_natural_recovery) =====
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> SHIELD_NATURAL_RECOVERY_ITEMS;
+
     public static final ModConfigSpec.DoubleValue NATURAL_RECOVERY_SHIELD_RECOVERY_PER_TICK;
     public static final ModConfigSpec.DoubleValue NATURAL_RECOVERY_SHIELD_PRESENT_HEALTH_MODIFIER;
     public static final ModConfigSpec.DoubleValue NATURAL_RECOVERY_SHIELD_PRESENT_SHIELD_MODIFIER;
 
     // ===== 14. 效率 (attack_cooldown_efficiency) =====
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> ATTACK_COOLDOWN_EFFICIENCY_ITEMS;
 
     // ===== 15. 转化 (conversion) =====
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> CONVERSION_ITEMS;
+
     public static final ModConfigSpec.DoubleValue CONVERSION_RATIO;
 
     // ===== 16. 二原协议 (binary_protocol) =====
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> BINARY_PROTOCOL_ITEMS;
 
     // ===== 17. 强袭 (assault) =====
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> ASSAULT_ITEMS;
+
     public static final ModConfigSpec.DoubleValue ASSAULT_ATTACK_SPEED_PER_STACK;
     public static final ModConfigSpec.IntValue ASSAULT_DURATION_TICKS;
     public static final ModConfigSpec.DoubleValue ASSAULT_SELF_DAMAGE_PER_STACK;
     public static final ModConfigSpec.DoubleValue ASSAULT_MOVEMENT_SPEED_PENALTY;
 
     // ===== 18. 充能攻击 (charged_attack) =====
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> CHARGED_ATTACK_ITEMS;
+
     public static final ModConfigSpec.DoubleValue CHARGED_ATTACK_BASE_CHARGE_RATE;
     public static final ModConfigSpec.DoubleValue CHARGED_ATTACK_SPEED_SCALE_FACTOR;
     public static final ModConfigSpec.DoubleValue CHARGED_ATTACK_DRAG_COEFFICIENT;
@@ -151,17 +146,17 @@ public class Config {
     public static final ModConfigSpec.DoubleValue CHARGED_ATTACK_MOVEMENT_SPEED_PENALTY;
 
     // ===== 19. 精密构造 (precision_construct) =====
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> PRECISION_CONSTRUCT_ITEMS;
+
     public static final ModConfigSpec.DoubleValue PRECISION_CONSTRUCT_BONUS_PER_LEVEL;
 
     // ===== 20. 护盾移植 (shield_transfer) =====
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> SHIELD_TRANSFER_ITEMS;
+
     public static final ModConfigSpec.DoubleValue SHIELD_TRANSFER_EFFECT_PENALTY_PER_ENTITY;
 
     // ===== 21. 追击阵列/突击无人机 (pursuit_array) =====
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> DRONE_MODULE_ITEMS;
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> ASSAULT_DRONE_MODULE_ITEMS;
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> PURSUIT_ARRAY_REQUIRED_ITEMS;
+
+
+
     public static final ModConfigSpec.DoubleValue DRONE_BASE_HEALTH;
     public static final ModConfigSpec.DoubleValue DRONE_BASE_DAMAGE;
     public static final ModConfigSpec.IntValue DRONE_MAX_COUNT;
@@ -175,7 +170,7 @@ public class Config {
     public static final ModConfigSpec.BooleanValue DRONE_EXECUTE_ENABLED;
 
     // ===== 21.6 僚机 (wingman) =====
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> WINGMAN_MODULE_ITEMS;
+
     public static final ModConfigSpec.DoubleValue WINGMAN_BASE_HEALTH;
     public static final ModConfigSpec.IntValue WINGMAN_MAX_COUNT;
     public static final ModConfigSpec.DoubleValue WINGMAN_ATTACK_INTERVAL;
@@ -186,20 +181,20 @@ public class Config {
     public static final ModConfigSpec.DoubleValue WINGMAN_EXPLOSION_RADIUS;
 
     // ===== 拦截机/进化/纳米再生/震撼弹模块 =====
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> WINGMAN_INTERCEPTOR_MODULE_ITEMS;
+
     public static final ModConfigSpec.IntValue WINGMAN_INTERCEPTOR_CHARGE_DURATION_TICKS;
     public static final ModConfigSpec.IntValue WINGMAN_INTERCEPTOR_MAX_CHARGE_DURATION_TICKS;
     public static final ModConfigSpec.DoubleValue WINGMAN_INTERCEPTOR_CHARGED_SWEEP_BASE_RANGE;
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> WINGMAN_EVOLUTION_MODULE_ITEMS;
+
     public static final ModConfigSpec.DoubleValue WINGMAN_EVOLUTION_BONUS_PER_LEVEL;
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> WINGMAN_NANO_REGEN_MODULE_ITEMS;
+
     public static final ModConfigSpec.DoubleValue WINGMAN_NANO_REGEN_PERCENT;
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> WINGMAN_SHOCKWAVE_MODULE_ITEMS;
+
     public static final ModConfigSpec.DoubleValue WINGMAN_SHOCKWAVE_DAMAGE_MULTIPLIER;
     public static final ModConfigSpec.DoubleValue WINGMAN_SHOCKWAVE_SPLASH_LENGTH_MULTIPLIER;
 
     // ===== 21.7 蜂群 (swarm) =====
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> SWARM_MODULE_ITEMS;
+
     public static final ModConfigSpec.DoubleValue SWARM_BASE_HEALTH;
     public static final ModConfigSpec.DoubleValue SWARM_BASE_DAMAGE;
     public static final ModConfigSpec.DoubleValue SWARM_ATTACK_INTERVAL;
@@ -215,16 +210,16 @@ public class Config {
     public static final ModConfigSpec.DoubleValue SWARM_SHIELD_REPAIR_MULTIPLIER;
 
     // ===== 22. 宽限协议 (near_death_protection) =====
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> NEAR_DEATH_PROTECTION_ITEMS;
+
     public static final ModConfigSpec.IntValue NEAR_DEATH_PROTECTION_COOLDOWN;
     public static final ModConfigSpec.IntValue NEAR_DEATH_PROTECTION_INVINCIBLE_DURATION;
 
     // ===== 23. 高等工程 (advanced_engineering) =====
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> ADVANCED_ENGINEERING_ITEMS;
+
     public static final ModConfigSpec.DoubleValue ADVANCED_ENGINEERING_BONUS_PER_LEVEL;
 
     // ===== 24. 最后指令 (near_death_explosion) =====
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> NEAR_DEATH_EXPLOSION_ITEMS;
+
     public static final ModConfigSpec.IntValue NEAR_DEATH_EXPLOSION_INVINCIBLE_DURATION;
     public static final ModConfigSpec.DoubleValue NEAR_DEATH_EXPLOSION_COEFFICIENT;
     public static final ModConfigSpec.DoubleValue NEAR_DEATH_EXPLOSION_RADIUS;
@@ -233,42 +228,40 @@ public class Config {
     public static final ModConfigSpec.DoubleValue NEAR_DEATH_EXPLOSION_SPEED_ACCELERATION;
 
     // ===== 24.5 自毁装置 (self_destruct) =====
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> SELF_DESTRUCT_ITEMS;
+
     public static final ModConfigSpec.DoubleValue SELF_DESTRUCT_BASE_DAMAGE;
     public static final ModConfigSpec.DoubleValue SELF_DESTRUCT_BASE_RADIUS;
     public static final ModConfigSpec.DoubleValue SELF_DESTRUCT_DAMAGE_PER_MAX_HEALTH;
     public static final ModConfigSpec.DoubleValue SELF_DESTRUCT_RADIUS_PER_MAX_HEALTH;
 
     // ===== 24.5.1 炉心融解模块 (furnace_core) =====
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> FURNACE_CORE_ITEMS;
 
     // ===== 24.6 督战者 (taskmaster) =====
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> TASKMASTER_ITEMS;
 
     // ===== 25. 列队阵列 (formation_array) =====
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> FORMATION_ARRAY_REQUIRED_ITEMS;
+
     public static final ModConfigSpec.DoubleValue FORMATION_ATTACK_INTERVAL;
     public static final ModConfigSpec.DoubleValue FORMATION_ATTACK_RANGE;
     public static final ModConfigSpec.IntValue FORMATION_ATTACK_PASS_DELAY;
 
     // ===== 26. 指挥官 (commander) =====
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> COMMANDER_REQUIRED_ITEMS;
+
     public static final ModConfigSpec.IntValue COMMANDER_MAX_COUNT;
     public static final ModConfigSpec.IntValue COMMANDER_APPOINT_DELAY;
     public static final ModConfigSpec.DoubleValue COMMANDER_VULNERABILITY;
 
     // ===== 27. 守卫阵列/防御无人机 (guard_array) =====
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> DEFENSE_DRONE_MODULE_ITEMS;
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> GUARD_ARRAY_REQUIRED_ITEMS;
+
+
     public static final ModConfigSpec.DoubleValue GUARD_ATTACK_INTERVAL;
     public static final ModConfigSpec.DoubleValue GUARD_ATTACK_RANGE;
 
     // ===== 28. 弧形屏障 (arc_barrier) =====
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> ARC_BARRIER_ITEMS;
+
     public static final ModConfigSpec.DoubleValue ARC_BARRIER_POSITION_DEVIATION_THRESHOLD;
 
     // ===== 29. 反制脉冲 (counter_pulse) =====
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> COUNTER_PULSE_ITEMS;
+
     public static final ModConfigSpec.IntValue COUNTER_PULSE_COOLDOWN;
     public static final ModConfigSpec.DoubleValue COUNTER_PULSE_BASE_EXPLOSION_RADIUS;
     public static final ModConfigSpec.DoubleValue COUNTER_PULSE_BASE_EXPLOSION_DAMAGE;
@@ -276,20 +269,20 @@ public class Config {
     public static final ModConfigSpec.IntValue COUNTER_PULSE_MAX_CHARGE_LEVEL;
 
     // ===== 30. 重塑 (reshaping) =====
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> RESHAPING_ITEMS;
+
     public static final ModConfigSpec.DoubleValue RESHAPING_HEAL_RATE;
     public static final ModConfigSpec.DoubleValue RESHAPING_BASE_DAMAGE_REDUCTION;
     public static final ModConfigSpec.IntValue RESHAPING_DAMAGE_REDUCTION_DURATION;
 
     // ===== 31. 充能护盾 (charged_shield) =====
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> CHARGED_SHIELD_ITEMS;
+
     public static final ModConfigSpec.DoubleValue CHARGED_SHIELD_CHARGE_RATIO;
     public static final ModConfigSpec.DoubleValue CHARGED_SHIELD_MAX_BONUS;
     public static final ModConfigSpec.DoubleValue CHARGED_SHIELD_DECAY_RATE;
     public static final ModConfigSpec.DoubleValue CHARGED_SHIELD_MOVEMENT_SPEED_PENALTY;
 
     // ===== 35. 幽灵机身 (ghost_fuselage) =====
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> GHOST_FUSELAGE_ITEMS;
+
     public static final ModConfigSpec.DoubleValue GHOST_FUSELAGE_STEALTH_SPEED_BONUS_PER_LEVEL;
     public static final ModConfigSpec.DoubleValue GHOST_FUSELAGE_MAX_BONUS_PER_LEVEL;
     public static final ModConfigSpec.DoubleValue GHOST_FUSELAGE_BASE_MAX_DAMAGE_BONUS;
@@ -300,7 +293,7 @@ public class Config {
     public static final ModConfigSpec.IntValue GHOST_FUSELAGE_FULL_STEALTH_TICKS;
 
     // ===== 36. 积怨 (grudge) =====
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> GRUDGE_ITEMS;
+
     public static final ModConfigSpec.DoubleValue GRUDGE_CONVERSION_RATIO;
     public static final ModConfigSpec.DoubleValue GRUDGE_FADE_BASE;
     public static final ModConfigSpec.DoubleValue GRUDGE_FADE_PERCENT;
@@ -308,7 +301,6 @@ public class Config {
 
     // ===== 32. 升级系统 (upgrade_system) =====
     public static final ModConfigSpec.ConfigValue<Boolean> UPGRADE_SYSTEM_ENABLED;
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> UPGRADE_PATHS;
 
     // ===== 33. 快速装备 (quick_equip) =====
     public static final ModConfigSpec.IntValue QUICK_EQUIP_UPGRADE_POINTS_COST;
@@ -333,133 +325,7 @@ public class Config {
         // ===== 1. 护盾基础属性 =====
         BUILDER.comment("属性系统配置").push("attributes");
 
-        ATTRIBUTES_CONFIG = BUILDER.comment(
-            "属性定义配置",
-            "格式：属性名:计算方法:属性组（属性组可选）",
-            "计算方法：",
-            "  - BASE（底数方法）：所有属性值做底数相加",
-            "  - PERCENT（百分比方法）：所有属性值做百分比相乘，默认值为1.0",
-            "  - INDEPENDENT_MULTIPLY（独立乘区方法）：所有属性值做独立相乘，默认值为1.0",
-            "属性组：将相关属性分组，便于统一计算（如 shield_effect_percent 和 shield_effect_independent 都属于 shield_effect 组）",
-            "示例：shield_base:BASE,shield_effect_percent:PERCENT:shield_effect,shield_effect_independent:INDEPENDENT_MULTIPLY:shield_effect"
-        ).define("attributeDefinitions",
-            "shield_base:BASE:shield," +
-            "shield_percent:PERCENT:shield," +
-            "shield_independent:INDEPENDENT_MULTIPLY:shield," +
-            "shield_cooldown_reduction_percent:PERCENT:shield_cooldown_reduction," +
-            "shield_cooldown_reduction_independent:INDEPENDENT_MULTIPLY:shield_cooldown_reduction," +
-            "shield_cooldown_time:BASE," +
-            "shield_hit_cooldown_extend:BASE," +
-            "shield_hit_cooldown_extend_multiplier:INDEPENDENT_MULTIPLY," +
-            "shield_hit_cooldown_extend_final_multiplier:INDEPENDENT_MULTIPLY," +
-            "shield_effect_percent:PERCENT:shield_effect," +
-            "shield_effect_independent:INDEPENDENT_MULTIPLY:shield_effect," +
-            "shield_effect_radius:INDEPENDENT_MULTIPLY:shield_effect_radius," +
-            "shield_damage_reduction:INDEPENDENT_MULTIPLY," +
-            "shield_self_damage_reduction:INDEPENDENT_MULTIPLY," +
-            "player_health:BASE:player_health," +
-            "player_health_percent:PERCENT:player_health," +
-            "player_health_independent:INDEPENDENT_MULTIPLY:player_health," +
-            "player_damage_reduction:INDEPENDENT_MULTIPLY," +
-            "player_self_damage_reduction:INDEPENDENT_MULTIPLY," +
-            "coating:BASE," +
-            "adaptive_armor_duration:PERCENT," +
-            "recovery_efficiency_percent:PERCENT:recovery_efficiency," +
-            "recovery_efficiency_independent:INDEPENDENT_MULTIPLY:recovery_efficiency," +
-            "attack_damage:BASE:attack_damage," +
-            "attack_damage_percent:PERCENT:attack_damage," +
-            "attack_damage_independent:INDEPENDENT_MULTIPLY:attack_damage," +
-            "attack_speed_percent:PERCENT:attack_speed," +
-            "attack_speed_independent:INDEPENDENT_MULTIPLY:attack_speed," +
-            "combo:BASE," +
-            "movement_speed_percent:PERCENT:movement_speed," +
-            "movement_speed_independent:INDEPENDENT_MULTIPLY:movement_speed," +
-            "knockback_resistance:BASE," +
-            "player_knockback_percent:PERCENT:player_knockback," +
-            "construct_count_base:BASE," +
-            "construct_standard_count_base:BASE:construct_standard_count," +
-            "construct_standard_count_percent:PERCENT:construct_standard_count," +
-            "construct_standard_count_independent:INDEPENDENT_MULTIPLY:construct_standard_count," +
-            "construct_advanced_count_base:BASE:construct_advanced_count," +
-            "construct_advanced_count_percent:PERCENT:construct_advanced_count," +
-            "construct_advanced_count_independent:INDEPENDENT_MULTIPLY:construct_advanced_count," +
-            "construct_standard_non_weapon_count_percent:PERCENT:construct_standard_non_weapon_count," +
-            "construct_basic_non_weapon_count_percent:PERCENT:construct_basic_non_weapon_count," +
-            "construct_drone_count_base:BASE:construct_drone_count," +
-            "construct_drone_count_percent:PERCENT:construct_drone_count," +
-            "construct_drone_count_independent:INDEPENDENT_MULTIPLY:construct_drone_count," +
-            "construct_drone_damage_base:BASE:construct_drone_damage," +
-            "construct_drone_damage_percent:PERCENT:construct_drone_damage," +
-            "construct_drone_damage_independent:INDEPENDENT_MULTIPLY:construct_drone_damage," +
-            "construct_drone_health_base:BASE:construct_drone_health," +
-            "construct_drone_health_percent:PERCENT:construct_drone_health," +
-            "construct_drone_health_independent:INDEPENDENT_MULTIPLY:construct_drone_health," +
-            "construct_health_base:BASE:construct_health," +
-            "construct_health_percent:PERCENT:construct_health," +
-            "construct_health_independent:INDEPENDENT_MULTIPLY:construct_health," +
-            "construct_damage_base:BASE:construct_damage," +
-            "construct_damage_percent:PERCENT:construct_damage," +
-            "construct_damage_independent:INDEPENDENT_MULTIPLY:construct_damage," +
-            "construct_attack_speed_percent:PERCENT:construct_attack_speed," +
-            "construct_attack_speed_independent:INDEPENDENT_MULTIPLY:construct_attack_speed," +
-            "construct_build_speed_percent:PERCENT:construct_build_speed," +
-            "construct_build_speed_independent:INDEPENDENT_MULTIPLY:construct_build_speed," +
-            "construct_move_speed_percent:PERCENT:construct_move_speed," +
-            "construct_orbit_speed_percent:PERCENT:construct_orbit_speed," +
-            "construct_rotation_speed_percent:PERCENT:construct_rotation_speed," +
-            "construct_drone_assault_attack_speed_percent:PERCENT:construct_drone_assault_attack_speed," +
-            "construct_drone_assault_attack_speed_independent:INDEPENDENT_MULTIPLY:construct_drone_assault_attack_speed," +
-            "construct_drone_defense_health_base:BASE:construct_drone_defense_health," +
-            "construct_drone_defense_health_percent:PERCENT:construct_drone_defense_health," +
-            "construct_drone_defense_health_independent:INDEPENDENT_MULTIPLY:construct_drone_defense_health," +
-            "construct_commander_health_base:BASE:construct_commander_health," +
-            "construct_commander_health_percent:PERCENT:construct_commander_health," +
-            "construct_commander_health_independent:INDEPENDENT_MULTIPLY:construct_commander_health," +
-            "construct_commander_damage_base:BASE:construct_commander_damage," +
-            "construct_commander_damage_percent:PERCENT:construct_commander_damage," +
-            "construct_commander_damage_independent:INDEPENDENT_MULTIPLY:construct_commander_damage," +
-            "explosion_damage_percent:PERCENT:explosion_damage," +
-            "explosion_damage_independent:INDEPENDENT_MULTIPLY:explosion_damage," +
-            "explosion_radius_percent:PERCENT:explosion_radius," +
-            "explosion_radius_independent:INDEPENDENT_MULTIPLY:explosion_radius," +
-            "weapon_damage_base:BASE:weapon_damage," +
-            "weapon_attack_speed_percent:PERCENT:weapon_attack_speed," +
-            "weapon_projectile_size_percent:PERCENT:weapon_projectile_size," +
-            "weapon_projectile_speed_percent:PERCENT:weapon_projectile_speed," +
-            "weapon_projectile_count_base:BASE:weapon_projectile_count," +
-            "weapon_spread_angle_percent:PERCENT:weapon_spread_angle," +
-            "weapon_homing_angle_percent:PERCENT:weapon_homing_angle," +
-            "weapon_explosion_radius_percent:PERCENT:weapon_explosion_radius," +
-            "weapon_extra_damage_base:BASE:weapon_extra_damage," +
-            "swarm_count_mothership:BASE:swarm_count_mothership," +
-            "construct_swarm_count_base:BASE:construct_swarm_count," +
-            "construct_swarm_count_percent:PERCENT:construct_swarm_count," +
-            "construct_swarm_count_independent:INDEPENDENT_MULTIPLY:construct_swarm_count," +
-            "construct_swarm_count_mothership_base:BASE:construct_swarm_count_mothership," +
-            "construct_swarm_health_base:BASE:construct_swarm_health," +
-            "construct_swarm_health_percent:PERCENT:construct_swarm_health," +
-            "construct_swarm_health_independent:INDEPENDENT_MULTIPLY:construct_swarm_overflow," +
-            "construct_swarm_damage_base:BASE:construct_swarm_damage," +
-            "construct_swarm_damage_percent:PERCENT:construct_swarm_damage," +
-            "construct_swarm_damage_independent:INDEPENDENT_MULTIPLY:construct_swarm_overflow," +
-            "construct_swarm_attack_speed_percent:PERCENT:construct_swarm_attack_speed," +
-            "construct_swarm_attack_speed_independent:INDEPENDENT_MULTIPLY:construct_swarm_overflow," +
-            "construct_wingman_count_base:BASE:construct_wingman_count," +
-            "construct_wingman_count_percent:PERCENT:construct_wingman_count," +
-            "construct_wingman_count_independent:INDEPENDENT_MULTIPLY:construct_wingman_count," +
-            "construct_wingman_health_base:BASE:construct_wingman_health," +
-            "construct_wingman_health_percent:PERCENT:construct_wingman_health," +
-            "construct_wingman_health_independent:INDEPENDENT_MULTIPLY:construct_wingman_health," +
-            "construct_wingman_damage_base:BASE:construct_wingman_damage," +
-            "construct_wingman_damage_percent:PERCENT:construct_wingman_damage," +
-            "construct_wingman_damage_independent:INDEPENDENT_MULTIPLY:construct_wingman_damage," +
-            "construct_wingman_attack_speed_percent:PERCENT:construct_wingman_attack_speed," +
-            "construct_wingman_attack_speed_independent:INDEPENDENT_MULTIPLY:construct_wingman_attack_speed," +
-            "construct_wingman_evolution_health_percent:PERCENT:construct_wingman_evolution," +
-            "construct_wingman_evolution_attack_speed_percent:PERCENT:construct_wingman_evolution," +
-            "construct_wingman_explosive_count_base:BASE:construct_wingman_explosive_count," +
-            "construct_wingman_weapon_attack_speed_percent:PERCENT:construct_wingman_weapon_attack_speed"
-        );
+        
 
         ITEM_ATTRIBUTES_CONFIG = BUILDER.comment(
             "物品属性配置",
@@ -569,116 +435,6 @@ public class Config {
 
         BUILDER.pop();
 
-        // ===== 护盾类型系统 =====
-        BUILDER.comment("护盾类型系统配置").push("shield_types");
-
-        SHIELD_TYPES_CONFIG = BUILDER.comment(
-            "护盾类型定义配置",
-            "格式：类型名=是否兼容;类型名=是否兼容;...",
-            "是否兼容：true=可与其他类型共存，false=不兼容，第一个激活的生效",
-            "示例：none=true;aura=false"
-        ).define("shieldTypeDefinitions", "none=true;aura=false;siphon=false;reflect=false;amplification=false;warp=false");
-
-        ITEM_SHIELD_TYPES_CONFIG = BUILDER.comment(
-            "物品护盾类型配置",
-            "格式：物品ID|类型名,类型名",
-            "使用 | 分隔物品ID和类型，使用 , 分隔多个类型",
-            "每个物品单独占一行",
-            "示例：minecraft:diamond|none"
-        ).defineListAllowEmpty("itemShieldTypes",
-            List.of(
-                "gytrinket:shield_gy|none",
-                "gytrinket:shield_gy1|none",
-                "gytrinket:shield_gy2|none",
-                "gytrinket:shield_gy3|none",
-                "gytrinket:shield_aura_ring|aura",
-                "gytrinket:shield_aura_ring1|aura",
-                "gytrinket:shield_aura_ring2|aura",
-                "gytrinket:shield_aura_ring3|aura",
-                "gytrinket:shield_siphon|siphon",
-                "gytrinket:shield_siphon1|siphon",
-                "gytrinket:shield_siphon2|siphon",
-                "gytrinket:shield_siphon3|siphon",
-                "gytrinket:shield_reflect|reflect",
-                "gytrinket:shield_reflect1|reflect",
-                "gytrinket:shield_reflect2|reflect",
-                "gytrinket:shield_reflect3|reflect",
-                "gytrinket:shield_amplifier|amplification",
-                "gytrinket:shield_amplifier1|amplification",
-                "gytrinket:shield_amplifier2|amplification",
-                "gytrinket:shield_amplifier3|amplification",
-                "gytrinket:shield_warp|warp",
-                "gytrinket:shield_warp1|warp",
-                "gytrinket:shield_warp2|warp",
-                "gytrinket:shield_warp3|warp"
-            ),
-            s -> true
-        );
-
-        BUILDER.pop();
-
-        // ===== 机身类型系统 =====
-        BUILDER.comment("机身类型配置").push("body_types");
-
-        BODY_ITEMS_CONFIG = BUILDER.comment(
-            "机身物品配置",
-            "格式：物品ID",
-            "列在此处的物品为机身物品，玩家光点核心中只生效第一个",
-            "示例：gytrinket:guardian"
-        ).defineListAllowEmpty("bodyItems",
-            List.of(
-                "gytrinket:guardian",
-                "gytrinket:mothership_body",
-                "gytrinket:ghost_fuselage",
-                "gytrinket:engineering_fuselage"
-            ),
-            s -> true
-        );
-
-        BUILDER.pop();
-
-        // ===== 禁用系统 =====
-        BUILDER.comment("禁用系统配置").push("disable_system");
-
-        ITEM_DISABLE_TARGETS_CONFIG = BUILDER.comment(
-            "物品禁用目标配置",
-            "格式：物品ID|禁用目标物品ID1,禁用目标物品ID2",
-            "当该物品存在于光点核心中且未被禁用时，指定的目标物品将被禁用",
-            "没有写则默认不禁用任何物品",
-            "示例：gytrinket:item_a|gytrinket:item_b,gytrinket:item_c"
-        ).defineListAllowEmpty("itemDisableTargets",
-            List.of(
-                "gytrinket:assault_drone_module|gytrinket:defense_drone_module",
-                "gytrinket:quick_reconstruction_module|gytrinket:shield_gy,gytrinket:shield_gy1,gytrinket:shield_gy2,gytrinket:shield_gy3,gytrinket:shield_aura_ring,gytrinket:shield_aura_ring1,gytrinket:shield_aura_ring2,gytrinket:shield_aura_ring3,gytrinket:shield_siphon,gytrinket:shield_siphon1,gytrinket:shield_siphon2,gytrinket:shield_siphon3,gytrinket:shield_reflect,gytrinket:shield_reflect1,gytrinket:shield_reflect2,gytrinket:shield_reflect3,gytrinket:shield_amplifier,gytrinket:shield_amplifier1,gytrinket:shield_amplifier2,gytrinket:shield_amplifier3,gytrinket:shield_warp,gytrinket:shield_warp1,gytrinket:shield_warp2,gytrinket:shield_warp3,gytrinket:shield_amplifier_module,gytrinket:barrier_shield_module,gytrinket:reflect_shield_module,gytrinket:ultimate_shield_module,gytrinket:shield_cooldown_reduction_module,gytrinket:shield_quick_charge_module,gytrinket:explosive_shield_module,gytrinket:shield_effect_boost_module,gytrinket:divergent_shield_module,gytrinket:focused_shield_module,gytrinket:weaponized_shield_module,gytrinket:regen_shield_module,gytrinket:shield_transfer_module,gytrinket:charged_shield_module,gytrinket:electric_energy_release_module"
-            ),
-            s -> true);
-
-        ITEM_DEPENDENCIES_CONFIG = BUILDER.comment(
-            "物品依赖配置",
-            "格式：物品ID|依赖物品ID1,依赖物品ID2",
-            "该物品需要至少一个依赖物品存在且未被禁用才能生效",
-            "当所有依赖物品都被禁用或不存在时，该物品也会被禁用",
-            "没有写则默认不依赖任何物品",
-            "示例：gytrinket:assault_drone_module|gytrinket:drone_module"
-        ).defineListAllowEmpty("itemDependencies",
-            List.of(
-            "gytrinket:advanced_engineering_module|gytrinket:drone_module",
-            "gytrinket:precision_construct_module|gytrinket:drone_module",
-            "gytrinket:assault_drone_module|gytrinket:drone_module",
-            "gytrinket:line_formation_module|gytrinket:assault_drone_module",
-            "gytrinket:last_order_module|gytrinket:assault_drone_module",
-            "gytrinket:wing_commander_module|gytrinket:assault_drone_module",
-            "gytrinket:arc_barrier_module|gytrinket:defense_drone_module",
-            "gytrinket:reshaping_module|gytrinket:defense_drone_module",
-            "gytrinket:counter_pulse_module|gytrinket:defense_drone_module",
-            "gytrinket:self_destruct_module|gytrinket:drone_module",
-            "gytrinket:charged_shield_module|gytrinket:charged_attack_module",
-            "gytrinket:grudge_module|gytrinket:charged_attack_module"
-            ),
-            s -> true);
-
-        BUILDER.pop();
-
         // ===== 1. 光环护盾 =====
         BUILDER.comment("光环护盾配置").push("aura_shield");
 
@@ -716,24 +472,7 @@ public class Config {
         // ===== 4. 增幅护盾 =====
         BUILDER.comment("增幅护盾系统配置").push("amplification_shield");
 
-        DANGEROUS_ENTITIES = BUILDER.comment(
-            "危险实体列表",
-            "这些实体会被增幅护盾视为威胁，每个威胁增加攻击伤害加成",
-            "格式：实体类型ID",
-            "示例：minecraft:arrow, minecraft:fireball"
-        ).defineListAllowEmpty("dangerousEntities",
-            java.util.List.of(
-                "minecraft:arrow",
-                "minecraft:spectral_arrow",
-                "minecraft:trident",
-                "minecraft:fireball",
-                "minecraft:small_fireball",
-                "minecraft:dragon_fireball",
-                "minecraft:thrown_potion",
-                "minecraft:area_effect_cloud"
-            ),
-            s -> true
-        );
+        
 
         AMPLIFICATION_BASE_AMPLIFICATION = BUILDER.comment(
             "增幅护盾基础增幅值",
@@ -809,14 +548,7 @@ public class Config {
         // ===== 6. 屏障 =====
         BUILDER.comment("屏障系统配置").push("barrier");
 
-        BARRIER_ITEMS = BUILDER.comment(
-            "屏障处理器启用物品",
-            "格式：物品ID",
-            "示例：minecraft:shield"
-        ).defineListAllowEmpty("barrierItems",
-            java.util.List.of("gytrinket:barrier_shield_module"),
-            s -> true
-        );
+        
 
         BARRIER_MAX_DAMAGE = BUILDER.comment(
             "屏障限制伤害最大值",
@@ -829,14 +561,7 @@ public class Config {
         // ===== 7. 反射护盾 =====
         BUILDER.comment("反射护盾伤害处理器配置").push("reflect_damage");
 
-        REFLECT_DAMAGE_ITEMS = BUILDER.comment(
-            "反射护盾伤害处理器启用物品",
-            "格式：物品ID",
-            "示例：minecraft:diamond"
-        ).defineListAllowEmpty("reflectDamageItems",
-            java.util.List.of("gytrinket:reflect_shield_module"),
-            s -> true
-        );
+        
 
         REFLECT_DAMAGE_BASE_DAMAGE = BUILDER.comment(
             "反射护盾基础伤害值",
@@ -855,14 +580,7 @@ public class Config {
         // ===== 8. 易爆护盾 =====
         BUILDER.comment("易爆护盾系统配置").push("explosive_shield");
 
-        EXPLOSIVE_SHIELD_ITEMS = BUILDER.comment(
-            "易爆护盾效果启用物品",
-            "格式：物品ID",
-            "示例：minecraft:tnt"
-        ).defineListAllowEmpty("explosiveShieldItems",
-            java.util.List.of("gytrinket:explosive_shield_module"),
-            s -> true
-        );
+        
 
         EXPLOSIVE_SHIELD_DAMAGE = BUILDER.comment(
             "易爆护盾默认伤害值",
@@ -881,15 +599,7 @@ public class Config {
         // ===== 9. 电能释放 =====
         BUILDER.comment("电能释放系统配置").push("electric_discharge");
 
-        ELECTRIC_DISCHARGE_ITEMS = BUILDER.comment(
-            "电能释放模块物品",
-            "放入光点核心后，玩家可以通过左键触发电能释放",
-            "格式：物品ID",
-            "示例：minecraft:netherite_sword"
-        ).defineListAllowEmpty("electricDischargeItems",
-            java.util.List.of("gytrinket:electric_energy_release_module"),
-            s -> true
-        );
+        
 
         ELECTRIC_DISCHARGE_BURN_CHARGE = BUILDER.comment(
             "电能释放基础灼烧充能量",
@@ -909,15 +619,7 @@ public class Config {
         // ===== 10. 武器化护盾 =====
         BUILDER.comment("武器化护盾系统配置").push("weaponized_shield");
 
-        WEAPONIZED_SHIELD_ITEMS = BUILDER.comment(
-            "武器化护盾物品",
-            "放入光点核心后，当护盾值不为0时，对周围危险目标施加易伤效果",
-            "格式：物品ID",
-            "示例：gytrinket:weaponized_shield_module"
-        ).defineListAllowEmpty("weaponizedShieldItems",
-            java.util.List.of("gytrinket:weaponized_shield_module"),
-            s -> true
-        );
+        
 
         WEAPONIZED_SHIELD_VULNERABILITY = BUILDER.comment(
             "武器化护盾基础易伤值",
@@ -937,14 +639,7 @@ public class Config {
         // ===== 11. 镀层 =====
         BUILDER.comment("镀层系统配置").push("coating_system");
 
-        COATING_ITEMS = BUILDER.comment(
-            "镀层效果启用物品",
-            "格式：物品ID",
-            "示例：gytrinket:coating_module"
-        ).defineListAllowEmpty("coatingItems",
-            java.util.List.of("gytrinket:coating_module"),
-            s -> true
-        );
+        
 
         COATING_REDUCTION_PER_LAYER = BUILDER.comment("每层镀层减少的伤害量").defineInRange("coatingReductionPerLayer", 0.2, 0.0, 10.0);
 
@@ -953,14 +648,7 @@ public class Config {
         // ===== 12. 适应性装甲 =====
         BUILDER.comment("适应性装甲系统配置").push("adaptive_armor");
 
-        ADAPTIVE_ARMOR_ITEMS = BUILDER.comment(
-            "适应性装甲启用物品",
-            "格式：物品ID",
-            "示例：minecraft:netherite_chestplate"
-        ).defineListAllowEmpty("adaptiveArmorItems",
-            java.util.List.of("gytrinket:adaptive_armor_module"),
-            s -> true
-        );
+        
 
         ADAPTIVE_ARMOR_DURATION = BUILDER.comment(
             "适应性装甲叠层持续时间（刻）",
@@ -976,31 +664,14 @@ public class Config {
             "例如：设为2.0时，受到5点伤害会添加10层装甲叠层"
         ).defineInRange("adaptiveArmorLayersPerDamage", 2.0, 0.1, 10.0);
 
-        ADAPTIVE_ARMOR_SHIELD_EFFECT_ITEMS = BUILDER.comment(
-            "适应性装甲护盾效果物品",
-            "拥有此物品时，装甲叠层提供的伤害减免会转化为护盾效果属性",
-            "格式：物品ID",
-            "示例：minecraft:netherite_boots"
-        ).defineListAllowEmpty("adaptiveArmorShieldEffectItems",
-            java.util.List.of("gytrinket:bond_module"),
-            s -> true
-        );
+        
 
         BUILDER.pop();
 
         // ===== 13. 再生护盾 =====
         BUILDER.comment("护盾自然恢复系统配置").push("shield_natural_recovery");
 
-        SHIELD_NATURAL_RECOVERY_ITEMS = BUILDER.comment(
-            "护盾自然恢复物品",
-            "放入光点核心后，启用护盾自然恢复",
-            "并提供恢复修正值：护盾存在时降低生命恢复，提高护盾恢复",
-            "格式：物品ID",
-            "示例：gytrinket:shield_recovery_module"
-        ).defineListAllowEmpty("shieldNaturalRecoveryItems",
-            java.util.List.of("gytrinket:regen_shield_module"),
-            s -> true
-        );
+        
 
         NATURAL_RECOVERY_SHIELD_RECOVERY_PER_TICK = BUILDER.comment(
             "护盾自然恢复基础值（每刻恢复的护盾比例）",
@@ -1024,28 +695,14 @@ public class Config {
         // ===== 14. 效率 =====
         BUILDER.comment("攻击冷却效率系统配置").push("attack_cooldown_efficiency");
 
-        ATTACK_COOLDOWN_EFFICIENCY_ITEMS = BUILDER.comment(
-            "效率指定物品",
-            "格式：物品ID",
-            "示例：gytrinket:efficiency_module"
-        ).defineListAllowEmpty("attackCooldownEfficiencyItems",
-            java.util.List.of("gytrinket:efficiency_module"),
-            s -> true
-        );
+        
 
         BUILDER.pop();
 
         // ===== 15. 转化 =====
         BUILDER.comment("转化效果配置").push("conversion");
 
-        CONVERSION_ITEMS = BUILDER.comment(
-            "转化效果启用物品",
-            "格式：物品ID",
-            "示例：gytrinket:conversion_module"
-        ).defineListAllowEmpty("conversionItems",
-            java.util.List.of("gytrinket:transformation_module"),
-            s -> true
-        );
+        
 
         CONVERSION_RATIO = BUILDER.comment(
             "转化效果的转化比例",
@@ -1056,31 +713,10 @@ public class Config {
 
         BUILDER.pop();
 
-        // ===== 16. 二元协议 =====
-        BUILDER.comment("二元协议系统配置").push("binary_protocol");
-
-        BINARY_PROTOCOL_ITEMS = BUILDER.comment(
-            "二元协议物品",
-            "格式：物品ID",
-            "示例：gytrinket:binary_protocol_module"
-        ).defineListAllowEmpty("binaryProtocolItems",
-            java.util.List.of("gytrinket:binary_protocol_module"),
-            s -> true
-        );
-
-        BUILDER.pop();
-
         // ===== 17. 强袭 =====
         BUILDER.comment("强袭系统配置").push("assault");
 
-        ASSAULT_ITEMS = BUILDER.comment(
-            "强袭模块物品",
-            "格式：物品ID",
-            "示例：gytrinket:assault_module"
-        ).defineListAllowEmpty("assaultItems",
-            java.util.List.of("gytrinket:assault_module"),
-            s -> true
-        );
+        
 
         ASSAULT_ATTACK_SPEED_PER_STACK = BUILDER.comment(
             "每层强袭提供的攻击速度独立乘区加成",
@@ -1112,14 +748,7 @@ public class Config {
         // ===== 18. 充能攻击 =====
         BUILDER.comment("充能攻击系统配置").push("charged_attack");
 
-        CHARGED_ATTACK_ITEMS = BUILDER.comment(
-            "充能攻击模块物品",
-            "格式：物品ID",
-            "示例：gytrinket:charged_attack_module"
-        ).defineListAllowEmpty("chargedAttackItems",
-            java.util.List.of("gytrinket:charged_attack_module"),
-            s -> true
-        );
+        
 
         CHARGED_ATTACK_BASE_CHARGE_RATE = BUILDER.comment(
             "充能攻击基础充能速率（每tick充能值）",
@@ -1163,14 +792,7 @@ public class Config {
         // ===== 19. 精妙构造 =====
         BUILDER.comment("精妙构造系统配置").push("precision_construct");
 
-        PRECISION_CONSTRUCT_ITEMS = BUILDER.comment(
-            "精妙构造前置物品",
-            "格式：物品ID",
-            "示例：gytrinket:precision_construct_module"
-        ).defineListAllowEmpty("precisionConstructItems",
-            java.util.List.of("gytrinket:precision_construct_module"),
-            s -> true
-        );
+        
 
         PRECISION_CONSTRUCT_BONUS_PER_LEVEL = BUILDER.comment(
             "精妙构造每级提供的构建速度独立乘区加成",
@@ -1183,14 +805,7 @@ public class Config {
         // ===== 20. 护盾移植 =====
         BUILDER.comment("护盾移植系统配置").push("shield_transfer");
 
-        SHIELD_TRANSFER_ITEMS = BUILDER.comment(
-            "护盾移植模块物品",
-            "格式：物品ID",
-            "示例：gytrinket:shield_transfer_module"
-        ).defineListAllowEmpty("shieldTransferItems",
-            java.util.List.of("gytrinket:shield_transfer_module"),
-            s -> true
-        );
+        
 
         SHIELD_TRANSFER_EFFECT_PENALTY_PER_ENTITY = BUILDER.comment(
             "护盾移植每保护一个实体降低的护盾效果和护盾效果半径百分比",
@@ -1204,32 +819,11 @@ public class Config {
         // ===== 21. 追击阵列/突击无人机 =====
         BUILDER.comment("追击阵列/突击无人机配置").push("pursuit_array");
 
-        DRONE_MODULE_ITEMS = BUILDER.comment(
-            "基础无人机构建物品",
-            "格式：物品ID",
-            "示例：gytrinket:drone_module"
-        ).defineListAllowEmpty("droneModuleItems",
-            java.util.List.of("gytrinket:drone_module"),
-            s -> true
-        );
+        
 
-        ASSAULT_DRONE_MODULE_ITEMS = BUILDER.comment(
-            "突击无人机构建物品",
-            "格式：物品ID",
-            "示例：gytrinket:assault_drone_module"
-        ).defineListAllowEmpty("assaultDroneModuleItems",
-            java.util.List.of("gytrinket:assault_drone_module"),
-            s -> true
-        );
+        
 
-        PURSUIT_ARRAY_REQUIRED_ITEMS = BUILDER.comment(
-            "追击阵列所需物品",
-            "格式：物品ID",
-            "示例：gytrinket:assault_drone_module"
-        ).defineListAllowEmpty("pursuitArrayRequiredItems",
-            java.util.List.of("gytrinket:assault_drone_module"),
-            s -> true
-        );
+        
 
         DRONE_BASE_HEALTH = BUILDER.comment(
             "无人机基础最大生命值"
@@ -1279,14 +873,7 @@ public class Config {
         // ===== 21.6 僚机 =====
         BUILDER.comment("僚机构造体配置").push("wingman");
 
-        WINGMAN_MODULE_ITEMS = BUILDER.comment(
-            "僚机构建物品",
-            "格式：物品ID",
-            "示例：gytrinket:wingman_module"
-        ).defineListAllowEmpty("wingmanModuleItems",
-            java.util.List.of("gytrinket:wingman_module"),
-            s -> true
-        );
+        
 
         WINGMAN_BASE_HEALTH = BUILDER.comment(
             "僚机基础最大生命值"
@@ -1320,15 +907,7 @@ public class Config {
             "爆破弹销毁时爆炸半径（格）"
         ).defineInRange("wingmanExplosionRadius", 2.0, 0.1, 10.0);
 
-        WINGMAN_INTERCEPTOR_MODULE_ITEMS = BUILDER.comment(
-            "拦截机模块物品",
-            "玩家光点核心中需包含此物品才能启用拦截机模式",
-            "格式：物品ID",
-            "示例：gytrinket:interceptor_module"
-        ).defineListAllowEmpty("wingmanInterceptorModuleItems",
-            java.util.List.of("gytrinket:interceptor_module"),
-            s -> true
-        );
+        
 
         WINGMAN_INTERCEPTOR_CHARGE_DURATION_TICKS = BUILDER.comment(
             "拦截机充能攻击基础充能时间（tick）",
@@ -1346,45 +925,21 @@ public class Config {
             "默认2.0，范围：0.5 ~ 10.0"
         ).defineInRange("wingmanInterceptorChargedSweepBaseRange", 2.0, 0.5, 10.0);
 
-        WINGMAN_EVOLUTION_MODULE_ITEMS = BUILDER.comment(
-            "进化模块物品",
-            "玩家光点核心中需包含此物品才能启用僚机进化效果",
-            "格式：物品ID",
-            "示例：gytrinket:evolution_module"
-        ).defineListAllowEmpty("wingmanEvolutionModuleItems",
-            java.util.List.of("gytrinket:evolution_module"),
-            s -> true
-        );
+        
 
         WINGMAN_EVOLUTION_BONUS_PER_LEVEL = BUILDER.comment(
             "僚机进化：每级光点等级提供的属性加成百分比",
             "默认：0.00625（0.625%），范围：0.0 ~ 1.0"
         ).defineInRange("wingmanEvolutionBonusPerLevel", 0.00625, 0.0, 1.0);
 
-        WINGMAN_NANO_REGEN_MODULE_ITEMS = BUILDER.comment(
-            "纳米再生模块物品",
-            "玩家光点核心中需包含此物品才能启用僚机纳米再生效果",
-            "格式：物品ID",
-            "示例：gytrinket:nano_regen_module"
-        ).defineListAllowEmpty("wingmanNanoRegenModuleItems",
-            java.util.List.of("gytrinket:nano_regen_module"),
-            s -> true
-        );
+        
 
         WINGMAN_NANO_REGEN_PERCENT = BUILDER.comment(
             "僚机纳米再生：每秒恢复最大生命值的百分比",
             "默认：0.02（2%），范围：0.0 ~ 1.0"
         ).defineInRange("wingmanNanoRegenPercent", 0.02, 0.0, 1.0);
 
-        WINGMAN_SHOCKWAVE_MODULE_ITEMS = BUILDER.comment(
-            "震撼弹模块物品",
-            "玩家光点核心中需包含此物品才能启用爆破弹震撼弹效果",
-            "格式：物品ID",
-            "示例：gytrinket:shockwave_module"
-        ).defineListAllowEmpty("wingmanShockwaveModuleItems",
-            java.util.List.of("gytrinket:shockwave_module"),
-            s -> true
-        );
+        
 
         WINGMAN_SHOCKWAVE_DAMAGE_MULTIPLIER = BUILDER.comment(
             "震撼弹模块：爆破弹爆炸伤害倍率",
@@ -1401,14 +956,7 @@ public class Config {
         // ===== 21.7 蜂群 (swarm) =====
         BUILDER.comment("蜂群构造体配置").push("swarm");
 
-        SWARM_MODULE_ITEMS = BUILDER.comment(
-            "蜂群构建物品",
-            "格式：物品ID",
-            "示例：gytrinket:mothership_body"
-        ).defineListAllowEmpty("swarmModuleItems",
-            java.util.List.of("gytrinket:mothership_body"),
-            s -> true
-        );
+        
 
         SWARM_BASE_HEALTH = BUILDER.comment(
             "蜂群基础最大生命值（支持小数）"
@@ -1471,14 +1019,7 @@ public class Config {
         // ===== 22. 宽限协议 =====
         BUILDER.comment("濒死保护系统配置").push("near_death_protection");
 
-        NEAR_DEATH_PROTECTION_ITEMS = BUILDER.comment(
-            "宽限协议前置物品",
-            "格式：物品ID，玩家光点核心中需包含至少一个指定物品才能激活濒死保护",
-            "示例：gytrinket:near_death_protection_module"
-        ).defineListAllowEmpty("nearDeathProtectionItems",
-            java.util.List.of("gytrinket:wide_protocol_module"),
-            s -> true
-        );
+        
 
         NEAR_DEATH_PROTECTION_COOLDOWN = BUILDER.comment(
             "宽限协议冷却时间（tick）",
@@ -1497,14 +1038,7 @@ public class Config {
         // ===== 23. 高等工程 =====
         BUILDER.comment("高等工程系统配置").push("advanced_engineering");
 
-        ADVANCED_ENGINEERING_ITEMS = BUILDER.comment(
-            "高等工程前置物品",
-            "格式：物品ID，玩家光点核心中需包含至少一个指定物品才能激活高等工程加成",
-            "示例：gytrinket:precision_construct_module"
-        ).defineListAllowEmpty("advancedEngineeringItems",
-            java.util.List.of("gytrinket:advanced_engineering_module"),
-            s -> true
-        );
+        
 
         ADVANCED_ENGINEERING_BONUS_PER_LEVEL = BUILDER.comment(
             "高等工程每级提供的无人机生命和伤害独立乘区加成",
@@ -1517,14 +1051,7 @@ public class Config {
         // ===== 24. 最后指令 =====
         BUILDER.comment("濒死自爆系统配置").push("near_death_explosion");
 
-        NEAR_DEATH_EXPLOSION_ITEMS = BUILDER.comment(
-            "最后指令前置物品",
-            "格式：物品ID，玩家光点核心中需包含至少一个指定物品才能激活濒死自爆",
-            "示例：gytrinket:near_death_explosion_module"
-        ).defineListAllowEmpty("nearDeathExplosionItems",
-            java.util.List.of("gytrinket:last_order_module"),
-            s -> true
-        );
+        
 
         NEAR_DEATH_EXPLOSION_INVINCIBLE_DURATION = BUILDER.comment(
             "最后指令无敌持续时间（tick）",
@@ -1559,14 +1086,7 @@ public class Config {
         // ===== 24.5 自毁装置 =====
         BUILDER.comment("自毁装置系统配置").push("self_destruct");
 
-        SELF_DESTRUCT_ITEMS = BUILDER.comment(
-            "自毁装置前置物品",
-            "格式：物品ID，玩家光点核心中需包含至少一个指定物品才能激活自毁装置",
-            "示例：gytrinket:self_destruct_module"
-        ).defineListAllowEmpty("selfDestructItems",
-            java.util.List.of("gytrinket:self_destruct_module"),
-            s -> true
-        );
+        
 
         SELF_DESTRUCT_BASE_DAMAGE = BUILDER.comment(
             "自毁装置基础爆炸伤害",
@@ -1591,42 +1111,12 @@ public class Config {
         ).defineInRange("selfDestructRadiusPerMaxHealth", 0.3, 0.0, 10.0);
 
         // ===== 24.5.1 炉心融解模块 =====
-        FURNACE_CORE_ITEMS = BUILDER.comment(
-            "炉心融解模块物品",
-            "仅在光点核心中生效特殊效果：构造体每10刻受0.8构造体自伤、低血攻速加成、自毁装置附带灼烧与点燃",
-            "示例：gytrinket:furnace_core_module"
-        ).defineListAllowEmpty("furnaceCoreItems",
-            java.util.List.of("gytrinket:furnace_core_module"),
-            s -> true
-        );
-
-        BUILDER.pop();
-
-        // ===== 24.6 督战者 =====
-        BUILDER.comment("督战者系统配置").push("taskmaster");
-
-        TASKMASTER_ITEMS = BUILDER.comment(
-            "督战者前置物品",
-            "格式：物品ID，玩家光点核心中需包含至少一个指定物品才能激活督战者",
-            "示例：gytrinket:taskmaster_module"
-        ).defineListAllowEmpty("taskmasterItems",
-            java.util.List.of("gytrinket:taskmaster_module"),
-            s -> true
-        );
-
         BUILDER.pop();
 
         // ===== 25. 列队阵列 =====
         BUILDER.comment("列队阵列配置").push("formation_array");
 
-        FORMATION_ARRAY_REQUIRED_ITEMS = BUILDER.comment(
-            "列队阵列所需物品",
-            "格式：物品ID，玩家光点核心中需包含所有指定物品才能切换到列队阵列",
-            "示例：gytrinket:line_formation_module"
-        ).defineListAllowEmpty("formationArrayRequiredItems",
-            java.util.List.of("gytrinket:line_formation_module"),
-            s -> true
-        );
+        
 
         FORMATION_ATTACK_INTERVAL = BUILDER.comment(
             "列队阵列攻击间隔（秒）"
@@ -1645,14 +1135,7 @@ public class Config {
         // ===== 26. 指挥官 =====
         BUILDER.comment("指挥官系统配置").push("commander");
 
-        COMMANDER_REQUIRED_ITEMS = BUILDER.comment(
-            "指挥官前置物品",
-            "格式：物品ID，玩家光点核心中需包含至少一个指定物品才能激活指挥官系统",
-            "示例：gytrinket:commander_module"
-        ).defineListAllowEmpty("commanderRequiredItems",
-            java.util.List.of("gytrinket:wing_commander_module"),
-            s -> true
-        );
+        
 
         COMMANDER_MAX_COUNT = BUILDER.comment(
             "指挥官最大数量",
@@ -1675,23 +1158,9 @@ public class Config {
         // ===== 27. 守卫阵列/防御无人机 =====
         BUILDER.comment("守卫阵列/防御无人机配置").push("guard_array");
 
-        DEFENSE_DRONE_MODULE_ITEMS = BUILDER.comment(
-            "防御无人机构建物品",
-            "格式：物品ID",
-            "示例：minecraft:defense_drone_module"
-        ).defineListAllowEmpty("defenseDroneModuleItems",
-            java.util.List.of("gytrinket:defense_drone_module"),
-            s -> true
-        );
+        
 
-        GUARD_ARRAY_REQUIRED_ITEMS = BUILDER.comment(
-            "守卫阵列所需物品",
-            "格式：物品ID，玩家光点核心中需包含所有指定物品才能切换到守卫阵列",
-            "示例：gytrinket:defense_drone_module"
-        ).defineListAllowEmpty("guardArrayRequiredItems",
-            java.util.List.of("gytrinket:defense_drone_module"),
-            s -> true
-        );
+        
 
         GUARD_ATTACK_INTERVAL = BUILDER.comment(
             "守卫阵列攻击间隔（秒）"
@@ -1706,15 +1175,7 @@ public class Config {
         // ===== 28. 弧形屏障 =====
         BUILDER.comment("弧形屏障系统配置").push("arc_barrier");
 
-        ARC_BARRIER_ITEMS = BUILDER.comment(
-            "弧形屏障启用物品",
-            "放入光点核心后，当防御无人机在玩家与伤害源之间时，伤害会被无人机拦截",
-            "格式：物品ID",
-            "示例：gytrinket:arc_barrier_module"
-        ).defineListAllowEmpty("arcBarrierItems",
-            java.util.List.of("gytrinket:arc_barrier_module"),
-            s -> true
-        );
+        
 
         ARC_BARRIER_POSITION_DEVIATION_THRESHOLD = BUILDER.comment(
             "弧形屏障位置偏差阈值（格）",
@@ -1728,21 +1189,7 @@ public class Config {
         // ===== 29. 反制脉冲 =====
         BUILDER.comment("反制脉冲系统配置").push("counter_pulse");
 
-        COUNTER_PULSE_ITEMS = BUILDER.comment(
-            "反制脉冲启用物品",
-            "放入光点核心后，防御无人机获得反制脉冲效果：",
-            "1. 防御无人机每3秒触发一次反制脉冲",
-            "2. 对自身半径内的敌人造成爆炸伤害",
-            "3. 不触发时持续充能，提高爆炸半径和伤害",
-            "4. 充能收益边际递减",
-            "5. 受到伤害时立即触发反制脉冲，不受冷却限制",
-            "需要同时拥有防御无人机模块",
-            "格式：物品ID",
-            "示例：gytrinket:counter_pulse_module"
-        ).defineListAllowEmpty("counterPulseItems",
-            java.util.List.of("gytrinket:counter_pulse_module"),
-            s -> true
-        );
+        
 
         COUNTER_PULSE_COOLDOWN = BUILDER.comment(
             "反制脉冲冷却时间（tick）",
@@ -1775,19 +1222,7 @@ public class Config {
         // ===== 30. 重塑 =====
         BUILDER.comment("重塑系统配置").push("reshaping");
 
-        RESHAPING_ITEMS = BUILDER.comment(
-            "重塑启用物品",
-            "放入光点核心后，防御无人机获得重塑效果：",
-            "1. 防御无人机每秒恢复最大生命值的百分比",
-            "2. 防御无人机死亡时生成装甲碎片",
-            "3. 玩家吸收装甲碎片后获得伤害减免",
-            "需要同时拥有防御无人机模块",
-            "格式：物品ID",
-            "示例：gytrinket:reshaping_module"
-        ).defineListAllowEmpty("reshapingItems",
-            java.util.List.of("gytrinket:reshaping_module"),
-            s -> true
-        );
+        
 
         RESHAPING_HEAL_RATE = BUILDER.comment(
             "重塑防御无人机生命恢复速率",
@@ -1813,16 +1248,7 @@ public class Config {
         // ===== 31. 充能护盾 =====
         BUILDER.comment("充能护盾系统配置").push("charged_shield");
 
-        CHARGED_SHIELD_ITEMS = BUILDER.comment(
-            "充能护盾模块物品",
-            "放入光点核心后，玩家充能时获得动态护盾效果和护盾效果半径加成",
-            "该物品依赖充能攻击模块",
-            "格式：物品ID",
-            "示例：gytrinket:charged_shield_module"
-        ).defineListAllowEmpty("chargedShieldItems",
-            java.util.List.of("gytrinket:charged_shield_module"),
-            s -> true
-        );
+        
 
         CHARGED_SHIELD_CHARGE_RATIO = BUILDER.comment(
             "充能值转化为护盾加成的比率",
@@ -1857,17 +1283,7 @@ public class Config {
         // ===== 35. 幽灵机身 =====
         BUILDER.comment("幽灵机身配置").push("ghost_fuselage");
 
-        GHOST_FUSELAGE_ITEMS = BUILDER.comment(
-            "幽灵机身物品配置",
-            "格式：物品ID",
-            "列在此处的物品为幽灵机身物品",
-            "示例：gytrinket:ghost_fuselage"
-        ).defineListAllowEmpty("ghostFuselageItems",
-            java.util.List.of(
-                "gytrinket:ghost_fuselage"
-            ),
-            s -> true
-        );
+        
 
         GHOST_FUSELAGE_STEALTH_SPEED_BONUS_PER_LEVEL = BUILDER.comment(
             "每级光点等级增加的隐身速度百分比",
@@ -1922,15 +1338,7 @@ public class Config {
         // ===== 36. 积怨 =====
         BUILDER.comment("积怨系统配置").push("grudge");
 
-        GRUDGE_ITEMS = BUILDER.comment(
-            "积怨模块物品",
-            "放入光点核心后，玩家充能期间损失生命或护盾值时，转化为临时充能速率",
-            "该物品依赖充能攻击模块",
-            "格式：物品ID",
-            "示例：gytrinket:grudge_module"
-        ).defineListAllowEmpty("grudgeItems",
-            java.util.List.of("gytrinket:grudge_module"),
-            s -> true);
+        
 
         GRUDGE_CONVERSION_RATIO = BUILDER.comment(
             "积怨转化比率",
@@ -1968,40 +1376,7 @@ public class Config {
 
         UPGRADE_SYSTEM_ENABLED = BUILDER.comment("是否启用升级系统").define("enabled", true);
 
-        UPGRADE_PATHS = BUILDER.comment(
-            "升级路径定义,需要通过模组界面使用",
-            "格式：基础物品ID.升级物品ID",
-            "每条代表一个升级步骤，若有多级升级则分别注册",
-            "同一基础物品可以注册多个升级目标，形成升级分支",
-            "示例：gytrinket:shield_gy.gytrinket:shield_gy1"
-        ).defineListAllowEmpty("upgradePaths",
-            java.util.List.of(
-                "gytrinket:shield_gy.gytrinket:shield_gy1",
-                "gytrinket:shield_gy1.gytrinket:shield_gy2",
-                "gytrinket:shield_gy2.gytrinket:shield_gy3",
-                "gytrinket:shield_gy.gytrinket:shield_aura_ring",
-                "gytrinket:shield_gy.gytrinket:shield_siphon",
-                "gytrinket:shield_gy.gytrinket:shield_reflect",
-                "gytrinket:shield_gy.gytrinket:shield_amplifier",
-                "gytrinket:shield_gy.gytrinket:shield_warp",
-                "gytrinket:shield_aura_ring.gytrinket:shield_aura_ring1",
-                "gytrinket:shield_aura_ring1.gytrinket:shield_aura_ring2",
-                "gytrinket:shield_aura_ring2.gytrinket:shield_aura_ring3",
-                "gytrinket:shield_siphon.gytrinket:shield_siphon1",
-                "gytrinket:shield_siphon1.gytrinket:shield_siphon2",
-                "gytrinket:shield_siphon2.gytrinket:shield_siphon3",
-                "gytrinket:shield_reflect.gytrinket:shield_reflect1",
-                "gytrinket:shield_reflect1.gytrinket:shield_reflect2",
-                "gytrinket:shield_reflect2.gytrinket:shield_reflect3",
-                "gytrinket:shield_amplifier.gytrinket:shield_amplifier1",
-                "gytrinket:shield_amplifier1.gytrinket:shield_amplifier2",
-                "gytrinket:shield_amplifier2.gytrinket:shield_amplifier3",
-                "gytrinket:shield_warp.gytrinket:shield_warp1",
-                "gytrinket:shield_warp1.gytrinket:shield_warp2",
-                "gytrinket:shield_warp2.gytrinket:shield_warp3"
-            ),
-            s -> true
-        );
+        
 
         BUILDER.pop();
 
@@ -2199,20 +1574,6 @@ public class Config {
         gytrinket.LOGGER.info("物品属性配置已重置为默认值");
     }
 
-    private static void loadItemSet(Set<Item> targetSet, List<? extends String> configList, String logLabel) {
-        targetSet.clear();
-        for (String itemId : configList) {
-            String trimmed = itemId.trim();
-            if (!trimmed.isEmpty()) {
-                Item item = BuiltInRegistries.ITEM.get(ResourceLocation.parse(trimmed));
-                if (item != null && item != Items.AIR) {
-                    targetSet.add(item);
-                    gytrinket.LOGGER.info("注册{}物品: {}", logLabel, trimmed);
-                }
-            }
-        }
-    }
-
     @SubscribeEvent
     static void onLoad(final ModConfigEvent event) {
         if (!event.getConfig().getSpec().equals(SPEC)) {
@@ -2224,123 +1585,156 @@ public class Config {
         }
         initialized = true;
 
-        String attributesStr = ATTRIBUTES_CONFIG.get();
-        if (!attributesStr.isEmpty()) {
-            String[] attributeDefs = attributesStr.split(",");
-            for (String attrDef : attributeDefs) {
-                String[] parts = attrDef.trim().split(":");
-                if (parts.length >= 2) {
-                    String attrName = parts[0].trim();
-                    try {
-                        AttributeType attrType = AttributeType.valueOf(parts[1].trim());
-                        String group = (parts.length >= 3) ? parts[2].trim() : null;
-                        AttributeManager.registerAttribute(attrName, attrType, group);
-                    } catch (IllegalArgumentException e) {
-                        gytrinket.LOGGER.warn("无效的属性类型：{}，请检查配置", parts[1].trim());
-                    }
-                }
-            }
-        }
-
         loadItemAttributes();
 
+        gytrinket.LOGGER.info("属性系统配置加载完成");
+    }
+
+    /**
+     * 应用 datapack 定义类数据（由 DefsManager 在数据包重载后调用）
+     * 填充物品集合、护盾类型、属性定义、禁用/依赖、升级路径等，并触发依赖子系统重载
+     */
+    public static void applyDefs() {
+        // 属性定义
+        for (DefsManager.AttributeEntry entry : DefsManager.getAttributeDefs()) {
+            try {
+                AttributeType type = AttributeType.valueOf(entry.combine());
+                String group = entry.group().isEmpty() ? null : entry.group();
+                AttributeManager.registerAttribute(entry.name(), type, group);
+            } catch (IllegalArgumentException e) {
+                gytrinket.LOGGER.warn("无效的属性组合方式：{}，属性：{}", entry.combine(), entry.name());
+            }
+        }
+
+        // 护盾类型兼容性
         SHIELD_TYPE_COMPATIBILITY.clear();
-        String shieldTypesStr = SHIELD_TYPES_CONFIG.get();
-        if (!shieldTypesStr.isEmpty()) {
-            String[] typeDefs = shieldTypesStr.split(";");
-            for (String typeDef : typeDefs) {
-                String[] parts = typeDef.trim().split("=");
-                if (parts.length == 2) {
-                    String typeName = parts[0].trim();
-                    boolean compatible = Boolean.parseBoolean(parts[1].trim());
-                    SHIELD_TYPE_COMPATIBILITY.put(typeName, compatible);
-                    gytrinket.LOGGER.info("注册护盾类型: {} (兼容={})", typeName, compatible);
-                }
-            }
-        }
+        SHIELD_TYPE_COMPATIBILITY.putAll(DefsManager.getShieldTypes());
 
+        // 物品->护盾类型
         ITEM_SHIELD_TYPES.clear();
-        List<? extends String> itemShieldTypesList = ITEM_SHIELD_TYPES_CONFIG.get();
-        for (String itemConfig : itemShieldTypesList) {
-            if (!itemConfig.trim().isEmpty()) {
-                String[] itemParts = itemConfig.trim().split("\\|");
-                if (itemParts.length >= 2) {
-                    String itemId = itemParts[0].trim();
-                    Item item = BuiltInRegistries.ITEM.get(ResourceLocation.parse(itemId));
-                    if (item != null && item != Items.AIR) {
-                        String[] typeNames = itemParts[1].trim().split(",");
-                        List<String> types = new ArrayList<>();
-                        for (String typeName : typeNames) {
-                            types.add(typeName.trim());
-                        }
-                        ITEM_SHIELD_TYPES.put(item, types);
-                        gytrinket.LOGGER.info("注册物品护盾类型: {} -> {}", itemId, types);
-                    }
-                }
+        DefsManager.getItemShieldTypes().forEach((itemId, types) -> {
+            Item item = BuiltInRegistries.ITEM.get(ResourceLocation.parse(itemId));
+            if (item != null && item != Items.AIR) {
+                ITEM_SHIELD_TYPES.put(item, types);
+                gytrinket.LOGGER.info("注册物品护盾类型: {} -> {}", itemId, types);
             }
-        }
+        });
 
+        // 物品集合
+        loadItemSetFromDefs(BODY_ITEM_SET, "body_items", "机身物品");
+        loadItemSetFromDefs(ADAPTIVE_ARMOR_ITEM_SET, "adaptive_armor_items", "适应性装甲启用");
+        loadItemSetFromDefs(ADAPTIVE_ARMOR_SHIELD_EFFECT_ITEM_SET, "adaptive_armor_shield_effect_items", "适应性装甲护盾效果");
+        loadItemSetFromDefs(ELECTRIC_DISCHARGE_ITEM_SET, "electric_discharge_items", "闪电释放模块");
+        loadItemSetFromDefs(ATTACK_COOLDOWN_EFFICIENCY_ITEM_SET, "attack_cooldown_efficiency_items", "攻击冷却效率");
+        loadItemSetFromDefs(BARRIER_ITEM_SET, "barrier_items", "屏障处理器启用");
+        loadItemSetFromDefs(SHIELD_NATURAL_RECOVERY_ITEM_SET, "shield_natural_recovery_items", "护盾自然恢复");
+        loadItemSetFromDefs(REFLECT_DAMAGE_ITEM_SET, "reflect_damage_items", "反射护盾伤害处理器启用");
+        loadItemSetFromDefs(EXPLOSIVE_SHIELD_ITEM_SET, "explosive_shield_items", "易爆护盾效果启用");
+        loadItemSetFromDefs(SHIELD_TRANSFER_ITEM_SET, "shield_transfer_items", "护盾移植模块");
+        loadItemSetFromDefs(BINARY_PROTOCOL_ITEM_SET, "binary_protocol_items", "二元协议");
+        loadItemSetFromDefs(WEAPONIZED_SHIELD_ITEM_SET, "weaponized_shield_items", "武器化护盾");
+        loadItemSetFromDefs(NEAR_DEATH_PROTECTION_ITEM_SET, "near_death_protection_items", "濒死保护前置");
+        loadItemSetFromDefs(NEAR_DEATH_EXPLOSION_ITEM_SET, "near_death_explosion_items", "濒死自爆前置");
+        loadItemSetFromDefs(SELF_DESTRUCT_ITEM_SET, "self_destruct_items", "自毁装置前置");
+        loadItemSetFromDefs(FURNACE_CORE_ITEM_SET, "furnace_core_items", "炉心融解模块");
+        loadItemSetFromDefs(TASKMASTER_ITEM_SET, "taskmaster_items", "督战者前置");
+        loadItemSetFromDefs(DRONE_MODULE_ITEM_SET, "drone_module_items", "基础无人机构建");
+        loadItemSetFromDefs(ASSAULT_DRONE_MODULE_ITEM_SET, "assault_drone_module_items", "突击无人机构建");
+        loadItemSetFromDefs(COMMANDER_ITEM_SET, "commander_required_items", "指挥官前置");
+        loadItemSetFromDefs(DEFENSE_DRONE_MODULE_ITEM_SET, "defense_drone_module_items", "防御无人机构建");
+        loadItemSetFromDefs(WINGMAN_MODULE_ITEM_SET, "wingman_module_items", "僚机构建");
+        loadItemSetFromDefs(WINGMAN_INTERCEPTOR_MODULE_ITEM_SET, "wingman_interceptor_module_items", "拦截机模块");
+        loadItemSetFromDefs(WINGMAN_EVOLUTION_MODULE_ITEM_SET, "wingman_evolution_module_items", "进化模块");
+        loadItemSetFromDefs(WINGMAN_NANO_REGEN_MODULE_ITEM_SET, "wingman_nano_regen_module_items", "纳米再生模块");
+        loadItemSetFromDefs(WINGMAN_SHOCKWAVE_MODULE_ITEM_SET, "wingman_shockwave_module_items", "震撼弹模块");
+        loadItemSetFromDefs(SWARM_MODULE_ITEM_SET, "swarm_module_items", "蜂群构建");
+        loadItemSetFromDefs(ARC_BARRIER_ITEM_SET, "arc_barrier_items", "弧形屏障启用");
+        loadItemSetFromDefs(RESHAPING_ITEM_SET, "reshaping_items", "重塑启用");
+        loadItemSetFromDefs(COUNTER_PULSE_ITEM_SET, "counter_pulse_items", "反制脉冲启用");
+        loadItemSetFromDefs(ASSAULT_ITEM_SET, "assault_items", "强袭模块");
+        loadItemSetFromDefs(CHARGED_ATTACK_ITEM_SET, "charged_attack_items", "充能攻击模块");
+        loadItemSetFromDefs(CHARGED_SHIELD_ITEM_SET, "charged_shield_items", "充能护盾模块");
+        loadItemSetFromDefs(GHOST_FUSELAGE_ITEM_SET, "ghost_fuselage_items", "幽灵机身模块");
+        loadItemSetFromDefs(GRUDGE_ITEM_SET, "grudge_items", "积怨模块");
+        loadItemSetFromDefs(PRECISION_CONSTRUCT_ITEM_SET, "precision_construct_items", "精妙构造前置");
+        loadItemSetFromDefs(ADVANCED_ENGINEERING_ITEM_SET, "advanced_engineering_items", "高等工程前置");
+        loadItemSetFromDefs(PURSUIT_ARRAY_ITEM_SET, "pursuit_array_required_items", "追击阵列前置");
+        loadItemSetFromDefs(FORMATION_ARRAY_ITEM_SET, "formation_array_required_items", "编队阵列前置");
+        loadItemSetFromDefs(GUARD_ARRAY_ITEM_SET, "guard_array_required_items", "守卫阵列前置");
+        loadItemSetFromDefs(CONVERSION_ITEM_SET, "conversion_items", "转化效果启用");
+
+        // 危险实体
+        DANGEROUS_ENTITY_SET.clear();
+        DANGEROUS_ENTITY_SET.addAll(DefsManager.getEntitySet("dangerous_entities"));
+
+        // 依赖定义数据的子系统重载
+        DisableSystem.loadConfig();
+        UpgradeManager.loadConfig();
         ShieldTypeManager.init();
 
-        // 加载机身物品配置
-        loadItemSet(BODY_ITEM_SET, BODY_ITEMS_CONFIG.get(), "机身物品");
+        gytrinket.LOGGER.info("定义类数据已应用：物品集合 {} 项，护盾类型 {} 项，属性定义 {} 项",
+                BODY_ITEM_SET.size(), SHIELD_TYPE_COMPATIBILITY.size(), DefsManager.getAttributeDefs().size());
+    }
 
-        DisableSystem.loadConfig();
-
-        loadItemSet(ADAPTIVE_ARMOR_ITEM_SET, ADAPTIVE_ARMOR_ITEMS.get(), "适应性装甲启用");
-        loadItemSet(ADAPTIVE_ARMOR_SHIELD_EFFECT_ITEM_SET, ADAPTIVE_ARMOR_SHIELD_EFFECT_ITEMS.get(), "适应性装甲护盾效果");
-        loadItemSet(ELECTRIC_DISCHARGE_ITEM_SET, ELECTRIC_DISCHARGE_ITEMS.get(), "闪电释放模块");
-        loadItemSet(ATTACK_COOLDOWN_EFFICIENCY_ITEM_SET, ATTACK_COOLDOWN_EFFICIENCY_ITEMS.get(), "攻击冷却效率");
-        loadItemSet(BARRIER_ITEM_SET, BARRIER_ITEMS.get(), "屏障处理器启用");
-        loadItemSet(SHIELD_NATURAL_RECOVERY_ITEM_SET, SHIELD_NATURAL_RECOVERY_ITEMS.get(), "护盾自然恢复");
-        loadItemSet(REFLECT_DAMAGE_ITEM_SET, REFLECT_DAMAGE_ITEMS.get(), "反射护盾伤害处理器启用");
-        loadItemSet(EXPLOSIVE_SHIELD_ITEM_SET, EXPLOSIVE_SHIELD_ITEMS.get(), "易爆护盾效果启用");
-        loadItemSet(SHIELD_TRANSFER_ITEM_SET, SHIELD_TRANSFER_ITEMS.get(), "护盾移植模块");
-        loadItemSet(BINARY_PROTOCOL_ITEM_SET, BINARY_PROTOCOL_ITEMS.get(), "二元协议");
-        loadItemSet(WEAPONIZED_SHIELD_ITEM_SET, WEAPONIZED_SHIELD_ITEMS.get(), "武器化护盾");
-        loadItemSet(NEAR_DEATH_PROTECTION_ITEM_SET, NEAR_DEATH_PROTECTION_ITEMS.get(), "濒死保护前置");
-        loadItemSet(NEAR_DEATH_EXPLOSION_ITEM_SET, NEAR_DEATH_EXPLOSION_ITEMS.get(), "濒死自爆前置");
-        loadItemSet(SELF_DESTRUCT_ITEM_SET, SELF_DESTRUCT_ITEMS.get(), "自毁装置前置");
-        loadItemSet(FURNACE_CORE_ITEM_SET, FURNACE_CORE_ITEMS.get(), "炉心融解模块");
-        loadItemSet(TASKMASTER_ITEM_SET, TASKMASTER_ITEMS.get(), "督战者前置");
-        loadItemSet(DRONE_MODULE_ITEM_SET, DRONE_MODULE_ITEMS.get(), "基础无人机构建");
-        loadItemSet(ASSAULT_DRONE_MODULE_ITEM_SET, ASSAULT_DRONE_MODULE_ITEMS.get(), "突击无人机构建");
-        loadItemSet(COMMANDER_ITEM_SET, COMMANDER_REQUIRED_ITEMS.get(), "指挥官前置");
-        loadItemSet(DEFENSE_DRONE_MODULE_ITEM_SET, DEFENSE_DRONE_MODULE_ITEMS.get(), "防御无人机构建");
-        loadItemSet(WINGMAN_MODULE_ITEM_SET, WINGMAN_MODULE_ITEMS.get(), "僚机构建");
-        loadItemSet(WINGMAN_INTERCEPTOR_MODULE_ITEM_SET, WINGMAN_INTERCEPTOR_MODULE_ITEMS.get(), "拦截机模块");
-        loadItemSet(WINGMAN_EVOLUTION_MODULE_ITEM_SET, WINGMAN_EVOLUTION_MODULE_ITEMS.get(), "进化模块");
-        loadItemSet(WINGMAN_NANO_REGEN_MODULE_ITEM_SET, WINGMAN_NANO_REGEN_MODULE_ITEMS.get(), "纳米再生模块");
-        loadItemSet(WINGMAN_SHOCKWAVE_MODULE_ITEM_SET, WINGMAN_SHOCKWAVE_MODULE_ITEMS.get(), "震撼弹模块");
-        loadItemSet(SWARM_MODULE_ITEM_SET, SWARM_MODULE_ITEMS.get(), "蜂群构建");
-        loadItemSet(ARC_BARRIER_ITEM_SET, ARC_BARRIER_ITEMS.get(), "弧形屏障启用");
-        loadItemSet(RESHAPING_ITEM_SET, RESHAPING_ITEMS.get(), "重塑启用");
-        loadItemSet(COUNTER_PULSE_ITEM_SET, COUNTER_PULSE_ITEMS.get(), "反制脉冲启用");
-        loadItemSet(ASSAULT_ITEM_SET, ASSAULT_ITEMS.get(), "强袭模块");
-        loadItemSet(CHARGED_ATTACK_ITEM_SET, CHARGED_ATTACK_ITEMS.get(), "充能攻击模块");
-        loadItemSet(CHARGED_SHIELD_ITEM_SET, CHARGED_SHIELD_ITEMS.get(), "充能护盾模块");
-        loadItemSet(GHOST_FUSELAGE_ITEM_SET, GHOST_FUSELAGE_ITEMS.get(), "幽灵机身模块");
-        loadItemSet(GRUDGE_ITEM_SET, GRUDGE_ITEMS.get(), "积怨模块");
-        loadItemSet(PRECISION_CONSTRUCT_ITEM_SET, PRECISION_CONSTRUCT_ITEMS.get(), "精妙构造前置");
-        loadItemSet(ADVANCED_ENGINEERING_ITEM_SET, ADVANCED_ENGINEERING_ITEMS.get(), "高等工程前置");
-        loadItemSet(PURSUIT_ARRAY_ITEM_SET, PURSUIT_ARRAY_REQUIRED_ITEMS.get(), "追击阵列前置");
-        loadItemSet(FORMATION_ARRAY_ITEM_SET, FORMATION_ARRAY_REQUIRED_ITEMS.get(), "编队阵列前置");
-        loadItemSet(GUARD_ARRAY_ITEM_SET, GUARD_ARRAY_REQUIRED_ITEMS.get(), "守卫阵列前置");
-
-        DANGEROUS_ENTITY_SET.clear();
-        List<? extends String> dangerousEntities = DANGEROUS_ENTITIES.get();
-        for (String entityId : dangerousEntities) {
-            if (!entityId.trim().isEmpty()) {
-                DANGEROUS_ENTITY_SET.add(entityId.trim());
-                gytrinket.LOGGER.info("注册危险实体: {}", entityId);
+    private static void loadItemSetFromDefs(Set<Item> targetSet, String setName, String logLabel) {
+        targetSet.clear();
+        for (String itemId : DefsManager.getItemSet(setName)) {
+            Item item = BuiltInRegistries.ITEM.get(ResourceLocation.parse(itemId));
+            if (item != null && item != Items.AIR) {
+                targetSet.add(item);
+                gytrinket.LOGGER.info("注册{}物品: {}", logLabel, itemId);
             }
         }
+    }
 
-        loadItemSet(CONVERSION_ITEM_SET, CONVERSION_ITEMS.get(), "转化效果启用");
-
-        UpgradeManager.loadConfig();
-
-        gytrinket.LOGGER.info("属性系统配置加载完成");
+    /**
+     * 按配置名统一取值（供数据驱动的 tooltip 参数引用）
+     * 返回 int 或 double，保留原始类型以匹配语言文件的格式符（%d / %.1f / %s）
+     */
+    public static Object getValue(String name) {
+        return switch (name) {
+            case "shieldNaturalRecoveryPresentHealthModifier" -> getNaturalRecoveryShieldPresentHealthModifier();
+            case "shieldNaturalRecoveryPresentShieldModifier" -> getNaturalRecoveryShieldPresentShieldModifier();
+            case "explosiveShieldDamage" -> EXPLOSIVE_SHIELD_DAMAGE.get();
+            case "shieldTransferEffectPenaltyPerEntity" -> SHIELD_TRANSFER_EFFECT_PENALTY_PER_ENTITY.get();
+            case "weaponizedShieldVulnerability" -> WEAPONIZED_SHIELD_VULNERABILITY.get();
+            case "nearDeathProtectionInvincibleDuration" -> NEAR_DEATH_PROTECTION_INVINCIBLE_DURATION.get();
+            case "nearDeathProtectionCooldown" -> NEAR_DEATH_PROTECTION_COOLDOWN.get();
+            case "nearDeathExplosionInvincibleDuration" -> NEAR_DEATH_EXPLOSION_INVINCIBLE_DURATION.get();
+            case "nearDeathExplosionCoefficient" -> NEAR_DEATH_EXPLOSION_COEFFICIENT.get();
+            case "nearDeathExplosionRadius" -> NEAR_DEATH_EXPLOSION_RADIUS.get();
+            case "conversionRatio" -> CONVERSION_RATIO.get();
+            case "coatingReductionPerLayer" -> getCoatingReductionPerLayer();
+            case "arcBarrierPositionDeviationThreshold" -> ARC_BARRIER_POSITION_DEVIATION_THRESHOLD.get();
+            case "reshapingHealRate" -> RESHAPING_HEAL_RATE.get();
+            case "reshapingBaseDamageReduction" -> RESHAPING_BASE_DAMAGE_REDUCTION.get();
+            case "reshapingDamageReductionDuration" -> RESHAPING_DAMAGE_REDUCTION_DURATION.get();
+            case "counterPulseCooldown" -> COUNTER_PULSE_COOLDOWN.get();
+            case "counterPulseBaseExplosionRadius" -> COUNTER_PULSE_BASE_EXPLOSION_RADIUS.get();
+            case "counterPulseBaseExplosionDamage" -> COUNTER_PULSE_BASE_EXPLOSION_DAMAGE.get();
+            case "counterPulseChargeInterval" -> COUNTER_PULSE_CHARGE_INTERVAL.get();
+            case "counterPulseMaxChargeLevel" -> COUNTER_PULSE_MAX_CHARGE_LEVEL.get();
+            case "precisionConstructBonusPerLevel" -> PRECISION_CONSTRUCT_BONUS_PER_LEVEL.get();
+            case "advancedEngineeringBonusPerLevel" -> ADVANCED_ENGINEERING_BONUS_PER_LEVEL.get();
+            case "commanderMaxCount" -> COMMANDER_MAX_COUNT.get();
+            case "commanderAppointDelay" -> COMMANDER_APPOINT_DELAY.get();
+            case "chargedShieldChargeRatio" -> getChargedShieldChargeRatio();
+            case "chargedShieldMaxBonus" -> getChargedShieldMaxBonus();
+            case "chargedShieldMovementSpeedPenalty" -> getChargedShieldMovementSpeedPenalty();
+            case "grudgeConversionRatio" -> getGrudgeConversionRatio();
+            case "grudgeFadePercent" -> getGrudgeFadePercent();
+            case "grudgeFadeBase" -> getGrudgeFadeBase();
+            case "grudgeMovementSpeedPenalty" -> getGrudgeMovementSpeedPenalty();
+            case "wingmanShockwaveDamageMultiplier" -> getWingmanShockwaveDamageMultiplier();
+            case "wingmanShockwaveSplashLengthMultiplier" -> getWingmanShockwaveSplashLengthMultiplier();
+            case "wingmanEvolutionBonusPerLevel" -> getWingmanEvolutionBonusPerLevel();
+            case "ghostFuselageFullStealthTicks" -> getGhostFuselageFullStealthTicks();
+            case "ghostFuselageBaseMaxDamageBonus" -> getGhostFuselageBaseMaxDamageBonus();
+            case "ghostFuselageDecayRate" -> getGhostFuselageDecayRate();
+            case "ghostFuselageMinDecay" -> getGhostFuselageMinDecay();
+            case "ghostFuselageStealthSpeedBonusPerLevel" -> getGhostFuselageStealthSpeedBonusPerLevel();
+            default -> 0;
+        };
     }
 
     public static double getReflectRadius() {

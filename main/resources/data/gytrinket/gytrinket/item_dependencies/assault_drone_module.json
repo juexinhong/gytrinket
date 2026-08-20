@@ -1,0 +1,1 @@
+{"dependsOn":["gytrinket:drone_module"],"item":"gytrinket:assault_drone_module","disables":["gytrinket:defense_drone_module"]}

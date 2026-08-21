@@ -19,6 +19,7 @@ import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
@@ -360,8 +361,8 @@ public class WingmanConstructEntity extends AbstractConstructEntity {
                     }
                     // 正常追击模式
                     pursuitMovement(this, (LivingEntity) owner, target);
-                    // 朝向目标（插值旋转）
-                    faceTargetWithInterpolation(target);
+                    // 朝向目标（偏航+俯仰插值调整，指向目标高度）
+                    faceTargetWithPitch(target);
                 }
 
                 // 攻击
@@ -427,6 +428,45 @@ public class WingmanConstructEntity extends AbstractConstructEntity {
     private void faceMeleeChargeTarget(LivingEntity target) {
         Vec3 targetPos = target.position().add(0, target.getBbHeight() * 0.7, 0);
         facePositionWithInterpolation(targetPos, MELEE_CHARGE_TURN_SPEED);
+    }
+
+    /**
+     * 僚机专属朝向：偏航与俯仰均做插值调整，平滑指向目标（含高度差）。
+     * <p>
+     * 偏航每刻最多转动20度（受 rotationSpeedMultiplier 影响），
+     * 俯仰每刻最多转动10度（受 rotationSpeedMultiplier 影响）。
+     */
+    private void faceTargetWithPitch(LivingEntity target) {
+        Vec3 pos = this.position();
+        Vec3 targetPos = target.position().add(0, target.getEyeHeight() * 0.5, 0);
+
+        double dx = targetPos.x - pos.x;
+        double dy = targetPos.y - pos.y;
+        double dz = targetPos.z - pos.z;
+        double horizontalDistance = Math.sqrt(dx * dx + dz * dz);
+
+        float targetYaw = (float) (Math.atan2(dz, dx) * (180.0 / Math.PI)) - 90.0f;
+        float targetPitch = -(float) (Math.atan2(dy, horizontalDistance) * (180.0 / Math.PI));
+
+        float yawSpeed = 20.0f * (float) getRotationSpeedMultiplier();
+        float pitchSpeed = 10.0f * (float) getRotationSpeedMultiplier();
+
+        // 偏航插值（限速）
+        float currentYaw = this.getYRot();
+        float deltaYaw = targetYaw - currentYaw;
+        while (deltaYaw > 180.0f) deltaYaw -= 360.0f;
+        while (deltaYaw < -180.0f) deltaYaw += 360.0f;
+        float newYaw = currentYaw + Mth.clamp(deltaYaw, -yawSpeed, yawSpeed);
+
+        // 俯仰插值（限速）
+        float currentPitch = this.getXRot();
+        float newPitch = currentPitch + Mth.clamp(targetPitch - currentPitch, -pitchSpeed, pitchSpeed);
+
+        this.setYRot(newYaw);
+        this.setXRot(newPitch);
+        this.setYHeadRot(newYaw);
+        this.yBodyRot = newYaw;
+        this.yHeadRot = newYaw;
     }
 
     /**
@@ -735,10 +775,10 @@ public class WingmanConstructEntity extends AbstractConstructEntity {
                 tier = (i + 1) / 2;
             }
 
-            // 横向偏移 + 三角形后移（层级越深越靠后）
+            // 横向偏移 + 三角形后移（层级越深越靠后），发射高度为自身身高一半处
             Vec3 offset = right.scale(side * tier * LAUNCH_SPACING)
                 .add(back.scale(tier * TIER_BACK_OFFSET));
-            Vec3 launchPos = wingmanPos.add(offset).add(0, 0.4, 0);
+            Vec3 launchPos = wingmanPos.add(offset).add(0, wingman.getBbHeight() * 0.5, 0);
 
             ExplosiveProjectile projectile = new ExplosiveProjectile(
                 wingman.level(), (LivingEntity) wingman, damage
@@ -777,6 +817,19 @@ public class WingmanConstructEntity extends AbstractConstructEntity {
     @Override
     public String getConstructTypeId() {
         return WingmanConstructTypes.WINGMAN;
+    }
+
+    @Override
+    public boolean shouldShowName() {
+        // 不渲染僚机上方显示"僚机"的名牌
+        return false;
+    }
+
+    @Override
+    public boolean hasCustomName() {
+        // 彻底屏蔽名牌的另一个渲染分支（hasCustomName && 正在注视），
+        // 即使旧存档中残留 CustomName 数据也不会显示名牌
+        return false;
     }
 
     @Override

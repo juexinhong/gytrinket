@@ -13,6 +13,7 @@ import com.gytrinket.gytrinket.core.entity.construct.drone.DroneBulletRenderer;
 import com.gytrinket.gytrinket.core.entity.construct.drone.client.renderer.DroneBeamRenderer;
 import com.gytrinket.gytrinket.core.entity.construct.drone.client.renderer.ArmorShardRenderer;
 import com.gytrinket.gytrinket.core.entity.construct.wingman.WingmanRenderer;
+import com.gytrinket.gytrinket.core.entity.construct.wingman.WingmanEntityModel;
 import com.gytrinket.gytrinket.core.entity.construct.wingman.ExplosiveProjectileRenderer;
 import com.gytrinket.gytrinket.core.entity.construct.wingman.InterceptorConfigContainer;
 import com.gytrinket.gytrinket.client.screen.InterceptorConfigContainerScreen;
@@ -133,5 +134,14 @@ public class ModClient {
         event.registerEntityRenderer(ModEntities.EXPLOSIVE_PROJECTILE.get(), ExplosiveProjectileRenderer::new);
         // 注册蜂群渲染器
         event.registerEntityRenderer(ModEntities.SWARM_CONSTRUCT.get(), SwarmRenderer::new);
+    }
+
+    /**
+     * 注册模型层定义（LayerDefinitions）
+     * 标准 EntityModel 渲染需要在此烘焙模型的 LayerLocation
+     */
+    @SubscribeEvent
+    public static void registerLayerDefinitions(EntityRenderersEvent.RegisterLayerDefinitions event) {
+        event.registerLayerDefinition(WingmanEntityModel.LAYER_LOCATION, WingmanEntityModel::createBodyLayer);
     }
 }

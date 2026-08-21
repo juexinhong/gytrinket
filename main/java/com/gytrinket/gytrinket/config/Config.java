@@ -14,8 +14,14 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.fml.config.ModConfig;
 import net.neoforged.fml.event.config.ModConfigEvent;
 import net.neoforged.neoforge.common.ModConfigSpec;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.function.Consumer;
 
 import java.util.List;
 import java.util.Map;
@@ -325,8 +331,6 @@ public class Config {
         // ===== 1. 护盾基础属性 =====
         BUILDER.comment("属性系统配置").push("attributes");
 
-        
-
         ITEM_ATTRIBUTES_CONFIG = BUILDER.comment(
             "物品属性配置",
             "格式：物品ID|属性名=数值|属性名=数值",
@@ -472,8 +476,6 @@ public class Config {
         // ===== 4. 增幅护盾 =====
         BUILDER.comment("增幅护盾系统配置").push("amplification_shield");
 
-        
-
         AMPLIFICATION_BASE_AMPLIFICATION = BUILDER.comment(
             "增幅护盾基础增幅值",
             "当玩家有护盾值时提供的基础攻击伤害加成（独立乘区）",
@@ -548,8 +550,6 @@ public class Config {
         // ===== 6. 屏障 =====
         BUILDER.comment("屏障系统配置").push("barrier");
 
-        
-
         BARRIER_MAX_DAMAGE = BUILDER.comment(
             "屏障限制伤害最大值",
             "当伤害超过此值时，将被限制为此值",
@@ -560,8 +560,6 @@ public class Config {
 
         // ===== 7. 反射护盾 =====
         BUILDER.comment("反射护盾伤害处理器配置").push("reflect_damage");
-
-        
 
         REFLECT_DAMAGE_BASE_DAMAGE = BUILDER.comment(
             "反射护盾基础伤害值",
@@ -580,8 +578,6 @@ public class Config {
         // ===== 8. 易爆护盾 =====
         BUILDER.comment("易爆护盾系统配置").push("explosive_shield");
 
-        
-
         EXPLOSIVE_SHIELD_DAMAGE = BUILDER.comment(
             "易爆护盾默认伤害值",
             "该伤害会受护盾效果属性影响",
@@ -598,8 +594,6 @@ public class Config {
 
         // ===== 9. 电能释放 =====
         BUILDER.comment("电能释放系统配置").push("electric_discharge");
-
-        
 
         ELECTRIC_DISCHARGE_BURN_CHARGE = BUILDER.comment(
             "电能释放基础灼烧充能量",
@@ -619,8 +613,6 @@ public class Config {
         // ===== 10. 武器化护盾 =====
         BUILDER.comment("武器化护盾系统配置").push("weaponized_shield");
 
-        
-
         WEAPONIZED_SHIELD_VULNERABILITY = BUILDER.comment(
             "武器化护盾基础易伤值",
             "该值会受到护盾效果属性组影响",
@@ -639,16 +631,12 @@ public class Config {
         // ===== 11. 镀层 =====
         BUILDER.comment("镀层系统配置").push("coating_system");
 
-        
-
         COATING_REDUCTION_PER_LAYER = BUILDER.comment("每层镀层减少的伤害量").defineInRange("coatingReductionPerLayer", 0.2, 0.0, 10.0);
 
         BUILDER.pop();
 
         // ===== 12. 适应性装甲 =====
         BUILDER.comment("适应性装甲系统配置").push("adaptive_armor");
-
-        
 
         ADAPTIVE_ARMOR_DURATION = BUILDER.comment(
             "适应性装甲叠层持续时间（刻）",
@@ -664,18 +652,18 @@ public class Config {
             "例如：设为2.0时，受到5点伤害会添加10层装甲叠层"
         ).defineInRange("adaptiveArmorLayersPerDamage", 2.0, 0.1, 10.0);
 
-        
-
         BUILDER.pop();
 
         // ===== 13. 再生护盾 =====
         BUILDER.comment("护盾自然恢复系统配置").push("shield_natural_recovery");
-
         
-
         NATURAL_RECOVERY_SHIELD_RECOVERY_PER_TICK = BUILDER.comment(
-            "护盾自然恢复基础值（每刻恢复的护盾比例）",
-            "例如：0.001 表示每刻恢复最大护盾的 0.4%"
+            "再生护盾基础恢复值（每次恢复的比例，不是每刻）",
+            "装备再生护盾模块后，每次自然恢复额外增加的最大护盾比例",
+            "恢复频率：每4刻执行一次（每秒5次），每次恢复量 = naturalRecoveryShield/5 + 该值",
+            "实际恢复还会乘恢复效率属性和护盾存在修正系数，并受25上限逐段折半限制",
+            "默认 0.004 = 每次 0.4%（折合每秒 2%）",
+            "范围：0.0 ~ 0.1"
         ).defineInRange("naturalRecoveryShieldRecoveryPerTick", 0.004, 0.0, 0.1);
 
         NATURAL_RECOVERY_SHIELD_PRESENT_HEALTH_MODIFIER = BUILDER.comment(
@@ -1440,9 +1428,25 @@ public class Config {
             "启用：无论恢复效率属性值多少，始终按 naturalRecoveryPlayerHealth 的值恢复",
             "不启用：仅当恢复效率属性 > 1 时才恢复，恢复量为 naturalRecoveryPlayerHealth 的值；否则不恢复"
         ).define("playerHealthEnabled", true);
-        NATURAL_RECOVERY_PLAYER_HEALTH = BUILDER.comment("玩家基础生命恢复速度（%/秒）").defineInRange("naturalRecoveryPlayerHealth", 0.02, 0.0, 10.0);
-        NATURAL_RECOVERY_SHIELD = BUILDER.comment("护盾基础恢复速度（%/秒，0为禁用）").defineInRange("naturalRecoveryShield", 0.0, 0.0, 10.0);
-        NATURAL_RECOVERY_ATTACK_COOLDOWN_PENALTY = BUILDER.comment("攻击冷却期间恢复惩罚系数（0-1，越低恢复越少）").defineInRange("naturalRecoveryAttackCooldownPenalty", 0.8, 0.0, 1.0);
+        NATURAL_RECOVERY_PLAYER_HEALTH = BUILDER.comment(
+            "玩家基础生命恢复速度（%/秒）",
+            "恢复频率：每4刻执行一次（每秒5次），每次实际恢复量 = 该值 ÷ 5",
+            "实际恢复量还会乘恢复效率属性与攻击冷却惩罚系数，并受25上限逐段折半限制",
+            "默认 0.02 = 每秒恢复最大生命的 2%（每次 0.4%）",
+            "范围：0.0 ~ 10.0"
+        ).defineInRange("naturalRecoveryPlayerHealth", 0.02, 0.0, 10.0);
+        NATURAL_RECOVERY_SHIELD = BUILDER.comment(
+            "护盾基础恢复速度（%/秒，0为禁用）",
+            "恢复频率：每4刻执行一次（每秒5次），每次实际恢复量 = 该值 ÷ 5",
+            "实际恢复量还会乘恢复效率属性与攻击冷却惩罚系数；装备再生护盾模块时与 naturalRecoveryShieldRecoveryPerTick 叠加",
+            "默认 0.0 = 禁用",
+            "范围：0.0 ~ 10.0"
+        ).defineInRange("naturalRecoveryShield", 0.0, 0.0, 10.0);
+        NATURAL_RECOVERY_ATTACK_COOLDOWN_PENALTY = BUILDER.comment(
+            "攻击冷却期间恢复惩罚系数（0-1，越低恢复越少）",
+            "玩家处于攻击冷却（攻击强度刻度 > 0.5）时，生命与护盾的恢复量乘以此系数",
+            "默认 0.8 = 恢复量降低 20%"
+        ).defineInRange("naturalRecoveryAttackCooldownPenalty", 0.8, 0.0, 1.0);
 
         BUILDER.pop();
 
@@ -1579,6 +1583,8 @@ public class Config {
         if (!event.getConfig().getSpec().equals(SPEC)) {
             return;
         }
+        // 每次加载配置时检查配置文件完整性：缺失项补充默认值（保留用户已有值）
+        checkAndCompleteConfig(event.getConfig());
         if (initialized) {
             gytrinket.LOGGER.info("配置已初始化，跳过重复加载");
             return;
@@ -1588,6 +1594,84 @@ public class Config {
         loadItemAttributes();
 
         gytrinket.LOGGER.info("属性系统配置加载完成");
+    }
+
+    /**
+     * 检查配置文件完整性：若文件缺失 spec 中的配置项，调用 SPEC.save() 将内存中的完整配置
+     * （缺失项取默认值，已存在项保留用户值）写回原文件。
+     * 解决 NeoForge 检测到配置不统一时生成新配置文件但不生效的问题，
+     * 确保旧配置随版本更新自动补齐新增配置项（不删除文件中的多余项）。
+     */
+    private static void checkAndCompleteConfig(ModConfig config) {
+        try {
+            if (config == null) {
+                return;
+            }
+            Path configPath = config.getFullPath();
+            if (!Files.exists(configPath)) {
+                return;
+            }
+            if (hasMissingConfigKeys(configPath)) {
+                SPEC.save();
+                gytrinket.LOGGER.info("配置文件存在缺失项，已补充默认值并保存：{}", configPath.getFileName());
+            }
+        } catch (Exception e) {
+            gytrinket.LOGGER.warn("配置完整性检查失败：{}", e.getMessage());
+        }
+    }
+
+    /**
+     * 按分节解析 TOML 配置文件文本，检查 spec 中是否存在文件里缺失的配置项。
+     */
+    private static boolean hasMissingConfigKeys(Path configPath) throws IOException {
+        Map<String, java.util.Set<String>> fileSections = new HashMap<>();
+        String currentSection = "";
+        for (String line : Files.readAllLines(configPath)) {
+            String t = line.trim();
+            if (t.isEmpty() || t.startsWith("#") || t.startsWith(";")) {
+                continue;
+            }
+            if (t.startsWith("[")) {
+                int end = t.indexOf(']');
+                if (end > 1) {
+                    currentSection = t.substring(1, end).trim();
+                }
+                continue;
+            }
+            int eq = t.indexOf('=');
+            if (eq > 0) {
+                String key = t.substring(0, eq).trim();
+                fileSections.computeIfAbsent(currentSection, k -> new java.util.HashSet<>()).add(key);
+            }
+        }
+
+        final boolean[] missing = {false};
+        forEachConfigValue(SPEC.getValues().valueMap().values(), configValue -> {
+            List<String> path = configValue.getPath();
+            if (path.isEmpty()) {
+                return;
+            }
+            String section = path.size() > 1 ? path.get(0) : "";
+            String key = path.get(path.size() - 1);
+            java.util.Set<String> keys = fileSections.get(section);
+            if (keys == null || !keys.contains(key)) {
+                missing[0] = true;
+            }
+        });
+        return missing[0];
+    }
+
+    /**
+     * 递归遍历 spec 中的全部配置值（处理嵌套的分节结构）
+     */
+    private static void forEachConfigValue(Iterable<Object> values, Consumer<ModConfigSpec.ConfigValue<?>> consumer) {
+        for (Object value : values) {
+            if (value instanceof ModConfigSpec.ConfigValue<?> configValue) {
+                consumer.accept(configValue);
+            } else if (value instanceof com.electronwill.nightconfig.core.Config innerConfig) {
+                forEachConfigValue(innerConfig.valueMap().values(), consumer);
+            }
+        }
     }
 
     /**

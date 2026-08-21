@@ -57,7 +57,7 @@ public class ModEntities {
     public static final DeferredHolder<EntityType<?>, EntityType<WingmanConstructEntity>> WINGMAN_CONSTRUCT = ENTITIES.register(
             "wingman_construct",
             () -> EntityType.Builder.<WingmanConstructEntity>of(WingmanConstructEntity::new, MobCategory.CREATURE)
-                    .sized(0.8f, 0.8f)
+                    .sized(1.2f, 0.4f)
                     .clientTrackingRange(8)
                     .updateInterval(3)
                     .build("wingman_construct")

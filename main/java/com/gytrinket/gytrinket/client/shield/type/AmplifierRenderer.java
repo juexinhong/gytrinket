@@ -19,14 +19,20 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * 增幅护盾渲染器（与光环护盾 AuraRenderer 同款逻辑）
+ * <p>
+ * 在玩家（或被保护实体）脚下渲染 amplifier.png 地面贴图，
+ * 透明度与尺寸由 AmplifierClientData 插值驱动。
+ */
 @EventBusSubscriber(modid = com.gytrinket.gytrinket.gytrinket.MODID, value = Dist.CLIENT)
-public class SiphonRenderer {
+public class AmplifierRenderer {
 
-    private static final ResourceLocation SIPHON_TEXTURE = ResourceLocation.fromNamespaceAndPath(
-        com.gytrinket.gytrinket.gytrinket.MODID, "textures/particle/siphon.png"
+    private static final ResourceLocation AMPLIFIER_TEXTURE = ResourceLocation.fromNamespaceAndPath(
+        com.gytrinket.gytrinket.gytrinket.MODID, "textures/particle/amplifier.png"
     );
 
-    private SiphonRenderer() {}
+    private AmplifierRenderer() {}
 
     @SubscribeEvent
     public static void onRenderLevelLast(RenderLevelStageEvent event) {
@@ -41,11 +47,14 @@ public class SiphonRenderer {
         double currentShield = ShieldHudRenderer.getInstance().getCurrentShield();
         if (currentShield <= 0) return;
 
-        double displayStacks = SiphonClientData.getDisplayStacks();
-        if (displayStacks <= 0) return;
+        double displayAlpha = AmplifierClientData.getDisplayAlpha();
+        if (displayAlpha <= 0.001) return;
 
-        float alpha = (float) SiphonClientData.getDisplayAlpha();
-        double size = SiphonClientData.getDisplaySize();
+        // 透明度由进度驱动：有危险物时淡入（1.0），无危险物时20刻淡出；
+        // 无危险物长时间后透明度归零，此处自然不再渲染
+        float alpha = (float) displayAlpha;
+        double size = AmplifierClientData.getDisplaySize();
+        double brightness = AmplifierClientData.getDisplayBrightness();
 
         float pt = event.getPartialTick().getGameTimeDeltaPartialTick(false);
         Vec3 camPos = event.getCamera().getPosition();
@@ -57,7 +66,7 @@ public class SiphonRenderer {
         RenderSystem.enableDepthTest();
         RenderSystem.depthMask(false);
         RenderSystem.setShader(GameRenderer::getPositionTexColorShader);
-        RenderSystem.setShaderTexture(0, SIPHON_TEXTURE);
+        RenderSystem.setShaderTexture(0, AMPLIFIER_TEXTURE);
 
         PoseStack poseStack = event.getPoseStack();
         poseStack.pushPose();
@@ -74,8 +83,8 @@ public class SiphonRenderer {
         BufferBuilder bufferBuilder = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
 
         float halfSize = (float) size / 2.0f;
-        // 亮度固定为12（0~15），映射为颜色缩放
-        float colorScale = 12.0f / 15.0f;
+        // 亮度（8~15）映射为颜色缩放：基础8时较暗，达上限15时为全白
+        float colorScale = (float)(brightness / 15.0);
         int rgb = (int)(colorScale * 255);
         int packedColor = ((int)(alpha * 255) << 24) | (rgb << 16) | (rgb << 8) | rgb;
 

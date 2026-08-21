@@ -8,7 +8,7 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 public record SyncShieldPayload(double currentShield, double maxShield, int currentCooldown, int maxCooldown,
                                  double adaptiveArmorReduction, int siphonStacks, double shieldEffectRadius,
-                                 int[] protectedEntityIds, boolean auraDamaging) implements CustomPacketPayload {
+                                 int[] protectedEntityIds, boolean auraDamaging, double amplificationProgress) implements CustomPacketPayload {
     public static final Type<SyncShieldPayload> TYPE = new Type<>(
         ResourceLocation.fromNamespaceAndPath("gytrinket", "sync_shield"));
 
@@ -21,7 +21,8 @@ public record SyncShieldPayload(double currentShield, double maxShield, int curr
                 buf.readDouble(), buf.readInt(),
                 buf.readDouble(),
                 buf.readVarIntArray(),
-                buf.readBoolean()
+                buf.readBoolean(),
+                buf.readDouble()
             );
         }
 
@@ -36,6 +37,7 @@ public record SyncShieldPayload(double currentShield, double maxShield, int curr
             buf.writeDouble(msg.shieldEffectRadius);
             buf.writeVarIntArray(msg.protectedEntityIds);
             buf.writeBoolean(msg.auraDamaging);
+            buf.writeDouble(msg.amplificationProgress);
         }
     };
 
@@ -47,7 +49,7 @@ public record SyncShieldPayload(double currentShield, double maxShield, int curr
             com.gytrinket.gytrinket.client.network.ClientNetworkHandler.handleSyncShieldMessage(
                 payload.currentShield, payload.maxShield, payload.currentCooldown, payload.maxCooldown,
                 payload.adaptiveArmorReduction, payload.siphonStacks, payload.shieldEffectRadius,
-                payload.protectedEntityIds, payload.auraDamaging);
+                payload.protectedEntityIds, payload.auraDamaging, payload.amplificationProgress);
         });
     }
 }

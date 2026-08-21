@@ -23,13 +23,15 @@ public class ClientNetworkHandler {
         store.loadFromNBT(tag);
     }
 
-    public static void handleSyncShieldMessage(double currentShield, double maxShield, int currentCooldown, int maxCooldown, double adaptiveArmorReduction, int siphonStacks, double shieldEffectRadius, int[] protectedEntityIds, boolean auraDamaging) {
+    public static void handleSyncShieldMessage(double currentShield, double maxShield, int currentCooldown, int maxCooldown, double adaptiveArmorReduction, int siphonStacks, double shieldEffectRadius, int[] protectedEntityIds, boolean auraDamaging, double amplificationProgress) {
         ShieldHudRenderer.getInstance().updateShieldData(currentShield, maxShield, currentCooldown, maxCooldown, adaptiveArmorReduction);
         com.gytrinket.gytrinket.client.shield.type.SiphonClientData.setSiphonStacks(siphonStacks);
         com.gytrinket.gytrinket.client.shield.type.SiphonClientData.setShieldEffectRadius(shieldEffectRadius);
         com.gytrinket.gytrinket.client.shield.type.SiphonClientData.setProtectedEntityIds(protectedEntityIds);
         com.gytrinket.gytrinket.client.shield.type.AuraClientData.setShieldEffectRadius(shieldEffectRadius);
         com.gytrinket.gytrinket.client.shield.type.AuraClientData.setDamaging(auraDamaging);
+        com.gytrinket.gytrinket.client.shield.type.AmplifierClientData.setShieldEffectRadius(shieldEffectRadius);
+        com.gytrinket.gytrinket.client.shield.type.AmplifierClientData.setProgress(amplificationProgress);
     }
 
     public static void handleResponseAttributesMessage(java.util.Map<String, Double> attributes) {

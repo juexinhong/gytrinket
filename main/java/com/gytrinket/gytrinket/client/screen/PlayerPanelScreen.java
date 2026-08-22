@@ -3,22 +3,26 @@ package com.gytrinket.gytrinket.client.screen;
 import com.gytrinket.gytrinket.core.attribute.AttributeDefinition;
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
 import com.gytrinket.gytrinket.core.level.ModLevelData;
-import com.gytrinket.gytrinket.network.NetworkHandler;
 import com.gytrinket.gytrinket.network.packet.RequestConfigDataPayload;
 import net.neoforged.neoforge.network.PacketDistributor;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.Button;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
 
-import java.util.*;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 
 public class PlayerPanelScreen extends AbstractPanelScreen {
+
+    private static final int MAX_ITEMS_PER_COLUMN = 12;
+    private static final int SLOT_SIZE = 18;
+    private static final int SLOT_STEP = 20; // 格子间距（18px 格子 + 2px 间隙）
 
     private Map<String, Double> attributes;
     private List<ItemStack> equippedItems;
@@ -30,7 +34,6 @@ public class PlayerPanelScreen extends AbstractPanelScreen {
     private int upgradePoints;
 
     private List<Map.Entry<String, Double>> sortedAttrs = new ArrayList<>();
-    private int attrStartY;
     private int attrVisibleLines;
     private final ScrollBarComponent scrollBar = new ScrollBarComponent();
 
@@ -52,6 +55,16 @@ public class PlayerPanelScreen extends AbstractPanelScreen {
         parseItems(items);
         rebuildSortedAttrs();
     }
+
+    // ===== 布局坐标 =====
+    private int bodyTop() { return panelY + 20; }
+    private int bodyBottom() { return panelY + panelHeight - 6; }
+    private int equipColX() { return panelX + 8; }
+    private int attrColX() { return panelX + 56; }
+    private int attrColWidth() { return 250; }
+    private int rightColX() { return panelX + 314; }
+    private int rightColWidth() { return panelWidth - 322; }
+    private int attrListTop() { return bodyTop() + 14; }
 
     private void parseItems(ListTag items) {
         this.equippedItems = new ArrayList<>();
@@ -99,22 +112,24 @@ public class PlayerPanelScreen extends AbstractPanelScreen {
     @Override
     protected void init() {
         super.init();
-        initPanelSize(380, 280, 20, 20);
+        initPanelSize(460, 300, 20, 20);
 
-        int rightColX = panelX + panelWidth / 2 + 5;
-        int rightColWidth = panelWidth / 2 - 10;
-        int btnWidth = (rightColWidth - 6) / 2;
-        int btnY = panelY + panelHeight - 22;
+        // 顶部导航标签
+        int tabH = 14;
+        int tabY = panelY + 3;
+        int tabW = 48;
+        int configX = panelX + panelWidth - 8 - tabW;
+        int upgradeX = configX - 4 - tabW;
 
-        this.addRenderableWidget(Button.builder(
+        this.addRenderableWidget(SciFiButton.create(
                 Component.translatable("screen.gytrinket.upgrade_button"),
                 button -> openUpgradeTargetScreen()
-        ).bounds(rightColX, btnY, btnWidth, 16).build());
+        ).bounds(upgradeX, tabY, tabW, tabH).renderer(renderer).build());
 
-        this.addRenderableWidget(Button.builder(
+        this.addRenderableWidget(SciFiButton.create(
                 Component.translatable("screen.gytrinket.config_button"),
                 button -> openConfigScreen()
-        ).bounds(rightColX + btnWidth + 6, btnY, btnWidth, 16).build());
+        ).bounds(configX, tabY, tabW, tabH).renderer(renderer).build());
     }
 
     private void openUpgradeTargetScreen() {
@@ -145,12 +160,9 @@ public class PlayerPanelScreen extends AbstractPanelScreen {
         if (button != 0) return super.mouseClicked(mouseX, mouseY, button);
 
         if (scrollBar.needsScrollbar()) {
-            int colX = panelX + 5;
-            int colWidth = panelWidth / 2 - 10;
-            int attrBottomY = panelY + panelHeight - 6;
-            int scrollBarX = colX + colWidth + 2;
-            int scrollBarY = attrStartY + 11;
-            int scrollBarHeight = attrBottomY - scrollBarY;
+            int scrollBarX = attrColX() + attrColWidth() + 2;
+            int scrollBarY = attrListTop();
+            int scrollBarHeight = bodyBottom() - scrollBarY;
             if (scrollBar.mouseClicked(mouseX, mouseY, scrollBarX, scrollBarY, scrollBarHeight, attrVisibleLines, sortedAttrs.size())) {
                 return true;
             }
@@ -170,11 +182,8 @@ public class PlayerPanelScreen extends AbstractPanelScreen {
     @Override
     public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
         if (scrollBar.isDraggingScrollbar()) {
-            int colX = panelX + 5;
-            int colWidth = panelWidth / 2 - 10;
-            int attrBottomY = panelY + panelHeight - 6;
-            int scrollBarY = attrStartY + 11;
-            int scrollBarHeight = attrBottomY - scrollBarY;
+            int scrollBarY = attrListTop();
+            int scrollBarHeight = bodyBottom() - scrollBarY;
             scrollBar.mouseDragged(mouseY, scrollBarY, scrollBarHeight, attrVisibleLines, sortedAttrs.size());
             return true;
         }
@@ -183,170 +192,112 @@ public class PlayerPanelScreen extends AbstractPanelScreen {
 
     @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        // 先渲染背景模糊（只调用一次）
         this.renderBackground(guiGraphics, mouseX, mouseY, partialTick);
-        // 渲染面板背景
         renderPanelBackground(guiGraphics, mouseX, mouseY, partialTick);
 
-        int divX = panelX + panelWidth / 2;
-        int divTop = panelY + 5;
-        int divBottom = panelY + panelHeight - 5;
-        guiGraphics.fill(divX, divTop, divX + 1, divBottom, renderer.getDividerColor());
+        // 顶部标题栏
+        renderer.drawPanelHeader(guiGraphics, panelX + 1, panelY + 1, panelWidth - 2, 18);
+        drawText(guiGraphics, Component.translatable("screen.gytrinket.player_panel").getString(),
+                panelX + 10, panelY + 5, renderer.getAccentColor());
 
-        renderLeftColumn(guiGraphics, mouseX, mouseY);
-        renderRightColumn(guiGraphics);
+        renderEquipment(guiGraphics, mouseX, mouseY);
+        renderAttributes(guiGraphics);
+        renderLevelInfo(guiGraphics);
 
-        // 渲染按钮等widgets（不再调用renderBackground）
+        // 分栏分隔线
+        guiGraphics.fill(attrColX() - 6, bodyTop(), attrColX() - 5, bodyBottom(), renderer.getDividerColor());
+        guiGraphics.fill(rightColX() - 6, bodyTop(), rightColX() - 5, bodyBottom(), renderer.getDividerColor());
+
         for (var renderable : this.renderables) {
             renderable.render(guiGraphics, mouseX, mouseY, partialTick);
         }
         renderTooltip(guiGraphics, mouseX, mouseY);
     }
 
-    private void renderLeftColumn(GuiGraphics guiGraphics, int mouseX, int mouseY) {
-        int colX = panelX + 5;
-        int colWidth = panelWidth / 2 - 10;
-        int y = panelY + 6;
-
-        guiGraphics.drawString(font, Component.translatable("screen.gytrinket.equipped_items").getString(),
-                colX + 2, y, renderer.getAccentColor());
-
-        int cols = 9;
-        int slotSize = 16;
-        int startX = colX + (colWidth - cols * slotSize) / 2;
-        int itemY = y + 12;
+    private void renderEquipment(GuiGraphics g, int mouseX, int mouseY) {
+        int x = equipColX();
+        int y = bodyTop();
 
         hoveredItem = ItemStack.EMPTY;
         hoveredSlotIndex = -1;
 
         for (int i = 0; i < slotCount; i++) {
-            int col = i % cols;
-            int row = i / cols;
-            int x = startX + col * slotSize;
-            int iy = itemY + row * slotSize;
+            int col = i / MAX_ITEMS_PER_COLUMN;
+            int row = i % MAX_ITEMS_PER_COLUMN;
+            int sx = x + col * SLOT_STEP;
+            int sy = y + row * SLOT_STEP;
 
-            boolean hovered = mouseX >= x && mouseX < x + slotSize && mouseY >= iy && mouseY < iy + slotSize;
-            renderer.drawSlot(guiGraphics, x, iy, slotSize - 1, slotSize - 1, hovered);
+            ItemStack stack = (i < equippedItems.size()) ? equippedItems.get(i) : ItemStack.EMPTY;
+            boolean hovered = !stack.isEmpty()
+                    && mouseX >= sx && mouseX < sx + SLOT_SIZE && mouseY >= sy && mouseY < sy + SLOT_SIZE;
 
-            if (i < equippedItems.size() && !equippedItems.get(i).isEmpty()) {
-                guiGraphics.renderItem(equippedItems.get(i), x, iy);
+            // 只有非空物品才渲染底框，避免空槽显示过多框格
+            if (!stack.isEmpty()) {
+                renderer.drawSlot(g, sx, sy, SLOT_SIZE, SLOT_SIZE, hovered);
+                g.renderItem(stack, sx + 1, sy + 1);
                 if (hovered) {
-                    hoveredItem = equippedItems.get(i);
+                    hoveredItem = stack;
                     hoveredSlotIndex = i;
                 }
             }
         }
+    }
 
-        attrStartY = itemY + ((slotCount + cols - 1) / cols) * slotSize + 8;
-        int attrBottomY = panelY + panelHeight - 6;
-        attrVisibleLines = Math.max(0, (attrBottomY - attrStartY - 11) / 10);
+    private void renderAttributes(GuiGraphics g) {
+        int colX = attrColX();
+        int colWidth = attrColWidth();
+
+        drawText(g, Component.translatable("screen.gytrinket.attributes").getString(),
+                colX + 2, bodyTop(), renderer.getAccentColor());
+        renderer.drawTitleUnderline(g, colX + 2, bodyTop() + 9, 56);
+
+        int listTop = attrListTop();
+        int listBottom = bodyBottom();
+        attrVisibleLines = Math.max(0, (listBottom - listTop) / 10);
         scrollBar.updateMaxScroll(sortedAttrs.size(), attrVisibleLines);
         scrollBar.setScrollOffset(Math.min(scrollBar.getScrollOffset(), scrollBar.getMaxScrollOffset()));
 
-        guiGraphics.drawString(font, Component.translatable("screen.gytrinket.attributes").getString(),
-                colX + 2, attrStartY, renderer.getAccentColor());
-
-        int ay = attrStartY + 11;
-        guiGraphics.enableScissor(colX, attrStartY + 11, colX + colWidth + 3, attrBottomY);
+        int ay = listTop;
+        g.enableScissor(colX, listTop, colX + colWidth + 3, listBottom);
         for (int i = scrollBar.getScrollOffset(); i < sortedAttrs.size(); i++) {
             Map.Entry<String, Double> entry = sortedAttrs.get(i);
             String name = Component.translatable("tooltip.gytrinket.attr." + entry.getKey()).getString();
             String value = ScreenUtils.formatValue(entry.getValue());
-            guiGraphics.drawString(font, name, colX + 5, ay, renderer.getTextColor());
-            guiGraphics.drawString(font, value, colX + colWidth - 5 - font.width(value), ay, renderer.getValueColor());
+            drawText(g, name, colX + 4, ay, renderer.getTextColor());
+            drawText(g, value, colX + colWidth - 4 - font.width(value), ay, renderer.getValueColor());
             ay += 10;
         }
-        guiGraphics.disableScissor();
+        g.disableScissor();
 
         if (scrollBar.needsScrollbar()) {
             int scrollBarX = colX + colWidth + 2;
-            int scrollBarY = attrStartY + 11;
-            int scrollBarHeight = attrBottomY - scrollBarY;
-            scrollBar.render(guiGraphics, renderer, scrollBarX, scrollBarY, scrollBarHeight, attrVisibleLines, sortedAttrs.size());
+            int scrollBarY = listTop;
+            int scrollBarHeight = listBottom - scrollBarY;
+            scrollBar.render(g, renderer, scrollBarX, scrollBarY, scrollBarHeight, attrVisibleLines, sortedAttrs.size());
         }
     }
 
-    private void renderRightColumn(GuiGraphics guiGraphics) {
-        int colX = panelX + panelWidth / 2 + 5;
-        int colWidth = panelWidth / 2 - 10;
-        int y = panelY + 6;
+    private void renderLevelInfo(GuiGraphics g) {
+        int colX = rightColX();
+        int colWidth = rightColWidth();
 
-        guiGraphics.drawString(font, Component.translatable("screen.gytrinket.upgrade_info").getString(),
-                colX + 2, y, renderer.getAccentColor());
+        // 光点等级信息（右下角紧凑区）
+        int y = bodyBottom() - 32;
 
-        y += 14;
-        int upgradeBottomY = panelY + panelHeight / 2;
+        String levelStr = "Lv." + modLevel;
+        drawText(g, levelStr, colX + 4, y, renderer.getValueColor());
 
-        for (String pathKey : upgradeDataTag.getAllKeys()) {
-            if (y > upgradeBottomY - 10) break;
-            String displayKey = pathKey;
-            if (pathKey.contains("->")) {
-                String[] parts = pathKey.split("->");
-                if (parts.length == 2) {
-                    try {
-                        net.minecraft.world.item.Item baseItem = BuiltInRegistries.ITEM.get(ResourceLocation.parse(parts[0]));
-                        net.minecraft.world.item.Item upgradedItem = BuiltInRegistries.ITEM.get(ResourceLocation.parse(parts[1]));
-                        if (baseItem != null && upgradedItem != null) {
-                            String baseName = new net.minecraft.world.item.ItemStack(baseItem).getHoverName().getString();
-                            String upgradedName = new net.minecraft.world.item.ItemStack(upgradedItem).getHoverName().getString();
-                            displayKey = baseName + " -> " + upgradedName;
-                        }
-                    } catch (Exception ignored) {}
-                }
-            }
-            guiGraphics.drawString(font, Component.translatable("screen.gytrinket.upgrade_materials_for",
-                    displayKey).getString(), colX + 5, y, renderer.getTextColor());
-            y += 10;
-
-            ListTag materials = upgradeDataTag.getList(pathKey, 10);
-            for (int i = 0; i < materials.size(); i++) {
-                if (y > upgradeBottomY - 10) break;
-                CompoundTag itemTag = materials.getCompound(i);
-                ItemStack stack = ItemStack.parse(Minecraft.getInstance().level.registryAccess(), itemTag).orElse(ItemStack.EMPTY);
-                if (!stack.isEmpty()) {
-                    String itemName = stack.getHoverName().getString();
-                    String count = "x" + stack.getCount();
-                    guiGraphics.drawString(font, "  " + itemName, colX + 10, y, 0xFFAAAAAA);
-                    guiGraphics.drawString(font, count, colX + colWidth - 10 - font.width(count), y, renderer.getValueColor());
-                    y += 10;
-                }
-            }
-            y += 4;
-        }
-
-        if (upgradeDataTag.isEmpty()) {
-            guiGraphics.drawString(font, Component.translatable("screen.gytrinket.no_upgrade_materials").getString(),
-                    colX + 5, y, renderer.getHintColor());
-        }
-
-        int dividerY = panelY + panelHeight / 2;
-        renderer.drawDivider(guiGraphics, colX, dividerY, colWidth);
-
-        // 光点等级信息
-        int levelY = dividerY + 6;
-        guiGraphics.drawString(font, Component.translatable("screen.gytrinket.light_point_level").getString(),
-                colX + 2, levelY, renderer.getAccentColor());
-
-        levelY += 12;
-        String levelStr = String.valueOf(modLevel);
-        guiGraphics.drawString(font, levelStr, colX + 5, levelY, renderer.getValueColor());
-
-        // 光点经验进度条
         int xpNeeded = ModLevelData.getXpNeededForNextLevel(modLevel);
         String expStr = upgradeExp + "/" + xpNeeded;
-        guiGraphics.drawString(font, expStr, colX + colWidth - 5 - font.width(expStr), levelY, renderer.getTextColor());
+        drawText(g, expStr, colX + colWidth - 4 - font.width(expStr), y, renderer.getTextColor());
 
         // 经验进度条
-        levelY += 12;
-        int barWidth = colWidth - 10;
+        int barY = y + 10;
         float progress = xpNeeded > 0 ? (float) upgradeExp / xpNeeded : 0.0f;
-        guiGraphics.fill(colX + 5, levelY, colX + 5 + barWidth, levelY + 3, 0xFF333333);
-        guiGraphics.fill(colX + 5, levelY, colX + 5 + (int)(barWidth * progress), levelY + 3, renderer.getAccentColor());
+        renderer.drawProgressBar(g, colX + 4, barY, colWidth - 8, 4, progress, renderer.getAccentColor());
 
-        // 升级点
-        levelY += 8;
         String pointsStr = Component.translatable("screen.gytrinket.upgrade_points").getString() + ": " + upgradePoints;
-        guiGraphics.drawString(font, pointsStr, colX + 5, levelY, renderer.getTextColor());
+        drawText(g, pointsStr, colX + 4, barY + 8, renderer.getTextColor());
     }
 
     private void renderTooltip(GuiGraphics guiGraphics, int mouseX, int mouseY) {

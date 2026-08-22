@@ -5,7 +5,6 @@ import com.gytrinket.gytrinket.network.packet.*;
 import net.neoforged.neoforge.network.PacketDistributor;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -56,18 +55,18 @@ public class UpgradeSelectScreen extends AbstractPanelScreen {
         initPanelSize(200, 260, 20, 40);
 
         int btnY = panelY + panelHeight + 5;
-        this.addRenderableWidget(Button.builder(
+        this.addRenderableWidget(SciFiButton.create(
                 Component.translatable("screen.gytrinket.return_materials"),
                 button -> {
                     PacketDistributor.sendToServer(new UpgradeReturnPayload(baseItemKey, upgradedItemKey));
                     Minecraft.getInstance().setScreen(parentScreen);
                 }
-        ).bounds(panelX + 5, btnY, 90, 16).build());
+        ).bounds(panelX + 5, btnY, 90, 16).renderer(renderer).build());
 
-        this.addRenderableWidget(Button.builder(
+        this.addRenderableWidget(SciFiButton.create(
                 Component.translatable("screen.gytrinket.back"),
                 button -> Minecraft.getInstance().setScreen(parentScreen)
-        ).bounds(panelX + panelWidth - 95, btnY, 90, 16).build());
+        ).bounds(panelX + panelWidth - 95, btnY, 90, 16).renderer(renderer).build());
     }
 
     @Override
@@ -104,7 +103,7 @@ public class UpgradeSelectScreen extends AbstractPanelScreen {
 
         Inventory inventory = player.getInventory();
         int cols = 9;
-        int slotSize = 16;
+        int slotSize = 20; // 网格步进（格子 18px，间隙 2px）
         int startX = panelX + (panelWidth - cols * slotSize) / 2;
         int startY = y;
 
@@ -118,12 +117,12 @@ public class UpgradeSelectScreen extends AbstractPanelScreen {
                 int iy = startY + row * slotSize;
 
                 boolean hovered = mouseX >= x && mouseX < x + slotSize && mouseY >= iy && mouseY < iy + slotSize;
-                renderer.drawSlot(guiGraphics, x, iy, slotSize - 1, slotSize - 1, hovered);
+                renderer.drawSlot(guiGraphics, x, iy, slotSize - 2, slotSize - 2, hovered);
 
                 ItemStack stack = inventory.getItem(slot);
                 if (!stack.isEmpty()) {
-                    guiGraphics.renderItem(stack, x, iy);
-                    guiGraphics.renderItemDecorations(font, stack, x, iy);
+                    guiGraphics.renderItem(stack, x + 1, iy + 1);
+                    guiGraphics.renderItemDecorations(font, stack, x + 1, iy + 1);
                     if (hovered) {
                         hoveredItem = stack;
                         hoveredSlotIndex = slot;
@@ -138,12 +137,12 @@ public class UpgradeSelectScreen extends AbstractPanelScreen {
             int x = startX + col * slotSize;
 
             boolean hovered = mouseX >= x && mouseX < x + slotSize && mouseY >= hotbarY && mouseY < hotbarY + slotSize;
-            renderer.drawSlot(guiGraphics, x, hotbarY, slotSize - 1, slotSize - 1, hovered);
+            renderer.drawSlot(guiGraphics, x, hotbarY, slotSize - 2, slotSize - 2, hovered);
 
             ItemStack stack = inventory.getItem(slot);
             if (!stack.isEmpty()) {
-                guiGraphics.renderItem(stack, x, hotbarY);
-                guiGraphics.renderItemDecorations(font, stack, x, hotbarY);
+                guiGraphics.renderItem(stack, x + 1, hotbarY + 1);
+                guiGraphics.renderItemDecorations(font, stack, x + 1, hotbarY + 1);
                 if (hovered) {
                     hoveredItem = stack;
                     hoveredSlotIndex = slot;

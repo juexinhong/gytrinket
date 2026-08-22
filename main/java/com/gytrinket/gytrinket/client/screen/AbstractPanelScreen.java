@@ -38,6 +38,11 @@ public abstract class AbstractPanelScreen extends Screen {
         renderer.drawPanelBorder(g, panelX, panelY, panelWidth, panelHeight);
     }
 
+    /** 绘制无阴影文字（浅色面板上避免黑阴影与字体糊在一起） */
+    protected void drawText(GuiGraphics g, String text, int x, int y, int color) {
+        g.drawString(font, text, x, y, color, false);
+    }
+
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (KeyInputHandler.getAttributeKey().isActiveAndMatches(InputConstants.getKey(keyCode, scanCode))) {

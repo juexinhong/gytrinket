@@ -140,7 +140,7 @@ public class ClientConfig {
             "原版样式护盾值文本的X偏移量",
             "基于纹理左侧，0为左对齐，正数向右，负数向左",
             "默认0"
-        ).defineInRange("textOffsetX", -85, -500, 500);
+        ).defineInRange("textOffsetX", -92, -500, 500);
 
         HUD_VANILLA_TEXT_OFFSET_Y = BUILDER.comment(
             "原版样式护盾值文本的Y偏移量",

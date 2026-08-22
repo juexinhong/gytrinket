@@ -2,7 +2,6 @@ package com.gytrinket.gytrinket.client.screen;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -31,10 +30,10 @@ public class UpgradeTargetScreen extends AbstractPanelScreen {
 
         int btnX = panelX + panelWidth / 2 - 40;
         int btnY = panelY + panelHeight + 5;
-        this.addRenderableWidget(Button.builder(
+        this.addRenderableWidget(SciFiButton.create(
                 Component.translatable("screen.gytrinket.back"),
                 button -> Minecraft.getInstance().setScreen(parentScreen)
-        ).bounds(btnX, btnY, 80, 16).build());
+        ).bounds(btnX, btnY, 80, 16).renderer(renderer).build());
     }
 
     @Override
@@ -99,7 +98,7 @@ public class UpgradeTargetScreen extends AbstractPanelScreen {
                 totalCollected += ing.getInt("collected");
             }
             String progress = totalCollected + "/" + totalRequired;
-            int progressColor = totalCollected >= totalRequired ? renderer.getValueColor() : 0xFFAAAAAA;
+            int progressColor = totalCollected >= totalRequired ? renderer.getValueColor() : renderer.getHintColor();
             guiGraphics.drawString(font, progress, panelX + panelWidth - 15 - font.width(progress), rowY + 4, progressColor);
 
             StringBuilder ingSummary = new StringBuilder();

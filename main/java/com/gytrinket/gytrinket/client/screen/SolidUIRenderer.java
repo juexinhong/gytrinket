@@ -42,22 +42,42 @@ public final class SolidUIRenderer implements UIRenderer {
 
     @Override
     public void drawPanelBackground(GuiGraphics g, int x, int y, int w, int h) {
-        g.fill(x, y, x + w, y + h, bgColor);
+        g.fillGradient(x, y, x + w, y + h, bgColor, ScreenUtils.darken(bgColor, 0.10f));
+    }
+
+    @Override
+    public void drawPanelHeader(GuiGraphics g, int x, int y, int w, int h) {
+        // 仅标题下流动霓虹线，无背景，避免遮挡面板切角边框
+        ScreenUtils.flowingHLine(g, x + 4, y + h - 1, w - 8, accentColor, System.currentTimeMillis());
     }
 
     @Override
     public void drawPanelBorder(GuiGraphics g, int x, int y, int w, int h) {
-        ScreenUtils.drawBorder(g, x, y, w, h, borderColor);
+        // 外发光（低 alpha，随流动色变化）
+        int glow = ScreenUtils.withAlpha(ScreenUtils.flowingColor(borderColor), 40);
+        g.fill(x - 1, y - 1, x + w + 1, y, glow);
+        g.fill(x - 1, y + h, x + w + 1, y + h + 1, glow);
+        g.fill(x - 1, y - 1, x, y + h + 1, glow);
+        g.fill(x + w, y - 1, x + w + 1, y + h + 1, glow);
+        // 主边框（右上/左下切角，边内空间流动渐变）
+        ScreenUtils.drawChamferRect(g, x, y, w, h, 4, borderColor);
     }
 
     @Override
     public void drawSlot(GuiGraphics g, int x, int y, int w, int h, boolean hovered) {
         g.fill(x, y, x + w, y + h, hovered ? slotHoverColor : slotColor);
+        if (hovered) {
+            ScreenUtils.drawChamferRect(g, x, y, w, h, 2, accentColor);
+        } else {
+            // 常驻淡描边（流动色）
+            ScreenUtils.drawChamferRect(g, x, y, w, h, 2, ScreenUtils.withAlpha(accentColor, 55));
+        }
     }
 
     @Override
     public void drawSelectedRow(GuiGraphics g, int x, int y, int w, int h) {
         g.fill(x, y, x + w, y + h, selectedRowColor);
+        g.fill(x, y, x + 2, y + h, ScreenUtils.flowingColor(accentColor));
     }
 
     @Override
@@ -66,6 +86,11 @@ public final class SolidUIRenderer implements UIRenderer {
         if (deleteMode && hovered) color = attrDeleteHoverColor;
         else if (hovered) color = attrCellHoverColor;
         g.fill(x, y, x + w, y + h, color);
+        if (hovered && !deleteMode) {
+            g.fill(x, y, x + 1, y + h, ScreenUtils.flowingColor(accentColor));
+        } else if (deleteMode && hovered) {
+            g.fill(x, y, x + 1, y + h, deleteColor);
+        }
     }
 
     @Override
@@ -75,22 +100,42 @@ public final class SolidUIRenderer implements UIRenderer {
 
     @Override
     public void drawScrollbarThumb(GuiGraphics g, int x, int y, int w, int h) {
-        g.fill(x, y, x + w, y + h, scrollbarThumbColor);
+        g.fillGradient(x, y, x + w, y + h, ScreenUtils.lighten(scrollbarThumbColor, 0.2f), scrollbarThumbColor);
     }
 
     @Override
     public void drawDivider(GuiGraphics g, int x, int y, int w) {
-        g.fill(x, y, x + w, y + 1, dividerColor);
+        ScreenUtils.flowingHLine(g, x, y, w, ScreenUtils.withAlpha(dividerColor, 200), System.currentTimeMillis());
     }
 
     @Override
     public void drawOverlayBackground(GuiGraphics g, int x, int y, int w, int h) {
-        g.fill(x, y, x + w, y + h, 0xFF101010);
+        g.fillGradient(x, y, x + w, y + h,
+                ScreenUtils.withAlpha(bgColor, 245),
+                ScreenUtils.withAlpha(ScreenUtils.darken(bgColor, 0.1f), 245));
     }
 
     @Override
     public void drawOverlayBorder(GuiGraphics g, int x, int y, int w, int h) {
-        ScreenUtils.drawBorder(g, x, y, w, h, borderColor);
+        ScreenUtils.drawChamferRect(g, x, y, w, h, 4, borderColor);
+    }
+
+    @Override
+    public void drawTitleUnderline(GuiGraphics g, int x, int y, int w) {
+        long time = System.currentTimeMillis();
+        ScreenUtils.flowingHLine(g, x, y, w, accentColor, time);
+        ScreenUtils.flowingHLine(g, x, y + 1, w, ScreenUtils.withAlpha(accentColor, 80), time);
+    }
+
+    @Override
+    public void drawProgressBar(GuiGraphics g, int x, int y, int w, int h, float progress, int fillColor) {
+        g.fill(x, y, x + w, y + h, 0xFF0E1524);
+        float p = Math.max(0.0f, Math.min(1.0f, progress));
+        int fillWidth = (int) (w * p);
+        if (fillWidth > 0) {
+            g.fillGradient(x, y, x + fillWidth, y + h, ScreenUtils.lighten(fillColor, 0.3f), fillColor);
+        }
+        ScreenUtils.drawBorder(g, x, y, w, h, ScreenUtils.withAlpha(fillColor, 160));
     }
 
     @Override

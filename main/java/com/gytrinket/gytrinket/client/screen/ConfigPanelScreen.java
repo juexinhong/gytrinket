@@ -5,7 +5,6 @@ import com.gytrinket.gytrinket.network.packet.*;
 import net.neoforged.neoforge.network.PacketDistributor;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -73,23 +72,23 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
         initPanelSize(400, 300, 20, 40);
 
         int btnY = panelY + panelHeight + 5;
-        this.addRenderableWidget(Button.builder(
+        this.addRenderableWidget(SciFiButton.create(
                 Component.translatable("screen.gytrinket.add_item"),
                 button -> {
                     isAddingItem = true;
                     addingItemId = "";
                 }
-        ).bounds(panelX + 5, btnY, 80, 16).build());
+        ).bounds(panelX + 5, btnY, 80, 16).renderer(renderer).build());
 
-        this.addRenderableWidget(Button.builder(
+        this.addRenderableWidget(SciFiButton.create(
                 Component.translatable("screen.gytrinket.reset_defaults"),
                 button -> PacketDistributor.sendToServer(new ConfigResetPayload())
-        ).bounds(panelX + 90, btnY, 80, 16).build());
+        ).bounds(panelX + 90, btnY, 80, 16).renderer(renderer).build());
 
-        this.addRenderableWidget(Button.builder(
+        this.addRenderableWidget(SciFiButton.create(
                 Component.translatable("screen.gytrinket.back"),
                 button -> Minecraft.getInstance().setScreen(parentScreen)
-        ).bounds(panelX + panelWidth - 85, btnY, 80, 16).build());
+        ).bounds(panelX + panelWidth - 85, btnY, 80, 16).renderer(renderer).build());
     }
 
     @Override
@@ -310,7 +309,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
 
         if (isDraggingItem) {
             guiGraphics.drawString(font, Component.translatable("screen.gytrinket.reorder_hint").getString(),
-                    panelX + panelWidth / 2 + 5, panelY + 6, 0xFF00FF00);
+                    panelX + panelWidth / 2 + 5, panelY + 6, renderer.getAccentColor());
         }
 
         boolean hasOverlay = isSelectingAttr || isAddingItem;
@@ -370,7 +369,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
 
             if (isDraggingItem && i == dragTargetIndex) {
                 int dragRowHeight = calcRowHeight(dragFromIndex);
-                guiGraphics.fill(panelX + 5, y, panelX + panelWidth - 5, y + 2, 0xFF00FF00);
+                guiGraphics.fill(panelX + 5, y, panelX + panelWidth - 5, y + 2, renderer.getAccentColor());
                 y += dragRowHeight;
             }
 
@@ -413,7 +412,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
                 hoveredDelete = true;
                 hoveredItemIndex = i;
             }
-            guiGraphics.drawString(font, "X", delX + 4, y + 3, delHovered ? renderer.getDeleteColor() : 0xFF664444);
+            guiGraphics.drawString(font, "X", delX + 4, y + 3, delHovered ? renderer.getDeleteColor() : renderer.getHintColor());
 
             if (isSelected) {
                 int attrX = panelX + 28;
@@ -424,7 +423,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
                     if (!isSelectingAttr && !isEditing && !isDeletingAttr) {
                         guiGraphics.drawString(font,
                                 Component.translatable("screen.gytrinket.no_attributes").getString(),
-                                attrX, attrY + 2, 0xFF888888);
+                                attrX, attrY + 2, renderer.getHintColor());
 
                         String addText = "[+]";
                         int hintWidth = font.width(Component.translatable("screen.gytrinket.no_attributes").getString());
@@ -433,7 +432,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
                         if (btnY < contentBottom) {
                             boolean addHovered = mouseX >= btnX && mouseX < btnX + font.width(addText) + 6
                                     && mouseY >= btnY && mouseY < btnY + ATTR_LINE_HEIGHT - 1;
-                            guiGraphics.drawString(font, addText, btnX + 3, btnY + 2, addHovered ? 0xFF55FF55 : 0xFF558855);
+                            guiGraphics.drawString(font, addText, btnX + 3, btnY + 2, addHovered ? renderer.getAccentColor() : renderer.getHintColor());
                             if (addHovered) {
                                 hoveredAddBtn = true;
                                 hoveredItemIndex = i;
@@ -446,7 +445,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
                         if (remBtnY < contentBottom) {
                             boolean remHovered = mouseX >= remBtnX && mouseX < remBtnX + font.width(removeText) + 6
                                     && mouseY >= remBtnY && mouseY < remBtnY + ATTR_LINE_HEIGHT - 1;
-                            guiGraphics.drawString(font, removeText, remBtnX + 3, remBtnY + 2, remHovered ? renderer.getDeleteColor() : 0xFF885555);
+                            guiGraphics.drawString(font, removeText, remBtnX + 3, remBtnY + 2, remHovered ? renderer.getDeleteColor() : renderer.getHintColor());
                             if (remHovered) {
                                 hoveredRemoveBtn = true;
                                 hoveredItemIndex = i;
@@ -491,10 +490,10 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
                         if (isEditing && j == findAttrIndex(attrs, editingAttrName)) {
                             String displayName = Component.translatable("tooltip.gytrinket.attr." + attrName).getString();
                             String editText = displayName + "=" + editingValue + "_";
-                            guiGraphics.drawString(font, editText, attrX + 4, attrY + 2, 0xFFFFFF00);
+                            guiGraphics.drawString(font, editText, attrX + 4, attrY + 2, renderer.getValueColor());
                         } else if (isDeletingAttr) {
                             guiGraphics.drawString(font, attrText, attrX + 4, attrY + 2,
-                                    attrHovered ? renderer.getDeleteColor() : 0xFFAA6666);
+                                    attrHovered ? renderer.getDeleteColor() : renderer.getHintColor());
                         } else {
                             guiGraphics.drawString(font, attrText, attrX + 4, attrY + 2, renderer.getValueColor());
                         }
@@ -513,7 +512,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
                         if (btnY < contentBottom) {
                             boolean addHovered = mouseX >= btnX && mouseX < btnX + font.width(addText) + 6
                                     && mouseY >= btnY && mouseY < btnY + ATTR_LINE_HEIGHT - 1;
-                            guiGraphics.drawString(font, addText, btnX + 3, btnY + 2, addHovered ? 0xFF55FF55 : 0xFF558855);
+                            guiGraphics.drawString(font, addText, btnX + 3, btnY + 2, addHovered ? renderer.getAccentColor() : renderer.getHintColor());
                             if (addHovered) {
                                 hoveredAddBtn = true;
                                 hoveredItemIndex = i;
@@ -530,7 +529,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
                         if (remBtnY < contentBottom) {
                             boolean remHovered = mouseX >= remBtnX && mouseX < remBtnX + font.width(removeText) + 6
                                     && mouseY >= remBtnY && mouseY < remBtnY + ATTR_LINE_HEIGHT - 1;
-                            guiGraphics.drawString(font, removeText, remBtnX + 3, remBtnY + 2, remHovered ? renderer.getDeleteColor() : 0xFF885555);
+                            guiGraphics.drawString(font, removeText, remBtnX + 3, remBtnY + 2, remHovered ? renderer.getDeleteColor() : renderer.getHintColor());
                             if (remHovered) {
                                 hoveredRemoveBtn = true;
                                 hoveredItemIndex = i;
@@ -545,12 +544,12 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
 
         if (isDraggingItem && dragTargetIndex >= itemConfigData.size()) {
             int dragRowHeight = calcRowHeight(dragFromIndex);
-            guiGraphics.fill(panelX + 5, y, panelX + panelWidth - 5, y + 2, 0xFF00FF00);
+            guiGraphics.fill(panelX + 5, y, panelX + panelWidth - 5, y + 2, renderer.getAccentColor());
         }
 
         if (itemConfigData.isEmpty()) {
             guiGraphics.drawString(font, Component.translatable("screen.gytrinket.no_config_items").getString(),
-                    panelX + 15, contentY, 0xFF888888);
+                    panelX + 15, contentY, renderer.getHintColor());
         }
 
         guiGraphics.disableScissor();
@@ -590,7 +589,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
         int dragY = mouseY - rowHeight / 2;
         dragY = Math.max(contentY, Math.min(dragY, contentBottom - rowHeight));
 
-        guiGraphics.fill(panelX + 5, dragY, panelX + panelWidth - 5, dragY + rowHeight, 0xDD2a2a3a);
+        guiGraphics.fill(panelX + 5, dragY, panelX + panelWidth - 5, dragY + rowHeight, 0xE6283D66);
 
         Item item = BuiltInRegistries.ITEM.get(ResourceLocation.parse(itemId));
         if (item != null) {
@@ -602,8 +601,8 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
             guiGraphics.drawString(font, itemId, panelX + 10, dragY + 3, renderer.getTextColor());
         }
 
-        guiGraphics.fill(panelX + 5, dragY, panelX + panelWidth - 5, dragY + 2, 0xFF00FF00);
-        guiGraphics.fill(panelX + 5, dragY + rowHeight - 2, panelX + panelWidth - 5, dragY + rowHeight, 0xFF00FF00);
+        guiGraphics.fill(panelX + 5, dragY, panelX + panelWidth - 5, dragY + 2, renderer.getAccentColor());
+        guiGraphics.fill(panelX + 5, dragY + rowHeight - 2, panelX + panelWidth - 5, dragY + rowHeight, renderer.getAccentColor());
     }
 
     private void renderSelectAttrOverlay(GuiGraphics guiGraphics, int mouseX, int mouseY) {
@@ -631,18 +630,18 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
                     && mouseY >= listY && mouseY < listY + 10;
 
             if (alreadyHas) {
-                guiGraphics.drawString(font, displayName, overlayX + 8, listY, 0xFF555555);
+                guiGraphics.drawString(font, displayName, overlayX + 8, listY, renderer.getHintColor());
                 if (hovered) {
-                    guiGraphics.drawString(font, " *", overlayX + 8 + font.width(displayName), listY, 0xFF666666);
+                    guiGraphics.drawString(font, " *", overlayX + 8 + font.width(displayName), listY, renderer.getHintColor());
                 }
             } else {
-                guiGraphics.drawString(font, displayName, overlayX + 8, listY, hovered ? 0xFFFFFF00 : renderer.getTextColor());
+                guiGraphics.drawString(font, displayName, overlayX + 8, listY, hovered ? renderer.getValueColor() : renderer.getTextColor());
             }
             listY += 10;
         }
 
         if (allAttributeNames.isEmpty()) {
-            guiGraphics.drawString(font, Component.translatable("screen.gytrinket.no_attributes_registered").getString(), overlayX + 8, listY, 0xFF888888);
+            guiGraphics.drawString(font, Component.translatable("screen.gytrinket.no_attributes_registered").getString(), overlayX + 8, listY, renderer.getHintColor());
         }
     }
 
@@ -658,7 +657,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
         guiGraphics.drawString(font, Component.translatable("screen.gytrinket.add_item_prompt").getString(),
                 overlayX + 8, overlayY + 8, renderer.getAccentColor());
 
-        guiGraphics.drawString(font, addingItemId + "_", overlayX + 8, overlayY + 28, 0xFFFFFF00);
+        guiGraphics.drawString(font, addingItemId + "_", overlayX + 8, overlayY + 28, renderer.getValueColor());
     }
 
     @Override

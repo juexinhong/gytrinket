@@ -34,6 +34,7 @@ public class ModLevelManager {
             gytrinket.LOGGER.debug("玩家 {} 光点经验+{}，光点等级 {} -> {}",
                     playerUUID, amount, oldLevel, newLevel);
             NeoForge.EVENT_BUS.post(new ModLevelChangeEvent(playerUUID, oldLevel, newLevel));
+            syncToClient(playerUUID);
         }
 
         return newLevel - oldLevel;
@@ -51,6 +52,7 @@ public class ModLevelManager {
         boolean success = data.consumeUpgradePoints(amount);
         if (success) {
             PlayerDataCenter.setData(playerUUID, SLOT_KEY, data);
+            syncToClient(playerUUID);
         }
         return success;
     }
@@ -68,6 +70,33 @@ public class ModLevelManager {
     public static int getUpgradePoints(UUID playerUUID) {
         ModLevelData data = getData(playerUUID);
         return data != null ? data.getUpgradePoints() : 0;
+    }
+
+    /** 获取刷新点 */
+    public static int getRandomPoints(UUID playerUUID) {
+        ModLevelData data = getData(playerUUID);
+        return data != null ? data.getRandomPoints() : 0;
+    }
+
+    /** 增加刷新点 */
+    public static void addRandomPoints(UUID playerUUID, int amount) {
+        ModLevelData data = getOrCreateData(playerUUID);
+        if (data == null || amount <= 0) return;
+        data.addRandomPoints(amount);
+        PlayerDataCenter.setData(playerUUID, SLOT_KEY, data);
+        syncToClient(playerUUID);
+    }
+
+    /** 消耗刷新点（如刷新随机构建池） */
+    public static boolean consumeRandomPoints(UUID playerUUID, int amount) {
+        ModLevelData data = getData(playerUUID);
+        if (data == null) return false;
+        boolean success = data.consumeRandomPoints(amount);
+        if (success) {
+            PlayerDataCenter.setData(playerUUID, SLOT_KEY, data);
+            syncToClient(playerUUID);
+        }
+        return success;
     }
 
     public static float getExpProgress(UUID playerUUID) {
@@ -93,10 +122,23 @@ public class ModLevelManager {
 
         int oldLevel = data.getModLevel();
         data.reset();
+        // 重置后发放初始刷新点
+        data.addRandomPoints(ModLevelData.INITIAL_RANDOM_POINTS);
         PlayerDataCenter.setData(playerUUID, SLOT_KEY, data);
 
         if (oldLevel != 0) {
             NeoForge.EVENT_BUS.post(new ModLevelChangeEvent(playerUUID, oldLevel, 0));
+        }
+        syncToClient(playerUUID);
+    }
+
+    /** 同步光点等级数据到玩家客户端（升级/消耗/重置时） */
+    private static void syncToClient(UUID playerUUID) {
+        var server = net.neoforged.neoforge.server.ServerLifecycleHooks.getCurrentServer();
+        if (server == null) return;
+        var player = server.getPlayerList().getPlayer(playerUUID);
+        if (player != null) {
+            com.gytrinket.gytrinket.network.NetworkHandler.sendModLevelSyncToPlayer(player);
         }
     }
 

@@ -20,7 +20,21 @@ import java.util.Map;
 public final class ClientPacketHandler {
     private ClientPacketHandler() {}
 
+    public static void handleSyncModLevel(SyncModLevelPayload msg) {
+        com.gytrinket.gytrinket.client.datacenter.ClientDataCenter.updateModLevel(
+            msg.modLevel(), msg.upgradeExp(), msg.upgradePoints(), msg.randomPoints());
+    }
+
+    public static void handleResponseRandomBuild(ResponseRandomBuildPayload msg) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.screen instanceof PlayerPanelScreen ps) {
+            ps.updateRandomPool(msg.itemIds());
+        }
+    }
+
     public static void handleResponsePanelData(ResponsePanelDataPayload msg) {
+        com.gytrinket.gytrinket.client.datacenter.ClientDataCenter.updateModLevel(
+            msg.modLevel(), msg.upgradeExp(), msg.upgradePoints(), msg.randomPoints());
         Minecraft mc = Minecraft.getInstance();
         Screen currentScreen = mc.screen;
         PlayerPanelScreen panelScreen = null;
@@ -56,14 +70,14 @@ public final class ClientPacketHandler {
 
         if (currentScreen instanceof PlayerPanelScreen ps) {
             ps.updateData(msg.attributes(), msg.items(), msg.slotCount(), msg.upgradeData(), msg.upgradeTargets(),
-                    msg.modLevel(), msg.upgradeExp(), msg.upgradePoints());
+                    msg.modLevel(), msg.upgradeExp(), msg.upgradePoints(), msg.randomPoints());
         } else if (panelScreen != null) {
             panelScreen.updateData(msg.attributes(), msg.items(), msg.slotCount(), msg.upgradeData(), msg.upgradeTargets(),
-                    msg.modLevel(), msg.upgradeExp(), msg.upgradePoints());
+                    msg.modLevel(), msg.upgradeExp(), msg.upgradePoints(), msg.randomPoints());
         } else {
             mc.setScreen(new PlayerPanelScreen(
                 msg.attributes(), msg.items(), msg.slotCount(), msg.upgradeData(), msg.upgradeTargets(),
-                msg.modLevel(), msg.upgradeExp(), msg.upgradePoints()));
+                msg.modLevel(), msg.upgradeExp(), msg.upgradePoints(), msg.randomPoints()));
         }
     }
 

@@ -8,6 +8,7 @@ import com.gytrinket.gytrinket.core.shield.ShieldManager;
 import com.gytrinket.gytrinket.core.level.ModLevelManager;
 import com.gytrinket.gytrinket.core.upgrade.UpgradeData;
 import com.gytrinket.gytrinket.core.upgrade.UpgradeManager;
+import com.gytrinket.gytrinket.core.random_build.RandomBuildManager;
 import com.gytrinket.gytrinket.network.packet.*;
 import com.gytrinket.gytrinket.storage.PlayerStore;
 import com.gytrinket.gytrinket.storage.PlayerStoreManager;
@@ -76,6 +77,8 @@ public class NetworkHandler {
 
         // 幽灵机身
         registrar.playToClient(SyncGhostStealthPayload.TYPE, SyncGhostStealthPayload.STREAM_CODEC, SyncGhostStealthPayload::handle);
+        registrar.playToClient(ResponseRandomBuildPayload.TYPE, ResponseRandomBuildPayload.STREAM_CODEC, ResponseRandomBuildPayload::handle);
+        registrar.playToClient(SyncModLevelPayload.TYPE, SyncModLevelPayload.STREAM_CODEC, SyncModLevelPayload::handle);
         registrar.playToServer(SyncGhostMoveSpeedPayload.TYPE, SyncGhostMoveSpeedPayload.STREAM_CODEC, SyncGhostMoveSpeedPayload::handle);
 
         // 拦截机
@@ -85,6 +88,9 @@ public class NetworkHandler {
         registrar.playToClient(SyncInterceptorAttackModePayload.TYPE, SyncInterceptorAttackModePayload.STREAM_CODEC, SyncInterceptorAttackModePayload::handle);
         registrar.playToServer(SetInterceptorAmmoPayload.TYPE, SetInterceptorAmmoPayload.STREAM_CODEC, SetInterceptorAmmoPayload::handle);
         registrar.playToServer(GhostFuselageAttackPayload.TYPE, GhostFuselageAttackPayload.STREAM_CODEC, GhostFuselageAttackPayload::handle);
+        registrar.playToServer(RequestRandomBuildPayload.TYPE, RequestRandomBuildPayload.STREAM_CODEC, RequestRandomBuildPayload::handle);
+        registrar.playToServer(RandomBuildEquipPayload.TYPE, RandomBuildEquipPayload.STREAM_CODEC, RandomBuildEquipPayload::handle);
+        registrar.playToServer(RequestRefreshRandomPoolPayload.TYPE, RequestRefreshRandomPoolPayload.STREAM_CODEC, RequestRefreshRandomPoolPayload::handle);
     }
 
     // ======================== Helper send methods ========================
@@ -217,6 +223,29 @@ public class NetworkHandler {
 
     // ======================== Internal send helpers ========================
 
+    /** 生成并推送随机构建随机池到客户端 */
+    public static void sendRandomBuildPoolToPlayer(ServerPlayer player) {
+        sendRandomBuildPoolToPlayer(player, false);
+    }
+
+    /** 生成并推送随机构建随机池到客户端
+     *  @param avoidLast 为 true 时尽量不与上一轮随机池重复（刷新用） */
+    public static void sendRandomBuildPoolToPlayer(ServerPlayer player, boolean avoidLast) {
+        List<String> lastPool = avoidLast ? RandomBuildManager.getCurrentPool(player.getUUID()) : List.of();
+        List<String> pool = RandomBuildManager.generatePool(player, new java.util.HashSet<>(lastPool));
+        PacketDistributor.sendToPlayer(player, new ResponseRandomBuildPayload(pool));
+    }
+
+    /** 同步光点等级/经验/升级点到客户端 */
+    public static void sendModLevelSyncToPlayer(ServerPlayer player) {
+        java.util.UUID uuid = player.getUUID();
+        PacketDistributor.sendToPlayer(player, new SyncModLevelPayload(
+            ModLevelManager.getModLevel(uuid),
+            ModLevelManager.getUpgradeExp(uuid),
+            ModLevelManager.getUpgradePoints(uuid),
+            ModLevelManager.getRandomPoints(uuid)));
+    }
+
     public static void sendPanelUpdate(ServerPlayer player) {
         var attributes = AttributeManager.getPlayerAttributes(player);
         PlayerStore store = PlayerStoreManager.getPlayerStore(player);
@@ -247,8 +276,9 @@ public class NetworkHandler {
         int modLevel = ModLevelManager.getModLevel(player.getUUID());
         int upgradeExp = ModLevelManager.getUpgradeExp(player.getUUID());
         int upgradePoints = ModLevelManager.getUpgradePoints(player.getUUID());
+        int randomPoints = ModLevelManager.getRandomPoints(player.getUUID());
         PacketDistributor.sendToPlayer(player,
-            new ResponsePanelDataPayload(attributes, items, slotCount, upgradeTag, upgradeTargets, modLevel, upgradeExp, upgradePoints));
+            new ResponsePanelDataPayload(attributes, items, slotCount, upgradeTag, upgradeTargets, modLevel, upgradeExp, upgradePoints, randomPoints));
     }
 
     public static void sendConfigDataToPlayer(ServerPlayer player) {

@@ -20,6 +20,7 @@ import net.neoforged.neoforge.registries.DataPackRegistryEvent;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -59,6 +60,8 @@ public class DefsManager {
             ResourceKey.createRegistryKey(ResourceLocation.fromNamespaceAndPath(REGISTRY_NAMESPACE, "attribute_definitions"));
     public static final ResourceKey<Registry<ItemDependencyDef>> ITEM_DEPENDENCIES_KEY =
             ResourceKey.createRegistryKey(ResourceLocation.fromNamespaceAndPath(REGISTRY_NAMESPACE, "item_dependencies"));
+    public static final ResourceKey<Registry<ModuleTreeDef>> MODULE_TREES_KEY =
+            ResourceKey.createRegistryKey(ResourceLocation.fromNamespaceAndPath(REGISTRY_NAMESPACE, "module_trees"));
     public static final ResourceKey<Registry<UpgradePathDef>> UPGRADE_PATHS_KEY =
             ResourceKey.createRegistryKey(ResourceLocation.fromNamespaceAndPath(REGISTRY_NAMESPACE, "upgrade_paths"));
     public static final ResourceKey<Registry<TooltipRuleDef>> TOOLTIP_RULES_KEY =
@@ -105,13 +108,35 @@ public class DefsManager {
         ).apply(inst, AttributeDefs::new));
     }
 
-    /** 禁用/依赖条目：{ "item": "...", "disables": [...], "dependsOn": [...] } */
-    public record ItemDependencyDef(String item, List<String> disables, List<String> dependsOn) {
+    /**
+     * 禁用/依赖条目：{ "item": "...", "disables": [...], "dependsOn": [...], "disablesCategories": [...], "dependsOnAll": [[...],[...]] }
+     * disables          -- 互斥：装备 item 时，列表中已装备的目标被禁用（双方同时装备时）
+     * dependsOn         -- OR 依赖：装备 item 需要列表中"任意一个"依赖已装备且未被禁用
+     * disablesCategories-- 类别禁用：装备 item 时，整个类别（如 shields）的物品全部被禁用
+     * dependsOnAll      -- AND 依赖（OR 组）：外层列表 = 必须全部满足的组，每组内"任意一个"满足即可；
+     *                      组内元素支持物品 id 或类别引用 "category:xxx"（如 category:construct_final）
+     */
+    public record ItemDependencyDef(String item, List<String> disables, List<String> dependsOn,
+                                    List<String> disablesCategories, List<List<String>> dependsOnAll) {
         static final Codec<ItemDependencyDef> CODEC = RecordCodecBuilder.create(inst -> inst.group(
                 Codec.STRING.fieldOf("item").forGetter(ItemDependencyDef::item),
                 Codec.STRING.listOf().optionalFieldOf("disables", List.of()).forGetter(ItemDependencyDef::disables),
-                Codec.STRING.listOf().optionalFieldOf("dependsOn", List.of()).forGetter(ItemDependencyDef::dependsOn)
+                Codec.STRING.listOf().optionalFieldOf("dependsOn", List.of()).forGetter(ItemDependencyDef::dependsOn),
+                Codec.STRING.listOf().optionalFieldOf("disablesCategories", List.of()).forGetter(ItemDependencyDef::disablesCategories),
+                Codec.STRING.listOf().listOf().optionalFieldOf("dependsOnAll", List.of()).forGetter(ItemDependencyDef::dependsOnAll)
         ).apply(inst, ItemDependencyDef::new));
+    }
+
+    /**
+     * 模块树条目：{ "category": "...", "tiers": [[一阶...],[二阶...],[终阶...]] }
+     * category -- 树所属类别（如 construct 构造体类）
+     * tiers    -- 按阶数排列的模块分组（每层内为并列/抉择模块），最后一层为该树的终阶模块
+     */
+    public record ModuleTreeDef(String category, List<List<String>> tiers) {
+        static final Codec<ModuleTreeDef> CODEC = RecordCodecBuilder.create(inst -> inst.group(
+                Codec.STRING.optionalFieldOf("category", "").forGetter(ModuleTreeDef::category),
+                Codec.STRING.listOf().listOf().optionalFieldOf("tiers", List.of()).forGetter(ModuleTreeDef::tiers)
+        ).apply(inst, ModuleTreeDef::new));
     }
 
     /** 升级路径条目：{ "base": "...", "upgrades": [...] }，条目 id = 基础物品路径 */
@@ -162,6 +187,9 @@ public class DefsManager {
     private static final List<AttributeEntry> ATTRIBUTE_DEFS = new ArrayList<>();
     private static final Map<String, Set<String>> DISABLE_TARGETS = new HashMap<>();
     private static final Map<String, Set<String>> DEPENDENCIES = new HashMap<>();
+    private static final Map<String, Set<String>> DISABLE_CATEGORIES = new HashMap<>();
+    private static final Map<String, List<List<String>>> DEPENDENCIES_ALL = new HashMap<>();
+    private static final Map<String, ModuleTreeDef> MODULE_TREES = new LinkedHashMap<>();
     private static final Map<String, List<String>> UPGRADE_PATHS = new HashMap<>();
     private static final List<TooltipRuleDef> TOOLTIP_RULES = new ArrayList<>();
 
@@ -175,9 +203,10 @@ public class DefsManager {
         event.dataPackRegistry(ITEM_SHIELD_TYPES_KEY, ItemShieldTypeDef.CODEC, ItemShieldTypeDef.CODEC);
         event.dataPackRegistry(ATTRIBUTE_DEFS_KEY, AttributeDefs.CODEC, AttributeDefs.CODEC);
         event.dataPackRegistry(ITEM_DEPENDENCIES_KEY, ItemDependencyDef.CODEC, ItemDependencyDef.CODEC);
+        event.dataPackRegistry(MODULE_TREES_KEY, ModuleTreeDef.CODEC, ModuleTreeDef.CODEC);
         event.dataPackRegistry(UPGRADE_PATHS_KEY, UpgradePathDef.CODEC, UpgradePathDef.CODEC);
         event.dataPackRegistry(TOOLTIP_RULES_KEY, TooltipRuleDef.CODEC, TooltipRuleDef.CODEC);
-        gytrinket.LOGGER.info("已注册 7 个定义类 datapack registry");
+        gytrinket.LOGGER.info("已注册 8 个定义类 datapack registry");
     }
 
     // ===== 服务端加载（forge 总线） =====
@@ -208,6 +237,9 @@ public class DefsManager {
         ATTRIBUTE_DEFS.clear();
         DISABLE_TARGETS.clear();
         DEPENDENCIES.clear();
+        DISABLE_CATEGORIES.clear();
+        DEPENDENCIES_ALL.clear();
+        MODULE_TREES.clear();
         UPGRADE_PATHS.clear();
 
         access.registry(ITEM_SETS_KEY).ifPresent(reg -> {
@@ -249,6 +281,18 @@ public class DefsManager {
                 if (!def.dependsOn().isEmpty()) {
                     DEPENDENCIES.put(def.item(), new HashSet<>(def.dependsOn()));
                 }
+                if (!def.disablesCategories().isEmpty()) {
+                    DISABLE_CATEGORIES.put(def.item(), new HashSet<>(def.disablesCategories()));
+                }
+                if (!def.dependsOnAll().isEmpty()) {
+                    DEPENDENCIES_ALL.put(def.item(), def.dependsOnAll());
+                }
+            }
+        });
+
+        access.registry(MODULE_TREES_KEY).ifPresent(reg -> {
+            for (Map.Entry<ResourceKey<ModuleTreeDef>, ModuleTreeDef> e : reg.entrySet()) {
+                MODULE_TREES.put(e.getKey().location().getPath(), e.getValue());
             }
         });
 
@@ -263,9 +307,10 @@ public class DefsManager {
             reg.forEach(TOOLTIP_RULES::add);
         });
 
-        gytrinket.LOGGER.info("定义类数据加载完成：物品集合 {} 项，护盾类型 {} 项，物品护盾类型 {} 项，属性定义 {} 项，禁用目标 {} 项，依赖 {} 项，升级路径 {} 项，工具提示规则 {} 项",
+        gytrinket.LOGGER.info("定义类数据加载完成：物品集合 {} 项，护盾类型 {} 项，物品护盾类型 {} 项，属性定义 {} 项，禁用目标 {} 项，依赖 {} 项，类别禁用 {} 项，AND依赖 {} 项，模块树 {} 棵，升级路径 {} 项，工具提示规则 {} 项",
                 ITEM_SETS.size(), SHIELD_TYPES.size(), ITEM_SHIELD_TYPES.size(),
-                ATTRIBUTE_DEFS.size(), DISABLE_TARGETS.size(), DEPENDENCIES.size(), UPGRADE_PATHS.size(), TOOLTIP_RULES.size());
+                ATTRIBUTE_DEFS.size(), DISABLE_TARGETS.size(), DEPENDENCIES.size(),
+                DISABLE_CATEGORIES.size(), DEPENDENCIES_ALL.size(), MODULE_TREES.size(), UPGRADE_PATHS.size(), TOOLTIP_RULES.size());
 
         // 填充 Config 集合并触发依赖定义数据的子系统重载
         Config.applyDefs();
@@ -299,6 +344,31 @@ public class DefsManager {
 
     public static Map<String, Set<String>> getDependencies() {
         return DEPENDENCIES;
+    }
+
+    public static Map<String, Set<String>> getDisableCategories() {
+        return DISABLE_CATEGORIES;
+    }
+
+    /** AND 依赖（OR 组）：物品 id -> 组列表，每组内 OR、组间 AND，组内元素可为 "category:xxx" 类别引用 */
+    public static Map<String, List<List<String>>> getDependenciesAll() {
+        return DEPENDENCIES_ALL;
+    }
+
+    /** 模块树：树 id -> 定义（含类别与分阶模块） */
+    public static Map<String, ModuleTreeDef> getModuleTrees() {
+        return MODULE_TREES;
+    }
+
+    /** 获取指定类别下所有模块树的终阶模块（最后一层的模块并集） */
+    public static Set<String> getCategoryFinalModules(String category) {
+        Set<String> result = new HashSet<>();
+        for (ModuleTreeDef def : MODULE_TREES.values()) {
+            if (!category.equals(def.category())) continue;
+            if (def.tiers() == null || def.tiers().isEmpty()) continue;
+            result.addAll(def.tiers().get(def.tiers().size() - 1));
+        }
+        return result;
     }
 
     public static Map<String, List<String>> getUpgradePaths() {

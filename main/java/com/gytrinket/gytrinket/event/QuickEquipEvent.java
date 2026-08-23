@@ -170,7 +170,8 @@ public class QuickEquipEvent {
         return slots;
     }
 
-    private static boolean isQuickEquipItem(String itemId, Item item) {
+    /** 判定物品是否"注册了属性或特殊机制"（可装备类物品：模块/护盾/机身等） */
+    public static boolean isQuickEquipItem(String itemId, Item item) {
         if (AttributeManager.isItemAttributeRegistered(itemId)) {
             return true;
         }

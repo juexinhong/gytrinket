@@ -458,6 +458,16 @@
   "screen.gytrinket.light_point_level": "光点等级",
   "screen.gytrinket.light_point_exp": "光点经验",
   "screen.gytrinket.upgrade_points": "升级点",
+  "screen.gytrinket.random_pool": "随机构建池",
+  "screen.gytrinket.random_points": "刷新点",
+  "screen.gytrinket.refresh_pool": "刷新",
+
+  "hud.gytrinket.random_build.hint": "按下 G 键打开升级界面",
+
+  "message.gytrinket.random_build.equipped": "已将 %s 装备到光点核心",
+  "message.gytrinket.random_build.not_enough_points": "升级点不足",
+  "message.gytrinket.random_build.failed": "无法装备该物品",
+  "message.gytrinket.random_build.not_enough_random_points": "刷新点不足",
 
   "command.gytrinket.resetlevel.success": "光点等级已重置",
   "command.gytrinket.resetlevel.not_player": "该指令只能由玩家执行",

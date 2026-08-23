@@ -22,6 +22,8 @@ public class DisableSystem {
     private static final Map<UUID, Set<String>> PLAYER_DISABLED_ITEMS = new HashMap<>();
     private static final Map<String, Set<String>> ITEM_DISABLE_TARGETS = new HashMap<>();
     private static final Map<String, Set<String>> ITEM_DEPENDENCIES = new HashMap<>();
+    private static final Map<String, Set<String>> ITEM_DISABLE_CATEGORIES = new HashMap<>();
+    private static final Map<String, List<List<String>>> ITEM_DEPENDENCIES_ALL = new HashMap<>();
 
     private DisableSystem() {}
 
@@ -38,12 +40,29 @@ public class DisableSystem {
         DefsManager.getDependencies().forEach((itemId, deps) -> {
             if (!deps.isEmpty()) {
                 ITEM_DEPENDENCIES.put(itemId, new HashSet<>(deps));
-                gytrinket.LOGGER.info("注册物品依赖: {} -> {}", itemId, deps);
+                gytrinket.LOGGER.info("注册物品依赖(OR): {} -> {}", itemId, deps);
             }
         });
 
-        gytrinket.LOGGER.info("禁用系统配置加载完成，禁用目标: {} 项，依赖关系: {} 项",
-                ITEM_DISABLE_TARGETS.size(), ITEM_DEPENDENCIES.size());
+        ITEM_DISABLE_CATEGORIES.clear();
+        DefsManager.getDisableCategories().forEach((itemId, categories) -> {
+            if (!categories.isEmpty()) {
+                ITEM_DISABLE_CATEGORIES.put(itemId, new HashSet<>(categories));
+                gytrinket.LOGGER.info("注册类别禁用: {} -> {}", itemId, categories);
+            }
+        });
+
+        ITEM_DEPENDENCIES_ALL.clear();
+        DefsManager.getDependenciesAll().forEach((itemId, groups) -> {
+            if (!groups.isEmpty()) {
+                ITEM_DEPENDENCIES_ALL.put(itemId, groups);
+                gytrinket.LOGGER.info("注册物品依赖(AND/OR组): {} -> {}", itemId, groups);
+            }
+        });
+
+        gytrinket.LOGGER.info("禁用系统配置加载完成，禁用目标: {} 项，OR依赖: {} 项，类别禁用: {} 项，AND依赖: {} 项",
+                ITEM_DISABLE_TARGETS.size(), ITEM_DEPENDENCIES.size(),
+                ITEM_DISABLE_CATEGORIES.size(), ITEM_DEPENDENCIES_ALL.size());
     }
 
     public static void updateDisabledItems(UUID playerUUID) {
@@ -84,11 +103,24 @@ public class DisableSystem {
             changed = false;
             for (String itemId : storeItemIds) {
                 if (disabledItems.contains(itemId)) continue;
+                // 互斥：禁用的具体目标（双方都装备时目标失效）
                 Set<String> targets = ITEM_DISABLE_TARGETS.get(itemId);
-                if (targets == null) continue;
-                for (String target : targets) {
-                    if (storeItemIds.contains(target) && disabledItems.add(target)) {
-                        changed = true;
+                if (targets != null) {
+                    for (String target : targets) {
+                        if (storeItemIds.contains(target) && disabledItems.add(target)) {
+                            changed = true;
+                        }
+                    }
+                }
+                // 类别禁用：装备 item 时整个类别（如护盾）全部失效，无需目标在库
+                Set<String> categories = ITEM_DISABLE_CATEGORIES.get(itemId);
+                if (categories != null) {
+                    for (String category : categories) {
+                        for (String target : Config.resolveDisableCategory(category)) {
+                            if (disabledItems.add(target)) {
+                                changed = true;
+                            }
+                        }
                     }
                 }
             }
@@ -101,22 +133,62 @@ public class DisableSystem {
             changed = false;
             for (String itemId : storeItemIds) {
                 if (disabledItems.contains(itemId)) continue;
+
+                // OR逻辑（dependsOn）：所有依赖都未装备（不存在或被禁用）时才禁用
                 Set<String> deps = ITEM_DEPENDENCIES.get(itemId);
-                if (deps == null) continue;
-                // OR逻辑：只有当所有依赖都未装备（不存在或被禁用）时才禁用
-                boolean anyDepAvailable = false;
-                for (String dep : deps) {
-                    if (storeItemIds.contains(dep) && !disabledItems.contains(dep)) {
-                        anyDepAvailable = true;
-                        break;
+                if (deps != null && !deps.isEmpty()) {
+                    boolean anyDepAvailable = false;
+                    for (String dep : deps) {
+                        if (storeItemIds.contains(dep) && !disabledItems.contains(dep)) {
+                            anyDepAvailable = true;
+                            break;
+                        }
+                    }
+                    if (!anyDepAvailable) {
+                        disabledItems.add(itemId);
+                        changed = true;
+                        continue;
                     }
                 }
-                if (!anyDepAvailable) {
-                    disabledItems.add(itemId);
-                    changed = true;
+
+                // AND逻辑（dependsOnAll，OR 组）：外层组全部满足（每组内任意一个依赖可用）
+                List<List<String>> groups = ITEM_DEPENDENCIES_ALL.get(itemId);
+                if (groups != null && !groups.isEmpty()) {
+                    boolean allGroupsSatisfied = true;
+                    for (List<String> group : groups) {
+                        boolean anyInGroup = false;
+                        for (String dep : group) {
+                            if (isDependencyAvailable(storeItemIds, disabledItems, dep)) {
+                                anyInGroup = true;
+                                break;
+                            }
+                        }
+                        if (!anyInGroup) {
+                            allGroupsSatisfied = false;
+                            break;
+                        }
+                    }
+                    if (!allGroupsSatisfied) {
+                        disabledItems.add(itemId);
+                        changed = true;
+                    }
                 }
             }
         }
+    }
+
+    /** 判断单个依赖是否可用：支持普通物品 id 与 "category:xxx" 类别引用 */
+    private static boolean isDependencyAvailable(Set<String> storeItemIds, Set<String> disabledItems, String dep) {
+        if (dep.startsWith("category:")) {
+            Set<String> items = Config.resolveDependencyCategory(dep.substring("category:".length()));
+            for (String id : items) {
+                if (storeItemIds.contains(id) && !disabledItems.contains(id)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        return storeItemIds.contains(dep) && !disabledItems.contains(dep);
     }
 
     public static boolean isItemDisabled(UUID playerUUID, String itemId) {

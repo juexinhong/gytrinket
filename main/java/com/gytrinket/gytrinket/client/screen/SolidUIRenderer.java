@@ -133,9 +133,17 @@ public final class SolidUIRenderer implements UIRenderer {
         float p = Math.max(0.0f, Math.min(1.0f, progress));
         int fillWidth = (int) (w * p);
         if (fillWidth > 0) {
-            g.fillGradient(x, y, x + fillWidth, y + h, ScreenUtils.lighten(fillColor, 0.3f), fillColor);
+            // 填充区沿长度方向做蓝青流动渐变（类似线段效果）
+            long time = System.currentTimeMillis();
+            for (int i = 0; i < fillWidth; i++) {
+                float sp = (i + 0.5f) / Math.max(1, fillWidth);
+                g.fill(x + i, y, x + i + 1, y + h, ScreenUtils.flowingColor(fillColor, time, sp, 1.0f));
+            }
         }
-        ScreenUtils.drawBorder(g, x, y, w, h, ScreenUtils.withAlpha(fillColor, 160));
+        // 边框随时间流动
+        long time = System.currentTimeMillis();
+        int bc = ScreenUtils.withAlpha(ScreenUtils.flowingColor(fillColor, time, 0.5f, 1.0f), 160);
+        ScreenUtils.drawBorder(g, x, y, w, h, bc);
     }
 
     @Override

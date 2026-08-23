@@ -28,11 +28,17 @@ public class SciFiButton extends Button {
         int accent = renderer.getAccentColor();
 
         boolean hovered = this.isHoveredOrFocused();
-        int base = hovered ? ThemeColors.BUTTON_HOVER_COLOR : ThemeColors.BUTTON_COLOR;
-        // 扁平填充
-        g.fill(x, y, x + w, y + h, base);
-        // 切角描边（右上/左下削角，蓝青空间流动渐变）
-        ScreenUtils.drawChamferRect(g, x, y, w, h, 4, accent);
+        // 禁用态：底色、边框、文字整体变灰（如刷新点耗尽）
+        if (!this.active) {
+            g.fill(x, y, x + w, y + h, ThemeColors.BUTTON_DISABLED_COLOR);
+            ScreenUtils.drawChamferRect(g, x, y, w, h, 4, ThemeColors.BUTTON_DISABLED_BORDER);
+        } else {
+            int base = hovered ? ThemeColors.BUTTON_HOVER_COLOR : ThemeColors.BUTTON_COLOR;
+            // 扁平填充
+            g.fill(x, y, x + w, y + h, base);
+            // 切角描边（右上/左下削角，蓝青空间流动渐变）
+            ScreenUtils.drawChamferRect(g, x, y, w, h, 4, accent);
+        }
 
         Component message = this.getMessage();
         Minecraft mc = Minecraft.getInstance();

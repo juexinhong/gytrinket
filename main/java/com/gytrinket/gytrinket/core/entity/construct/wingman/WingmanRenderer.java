@@ -61,6 +61,17 @@ public class WingmanRenderer extends LivingEntityRenderer<WingmanConstructEntity
     }
 
     @Override
+    protected void setupRotations(WingmanConstructEntity entity, PoseStack poseStack, float ageInTicks, float rotationYaw, float partialTick, float scale) {
+        // 偏航：标准方向
+        poseStack.mulPose(Axis.YP.rotationDegrees(180.0F - rotationYaw));
+        // 俯仰：绕世界 X 轴全局旋转（在偏航之后应用，等价于绕机体横轴）。
+        // 必须在实体级旋转整个模型，而不是在模型部件局部旋转，
+        // 否则会与 bone 部件预置的 45° 偏航耦合，导致机身歪斜。
+        float pitch = entity.xRotO + (entity.getXRot() - entity.xRotO) * partialTick;
+        poseStack.mulPose(Axis.XP.rotationDegrees(-pitch));
+    }
+
+    @Override
     protected void renderNameTag(WingmanConstructEntity entity, Component displayName, PoseStack poseStack, MultiBufferSource bufferSource, int packedLight, float partialTick) {
         // 不渲染僚机上方"僚机"的名牌
     }

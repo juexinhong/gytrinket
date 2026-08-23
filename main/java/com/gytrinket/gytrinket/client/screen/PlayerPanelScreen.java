@@ -1,9 +1,13 @@
 package com.gytrinket.gytrinket.client.screen;
 
+import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.attribute.AttributeDefinition;
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
 import com.gytrinket.gytrinket.core.level.ModLevelData;
+import com.gytrinket.gytrinket.network.packet.RandomBuildEquipPayload;
 import com.gytrinket.gytrinket.network.packet.RequestConfigDataPayload;
+import com.gytrinket.gytrinket.network.packet.RequestRandomBuildPayload;
+import com.gytrinket.gytrinket.network.packet.RequestRefreshRandomPoolPayload;
 import net.neoforged.neoforge.network.PacketDistributor;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -20,7 +24,8 @@ import java.util.List;
 
 public class PlayerPanelScreen extends AbstractPanelScreen {
 
-    private static final int MAX_ITEMS_PER_COLUMN = 12;
+    private static final int MAX_ITEMS_PER_COLUMN = 10;
+    private static final int MAX_ITEMS_COLUMNS = 5;
     private static final int SLOT_SIZE = 18;
     private static final int SLOT_STEP = 20; // 格子间距（18px 格子 + 2px 间隙）
 
@@ -32,6 +37,7 @@ public class PlayerPanelScreen extends AbstractPanelScreen {
     private int modLevel;
     private int upgradeExp;
     private int upgradePoints;
+    private int randomPoints;
 
     private List<Map.Entry<String, Double>> sortedAttrs = new ArrayList<>();
     private int attrVisibleLines;
@@ -40,9 +46,14 @@ public class PlayerPanelScreen extends AbstractPanelScreen {
     private ItemStack hoveredItem = ItemStack.EMPTY;
     private int hoveredSlotIndex = -1;
 
+    // 随机构建随机池（3x3）
+    private List<String> randomPool = new ArrayList<>();
+    private int hoveredPoolIndex = -1;
+    private com.gytrinket.gytrinket.client.screen.SciFiButton refreshButton;
+
     public PlayerPanelScreen(Map<String, Double> attributes, ListTag items, int slotCount,
                               CompoundTag upgradeDataTag, ListTag upgradeTargets,
-                              int modLevel, int upgradeExp, int upgradePoints) {
+                              int modLevel, int upgradeExp, int upgradePoints, int randomPoints) {
         super(Component.translatable("screen.gytrinket.player_panel"), null, SolidUIRenderer.PANEL);
         this.attributes = attributes != null ? attributes : new HashMap<>();
         this.slotCount = slotCount;
@@ -51,6 +62,7 @@ public class PlayerPanelScreen extends AbstractPanelScreen {
         this.modLevel = modLevel;
         this.upgradeExp = upgradeExp;
         this.upgradePoints = upgradePoints;
+        this.randomPoints = randomPoints;
         this.equippedItems = new ArrayList<>();
         parseItems(items);
         rebuildSortedAttrs();
@@ -59,12 +71,28 @@ public class PlayerPanelScreen extends AbstractPanelScreen {
     // ===== 布局坐标 =====
     private int bodyTop() { return panelY + 20; }
     private int bodyBottom() { return panelY + panelHeight - 6; }
-    private int equipColX() { return panelX + 8; }
-    private int attrColX() { return panelX + 56; }
-    private int attrColWidth() { return 250; }
-    private int rightColX() { return panelX + 314; }
-    private int rightColWidth() { return panelWidth - 322; }
     private int attrListTop() { return bodyTop() + 14; }
+
+    /** 装备实际列数：按「非空物品数量」计算（剔除空位后连续排列，每列 MAX_ITEMS_PER_COLUMN 个，最多 MAX_ITEMS_COLUMNS 列） */
+    private int equipColumns() {
+        int count = 0;
+        for (ItemStack s : equippedItems) {
+            if (!s.isEmpty()) count++;
+        }
+        return Math.min((count + MAX_ITEMS_PER_COLUMN - 1) / MAX_ITEMS_PER_COLUMN, MAX_ITEMS_COLUMNS);
+    }
+
+    private int equipColX() { return panelX + 8; }
+    /** 装备区宽度（随列数动态变化，最多 5 列宽） */
+    private int equipWidth() { return equipColumns() * SLOT_STEP; }
+
+    /** 光点等级右栏（固定宽度，右下角） */
+    private int rightColWidth() { return 100; }
+    private int rightColX() { return panelX + panelWidth - 8 - rightColWidth(); }
+
+    /** 属性栏：起点跟随装备区右移，宽度填满剩余空间 */
+    private int attrColX() { return equipColX() + equipWidth() + 8; }
+    private int attrColWidth() { return Math.max(80, rightColX() - 8 - attrColX()); }
 
     private void parseItems(ListTag items) {
         this.equippedItems = new ArrayList<>();
@@ -83,7 +111,7 @@ public class PlayerPanelScreen extends AbstractPanelScreen {
 
     public void updateData(Map<String, Double> attributes, ListTag items, int slotCount,
                             CompoundTag upgradeDataTag, ListTag upgradeTargets,
-                            int modLevel, int upgradeExp, int upgradePoints) {
+                            int modLevel, int upgradeExp, int upgradePoints, int randomPoints) {
         this.attributes = attributes != null ? attributes : new HashMap<>();
         this.slotCount = slotCount;
         this.upgradeDataTag = upgradeDataTag != null ? upgradeDataTag : new CompoundTag();
@@ -91,8 +119,13 @@ public class PlayerPanelScreen extends AbstractPanelScreen {
         this.modLevel = modLevel;
         this.upgradeExp = upgradeExp;
         this.upgradePoints = upgradePoints;
+        this.randomPoints = randomPoints;
         parseItems(items);
         rebuildSortedAttrs();
+    }
+
+    public void updateRandomPool(List<String> pool) {
+        this.randomPool = pool != null ? new ArrayList<>(pool) : new ArrayList<>();
     }
 
     private void rebuildSortedAttrs() {
@@ -130,6 +163,19 @@ public class PlayerPanelScreen extends AbstractPanelScreen {
                 Component.translatable("screen.gytrinket.config_button"),
                 button -> openConfigScreen()
         ).bounds(configX, tabY, tabW, tabH).renderer(renderer).build());
+
+        // 随机构建系统启用时请求随机池
+        if (Config.isRandomBuildEnabled()) {
+            PacketDistributor.sendToServer(new RequestRandomBuildPayload());
+
+            // 随机池刷新按钮（随机池右下角，消耗 1 刷新点）
+            this.refreshButton = SciFiButton.create(
+                    Component.translatable("screen.gytrinket.refresh_pool"),
+                    button -> PacketDistributor.sendToServer(new RequestRefreshRandomPoolPayload())
+            ).bounds(poolX0() + POOL_GRID - 62, poolY0() + POOL_GRID + 2, 62, 12)
+             .renderer(renderer).build();
+            this.addRenderableWidget(refreshButton);
+        }
     }
 
     private void openUpgradeTargetScreen() {
@@ -158,6 +204,15 @@ public class PlayerPanelScreen extends AbstractPanelScreen {
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (button != 0) return super.mouseClicked(mouseX, mouseY, button);
+
+        // 随机构建随机池：点击物品 -> 发送装备请求（消耗 1 升级点）
+        if (Config.isRandomBuildEnabled() && upgradePoints > 0) {
+            int poolIndex = poolIndexAt(mouseX, mouseY);
+            if (poolIndex >= 0 && poolIndex < randomPool.size()) {
+                PacketDistributor.sendToServer(new RandomBuildEquipPayload(randomPool.get(poolIndex)));
+                return true;
+            }
+        }
 
         if (scrollBar.needsScrollbar()) {
             int scrollBarX = attrColX() + attrColWidth() + 2;
@@ -202,6 +257,7 @@ public class PlayerPanelScreen extends AbstractPanelScreen {
 
         renderEquipment(guiGraphics, mouseX, mouseY);
         renderAttributes(guiGraphics);
+        renderRandomPool(guiGraphics, mouseX, mouseY);
         renderLevelInfo(guiGraphics);
 
         // 分栏分隔线
@@ -221,24 +277,30 @@ public class PlayerPanelScreen extends AbstractPanelScreen {
         hoveredItem = ItemStack.EMPTY;
         hoveredSlotIndex = -1;
 
-        for (int i = 0; i < slotCount; i++) {
-            int col = i / MAX_ITEMS_PER_COLUMN;
-            int row = i % MAX_ITEMS_PER_COLUMN;
+        // 剔除空位，按顺序连续排列（最多 MAX_ITEMS_PER_COLUMN * MAX_ITEMS_COLUMNS 个）
+        int displayLimit = MAX_ITEMS_PER_COLUMN * MAX_ITEMS_COLUMNS;
+        List<ItemStack> shown = new ArrayList<>();
+        for (ItemStack s : equippedItems) {
+            if (!s.isEmpty()) {
+                shown.add(s);
+                if (shown.size() >= displayLimit) break;
+            }
+        }
+
+        for (int j = 0; j < shown.size(); j++) {
+            int col = j / MAX_ITEMS_PER_COLUMN;
+            int row = j % MAX_ITEMS_PER_COLUMN;
             int sx = x + col * SLOT_STEP;
             int sy = y + row * SLOT_STEP;
 
-            ItemStack stack = (i < equippedItems.size()) ? equippedItems.get(i) : ItemStack.EMPTY;
-            boolean hovered = !stack.isEmpty()
-                    && mouseX >= sx && mouseX < sx + SLOT_SIZE && mouseY >= sy && mouseY < sy + SLOT_SIZE;
+            ItemStack stack = shown.get(j);
+            boolean hovered = mouseX >= sx && mouseX < sx + SLOT_SIZE && mouseY >= sy && mouseY < sy + SLOT_SIZE;
 
-            // 只有非空物品才渲染底框，避免空槽显示过多框格
-            if (!stack.isEmpty()) {
-                renderer.drawSlot(g, sx, sy, SLOT_SIZE, SLOT_SIZE, hovered);
-                g.renderItem(stack, sx + 1, sy + 1);
-                if (hovered) {
-                    hoveredItem = stack;
-                    hoveredSlotIndex = i;
-                }
+            renderer.drawSlot(g, sx, sy, SLOT_SIZE, SLOT_SIZE, hovered);
+            g.renderItem(stack, sx + 1, sy + 1);
+            if (hovered) {
+                hoveredItem = stack;
+                hoveredSlotIndex = j;
             }
         }
     }
@@ -277,6 +339,67 @@ public class PlayerPanelScreen extends AbstractPanelScreen {
         }
     }
 
+    // ===== 随机构建随机池（右栏经验条上方 3x3） =====
+    private static final int POOL_COLS = 3;
+    private static final int POOL_SIZE = 18;
+    private static final int POOL_STEP = 20;
+    private static final int POOL_GRID = POOL_COLS * POOL_STEP - 2; // 58
+
+    private int poolX0() { return rightColX() + (rightColWidth() - POOL_GRID) / 2; }
+    private int poolY0() { return bodyTop() + 24; }
+
+    private int poolIndexAt(double mouseX, double mouseY) {
+        if (!Config.isRandomBuildEnabled()) return -1;
+        int x0 = poolX0();
+        int y0 = poolY0();
+        for (int i = 0; i < randomPool.size() && i < POOL_COLS * POOL_COLS; i++) {
+            int col = i % POOL_COLS;
+            int row = i / POOL_COLS;
+            int sx = x0 + col * POOL_STEP;
+            int sy = y0 + row * POOL_STEP;
+            if (mouseX >= sx && mouseX < sx + POOL_SIZE && mouseY >= sy && mouseY < sy + POOL_SIZE) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private void renderRandomPool(GuiGraphics g, int mouseX, int mouseY) {
+        if (!Config.isRandomBuildEnabled()) return;
+
+        // 刷新按钮：刷新点不足时置灰禁用（实时读取客户端缓存，刷新点消耗后立即变灰）
+        if (refreshButton != null) {
+            refreshButton.active = com.gytrinket.gytrinket.client.datacenter.ClientDataCenter.getRandomPoints() > 0;
+        }
+
+        int colX = rightColX();
+        int x0 = poolX0();
+        int y0 = poolY0();
+
+        // 标题
+        drawText(g, Component.translatable("screen.gytrinket.random_pool").getString(),
+                colX + 2, bodyTop(), renderer.getAccentColor());
+        renderer.drawTitleUnderline(g, colX + 2, bodyTop() + 9, 56);
+
+        hoveredPoolIndex = -1;
+        for (int i = 0; i < randomPool.size() && i < POOL_COLS * POOL_COLS; i++) {
+            int col = i % POOL_COLS;
+            int row = i / POOL_COLS;
+            int sx = x0 + col * POOL_STEP;
+            int sy = y0 + row * POOL_STEP;
+
+            boolean hovered = mouseX >= sx && mouseX < sx + POOL_SIZE && mouseY >= sy && mouseY < sy + POOL_SIZE;
+            renderer.drawSlot(g, sx, sy, POOL_SIZE, POOL_SIZE, hovered);
+
+            net.minecraft.world.item.Item item = net.minecraft.core.registries.BuiltInRegistries.ITEM
+                .get(net.minecraft.resources.ResourceLocation.parse(randomPool.get(i)));
+            if (item != null && item != net.minecraft.world.item.Items.AIR) {
+                g.renderItem(new ItemStack(item), sx + 1, sy + 1);
+            }
+            if (hovered) hoveredPoolIndex = i;
+        }
+    }
+
     private void renderLevelInfo(GuiGraphics g) {
         int colX = rightColX();
         int colWidth = rightColWidth();
@@ -298,11 +421,24 @@ public class PlayerPanelScreen extends AbstractPanelScreen {
 
         String pointsStr = Component.translatable("screen.gytrinket.upgrade_points").getString() + ": " + upgradePoints;
         drawText(g, pointsStr, colX + 4, barY + 8, renderer.getTextColor());
+
+        // 刷新点（青色数值，放在升级点右侧右对齐，实时读取客户端缓存）
+        String randomStr = Component.translatable("screen.gytrinket.random_points").getString() + ": "
+                + com.gytrinket.gytrinket.client.datacenter.ClientDataCenter.getRandomPoints();
+        drawText(g, randomStr, colX + colWidth - 4 - font.width(randomStr), barY + 8, renderer.getValueColor());
     }
 
     private void renderTooltip(GuiGraphics guiGraphics, int mouseX, int mouseY) {
         if (!hoveredItem.isEmpty()) {
             guiGraphics.renderTooltip(font, hoveredItem, mouseX, mouseY);
+            return;
+        }
+        if (hoveredPoolIndex >= 0 && hoveredPoolIndex < randomPool.size()) {
+            net.minecraft.world.item.Item item = net.minecraft.core.registries.BuiltInRegistries.ITEM
+                .get(net.minecraft.resources.ResourceLocation.parse(randomPool.get(hoveredPoolIndex)));
+            if (item != null && item != net.minecraft.world.item.Items.AIR) {
+                guiGraphics.renderTooltip(font, new ItemStack(item), mouseX, mouseY);
+            }
         }
     }
 }

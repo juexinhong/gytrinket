@@ -63,6 +63,7 @@ public class DataCenterLifecycleHandler {
         PlayerDataCenter.registerSlot(new LightPointStoreSlot());
         PlayerDataCenter.registerSlot(new UpgradeDataSlot());
         PlayerDataCenter.registerSlot(new ModLevelDataSlot());
+        PlayerDataCenter.registerSlot(new com.gytrinket.gytrinket.core.random_build.RandomBuildDataSlot());
         PlayerDataCenter.registerSlot(new ShieldTypeSlot());
         PlayerDataCenter.registerSlot(new ShieldDataSlot());
         PlayerDataCenter.registerSlot(new HealthDataSlot());

@@ -311,6 +311,11 @@ public class Config {
     // ===== 33. 快速装备 (quick_equip) =====
     public static final ModConfigSpec.IntValue QUICK_EQUIP_UPGRADE_POINTS_COST;
 
+    // ===== 33.5 随机构建系统 (random_build) =====
+    public static final ModConfigSpec.BooleanValue RANDOM_BUILD_ENABLED;
+    public static final ModConfigSpec.IntValue RANDOM_BUILD_XP_MULTIPLIER;
+    public static final ModConfigSpec.BooleanValue SHOW_UPGRADE_REMINDER_HUD;
+
     // ===== 34. 其他通用设置 =====
     public static final ModConfigSpec.ConfigValue<Boolean> HARDCORE_MODE_ENABLED;
     public static final ModConfigSpec.IntValue SHIELD_BLOCK_INVULNERABLE_TICKS;
@@ -501,7 +506,7 @@ public class Config {
             "增幅护盾威胁检测半径（格）",
             "检测玩家周围危险目标的基础半径",
             "该值会受护盾效果半径属性影响"
-        ).defineInRange("amplificationCheckRadius", 4.0, 1.0, 20.0);
+        ).defineInRange("amplificationCheckRadius", 5.0, 1.0, 20.0);
 
         AMPLIFICATION_MAX_AMPLIFICATION = BUILDER.comment(
             "增幅护盾最大增幅值",
@@ -1364,7 +1369,29 @@ public class Config {
 
         UPGRADE_SYSTEM_ENABLED = BUILDER.comment("是否启用升级系统").define("enabled", true);
 
-        
+        BUILDER.pop();
+
+        // ===== 33.5 随机构建系统 =====
+        BUILDER.comment("随机构建系统配置").push("random_build");
+
+        RANDOM_BUILD_ENABLED = BUILDER.comment(
+            "是否启用随机构建系统",
+            "启用后：光点等级所需经验翻倍；",
+            "玩家面板经验条上方出现3x3随机池，",
+            "可用升级点兑换随机物品装备到光点核心。"
+        ).define("enabled", false);
+
+        RANDOM_BUILD_XP_MULTIPLIER = BUILDER.comment(
+            "随机构建系统启用时的光点经验倍率",
+            "升到下一级所需经验 = 原版所需经验 × 该倍率",
+            "默认 5，范围 1~100"
+        ).defineInRange("xpMultiplier", 5, 1, 100);
+
+        SHOW_UPGRADE_REMINDER_HUD = BUILDER.comment(
+            "是否显示升级提醒 HUD",
+            "当玩家有未使用的升级点时，在物品栏上方显示按下G键的提示",
+            "光点核心已满时不显示，默认 true"
+        ).define("showUpgradeReminderHud", true);
 
         BUILDER.pop();
 
@@ -1515,6 +1542,37 @@ public class Config {
             return Collections.emptyList();
         }
         return ITEM_SHIELD_TYPES.getOrDefault(item, Collections.emptyList());
+    }
+
+    /**
+     * 解析禁用类别为实际物品 id 集合
+     * 当前支持的类别：
+     *   shields -- 注册了护盾类型的物品（基础护盾及带"+"强化护盾）
+     */
+    public static Set<String> resolveDisableCategory(String category) {
+        Set<String> result = new HashSet<>();
+        if ("shields".equals(category)) {
+            for (Item item : BuiltInRegistries.ITEM) {
+                ResourceLocation rl = BuiltInRegistries.ITEM.getKey(item);
+                if (rl != null && rl.getNamespace().equals(com.gytrinket.gytrinket.gytrinket.MODID)
+                        && !getItemShieldTypes(rl).isEmpty()) {
+                    result.add(rl.toString());
+                }
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 解析依赖类别引用（"category:xxx"）为实际物品 id 集合
+     * 当前支持的类别：
+     *   construct_final -- 构造体类所有模块树的终阶模块（由 module_trees 数据定义）
+     */
+    public static Set<String> resolveDependencyCategory(String category) {
+        if ("construct_final".equals(category)) {
+            return com.gytrinket.gytrinket.core.defs.DefsManager.getCategoryFinalModules("construct");
+        }
+        return Collections.emptySet();
     }
 
     public static boolean isShieldTypeCompatible(String typeName) {
@@ -2326,6 +2384,18 @@ public class Config {
 
     public static int getQuickEquipUpgradePointsCost() {
         return QUICK_EQUIP_UPGRADE_POINTS_COST.get();
+    }
+
+    public static boolean isRandomBuildEnabled() {
+        return RANDOM_BUILD_ENABLED.get();
+    }
+
+    public static int getRandomBuildXpMultiplier() {
+        return RANDOM_BUILD_XP_MULTIPLIER.get();
+    }
+
+    public static boolean isShowUpgradeReminderHud() {
+        return SHOW_UPGRADE_REMINDER_HUD.get();
     }
 
     public static boolean isHardcoreModeEnabled() {

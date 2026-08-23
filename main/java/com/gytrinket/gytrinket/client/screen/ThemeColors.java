@@ -49,6 +49,10 @@ public final class ThemeColors {
     public static final int BUTTON_COLOR = 0xFF1C2740;
     public static final int BUTTON_HOVER_COLOR = 0xFF2A3B60;
     public static final int BUTTON_TEXT_COLOR = 0xFFD6E4FF;
+    /** 按钮禁用态底色（刷新点耗尽等场景） */
+    public static final int BUTTON_DISABLED_COLOR = 0xFF131A2B;
+    /** 按钮禁用态边框（灰色） */
+    public static final int BUTTON_DISABLED_BORDER = 0xFF3A4357;
     public static final int TAB_ACTIVE_COLOR = 0xFF2A3B60;
     public static final int TAB_INACTIVE_COLOR = 0xFF161F33;
 }

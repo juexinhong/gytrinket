@@ -113,7 +113,7 @@ public class AmplifierClientData {
 
         double baseRadius = Config.getAmplificationCheckRadius();
         double effectiveRadius = baseRadius * shieldEffectRadius;
-        double targetSize = effectiveRadius * 2.0 * (4.0 / 3.0); // 补偿材质内容缩小至3/4
+        double targetSize = effectiveRadius * 2.0 * (4.0 / 2.8); // 补偿材质内容缩小至3/4
 
         double sizeDiff = targetSize - displaySize;
         if (Math.abs(sizeDiff) > 0.01) {

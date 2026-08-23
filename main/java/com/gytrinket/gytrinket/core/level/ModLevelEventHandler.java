@@ -1,9 +1,11 @@
 package com.gytrinket.gytrinket.core.level;
 
 import com.gytrinket.gytrinket.gytrinket;
+import com.gytrinket.gytrinket.network.NetworkHandler;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerXpEvent;
 
 /**
@@ -15,6 +17,15 @@ import net.neoforged.neoforge.event.entity.player.PlayerXpEvent;
 public class ModLevelEventHandler {
 
     private ModLevelEventHandler() {}
+
+    /** 玩家登录时同步光点等级数据到客户端（HUD 提示等需要初始值） */
+    @SubscribeEvent
+    public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            NetworkHandler.sendModLevelSyncToPlayer(player);
+            com.gytrinket.gytrinket.core.random_build.RandomBuildManager.clearPlayerData(player.getUUID());
+        }
+    }
 
     /**
      * 监听经验值变化事件

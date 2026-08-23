@@ -1,1 +1,1 @@
-{"item":"gytrinket:wing_commander_module","dependsOn":["gytrinket:assault_drone_module"]}
+{"item":"gytrinket:wing_commander_module","dependsOn":["gytrinket:last_order_module","gytrinket:line_formation_module"]}

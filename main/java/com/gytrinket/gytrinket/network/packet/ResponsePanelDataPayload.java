@@ -13,7 +13,7 @@ import java.util.Map;
 
 public record ResponsePanelDataPayload(Map<String, Double> attributes, ListTag items, int slotCount,
                                         CompoundTag upgradeData, ListTag upgradeTargets,
-                                        int modLevel, int upgradeExp, int upgradePoints) implements CustomPacketPayload {
+                                        int modLevel, int upgradeExp, int upgradePoints, int randomPoints) implements CustomPacketPayload {
     public static final Type<ResponsePanelDataPayload> TYPE = new Type<>(
         ResourceLocation.fromNamespaceAndPath("gytrinket", "response_panel_data"));
 
@@ -35,7 +35,8 @@ public record ResponsePanelDataPayload(Map<String, Double> attributes, ListTag i
             int modLevel = tag != null ? tag.getInt("modLevel") : 0;
             int upgradeExp = tag != null ? tag.getInt("upgradeExp") : 0;
             int upgradePoints = tag != null ? tag.getInt("upgradePoints") : 0;
-            return new ResponsePanelDataPayload(attributes, items, slotCount, upgradeData, upgradeTargets, modLevel, upgradeExp, upgradePoints);
+            int randomPoints = tag != null ? tag.getInt("randomPoints") : 0;
+            return new ResponsePanelDataPayload(attributes, items, slotCount, upgradeData, upgradeTargets, modLevel, upgradeExp, upgradePoints, randomPoints);
         }
 
         @Override
@@ -53,6 +54,7 @@ public record ResponsePanelDataPayload(Map<String, Double> attributes, ListTag i
             tag.putInt("modLevel", msg.modLevel);
             tag.putInt("upgradeExp", msg.upgradeExp);
             tag.putInt("upgradePoints", msg.upgradePoints);
+            tag.putInt("randomPoints", msg.randomPoints);
             buf.writeNbt(tag);
         }
     };

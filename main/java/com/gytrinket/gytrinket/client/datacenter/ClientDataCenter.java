@@ -8,7 +8,25 @@ public class ClientDataCenter {
 
     private static final ClientDataSnapshot snapshot = new ClientDataSnapshot();
 
+    // 光点等级客户端缓存（供 HUD 提示等使用）
+    private static int modLevel;
+    private static int upgradeExp;
+    private static int upgradePoints;
+    private static int randomPoints;
+
     private ClientDataCenter() {}
+
+    public static void updateModLevel(int level, int exp, int points, int randomPoints) {
+        modLevel = level;
+        upgradeExp = exp;
+        upgradePoints = points;
+        ClientDataCenter.randomPoints = randomPoints;
+    }
+
+    public static int getModLevel() { return modLevel; }
+    public static int getUpgradeExp() { return upgradeExp; }
+    public static int getUpgradePoints() { return upgradePoints; }
+    public static int getRandomPoints() { return randomPoints; }
 
     public static ClientDataSnapshot getSnapshot() {
         return snapshot;

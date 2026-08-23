@@ -89,6 +89,15 @@ public class ClientDataSnapshot {
         return items != null ? items.length : 0;
     }
 
+    /** 光点核心是否已满（所有槽位都有物品，未加载数据时视为未满） */
+    public boolean isCoreFull() {
+        if (items == null || items.length == 0) return false;
+        for (ItemStack stack : items) {
+            if (stack == null || stack.isEmpty()) return false;
+        }
+        return true;
+    }
+
     public double getCurrentShield() {
         return currentShield;
     }

@@ -71,6 +71,7 @@ public class ModClient {
     @SubscribeEvent
     public static void onRegisterMenuScreens(net.neoforged.neoforge.client.event.RegisterMenuScreensEvent event) {
         event.register(InterceptorConfigContainer.TYPE, InterceptorConfigContainerScreen::new);
+        event.register(com.gytrinket.gytrinket.menu.LightPointCoreMenu.TYPE, com.gytrinket.gytrinket.client.screen.LightPointCoreScreen::new);
     }
 
     @SubscribeEvent

@@ -362,7 +362,7 @@
   "item.gytrinket.reshaping_part": "Reshaping Part",
 
   "advancements.gytrinket.story.obtain_basic_shield.title": "Can it block everything?",
-  "advancements.gytrinket.story.obtain_basic_shield.description": "Hey you know? Press G to open the mod menu! Right-click the item with the mod attribute to equip it!",
+  "advancements.gytrinket.story.obtain_basic_shield.description": "Hey you know? Press %s to open the mod menu! Right-click the item with the mod attribute to equip it!",
 
   "advancements.gytrinket.story.obtain_aura_ring_shield.title": "Environmental Fire Ring",
   "advancements.gytrinket.story.obtain_aura_ring_shield.description": "Will not damage public property",
@@ -457,7 +457,7 @@
   "screen.gytrinket.random_points": "Refresh Points",
   "screen.gytrinket.refresh_pool": "Refresh",
 
-  "hud.gytrinket.random_build.hint": "Press G to open the upgrade panel",
+  "hud.gytrinket.random_build.hint": "Press %s to open the upgrade panel",
 
   "message.gytrinket.random_build.equipped": "Equipped %s to the Light Point Core",
   "message.gytrinket.random_build.not_enough_points": "Not enough upgrade points",

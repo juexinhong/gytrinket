@@ -15,7 +15,12 @@
   "display": {
     "announce_to_chat": true,
     "description": {
-      "translate": "advancements.gytrinket.story.obtain_basic_shield.description"
+      "translate": "advancements.gytrinket.story.obtain_basic_shield.description",
+      "with": [
+        {
+          "keybind": "key.gytrinket.show_attributes"
+        }
+      ]
     },
     "frame": "task",
     "hidden": false,

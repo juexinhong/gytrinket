@@ -79,6 +79,7 @@ public class NetworkHandler {
         registrar.playToClient(SyncGhostStealthPayload.TYPE, SyncGhostStealthPayload.STREAM_CODEC, SyncGhostStealthPayload::handle);
         registrar.playToClient(ResponseRandomBuildPayload.TYPE, ResponseRandomBuildPayload.STREAM_CODEC, ResponseRandomBuildPayload::handle);
         registrar.playToClient(SyncModLevelPayload.TYPE, SyncModLevelPayload.STREAM_CODEC, SyncModLevelPayload::handle);
+        registrar.playToClient(SyncDisabledReasonsPayload.TYPE, SyncDisabledReasonsPayload.STREAM_CODEC, SyncDisabledReasonsPayload::handle);
         registrar.playToServer(SyncGhostMoveSpeedPayload.TYPE, SyncGhostMoveSpeedPayload.STREAM_CODEC, SyncGhostMoveSpeedPayload::handle);
 
         // 拦截机
@@ -246,14 +247,44 @@ public class NetworkHandler {
             ModLevelManager.getRandomPoints(uuid)));
     }
 
+    /**
+     * 计算玩家光点核心各槽位禁用原因（27 槽，空串=未禁用）
+     * 玩家面板（ResponsePanelDataPayload）与容器界面（SyncDisabledReasonsPayload）共用此入口
+     */
+    public static java.util.List<String> buildDisabledReasons(ServerPlayer player) {
+        java.util.List<String> reasons = new ArrayList<>();
+        PlayerStore store = PlayerStoreManager.getPlayerStore(player);
+        if (store != null) {
+            int slotCount = store.getItemHandler().getSlots();
+            for (int i = 0; i < slotCount; i++) {
+                ItemStack stack = store.getItemHandler().getStackInSlot(i);
+                if (!stack.isEmpty()) {
+                    String itemId = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
+                    String reason = com.gytrinket.gytrinket.core.shield.DisableSystem.getDisabledReason(player.getUUID(), itemId);
+                    reasons.add(reason != null ? reason : "");
+                } else {
+                    reasons.add("");
+                }
+            }
+        }
+        return reasons;
+    }
+
+    /** 同步光点核心各槽位禁用原因到客户端（容器界面灰色遮罩用） */
+    public static void sendDisabledReasonsToPlayer(ServerPlayer player) {
+        PacketDistributor.sendToPlayer(player, new SyncDisabledReasonsPayload(buildDisabledReasons(player)));
+    }
+
     public static void sendPanelUpdate(ServerPlayer player) {
         var attributes = AttributeManager.getPlayerAttributes(player);
         PlayerStore store = PlayerStoreManager.getPlayerStore(player);
         ListTag items = new ListTag();
         int slotCount = 0;
         ListTag upgradeTargets = new ListTag();
+        String[] disabledReasons = new String[0];
         if (store != null) {
             slotCount = store.getItemHandler().getSlots();
+            disabledReasons = buildDisabledReasons(player).toArray(new String[0]);
             for (int i = 0; i < slotCount; i++) {
                 ItemStack stack = store.getItemHandler().getStackInSlot(i);
                 if (!stack.isEmpty()) {
@@ -278,7 +309,7 @@ public class NetworkHandler {
         int upgradePoints = ModLevelManager.getUpgradePoints(player.getUUID());
         int randomPoints = ModLevelManager.getRandomPoints(player.getUUID());
         PacketDistributor.sendToPlayer(player,
-            new ResponsePanelDataPayload(attributes, items, slotCount, upgradeTag, upgradeTargets, modLevel, upgradeExp, upgradePoints, randomPoints));
+            new ResponsePanelDataPayload(attributes, items, slotCount, upgradeTag, upgradeTargets, modLevel, upgradeExp, upgradePoints, randomPoints, disabledReasons));
     }
 
     public static void sendConfigDataToPlayer(ServerPlayer player) {

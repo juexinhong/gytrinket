@@ -13,7 +13,8 @@ import java.util.Map;
 
 public record ResponsePanelDataPayload(Map<String, Double> attributes, ListTag items, int slotCount,
                                         CompoundTag upgradeData, ListTag upgradeTargets,
-                                        int modLevel, int upgradeExp, int upgradePoints, int randomPoints) implements CustomPacketPayload {
+                                        int modLevel, int upgradeExp, int upgradePoints, int randomPoints,
+                                        String[] disabledReasons) implements CustomPacketPayload {
     public static final Type<ResponsePanelDataPayload> TYPE = new Type<>(
         ResourceLocation.fromNamespaceAndPath("gytrinket", "response_panel_data"));
 
@@ -36,7 +37,15 @@ public record ResponsePanelDataPayload(Map<String, Double> attributes, ListTag i
             int upgradeExp = tag != null ? tag.getInt("upgradeExp") : 0;
             int upgradePoints = tag != null ? tag.getInt("upgradePoints") : 0;
             int randomPoints = tag != null ? tag.getInt("randomPoints") : 0;
-            return new ResponsePanelDataPayload(attributes, items, slotCount, upgradeData, upgradeTargets, modLevel, upgradeExp, upgradePoints, randomPoints);
+            String[] disabledReasons = new String[0];
+            if (tag != null && tag.contains("disabledReasons")) {
+                ListTag reasonsTag = tag.getList("disabledReasons", net.minecraft.nbt.Tag.TAG_STRING);
+                disabledReasons = new String[reasonsTag.size()];
+                for (int i = 0; i < reasonsTag.size(); i++) {
+                    disabledReasons[i] = reasonsTag.getString(i);
+                }
+            }
+            return new ResponsePanelDataPayload(attributes, items, slotCount, upgradeData, upgradeTargets, modLevel, upgradeExp, upgradePoints, randomPoints, disabledReasons);
         }
 
         @Override
@@ -55,6 +64,13 @@ public record ResponsePanelDataPayload(Map<String, Double> attributes, ListTag i
             tag.putInt("upgradeExp", msg.upgradeExp);
             tag.putInt("upgradePoints", msg.upgradePoints);
             tag.putInt("randomPoints", msg.randomPoints);
+            ListTag reasonsTag = new ListTag();
+            if (msg.disabledReasons != null) {
+                for (String s : msg.disabledReasons) {
+                    reasonsTag.add(net.minecraft.nbt.StringTag.valueOf(s));
+                }
+            }
+            tag.put("disabledReasons", reasonsTag);
             buf.writeNbt(tag);
         }
     };

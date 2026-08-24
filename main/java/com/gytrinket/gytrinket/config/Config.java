@@ -43,14 +43,6 @@ public class Config {
 
     public static final ModConfigSpec.ConfigValue<List<? extends String>> ITEM_ATTRIBUTES_CONFIG;
 
-    // ===== 护盾类型系统 (shield_types) =====
-
-
-    // ===== 机身类型系统 (body_types) =====
-
-    // ===== 禁用系统 (disable_system) =====
-
-
     // ===== 1. 光环护盾 (aura_shield) =====
     public static final ModConfigSpec.DoubleValue AURA_RADIUS;
     public static final ModConfigSpec.DoubleValue AURA_DAMAGE;
@@ -1379,7 +1371,7 @@ public class Config {
             "启用后：光点等级所需经验翻倍；",
             "玩家面板经验条上方出现3x3随机池，",
             "可用升级点兑换随机物品装备到光点核心。"
-        ).define("enabled", false);
+        ).define("enabled", true);
 
         RANDOM_BUILD_XP_MULTIPLIER = BUILDER.comment(
             "随机构建系统启用时的光点经验倍率",

@@ -38,6 +38,8 @@ public class PlayerPanelScreen extends AbstractPanelScreen {
     private int upgradeExp;
     private int upgradePoints;
     private int randomPoints;
+    /** 光点核心各槽位禁用原因（空串/无=未禁用，显示黑色 × 与 tooltip 提示） */
+    private String[] disabledReasons = new String[0];
 
     private List<Map.Entry<String, Double>> sortedAttrs = new ArrayList<>();
     private int attrVisibleLines;
@@ -45,6 +47,7 @@ public class PlayerPanelScreen extends AbstractPanelScreen {
 
     private ItemStack hoveredItem = ItemStack.EMPTY;
     private int hoveredSlotIndex = -1;
+    private int hoveredRealSlot = -1;
 
     // 随机构建随机池（3x3）
     private List<String> randomPool = new ArrayList<>();
@@ -53,7 +56,7 @@ public class PlayerPanelScreen extends AbstractPanelScreen {
 
     public PlayerPanelScreen(Map<String, Double> attributes, ListTag items, int slotCount,
                               CompoundTag upgradeDataTag, ListTag upgradeTargets,
-                              int modLevel, int upgradeExp, int upgradePoints, int randomPoints) {
+                              int modLevel, int upgradeExp, int upgradePoints, int randomPoints, String[] disabledReasons) {
         super(Component.translatable("screen.gytrinket.player_panel"), null, SolidUIRenderer.PANEL);
         this.attributes = attributes != null ? attributes : new HashMap<>();
         this.slotCount = slotCount;
@@ -63,6 +66,7 @@ public class PlayerPanelScreen extends AbstractPanelScreen {
         this.upgradeExp = upgradeExp;
         this.upgradePoints = upgradePoints;
         this.randomPoints = randomPoints;
+        this.disabledReasons = disabledReasons != null ? disabledReasons : new String[0];
         this.equippedItems = new ArrayList<>();
         parseItems(items);
         rebuildSortedAttrs();
@@ -111,7 +115,7 @@ public class PlayerPanelScreen extends AbstractPanelScreen {
 
     public void updateData(Map<String, Double> attributes, ListTag items, int slotCount,
                             CompoundTag upgradeDataTag, ListTag upgradeTargets,
-                            int modLevel, int upgradeExp, int upgradePoints, int randomPoints) {
+                            int modLevel, int upgradeExp, int upgradePoints, int randomPoints, String[] disabledReasons) {
         this.attributes = attributes != null ? attributes : new HashMap<>();
         this.slotCount = slotCount;
         this.upgradeDataTag = upgradeDataTag != null ? upgradeDataTag : new CompoundTag();
@@ -120,6 +124,7 @@ public class PlayerPanelScreen extends AbstractPanelScreen {
         this.upgradeExp = upgradeExp;
         this.upgradePoints = upgradePoints;
         this.randomPoints = randomPoints;
+        this.disabledReasons = disabledReasons != null ? disabledReasons : new String[0];
         parseItems(items);
         rebuildSortedAttrs();
     }
@@ -276,13 +281,17 @@ public class PlayerPanelScreen extends AbstractPanelScreen {
 
         hoveredItem = ItemStack.EMPTY;
         hoveredSlotIndex = -1;
+        hoveredRealSlot = -1;
 
         // 剔除空位，按顺序连续排列（最多 MAX_ITEMS_PER_COLUMN * MAX_ITEMS_COLUMNS 个）
         int displayLimit = MAX_ITEMS_PER_COLUMN * MAX_ITEMS_COLUMNS;
         List<ItemStack> shown = new ArrayList<>();
-        for (ItemStack s : equippedItems) {
+        List<Integer> shownSlots = new ArrayList<>();
+        for (int i = 0; i < equippedItems.size(); i++) {
+            ItemStack s = equippedItems.get(i);
             if (!s.isEmpty()) {
                 shown.add(s);
+                shownSlots.add(i);
                 if (shown.size() >= displayLimit) break;
             }
         }
@@ -294,13 +303,22 @@ public class PlayerPanelScreen extends AbstractPanelScreen {
             int sy = y + row * SLOT_STEP;
 
             ItemStack stack = shown.get(j);
+            int realSlot = shownSlots.get(j);
             boolean hovered = mouseX >= sx && mouseX < sx + SLOT_SIZE && mouseY >= sy && mouseY < sy + SLOT_SIZE;
 
             renderer.drawSlot(g, sx, sy, SLOT_SIZE, SLOT_SIZE, hovered);
             g.renderItem(stack, sx + 1, sy + 1);
+
+            // 被禁用/依赖未满足的物品：70% 灰色遮罩 + 对角相交 ×（z 提升确保画在物品上方）
+            String reason = realSlot >= 0 && realSlot < disabledReasons.length ? disabledReasons[realSlot] : null;
+            if (reason != null && !reason.isEmpty()) {
+                ScreenUtils.drawDisabledOverlay(g, sx, sy, SLOT_SIZE);
+            }
+
             if (hovered) {
                 hoveredItem = stack;
                 hoveredSlotIndex = j;
+                hoveredRealSlot = realSlot;
             }
         }
     }
@@ -430,7 +448,17 @@ public class PlayerPanelScreen extends AbstractPanelScreen {
 
     private void renderTooltip(GuiGraphics guiGraphics, int mouseX, int mouseY) {
         if (!hoveredItem.isEmpty()) {
-            guiGraphics.renderTooltip(font, hoveredItem, mouseX, mouseY);
+            java.util.List<Component> lines = new ArrayList<>(hoveredItem.getTooltipLines(
+                    net.minecraft.world.item.Item.TooltipContext.of(Minecraft.getInstance().level),
+                    Minecraft.getInstance().player,
+                    net.minecraft.world.item.TooltipFlag.Default.NORMAL));
+            // 被禁用物品：追加禁用原因（红色）
+            String reason = hoveredRealSlot >= 0 && hoveredRealSlot < disabledReasons.length
+                    ? disabledReasons[hoveredRealSlot] : null;
+            if (reason != null && !reason.isEmpty()) {
+                lines.add(Component.literal(reason).withStyle(net.minecraft.ChatFormatting.RED));
+            }
+            guiGraphics.renderTooltip(font, lines, java.util.Optional.empty(), mouseX, mouseY);
             return;
         }
         if (hoveredPoolIndex >= 0 && hoveredPoolIndex < randomPool.size()) {

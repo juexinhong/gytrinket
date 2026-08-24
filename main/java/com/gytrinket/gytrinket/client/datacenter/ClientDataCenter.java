@@ -14,6 +14,11 @@ public class ClientDataCenter {
     private static int upgradePoints;
     private static int randomPoints;
 
+    /** 光点核心各槽位禁用原因缓存（容器界面灰色遮罩用） */
+    private static String[] disabledReasons = new String[0];
+    /** 是否最近同步过光点核心容器禁用状态（用于识别光点核心容器界面） */
+    private static boolean coreContainerSynced = false;
+
     private ClientDataCenter() {}
 
     public static void updateModLevel(int level, int exp, int points, int randomPoints) {
@@ -22,6 +27,17 @@ public class ClientDataCenter {
         upgradePoints = points;
         ClientDataCenter.randomPoints = randomPoints;
     }
+
+    public static void updateDisabledReasons(java.util.List<String> reasons) {
+        disabledReasons = reasons != null ? reasons.toArray(new String[0]) : new String[0];
+        coreContainerSynced = true;
+    }
+
+    public static String[] getDisabledReasons() { return disabledReasons; }
+
+    public static void setCoreContainerSynced(boolean synced) { coreContainerSynced = synced; }
+
+    public static boolean isCoreContainerSynced() { return coreContainerSynced; }
 
     public static int getModLevel() { return modLevel; }
     public static int getUpgradeExp() { return upgradeExp; }

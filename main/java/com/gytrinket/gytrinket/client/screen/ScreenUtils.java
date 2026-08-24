@@ -47,6 +47,45 @@ public final class ScreenUtils {
         flowVRev(g, x, y + h - cut, lt, color, time, acc, total);
     }
 
+    /**
+     * 统一色切角边框：整框使用同一个随时间循环的颜色（色相循环 + 微弱亮度循环），
+     * 非逐像素流动，渲染压力远小于 drawChamferRect。
+     * 切角方向与 drawChamferRect 一致（右上/左下削角，左上/右下为直角）。
+     */
+    public static void drawChamferRectUniform(GuiGraphics g, int x, int y, int w, int h, int cut, int baseColor) {
+        int color = flowingColor(baseColor, System.currentTimeMillis(), 0.5f);
+        // 四边（矩形，一次 fill）；左上/右下为直角，右上/左下留出斜边
+        g.fill(x, y, x + w - cut, y + 1, color);            // 上（x → x+w-cut）
+        g.fill(x + cut, y + h - 1, x + w, y + h, color);    // 下（x+cut → x+w）
+        g.fill(x, y, x + 1, y + h - cut, color);            // 左（y → y+h-cut）
+        g.fill(x + w - 1, y + cut, x + w, y + h, color);    // 右（y+cut → y+h）
+        // 右上斜边
+        for (int i = 0; i < cut; i++) {
+            g.fill(x + w - cut + i, y + i, x + w - cut + i + 1, y + i + 1, color);
+        }
+        // 左下斜边
+        for (int i = 0; i < cut; i++) {
+            g.fill(x + cut - 1 - i, y + h - 1 - i, x + cut - i, y + h - i, color);
+        }
+    }
+
+    /**
+     * 禁用物品遮罩：70% 灰色半透明 + 对角相交 × 线段
+     * @param x,y 槽位左上角（调用方注意坐标基准：容器界面为相对坐标，玩家面板为绝对坐标）
+     * @param size 槽位格子尺寸（如 18）
+     */
+    public static void drawDisabledOverlay(GuiGraphics g, int x, int y, int size) {
+        g.pose().pushPose();
+        g.pose().translate(0.0F, 0.0F, 200.0F);
+        g.fill(x + 1, y + 1, x + size - 1, y + size - 1, 0xB0808080);
+        int x0 = x + 3, y0 = y + 3, x1 = x + size - 3, y1 = y + size - 3;
+        for (int k = 0; k <= 9; k++) {
+            g.fill(x0 + k, y0 + k, x0 + k + 3, y0 + k + 3, 0xFF000000);   // 左上→右下
+            g.fill(x1 - k - 3, y0 + k, x1 - k, y0 + k + 3, 0xFF000000);   // 右上→左下
+        }
+        g.pose().popPose();
+    }
+
     /** 水平流动线：从左到右，线段内空间相位 0→1，仅 1 个青峰（用于标题下划线等单线元素） */
     public static void flowingHLine(GuiGraphics g, int x, int y, int len, int color, long time) {
         if (len <= 0) return;

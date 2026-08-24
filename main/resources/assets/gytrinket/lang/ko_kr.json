@@ -317,7 +317,7 @@
   "item.gytrinket.reshaping_part": "재형성 부품",
 
   "advancements.gytrinket.story.obtain_basic_shield.title": "모든 걸 막아줄 수 있나?",
-  "advancements.gytrinket.story.obtain_basic_shield.description": "있잖아, G를 누르면 모드 메뉴가 열려! 모드 속성이 있는 아이템을 우클릭하면 장착할 수 있어!",
+  "advancements.gytrinket.story.obtain_basic_shield.description": "있잖아, %s를 누르면 모드 메뉴가 열려! 모드 속성이 있는 아이템을 우클릭하면 장착할 수 있어!",
 
   "advancements.gytrinket.story.obtain_aura_ring_shield.title": "환경 화염 고리",
   "advancements.gytrinket.story.obtain_aura_ring_shield.description": "공공 재산은 손대지 마세요",

@@ -4,6 +4,7 @@ import com.gytrinket.gytrinket.client.datacenter.ClientDataCenter;
 import com.gytrinket.gytrinket.client.screen.ScreenUtils;
 import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.gytrinket;
+import com.gytrinket.gytrinket.key.KeyInputHandler;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
@@ -15,7 +16,8 @@ import net.neoforged.fml.common.EventBusSubscriber;
 
 /**
  * 随机构建系统 HUD 提示
- * 当玩家有未使用的升级点时，在物品栏上方提示按 G 键打开升级界面
+ * 当玩家有未使用的升级点时，在物品栏上方提示按绑定键打开升级界面
+ * 提示文案使用玩家实际绑定的按键名
  */
 @EventBusSubscriber(modid = gytrinket.MODID, value = Dist.CLIENT)
 public class RandomBuildHudEvent {
@@ -48,7 +50,9 @@ public class RandomBuildHudEvent {
         int width = g.guiWidth();
         int height = g.guiHeight();
 
-        String text = Component.translatable("hud.gytrinket.random_build.hint").getString();
+        // 使用实际绑定的按键名（玩家可自定义面板打开按键）
+        Component keyMessage = KeyInputHandler.getAttributeKey().getTranslatedKeyMessage();
+        Component text = Component.translatable("hud.gytrinket.random_build.hint", keyMessage);
         int textWidth = mc.font.width(text);
         int barWidth = textWidth + 24;
         int barHeight = 14;

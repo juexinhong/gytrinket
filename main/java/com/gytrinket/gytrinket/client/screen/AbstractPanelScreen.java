@@ -49,6 +49,11 @@ public abstract class AbstractPanelScreen extends Screen {
             Minecraft.getInstance().setScreen(null);
             return true;
         }
+        // 按 E（打开背包键）时退出面板：主面板回到游戏，子面板回到父面板
+        if (Minecraft.getInstance().options.keyInventory.isActiveAndMatches(InputConstants.getKey(keyCode, scanCode))) {
+            this.onClose();
+            return true;
+        }
         return super.keyPressed(keyCode, scanCode, modifiers);
     }
 

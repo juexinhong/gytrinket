@@ -317,7 +317,7 @@
   "item.gytrinket.reshaping_part": "Umformungs-Teil",
 
   "advancements.gytrinket.story.obtain_basic_shield.title": "Kann es alles blocken?",
-  "advancements.gytrinket.story.obtain_basic_shield.description": "Hey, wusstest du? Drück G um das Mod-Menü zu öffnen! Rechtsklicke das Item mit dem Mod-Attribut, um es auszurüsten!",
+  "advancements.gytrinket.story.obtain_basic_shield.description": "Hey, wusstest du? Drück %s um das Mod-Menü zu öffnen! Rechtsklicke das Item mit dem Mod-Attribut, um es auszurüsten!",
 
   "advancements.gytrinket.story.obtain_aura_ring_shield.title": "Umwelt-Feuerring",
   "advancements.gytrinket.story.obtain_aura_ring_shield.description": "Wird kein öffentliches Eigentum beschädigen",

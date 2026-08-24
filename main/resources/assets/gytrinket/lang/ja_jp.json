@@ -317,7 +317,7 @@
   "item.gytrinket.reshaping_part": "リシェイピングパーツ",
 
   "advancements.gytrinket.story.obtain_basic_shield.title": "全部防げるかな？",
-  "advancements.gytrinket.story.obtain_basic_shield.description": "ねえ知ってる？GキーでMODメニューを開けるよ！MOD属性付きアイテムを右クリックで装備できるよ！",
+  "advancements.gytrinket.story.obtain_basic_shield.description": "ねえ知ってる？%sキーでMODメニューを開けるよ！MOD属性付きアイテムを右クリックで装備できるよ！",
 
   "advancements.gytrinket.story.obtain_aura_ring_shield.title": "環境火炎リング",
   "advancements.gytrinket.story.obtain_aura_ring_shield.description": "公共物は燃やさないよ",

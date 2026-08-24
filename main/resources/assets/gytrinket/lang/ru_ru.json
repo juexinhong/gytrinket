@@ -317,7 +317,7 @@
   "item.gytrinket.reshaping_part": "Деталь реконструкции",
 
   "advancements.gytrinket.story.obtain_basic_shield.title": "Разве он блокирует всё?",
-  "advancements.gytrinket.story.obtain_basic_shield.description": "А ты знал? Нажми G, чтобы открыть меню мода! Щёлкни правой кнопкой по предмету с атрибутом мода, чтобы экипировать его!",
+  "advancements.gytrinket.story.obtain_basic_shield.description": "А ты знал? Нажми %s, чтобы открыть меню мода! Щёлкни правой кнопкой по предмету с атрибутом мода, чтобы экипировать его!",
 
   "advancements.gytrinket.story.obtain_aura_ring_shield.title": "Огненное кольцо окружения",
   "advancements.gytrinket.story.obtain_aura_ring_shield.description": "Общественное имущество не пострадает",

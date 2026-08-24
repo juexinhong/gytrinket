@@ -65,8 +65,13 @@ public class LightPointCoreBlockEntity extends BlockEntity implements MenuProvid
         PlayerStore store = PlayerStoreManager.getOrCreatePlayerStore(player);
         ItemStackHandler playerHandler = store.getItemHandler();
 
+        // 玩家打开光点核心容器时同步各槽位禁用原因（容器界面灰色遮罩用）
+        if (player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
+            com.gytrinket.gytrinket.network.NetworkHandler.sendDisabledReasonsToPlayer(serverPlayer);
+        }
+
         // 创建 Container 接口的匿名实现
-        return ChestMenu.threeRows(containerId, playerInventory, new net.minecraft.world.Container() {
+        return new com.gytrinket.gytrinket.menu.LightPointCoreMenu(containerId, playerInventory, new net.minecraft.world.Container() {
             /**
              * 获取容器大小
              * @return 容器大小，这里是 27

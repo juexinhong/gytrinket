@@ -69,8 +69,8 @@ public final class SolidUIRenderer implements UIRenderer {
         if (hovered) {
             ScreenUtils.drawChamferRect(g, x, y, w, h, 2, accentColor);
         } else {
-            // 常驻淡描边（流动色）
-            ScreenUtils.drawChamferRect(g, x, y, w, h, 2, ScreenUtils.withAlpha(accentColor, 55));
+            // 常驻淡描边：整框统一色相循环（非逐像素流动，渲染压力小）
+            ScreenUtils.drawChamferRectUniform(g, x, y, w, h, 2, ScreenUtils.withAlpha(accentColor, 90));
         }
     }
 

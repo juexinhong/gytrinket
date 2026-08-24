@@ -367,7 +367,7 @@
   "item.gytrinket.reshaping_part": "重塑零件",
 
   "advancements.gytrinket.story.obtain_basic_shield.title": "啥都能防?",
-  "advancements.gytrinket.story.obtain_basic_shield.description": "嘿你知道吗?按下G键,可以打开模组菜单!手持注册过本模组属性的物品右键可以快速装备!",
+  "advancements.gytrinket.story.obtain_basic_shield.description": "嘿你知道吗?按下%s键,可以打开模组菜单!手持注册过本模组属性的物品右键可以快速装备!",
 
   "advancements.gytrinket.story.obtain_aura_ring_shield.title": "环保的火焰环",
   "advancements.gytrinket.story.obtain_aura_ring_shield.description": "不会损坏公共财产",
@@ -462,7 +462,7 @@
   "screen.gytrinket.random_points": "刷新点",
   "screen.gytrinket.refresh_pool": "刷新",
 
-  "hud.gytrinket.random_build.hint": "按下 G 键打开升级界面",
+  "hud.gytrinket.random_build.hint": "按下 %s 键打开升级界面",
 
   "message.gytrinket.random_build.equipped": "已将 %s 装备到光点核心",
   "message.gytrinket.random_build.not_enough_points": "升级点不足",

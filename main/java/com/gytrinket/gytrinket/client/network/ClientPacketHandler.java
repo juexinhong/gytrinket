@@ -25,6 +25,10 @@ public final class ClientPacketHandler {
             msg.modLevel(), msg.upgradeExp(), msg.upgradePoints(), msg.randomPoints());
     }
 
+    public static void handleSyncDisabledReasons(SyncDisabledReasonsPayload msg) {
+        com.gytrinket.gytrinket.client.datacenter.ClientDataCenter.updateDisabledReasons(msg.reasons());
+    }
+
     public static void handleResponseRandomBuild(ResponseRandomBuildPayload msg) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.screen instanceof PlayerPanelScreen ps) {
@@ -70,14 +74,14 @@ public final class ClientPacketHandler {
 
         if (currentScreen instanceof PlayerPanelScreen ps) {
             ps.updateData(msg.attributes(), msg.items(), msg.slotCount(), msg.upgradeData(), msg.upgradeTargets(),
-                    msg.modLevel(), msg.upgradeExp(), msg.upgradePoints(), msg.randomPoints());
+                    msg.modLevel(), msg.upgradeExp(), msg.upgradePoints(), msg.randomPoints(), msg.disabledReasons());
         } else if (panelScreen != null) {
             panelScreen.updateData(msg.attributes(), msg.items(), msg.slotCount(), msg.upgradeData(), msg.upgradeTargets(),
-                    msg.modLevel(), msg.upgradeExp(), msg.upgradePoints(), msg.randomPoints());
+                    msg.modLevel(), msg.upgradeExp(), msg.upgradePoints(), msg.randomPoints(), msg.disabledReasons());
         } else {
             mc.setScreen(new PlayerPanelScreen(
                 msg.attributes(), msg.items(), msg.slotCount(), msg.upgradeData(), msg.upgradeTargets(),
-                msg.modLevel(), msg.upgradeExp(), msg.upgradePoints(), msg.randomPoints()));
+                msg.modLevel(), msg.upgradeExp(), msg.upgradePoints(), msg.randomPoints(), msg.disabledReasons()));
         }
     }
 

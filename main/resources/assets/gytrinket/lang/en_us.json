@@ -1,6 +1,8 @@
 {
   "creative_tab.gytrinket": "Light Point Trinket",
   "key.gytrinket.show_attributes": "Show Light Point Core Attributes",
+  "container.gytrinket.player_inventory": "Player Inventory",
+  "item.gytrinket.token": "Token",
   "key.gytrinket.switch_array": "Switch Drone Array",
   "key.gytrinket.toggle_execute": "Toggle Execute Attribution",
   "message.gytrinket.execute_enabled": "Execute Attribution: Enabled",
@@ -455,12 +457,14 @@
   "screen.gytrinket.upgrade_points": "Upgrade Points",
   "screen.gytrinket.random_pool": "Random Build Pool",
   "screen.gytrinket.random_points": "Refresh Points",
+  "screen.gytrinket.token": "Token",
   "screen.gytrinket.refresh_pool": "Refresh",
 
   "hud.gytrinket.random_build.hint": "Press %s to open the upgrade panel",
 
   "message.gytrinket.random_build.equipped": "Equipped %s to the Light Point Core",
   "message.gytrinket.random_build.not_enough_points": "Not enough upgrade points",
+  "message.gytrinket.random_build.not_enough_tokens": "Not enough tokens",
   "message.gytrinket.random_build.failed": "Cannot equip this item",
   "message.gytrinket.random_build.not_enough_random_points": "Not enough refresh points",
 

@@ -1,6 +1,8 @@
 {
   "creative_tab.gytrinket": "光点トリンケット",
   "key.gytrinket.show_attributes": "光点コア属性を表示",
+  "container.gytrinket.player_inventory": "プレイヤーインベントリ",
+  "item.gytrinket.token": "トークン",
   "key.gytrinket.switch_array": "ドローンアレイを切り替え",
   "key.gytrinket.toggle_execute": "実行属性を切り替え",
   "message.gytrinket.execute_enabled": "実行属性：有効",

@@ -40,6 +40,13 @@ public record RandomBuildEquipPayload(String itemId) implements CustomPacketPayl
             if (RandomBuildManager.equipItem(player, payload.itemId)) {
                 player.sendSystemMessage(Component.translatable(
                     "message.gytrinket.random_build.equipped", item.getHoverName()));
+            } else if (Config.isRandomBuildTokenEnabled()) {
+                // 代币机制：不足提示代币
+                if (RandomBuildManager.countTokens(player) < RandomBuildManager.EQUIP_COST) {
+                    player.sendSystemMessage(Component.translatable("message.gytrinket.random_build.not_enough_tokens"));
+                } else {
+                    player.sendSystemMessage(Component.translatable("message.gytrinket.random_build.failed"));
+                }
             } else {
                 int points = com.gytrinket.gytrinket.core.level.ModLevelManager.getUpgradePoints(player.getUUID());
                 if (points < RandomBuildManager.EQUIP_COST) {

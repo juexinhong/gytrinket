@@ -38,6 +38,8 @@ public class PlayerPanelScreen extends AbstractPanelScreen {
     private int upgradeExp;
     private int upgradePoints;
     private int randomPoints;
+    /** 随机构建代币数量（代币机制启用时显示；背包中的代币物品总数） */
+    private int tokenCount;
     /** 光点核心各槽位禁用原因（空串/无=未禁用，显示黑色 × 与 tooltip 提示） */
     private String[] disabledReasons = new String[0];
 
@@ -56,7 +58,8 @@ public class PlayerPanelScreen extends AbstractPanelScreen {
 
     public PlayerPanelScreen(Map<String, Double> attributes, ListTag items, int slotCount,
                               CompoundTag upgradeDataTag, ListTag upgradeTargets,
-                              int modLevel, int upgradeExp, int upgradePoints, int randomPoints, String[] disabledReasons) {
+                              int modLevel, int upgradeExp, int upgradePoints, int randomPoints,
+                              int tokenCount, String[] disabledReasons) {
         super(Component.translatable("screen.gytrinket.player_panel"), null, SolidUIRenderer.PANEL);
         this.attributes = attributes != null ? attributes : new HashMap<>();
         this.slotCount = slotCount;
@@ -66,6 +69,7 @@ public class PlayerPanelScreen extends AbstractPanelScreen {
         this.upgradeExp = upgradeExp;
         this.upgradePoints = upgradePoints;
         this.randomPoints = randomPoints;
+        this.tokenCount = tokenCount;
         this.disabledReasons = disabledReasons != null ? disabledReasons : new String[0];
         this.equippedItems = new ArrayList<>();
         parseItems(items);
@@ -115,7 +119,8 @@ public class PlayerPanelScreen extends AbstractPanelScreen {
 
     public void updateData(Map<String, Double> attributes, ListTag items, int slotCount,
                             CompoundTag upgradeDataTag, ListTag upgradeTargets,
-                            int modLevel, int upgradeExp, int upgradePoints, int randomPoints, String[] disabledReasons) {
+                            int modLevel, int upgradeExp, int upgradePoints, int randomPoints,
+                            int tokenCount, String[] disabledReasons) {
         this.attributes = attributes != null ? attributes : new HashMap<>();
         this.slotCount = slotCount;
         this.upgradeDataTag = upgradeDataTag != null ? upgradeDataTag : new CompoundTag();
@@ -124,6 +129,7 @@ public class PlayerPanelScreen extends AbstractPanelScreen {
         this.upgradeExp = upgradeExp;
         this.upgradePoints = upgradePoints;
         this.randomPoints = randomPoints;
+        this.tokenCount = tokenCount;
         this.disabledReasons = disabledReasons != null ? disabledReasons : new String[0];
         parseItems(items);
         rebuildSortedAttrs();
@@ -210,8 +216,9 @@ public class PlayerPanelScreen extends AbstractPanelScreen {
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (button != 0) return super.mouseClicked(mouseX, mouseY, button);
 
-        // 随机构建随机池：点击物品 -> 发送装备请求（消耗 1 升级点）
-        if (Config.isRandomBuildEnabled() && upgradePoints > 0) {
+        // 随机构建随机池：点击物品 -> 发送装备请求（代币机制消耗代币，否则消耗升级点）
+        boolean canAfford = Config.isRandomBuildTokenEnabled() ? tokenCount > 0 : upgradePoints > 0;
+        if (Config.isRandomBuildEnabled() && canAfford) {
             int poolIndex = poolIndexAt(mouseX, mouseY);
             if (poolIndex >= 0 && poolIndex < randomPool.size()) {
                 PacketDistributor.sendToServer(new RandomBuildEquipPayload(randomPool.get(poolIndex)));
@@ -444,6 +451,12 @@ public class PlayerPanelScreen extends AbstractPanelScreen {
         String randomStr = Component.translatable("screen.gytrinket.random_points").getString() + ": "
                 + com.gytrinket.gytrinket.client.datacenter.ClientDataCenter.getRandomPoints();
         drawText(g, randomStr, colX + colWidth - 4 - font.width(randomStr), barY + 8, renderer.getValueColor());
+
+        // 代币机制启用时：显示背包持有的代币数量（消耗代币而非升级点）
+        if (com.gytrinket.gytrinket.config.Config.isRandomBuildTokenEnabled()) {
+            String tokenStr = Component.translatable("screen.gytrinket.token").getString() + ": " + tokenCount;
+            drawText(g, tokenStr, colX + 4, barY + 16, renderer.getValueColor());
+        }
     }
 
     private void renderTooltip(GuiGraphics guiGraphics, int mouseX, int mouseY) {

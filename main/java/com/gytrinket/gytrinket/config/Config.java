@@ -43,6 +43,10 @@ public class Config {
 
     public static final ModConfigSpec.ConfigValue<List<? extends String>> ITEM_ATTRIBUTES_CONFIG;
 
+    // ===== 合成禁用 (crafting_disable) =====
+    /** 合成禁用模式：0=不禁用，1=禁用本模组命名空间下注册了实际效果的物品合成，2=禁用所有注册了实际效果的物品合成 */
+    public static final ModConfigSpec.IntValue DISABLE_CRAFTING_MODE;
+
     // ===== 1. 光环护盾 (aura_shield) =====
     public static final ModConfigSpec.DoubleValue AURA_RADIUS;
     public static final ModConfigSpec.DoubleValue AURA_DAMAGE;
@@ -307,6 +311,10 @@ public class Config {
     public static final ModConfigSpec.BooleanValue RANDOM_BUILD_ENABLED;
     public static final ModConfigSpec.IntValue RANDOM_BUILD_XP_MULTIPLIER;
     public static final ModConfigSpec.BooleanValue SHOW_UPGRADE_REMINDER_HUD;
+    /** 代币机制：启用后随机池兑换消耗背包代币而非升级点 */
+    public static final ModConfigSpec.BooleanValue RANDOM_BUILD_TOKEN_ENABLED;
+    /** 代币物品 ID（可替换为其他模组的物品） */
+    public static final ModConfigSpec.ConfigValue<String> RANDOM_BUILD_TOKEN_ITEM;
 
     // ===== 34. 其他通用设置 =====
     public static final ModConfigSpec.ConfigValue<Boolean> HARDCORE_MODE_ENABLED;
@@ -427,13 +435,18 @@ public class Config {
 
                 "gytrinket:furnace_core_module|construct_non_shield_build_speed_percent=0.30|construct_attack_speed_percent=0.30|construct_move_speed_percent=0.30|construct_orbit_speed_percent=0.30|construct_rotation_speed_percent=0.30",
 
-                "gytrinket:quick_reconstruction_module|recovery_efficiency_percent=1.0|player_health=10|coating=2",
-
-                "minecraft:command_block|shield_effect_percent=1.0|shield_cooldown_reduction_percent=0.8|shield_damage_reduction=-0.9|shield_self_damage_reduction=-0.9|player_health_percent=1|attack_speed_percent=1|attack_damage_percent=1|knockback_resistance=1|player_knockback_percent=1|movement_speed_percent=0.5|player_damage_reduction=-0.9|player_self_damage_reduction=-0.9|recovery_efficiency=0.5"
+                "gytrinket:quick_reconstruction_module|recovery_efficiency_percent=1.0|player_health=10|coating=2"
             ),
             s -> true
         );
 
+        BUILDER.pop();
+
+        // ===== 合成禁用 (crafting_disable) =====
+        BUILDER.comment("合成禁用模式：0=不禁用合成，1=禁用本模组命名空间下注册了本模组实际效果（属性或特殊机制）的物品的合成，2=禁用所有注册了本模组实际效果的物品的合成")
+            .push("crafting_disable");
+        DISABLE_CRAFTING_MODE = BUILDER.comment("0=不禁用，1=仅本模组物品，2=全部注册物品")
+            .defineInRange("disableCraftingMode", 0, 0, 2);
         BUILDER.pop();
 
         // ===== 1. 光环护盾 =====
@@ -1377,13 +1390,25 @@ public class Config {
             "随机构建系统启用时的光点经验倍率",
             "升到下一级所需经验 = 原版所需经验 × 该倍率",
             "默认 5，范围 1~100"
-        ).defineInRange("xpMultiplier", 5, 1, 100);
+        ).defineInRange("xpMultiplier", 10, 1, 100);
 
         SHOW_UPGRADE_REMINDER_HUD = BUILDER.comment(
             "是否显示升级提醒 HUD",
             "当玩家有未使用的升级点时，在物品栏上方显示按下G键的提示",
             "光点核心已满时不显示，默认 true"
         ).define("showUpgradeReminderHud", true);
+
+        RANDOM_BUILD_TOKEN_ENABLED = BUILDER.comment(
+            "是否启用代币机制（归属随机构建）",
+            "启用后：取消随机构建的经验惩罚（升级点不再被随机池消耗）；",
+            "从随机池获取物品改为消耗玩家背包中的代币，而非升级点。"
+        ).define("tokenEnabled", false);
+
+        RANDOM_BUILD_TOKEN_ITEM = BUILDER.comment(
+            "代币物品 ID（可替换为其他模组的物品）",
+            "从随机池获取物品时，会从玩家背包中扣除该物品 1 个",
+            "默认 gytrinket:token（本模组代币物品）"
+        ).define("tokenItem", "gytrinket:token");
 
         BUILDER.pop();
 
@@ -1599,6 +1624,11 @@ public class Config {
                 String[] itemParts = itemConfig.trim().split("\\|");
                 if (itemParts.length >= 2) {
                     String itemId = itemParts[0].trim();
+                    // 移除命令方块的属性注册（历史测试项）：跳过加载并清理内存残留，防止旧配置文件回写
+                    if ("minecraft:command_block".equals(itemId)) {
+                        AttributeManager.removeItemAttributes(itemId);
+                        continue;
+                    }
                     Map<String, Double> attrs = new HashMap<>();
                     for (int i = 1; i < itemParts.length; i++) {
                         String[] attrParts = itemParts[i].trim().split("=");
@@ -2388,6 +2418,16 @@ public class Config {
 
     public static boolean isShowUpgradeReminderHud() {
         return SHOW_UPGRADE_REMINDER_HUD.get();
+    }
+
+    /** 是否启用代币机制（随机构建消耗背包代币而非升级点） */
+    public static boolean isRandomBuildTokenEnabled() {
+        return RANDOM_BUILD_TOKEN_ENABLED.get();
+    }
+
+    /** 代币物品 ID */
+    public static String getRandomBuildTokenItemId() {
+        return RANDOM_BUILD_TOKEN_ITEM.get();
     }
 
     public static boolean isHardcoreModeEnabled() {

@@ -1,5 +1,6 @@
 package com.gytrinket.gytrinket.network;
 
+import com.gytrinket.gytrinket.compat.CuriosCompat;
 import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
 import com.gytrinket.gytrinket.core.attribute.ItemAttributeConfig;
@@ -9,6 +10,7 @@ import com.gytrinket.gytrinket.core.level.ModLevelManager;
 import com.gytrinket.gytrinket.core.upgrade.UpgradeData;
 import com.gytrinket.gytrinket.core.upgrade.UpgradeManager;
 import com.gytrinket.gytrinket.core.random_build.RandomBuildManager;
+import com.gytrinket.gytrinket.event.QuickEquipEvent;
 import com.gytrinket.gytrinket.network.packet.*;
 import com.gytrinket.gytrinket.storage.PlayerStore;
 import com.gytrinket.gytrinket.storage.PlayerStoreManager;
@@ -79,6 +81,7 @@ public class NetworkHandler {
         registrar.playToClient(SyncGhostStealthPayload.TYPE, SyncGhostStealthPayload.STREAM_CODEC, SyncGhostStealthPayload::handle);
         registrar.playToClient(ResponseRandomBuildPayload.TYPE, ResponseRandomBuildPayload.STREAM_CODEC, ResponseRandomBuildPayload::handle);
         registrar.playToClient(SyncModLevelPayload.TYPE, SyncModLevelPayload.STREAM_CODEC, SyncModLevelPayload::handle);
+        registrar.playToClient(SyncTokenCountPayload.TYPE, SyncTokenCountPayload.STREAM_CODEC, SyncTokenCountPayload::handle);
         registrar.playToClient(SyncDisabledReasonsPayload.TYPE, SyncDisabledReasonsPayload.STREAM_CODEC, SyncDisabledReasonsPayload::handle);
         registrar.playToServer(SyncGhostMoveSpeedPayload.TYPE, SyncGhostMoveSpeedPayload.STREAM_CODEC, SyncGhostMoveSpeedPayload::handle);
 
@@ -247,6 +250,12 @@ public class NetworkHandler {
             ModLevelManager.getRandomPoints(uuid)));
     }
 
+    /** 同步玩家背包代币数量到客户端（随机构建代币机制） */
+    public static void sendTokenCountToPlayer(ServerPlayer player) {
+        PacketDistributor.sendToPlayer(player,
+            new SyncTokenCountPayload(RandomBuildManager.countTokens(player)));
+    }
+
     /**
      * 计算玩家光点核心各槽位禁用原因（27 槽，空串=未禁用）
      * 玩家面板（ResponsePanelDataPayload）与容器界面（SyncDisabledReasonsPayload）共用此入口
@@ -273,6 +282,20 @@ public class NetworkHandler {
     /** 同步光点核心各槽位禁用原因到客户端（容器界面灰色遮罩用） */
     public static void sendDisabledReasonsToPlayer(ServerPlayer player) {
         PacketDistributor.sendToPlayer(player, new SyncDisabledReasonsPayload(buildDisabledReasons(player)));
+    }
+
+    /**
+     * 判断饰品栏物品是否注册了本模组属性或特殊机制（决定是否在玩家面板显示）。
+     * <p>
+     * 复用 {@link QuickEquipEvent#isQuickEquipItem} 的统一判定：注册了本模组属性，
+     * 或注册了护盾类型/机身/任意模块等特殊机制（datapack 可配置任意命名空间物品）。
+     */
+    private static boolean isGytrinketRegisteredItem(ItemStack stack) {
+        if (stack.isEmpty()) {
+            return false;
+        }
+        String itemId = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
+        return QuickEquipEvent.isQuickEquipItem(itemId, stack.getItem());
     }
 
     public static void sendPanelUpdate(ServerPlayer player) {
@@ -302,14 +325,29 @@ public class NetworkHandler {
                 );
             }
         }
+
+        // 光点核心内容扩展：饰品栏（Curios）中注册了本模组属性或特殊机制的物品，同样显示在玩家面板装备区
+        if (CuriosCompat.isCuriosLoaded()) {
+            int curiosSlotBase = slotCount;
+            for (ItemStack stack : CuriosCompat.getEquippedCurios(player)) {
+                if (isGytrinketRegisteredItem(stack)) {
+                    CompoundTag itemTag = (CompoundTag) stack.save(player.registryAccess());
+                    itemTag.putInt("slot", curiosSlotBase++);
+                    items.add(itemTag);
+                }
+            }
+            slotCount = curiosSlotBase;
+        }
+
         UpgradeData upgradeData = UpgradeManager.getUpgradeData(player.getUUID());
         CompoundTag upgradeTag = upgradeData.save();
         int modLevel = ModLevelManager.getModLevel(player.getUUID());
         int upgradeExp = ModLevelManager.getUpgradeExp(player.getUUID());
         int upgradePoints = ModLevelManager.getUpgradePoints(player.getUUID());
         int randomPoints = ModLevelManager.getRandomPoints(player.getUUID());
+        int tokenCount = RandomBuildManager.countTokens(player);
         PacketDistributor.sendToPlayer(player,
-            new ResponsePanelDataPayload(attributes, items, slotCount, upgradeTag, upgradeTargets, modLevel, upgradeExp, upgradePoints, randomPoints, disabledReasons));
+            new ResponsePanelDataPayload(attributes, items, slotCount, upgradeTag, upgradeTargets, modLevel, upgradeExp, upgradePoints, randomPoints, tokenCount, disabledReasons));
     }
 
     public static void sendConfigDataToPlayer(ServerPlayer player) {

@@ -29,7 +29,12 @@ public class RandomBuildHudEvent {
         if (Minecraft.getInstance().screen != null) return;
         if (!Config.isRandomBuildEnabled()) return;
         if (!Config.isShowUpgradeReminderHud()) return;
-        if (ClientDataCenter.getUpgradePoints() <= 0) return;
+        // 代币机制启用时检测背包代币数量（由服务端在背包变动时同步），否则检测升级点
+        if (Config.isRandomBuildTokenEnabled()) {
+            if (ClientDataCenter.getTokenCount() <= 0) return;
+        } else {
+            if (ClientDataCenter.getUpgradePoints() <= 0) return;
+        }
         // 光点核心已满时不再提示
         if (ClientDataCenter.getSnapshot().isCoreFull()) return;
 

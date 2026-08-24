@@ -13,6 +13,8 @@ public class ClientDataCenter {
     private static int upgradeExp;
     private static int upgradePoints;
     private static int randomPoints;
+    /** 代币数量客户端缓存（随机构建代币机制，背包变动时由服务端同步） */
+    private static int tokenCount;
 
     /** 光点核心各槽位禁用原因缓存（容器界面灰色遮罩用） */
     private static String[] disabledReasons = new String[0];
@@ -32,6 +34,12 @@ public class ClientDataCenter {
         disabledReasons = reasons != null ? reasons.toArray(new String[0]) : new String[0];
         coreContainerSynced = true;
     }
+
+    public static void updateTokenCount(int count) {
+        tokenCount = Math.max(0, count);
+    }
+
+    public static int getTokenCount() { return tokenCount; }
 
     public static String[] getDisabledReasons() { return disabledReasons; }
 

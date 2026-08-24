@@ -207,6 +207,9 @@ public class ModCreativeModeTabs {
                         output.accept(ModItems.SHOCKWAVE_PART.get());
                         output.accept(ModItems.NANO_REGEN_PART.get());
                         output.accept(ModItems.SUPPRESSION_PART.get());
+
+                        // 代币
+                        output.accept(ModItems.TOKEN.get());
                     })
                     .build()
     );

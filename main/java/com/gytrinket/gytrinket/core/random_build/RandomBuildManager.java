@@ -1,10 +1,10 @@
 package com.gytrinket.gytrinket.core.random_build;
 
+import com.gytrinket.gytrinket.compat.CuriosCompat;
 import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.defs.DefsManager;
 import com.gytrinket.gytrinket.core.level.ModLevelManager;
 import com.gytrinket.gytrinket.event.QuickEquipEvent;
-import com.gytrinket.gytrinket.gytrinket;
 import com.gytrinket.gytrinket.storage.PlayerStore;
 import com.gytrinket.gytrinket.storage.PlayerStoreManager;
 import com.gytrinket.gytrinket.storage.PlayerStoreUtils;
@@ -15,6 +15,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.items.ItemStackHandler;
+import top.theillusivec4.curios.api.CuriosApi;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -37,9 +38,10 @@ import java.util.UUID;
  * 3. 否则 -> 随机模块（注册了属性或特殊机制的物品，排除零件/护盾/机身）
  *
  * 模块过滤规则：
- * - 不出现玩家已拥有的物品
+ * - 不出现玩家已拥有的物品（含饰品栏）
  * - 不出现依赖未满足的物品（如模块2依赖模块1但玩家没有模块1）
  * - 不出现被禁用/互斥的物品（如模块1禁用了模块2且玩家装备了模块1）
+ * - 不出现仅饰品栏生效的饰品（注册了 Curios ICurio 行为，刷入光点核心会丢失效果）
  */
 public class RandomBuildManager {
 
@@ -99,6 +101,19 @@ public class RandomBuildManager {
     /** 是否为零件类物品（id 以 _part 结尾，如 drone_part；纯名零件本身不注册属性/机制，已被 isQuickEquipItem 排除） */
     public static boolean isPartItem(String itemId) {
         return itemId.endsWith("_part");
+    }
+
+    /**
+     * 是否仅饰品栏生效的饰品（注册了 Curios ICurio 行为）。
+     * <p>
+     * 这类物品的效果由 Curios 在穿戴时提供，放进光点核心反而会失效，
+     * 因此从随机构建池候选排除。未安装 Curios 时恒为 false。
+     */
+    private static boolean isTrinketItem(Item item) {
+        if (!CuriosCompat.isCuriosLoaded()) return false;
+        ItemStack stack = new ItemStack(item);
+        if (stack.isEmpty()) return false;
+        return CuriosApi.getCurio(stack).isPresent();
     }
 
     /** 是否为模块类物品：注册了属性或特殊机制，且不是护盾/机身/零件 */
@@ -185,10 +200,12 @@ public class RandomBuildManager {
 
     private static List<String> collectItems(ItemFilter filter) {
         List<String> result = new ArrayList<>();
+        // 遍历全部已注册物品（不限本模组命名空间），由 filter 判定是否注册了本模组属性或特殊机制
         for (Item item : BuiltInRegistries.ITEM) {
             ResourceLocation rl = BuiltInRegistries.ITEM.getKey(item);
             if (rl == null) continue;
-            if (!gytrinket.MODID.equals(rl.getNamespace())) continue;
+            // 排除仅饰品栏生效的饰品：刷入光点核心会丢失效果
+            if (isTrinketItem(item)) continue;
             String itemId = rl.toString();
             if (filter.accept(itemId, item)) {
                 result.add(itemId);
@@ -297,14 +314,22 @@ public class RandomBuildManager {
     // ==================== 装备 ====================
 
     /**
-     * 将随机池中的物品装备到光点核心并消耗 1 个升级点
+     * 将随机池中的物品装备到光点核心。
+     * <p>
+     * 代币机制启用时消耗玩家背包中的代币（不消耗升级点），否则消耗 1 个升级点。
      * @return 成功返回 true；失败返回 false（调用方负责发送提示消息）
      */
     public static boolean equipItem(ServerPlayer player, String itemId) {
         if (!Config.isRandomBuildEnabled()) return false;
         UUID uuid = player.getUUID();
+        boolean tokenMode = Config.isRandomBuildTokenEnabled();
 
-        if (ModLevelManager.getUpgradePoints(uuid) < EQUIP_COST) return false;
+        // 代币模式：检查背包代币；否则检查升级点
+        if (tokenMode) {
+            if (countTokens(player) < EQUIP_COST) return false;
+        } else {
+            if (ModLevelManager.getUpgradePoints(uuid) < EQUIP_COST) return false;
+        }
 
         List<String> pool = CACHED_POOLS.get(uuid);
         if (pool == null || !pool.contains(itemId)) return false;
@@ -339,13 +364,60 @@ public class RandomBuildManager {
         if (emptySlot < 0) return false;
 
         handler.setStackInSlot(emptySlot, new ItemStack(item, 1));
-        if (!ModLevelManager.consumeUpgradePoints(uuid, EQUIP_COST)) {
-            handler.setStackInSlot(emptySlot, ItemStack.EMPTY);
-            return false;
+        if (tokenMode) {
+            // 代币模式：消耗背包代币（不消耗升级点）
+            if (!consumeToken(player)) {
+                handler.setStackInSlot(emptySlot, ItemStack.EMPTY);
+                return false;
+            }
+        } else {
+            // 常规模式：消耗升级点
+            if (!ModLevelManager.consumeUpgradePoints(uuid, EQUIP_COST)) {
+                handler.setStackInSlot(emptySlot, ItemStack.EMPTY);
+                return false;
+            }
         }
 
         CACHED_POOLS.remove(uuid);
         clearStoredPool(uuid);
         return true;
+    }
+
+    /** 解析配置中的代币物品；无效配置返回 null */
+    public static Item getTokenItem() {
+        String id = Config.getRandomBuildTokenItemId();
+        if (id == null || id.isEmpty()) return null;
+        try {
+            Item item = BuiltInRegistries.ITEM.get(ResourceLocation.parse(id));
+            return (item != null && item != net.minecraft.world.item.Items.AIR) ? item : null;
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+    /** 统计玩家背包中持有的代币数量 */
+    public static int countTokens(ServerPlayer player) {
+        Item token = getTokenItem();
+        if (token == null) return 0;
+        int count = 0;
+        for (ItemStack stack : player.getInventory().items) {
+            if (!stack.isEmpty() && stack.getItem() == token) {
+                count += stack.getCount();
+            }
+        }
+        return count;
+    }
+
+    /** 从玩家背包扣除 1 个代币；成功返回 true */
+    private static boolean consumeToken(ServerPlayer player) {
+        Item token = getTokenItem();
+        if (token == null) return false;
+        for (ItemStack stack : player.getInventory().items) {
+            if (!stack.isEmpty() && stack.getItem() == token) {
+                stack.shrink(1);
+                return true;
+            }
+        }
+        return false;
     }
 }

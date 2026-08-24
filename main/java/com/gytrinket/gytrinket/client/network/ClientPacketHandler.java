@@ -25,6 +25,10 @@ public final class ClientPacketHandler {
             msg.modLevel(), msg.upgradeExp(), msg.upgradePoints(), msg.randomPoints());
     }
 
+    public static void handleSyncTokenCount(SyncTokenCountPayload msg) {
+        com.gytrinket.gytrinket.client.datacenter.ClientDataCenter.updateTokenCount(msg.tokenCount());
+    }
+
     public static void handleSyncDisabledReasons(SyncDisabledReasonsPayload msg) {
         com.gytrinket.gytrinket.client.datacenter.ClientDataCenter.updateDisabledReasons(msg.reasons());
     }
@@ -39,6 +43,7 @@ public final class ClientPacketHandler {
     public static void handleResponsePanelData(ResponsePanelDataPayload msg) {
         com.gytrinket.gytrinket.client.datacenter.ClientDataCenter.updateModLevel(
             msg.modLevel(), msg.upgradeExp(), msg.upgradePoints(), msg.randomPoints());
+        com.gytrinket.gytrinket.client.datacenter.ClientDataCenter.updateTokenCount(msg.tokenCount());
         Minecraft mc = Minecraft.getInstance();
         Screen currentScreen = mc.screen;
         PlayerPanelScreen panelScreen = null;
@@ -74,14 +79,14 @@ public final class ClientPacketHandler {
 
         if (currentScreen instanceof PlayerPanelScreen ps) {
             ps.updateData(msg.attributes(), msg.items(), msg.slotCount(), msg.upgradeData(), msg.upgradeTargets(),
-                    msg.modLevel(), msg.upgradeExp(), msg.upgradePoints(), msg.randomPoints(), msg.disabledReasons());
+                    msg.modLevel(), msg.upgradeExp(), msg.upgradePoints(), msg.randomPoints(), msg.tokenCount(), msg.disabledReasons());
         } else if (panelScreen != null) {
             panelScreen.updateData(msg.attributes(), msg.items(), msg.slotCount(), msg.upgradeData(), msg.upgradeTargets(),
-                    msg.modLevel(), msg.upgradeExp(), msg.upgradePoints(), msg.randomPoints(), msg.disabledReasons());
+                    msg.modLevel(), msg.upgradeExp(), msg.upgradePoints(), msg.randomPoints(), msg.tokenCount(), msg.disabledReasons());
         } else {
             mc.setScreen(new PlayerPanelScreen(
                 msg.attributes(), msg.items(), msg.slotCount(), msg.upgradeData(), msg.upgradeTargets(),
-                msg.modLevel(), msg.upgradeExp(), msg.upgradePoints(), msg.randomPoints(), msg.disabledReasons()));
+                msg.modLevel(), msg.upgradeExp(), msg.upgradePoints(), msg.randomPoints(), msg.tokenCount(), msg.disabledReasons()));
         }
     }
 

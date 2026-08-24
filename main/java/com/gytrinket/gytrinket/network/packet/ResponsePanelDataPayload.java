@@ -14,6 +14,7 @@ import java.util.Map;
 public record ResponsePanelDataPayload(Map<String, Double> attributes, ListTag items, int slotCount,
                                         CompoundTag upgradeData, ListTag upgradeTargets,
                                         int modLevel, int upgradeExp, int upgradePoints, int randomPoints,
+                                        int tokenCount,
                                         String[] disabledReasons) implements CustomPacketPayload {
     public static final Type<ResponsePanelDataPayload> TYPE = new Type<>(
         ResourceLocation.fromNamespaceAndPath("gytrinket", "response_panel_data"));
@@ -37,6 +38,7 @@ public record ResponsePanelDataPayload(Map<String, Double> attributes, ListTag i
             int upgradeExp = tag != null ? tag.getInt("upgradeExp") : 0;
             int upgradePoints = tag != null ? tag.getInt("upgradePoints") : 0;
             int randomPoints = tag != null ? tag.getInt("randomPoints") : 0;
+            int tokenCount = tag != null ? tag.getInt("tokenCount") : 0;
             String[] disabledReasons = new String[0];
             if (tag != null && tag.contains("disabledReasons")) {
                 ListTag reasonsTag = tag.getList("disabledReasons", net.minecraft.nbt.Tag.TAG_STRING);
@@ -45,7 +47,7 @@ public record ResponsePanelDataPayload(Map<String, Double> attributes, ListTag i
                     disabledReasons[i] = reasonsTag.getString(i);
                 }
             }
-            return new ResponsePanelDataPayload(attributes, items, slotCount, upgradeData, upgradeTargets, modLevel, upgradeExp, upgradePoints, randomPoints, disabledReasons);
+            return new ResponsePanelDataPayload(attributes, items, slotCount, upgradeData, upgradeTargets, modLevel, upgradeExp, upgradePoints, randomPoints, tokenCount, disabledReasons);
         }
 
         @Override
@@ -64,6 +66,7 @@ public record ResponsePanelDataPayload(Map<String, Double> attributes, ListTag i
             tag.putInt("upgradeExp", msg.upgradeExp);
             tag.putInt("upgradePoints", msg.upgradePoints);
             tag.putInt("randomPoints", msg.randomPoints);
+            tag.putInt("tokenCount", msg.tokenCount);
             ListTag reasonsTag = new ListTag();
             if (msg.disabledReasons != null) {
                 for (String s : msg.disabledReasons) {

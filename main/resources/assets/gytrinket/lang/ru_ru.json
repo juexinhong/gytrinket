@@ -1,6 +1,8 @@
 {
   "creative_tab.gytrinket": "Светлая Украшение",
   "key.gytrinket.show_attributes": "Показать атрибуты Светлого Ядра",
+  "container.gytrinket.player_inventory": "Инвентарь игрока",
+  "item.gytrinket.token": "Жетон",
   "key.gytrinket.switch_array": "Переключить массив дронов",
   "key.gytrinket.toggle_execute": "Переключить атрибуцию исполнения",
   "message.gytrinket.execute_enabled": "Атрибуция исполнения: Включена",

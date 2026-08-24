@@ -1,6 +1,8 @@
 {
   "creative_tab.gytrinket": "빛의 장신구",
   "key.gytrinket.show_attributes": "빛의 코어 속성 보기",
+  "container.gytrinket.player_inventory": "플레이어 인벤토리",
+  "item.gytrinket.token": "토큰",
   "key.gytrinket.switch_array": "드론 배열 전환",
   "key.gytrinket.toggle_execute": "처형 속성 전환",
   "message.gytrinket.execute_enabled": "처형 속성: 활성화",

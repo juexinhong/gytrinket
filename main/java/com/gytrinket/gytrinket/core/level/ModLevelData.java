@@ -50,11 +50,13 @@ public class ModLevelData {
 
     /**
      * 获取从当前等级升到下一级所需的经验值
-     * 随机构建系统启用时，所需经验乘以配置的倍率
+     * 随机构建系统启用时，所需经验乘以配置的倍率；
+     * 代币机制启用时取消该经验惩罚（随机池消耗背包代币而非升级点）
      */
     public static int getXpNeededForNextLevel(int currentLevel) {
         int base = getTotalXpForLevel(currentLevel + 1) - getTotalXpForLevel(currentLevel);
-        if (com.gytrinket.gytrinket.config.Config.isRandomBuildEnabled()) {
+        if (com.gytrinket.gytrinket.config.Config.isRandomBuildEnabled()
+                && !com.gytrinket.gytrinket.config.Config.isRandomBuildTokenEnabled()) {
             return base * com.gytrinket.gytrinket.config.Config.getRandomBuildXpMultiplier();
         }
         return base;

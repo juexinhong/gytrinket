@@ -211,6 +211,12 @@ public class QuickEquipEvent {
                 || Config.isTaskmasterItem(item)
                 || Config.isWingmanModuleItem(item)
                 || Config.isSwarmModuleItem(item)
+                || Config.isInterceptorModuleItem(item)
+                || Config.isEvolutionModuleItem(item)
+                || Config.isNanoRegenModuleItem(item)
+                || Config.isShockwaveModuleItem(item)
+                || Config.isFurnaceCoreItem(item)
+                || Config.isGhostFuselageItem(item)
                 || Config.isBodyItem(item);
     }
 

@@ -1,6 +1,8 @@
 {
   "creative_tab.gytrinket": "Lichtpunkt-Schmuck",
   "key.gytrinket.show_attributes": "Lichtpunktkern-Attribute anzeigen",
+  "container.gytrinket.player_inventory": "Spieler-Inventar",
+  "item.gytrinket.token": "Token",
   "key.gytrinket.switch_array": "Drohnen-Array wechseln",
   "key.gytrinket.toggle_execute": "Ausführungsattribut umschalten",
   "message.gytrinket.execute_enabled": "Ausführungsattribut: Aktiviert",

@@ -46,6 +46,8 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
 
     private boolean isAddingItem = false;
     private String addingItemId = "";
+    /** 添加物品输入框的光标位置（0..addingItemId.length()） */
+    private int addingCursorIndex = 0;
 
     private boolean isDraggingItem = false;
     private int dragFromIndex = -1;
@@ -77,6 +79,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
                 button -> {
                     isAddingItem = true;
                     addingItemId = "";
+                    addingCursorIndex = 0;
                 }
         ).bounds(panelX + 5, btnY, 80, 16).renderer(renderer).build());
 
@@ -100,18 +103,45 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
             } else if (keyCode == 256) {
                 isAddingItem = false;
                 addingItemId = "";
+                addingCursorIndex = 0;
                 return true;
-            } else if (keyCode == 259) {
-                if (!addingItemId.isEmpty()) {
-                    addingItemId = addingItemId.substring(0, addingItemId.length() - 1);
+            } else if (keyCode == 259) { // Backspace：删除光标前一字符
+                if (addingCursorIndex > 0) {
+                    addingItemId = addingItemId.substring(0, addingCursorIndex - 1)
+                            + addingItemId.substring(addingCursorIndex);
+                    addingCursorIndex--;
                 }
+                return true;
+            } else if (keyCode == 261) { // Delete：删除光标后一字符
+                if (addingCursorIndex < addingItemId.length()) {
+                    addingItemId = addingItemId.substring(0, addingCursorIndex)
+                            + addingItemId.substring(addingCursorIndex + 1);
+                }
+                return true;
+            } else if (keyCode == 263) { // 左箭头：光标左移
+                if (addingCursorIndex > 0) {
+                    addingCursorIndex--;
+                }
+                return true;
+            } else if (keyCode == 262) { // 右箭头：光标右移
+                if (addingCursorIndex < addingItemId.length()) {
+                    addingCursorIndex++;
+                }
+                return true;
+            } else if (keyCode == 268) { // Home：光标移到开头
+                addingCursorIndex = 0;
+                return true;
+            } else if (keyCode == 269) { // End：光标移到末尾
+                addingCursorIndex = addingItemId.length();
                 return true;
             } else if (keyCode == 86 && hasControlDown()) {
                 String clip = Minecraft.getInstance().keyboardHandler.getClipboard();
                 if (clip != null) {
                     clip = clip.replaceAll("[\\s\\n\\r]", "");
                     if (!clip.isEmpty()) {
-                        addingItemId += clip;
+                        addingItemId = addingItemId.substring(0, addingCursorIndex)
+                                + clip + addingItemId.substring(addingCursorIndex);
+                        addingCursorIndex += clip.length();
                     }
                 }
                 return true;
@@ -154,7 +184,9 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
     public boolean charTyped(char codePoint, int modifiers) {
         if (isAddingItem) {
             if (codePoint != ' ' && codePoint >= 33) {
-                addingItemId += codePoint;
+                addingItemId = addingItemId.substring(0, addingCursorIndex)
+                        + codePoint + addingItemId.substring(addingCursorIndex);
+                addingCursorIndex++;
             }
             return true;
         }
@@ -657,7 +689,29 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
         guiGraphics.drawString(font, Component.translatable("screen.gytrinket.add_item_prompt").getString(),
                 overlayX + 8, overlayY + 8, renderer.getAccentColor());
 
-        guiGraphics.drawString(font, addingItemId + "_", overlayX + 8, overlayY + 28, renderer.getValueColor());
+        int textX = overlayX + 8;
+        int textY = overlayY + 28;
+        guiGraphics.drawString(font, addingItemId, textX, textY, renderer.getValueColor());
+
+        // 光标竖线
+        int caretX = textX + font.width(addingItemId.substring(0, addingCursorIndex));
+        guiGraphics.fill(caretX, textY, caretX + 1, textY + 9, renderer.getAccentColor());
+    }
+
+    /**
+     * 根据鼠标点击的 X 坐标计算输入框光标位置（最近字符边界）。
+     */
+    private int calcCursorIndexFromClick(double mouseX, int textX) {
+        int cursor = addingItemId.length();
+        for (int i = 0; i < addingItemId.length(); i++) {
+            int charStart = textX + font.width(addingItemId.substring(0, i));
+            int charHalf = font.width(String.valueOf(addingItemId.charAt(i))) / 2;
+            if (mouseX < charStart + charHalf) {
+                cursor = i;
+                break;
+            }
+        }
+        return cursor;
     }
 
     @Override
@@ -681,9 +735,17 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
             int overlayH = 60;
             int overlayX = panelX + panelWidth / 2 - overlayW / 2;
             int overlayY = panelY + panelHeight / 2 - overlayH / 2;
+            // 点击输入文本：将光标定位到点击位置
+            int textX = overlayX + 8;
+            int textY = overlayY + 28;
+            if (mouseX >= textX && mouseY >= textY && mouseY < textY + 9) {
+                addingCursorIndex = calcCursorIndexFromClick(mouseX, textX);
+                return true;
+            }
             if (mouseX < overlayX || mouseX >= overlayX + overlayW || mouseY < overlayY || mouseY >= overlayY + overlayH) {
                 isAddingItem = false;
                 addingItemId = "";
+                addingCursorIndex = 0;
             }
             return true;
         }

@@ -33,10 +33,10 @@ public class LightPointCoreMenu extends AbstractContainerMenu {
                 addSlot(new Slot(container, col + row * 9, 8 + col * 20, 18 + row * 20));
             }
         }
-        // 玩家背包：3 行
+        // 玩家背包：3 行（与光点核心容器间距 14px，容纳"玩家背包"分割标签）
         for (int row = 0; row < 3; row++) {
             for (int col = 0; col < 9; col++) {
-                addSlot(new Slot(playerInventory, col + row * 9 + 9, 8 + col * 20, 86 + row * 20));
+                addSlot(new Slot(playerInventory, col + row * 9 + 9, 8 + col * 20, 90 + row * 20));
             }
         }
         // 玩家快捷栏：1 行

@@ -23,17 +23,18 @@ public class KeyInputHandler {
     private static KeyMapping attributeKey;
 
     static {
+        // 默认 H 键：避开 Curios 饰品栏的默认 G 键（key.curios.open.desc），防止按键冲突
         attributeKey = new KeyMapping(
             "key.gytrinket.show_attributes",
             InputConstants.Type.KEYSYM,
-            InputConstants.KEY_G,
+            InputConstants.KEY_H,
             "category.gytrinket.gameplay"
         );
     }
 
     public static void onRegisterKeyMappings(RegisterKeyMappingsEvent event) {
         event.register(attributeKey);
-        gytrinket.LOGGER.info("属性显示按键绑定已注册：G 键");
+        gytrinket.LOGGER.info("属性显示按键绑定已注册：H 键");
     }
 
     @SubscribeEvent

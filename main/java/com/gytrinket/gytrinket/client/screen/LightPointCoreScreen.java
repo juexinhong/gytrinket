@@ -48,6 +48,9 @@ public class LightPointCoreScreen extends AbstractContainerScreen<LightPointCore
     protected void renderLabels(GuiGraphics g, int mouseX, int mouseY) {
         // 蓝青标题（无阴影）
         g.drawString(this.font, this.title, this.titleLabelX, this.titleLabelY, 0xFF4AA8FF, false);
+        // 玩家背包分割标签：位于背包槽区上方（容器槽底 76 下方 3px），颜色与标题一致的蓝色
+        g.drawString(this.font, Component.translatable("container.gytrinket.player_inventory"),
+                8, 79, 0xFF4AA8FF, false);
     }
 
     @Override

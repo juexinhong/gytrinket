@@ -9,6 +9,7 @@ import com.gytrinket.gytrinket.core.entity.construct.drone.behavior.PursuitBehav
 import com.gytrinket.gytrinket.core.entity.construct.drone.behavior.StandbyBehavior;
 import com.gytrinket.gytrinket.core.entity.construct.drone.behavior.FormationBehavior;
 import com.gytrinket.gytrinket.core.entity.construct.drone.behavior.GuardBehavior;
+import com.gytrinket.gytrinket.storage.PlayerStoreUtils;
 
 import java.util.*;
 
@@ -69,18 +70,11 @@ public class DroneArrayType {
         if (required.isEmpty()) {
             return true;
         }
-        com.gytrinket.gytrinket.storage.PlayerStore store =
-                com.gytrinket.gytrinket.storage.PlayerStoreManager.getPlayerStore(playerUUID);
-        if (store == null) {
-            return false;
-        }
+        // 已装备物品 = 光点核心存储 + Curios 饰品栏（光点核心内容扩展）
         Set<String> ownedItemIds = new HashSet<>();
-        for (int i = 0; i < store.getItemHandler().getSlots(); i++) {
-            net.minecraft.world.item.ItemStack stack = store.getItemHandler().getStackInSlot(i);
-            if (!stack.isEmpty()) {
-                if (DisableSystem.isItemDisabled(playerUUID, stack)) continue;
-                ownedItemIds.add(net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()).toString());
-            }
+        for (net.minecraft.world.item.ItemStack stack : PlayerStoreUtils.getEquippedStacks(playerUUID)) {
+            if (DisableSystem.isItemDisabled(playerUUID, stack)) continue;
+            ownedItemIds.add(net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()).toString());
         }
         return ownedItemIds.containsAll(required);
     }

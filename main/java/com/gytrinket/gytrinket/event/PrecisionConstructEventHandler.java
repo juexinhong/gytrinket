@@ -5,14 +5,11 @@ import com.gytrinket.gytrinket.core.attribute.AttributeManager;
 import com.gytrinket.gytrinket.core.defs.DefsManager;
 import com.gytrinket.gytrinket.core.level.ModLevelManager;
 import com.gytrinket.gytrinket.gytrinket;
-import com.gytrinket.gytrinket.storage.PlayerStore;
-import com.gytrinket.gytrinket.storage.PlayerStoreManager;
-import net.minecraft.core.registries.BuiltInRegistries;
+import com.gytrinket.gytrinket.storage.PlayerStoreUtils;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -50,18 +47,8 @@ public class PrecisionConstructEventHandler {
             return false;
         }
 
-        PlayerStore store = PlayerStoreManager.getPlayerStore(playerUUID);
-        if (store == null) {
-            return false;
-        }
-
-        Set<String> ownedItemIds = new HashSet<>();
-        for (int i = 0; i < store.getItemHandler().getSlots(); i++) {
-            net.minecraft.world.item.ItemStack stack = store.getItemHandler().getStackInSlot(i);
-            if (!stack.isEmpty()) {
-                ownedItemIds.add(BuiltInRegistries.ITEM.getKey(stack.getItem()).toString());
-            }
-        }
+        // 已装备物品 = 光点核心存储 + Curios 饰品栏（光点核心内容扩展）
+        Set<String> ownedItemIds = PlayerStoreUtils.getAllEquippedItemIds(playerUUID);
 
         for (String requiredId : requiredItems) {
             if (ownedItemIds.contains(requiredId)) {

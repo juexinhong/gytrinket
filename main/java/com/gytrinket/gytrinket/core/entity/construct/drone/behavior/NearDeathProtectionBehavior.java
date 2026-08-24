@@ -4,8 +4,7 @@ import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.damage.InvincibilityMarkerManager;
 import com.gytrinket.gytrinket.core.shield.DisableSystem;
 import com.gytrinket.gytrinket.core.entity.construct.drone.DroneConstructEntity;
-import com.gytrinket.gytrinket.storage.PlayerStore;
-import com.gytrinket.gytrinket.storage.PlayerStoreManager;
+import com.gytrinket.gytrinket.storage.PlayerStoreUtils;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.item.ItemStack;
@@ -91,12 +90,8 @@ public class NearDeathProtectionBehavior implements IDroneSpecialBehavior {
         if (ownerUUID == null) {
             return false;
         }
-        PlayerStore store = PlayerStoreManager.getPlayerStore(ownerUUID);
-        if (store == null) {
-            return false;
-        }
-        for (int i = 0; i < store.getItemHandler().getSlots(); i++) {
-            ItemStack stack = store.getItemHandler().getStackInSlot(i);
+        // 已装备物品 = 光点核心存储 + Curios 饰品栏（光点核心内容扩展）
+        for (ItemStack stack : PlayerStoreUtils.getEquippedStacks(ownerUUID)) {
             if (!stack.isEmpty() && !DisableSystem.isItemDisabled(ownerUUID, stack) && Config.isNearDeathProtectionItem(stack.getItem())) {
                 return true;
             }

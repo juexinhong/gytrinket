@@ -95,6 +95,14 @@ config="${mod_id}.mixins.json"
     ordering="AFTER"
     side="BOTH"
 
+# Curios 饰品栏可选联动：玩家未安装时饰品栏扩展机制不生效
+[[dependencies.${mod_id}]]
+    modId="curios"
+    type="optional"
+    versionRange="[9.0.0,)"
+    ordering="AFTER"
+    side="BOTH"
+
 # Features are specific properties of the game environment, that you may want to declare you require. This example declares
 # that your mod requires GL version 3.2 or higher. Other features will be added. They are side aware so declaring this won't
 # stop your mod loading on the server for example.

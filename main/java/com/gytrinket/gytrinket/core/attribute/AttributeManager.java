@@ -5,14 +5,11 @@ import com.gytrinket.gytrinket.core.shield.DisableSystem;
 import com.gytrinket.gytrinket.gytrinket;
 import com.gytrinket.gytrinket.event.AttributeDynamicChangeEvent;
 import com.gytrinket.gytrinket.event.PlayerAttributesCalculatedEvent;
-import com.gytrinket.gytrinket.storage.PlayerStore;
-import com.gytrinket.gytrinket.storage.PlayerStoreManager;
+import com.gytrinket.gytrinket.storage.PlayerStoreUtils;
 import com.gytrinket.gytrinket.core.TickScheduler;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.ItemStack;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.common.NeoForge;
@@ -56,7 +53,12 @@ public class AttributeManager {
         ATTRIBUTE_DEFINITIONS.put(name, definition);
 
         if (group != null) {
-            ATTRIBUTE_GROUPS.computeIfAbsent(group, k -> new ArrayList<>()).add(name);
+            // 组列表查重：数据包 registry 每次重进世界都会重新加载并重新注册，
+            // 若不查重会导致组内属性重复累积，getGroupAttribute 累加翻倍（如护盾值 8→16→24）
+            List<String> groupList = ATTRIBUTE_GROUPS.computeIfAbsent(group, k -> new ArrayList<>());
+            if (!groupList.contains(name)) {
+                groupList.add(name);
+            }
         }
 
         gytrinket.LOGGER.info("注册属性: {} (类型: {}, 组: {})", name, type, group);
@@ -204,21 +206,15 @@ public class AttributeManager {
             staticAttrs.put(attrName, new AttributeValueSet());
         }
 
-        PlayerStore store = PlayerStoreManager.getPlayerStore(playerUUID);
-        if (store != null) {
-            for (int i = 0; i < store.getItemHandler().getSlots(); i++) {
-                ItemStack stack = store.getItemHandler().getStackInSlot(i);
-                if (!stack.isEmpty()) {
-                    String itemId = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
-                    ItemAttributeConfig itemConfig = ITEM_ATTRIBUTES.get(itemId);
-                    if (itemConfig != null) {
-                        if (DisableSystem.isItemDisabled(playerUUID, itemId)) {
-                        } else if (processedItems.contains(itemId)) {
-                        } else {
-                            processedItems.add(itemId);
-                            applyItemAttributes(itemConfig, staticAttrs);
-                        }
-                    }
+        // 已装备物品 = 光点核心存储 + Curios 饰品栏（光点核心内容扩展）
+        for (String itemId : PlayerStoreUtils.getAllEquippedItemIds(playerUUID)) {
+            ItemAttributeConfig itemConfig = ITEM_ATTRIBUTES.get(itemId);
+            if (itemConfig != null) {
+                if (DisableSystem.isItemDisabled(playerUUID, itemId)) {
+                } else if (processedItems.contains(itemId)) {
+                } else {
+                    processedItems.add(itemId);
+                    applyItemAttributes(itemConfig, staticAttrs);
                 }
             }
         }

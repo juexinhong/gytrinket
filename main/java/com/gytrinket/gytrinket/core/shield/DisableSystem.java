@@ -5,8 +5,7 @@ import com.gytrinket.gytrinket.core.attribute.BodyTypeManager;
 import com.gytrinket.gytrinket.core.defs.DefsManager;
 import com.gytrinket.gytrinket.core.shield.type.ShieldTypeManager;
 import com.gytrinket.gytrinket.gytrinket;
-import com.gytrinket.gytrinket.storage.PlayerStore;
-import com.gytrinket.gytrinket.storage.PlayerStoreManager;
+import com.gytrinket.gytrinket.storage.PlayerStoreUtils;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
@@ -70,16 +69,8 @@ public class DisableSystem {
         // 这确保了无论调用时机（重生、登录、属性变化），都从干净状态开始
         ShieldTypeManager.clearPlayerShieldTypes(playerUUID);
 
-        Set<String> storeItemIds = new LinkedHashSet<>();
-        PlayerStore store = PlayerStoreManager.getPlayerStore(playerUUID);
-        if (store != null) {
-            for (int i = 0; i < store.getItemHandler().getSlots(); i++) {
-                ItemStack stack = store.getItemHandler().getStackInSlot(i);
-                if (!stack.isEmpty()) {
-                    storeItemIds.add(BuiltInRegistries.ITEM.getKey(stack.getItem()).toString());
-                }
-            }
-        }
+        // 已装备物品 = 光点核心存储 + Curios 饰品栏（光点核心内容扩展）
+        Set<String> storeItemIds = PlayerStoreUtils.getAllEquippedItemIds(playerUUID);
 
         Set<String> disabledItems = new HashSet<>();
 
@@ -199,6 +190,80 @@ public class DisableSystem {
         if (stack.isEmpty()) return false;
         String itemId = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
         return isItemDisabled(playerUUID, itemId);
+    }
+
+    /**
+     * 获取物品被禁用的原因（未禁用返回 null）
+     * 用于光点核心界面显示禁用提示
+     */
+    public static String getDisabledReason(UUID playerUUID, String itemId) {
+        if (!isItemDisabled(playerUUID, itemId)) return null;
+
+        // 已装备物品 = 光点核心存储 + Curios 饰品栏（光点核心内容扩展）
+        Set<String> storeItemIds = PlayerStoreUtils.getAllEquippedItemIds(playerUUID);
+
+        // 互斥：某已装备物品禁用了它
+        for (Map.Entry<String, Set<String>> e : ITEM_DISABLE_TARGETS.entrySet()) {
+            if (storeItemIds.contains(e.getKey()) && e.getValue().contains(itemId)) {
+                return "与 " + itemDisplayName(e.getKey()) + " 互斥";
+            }
+        }
+        // 类别禁用：某已装备物品禁用了它所属的整个类别
+        for (Map.Entry<String, Set<String>> e : ITEM_DISABLE_CATEGORIES.entrySet()) {
+            if (!storeItemIds.contains(e.getKey())) continue;
+            for (String category : e.getValue()) {
+                if (Config.resolveDisableCategory(category).contains(itemId)) {
+                    return "被 " + itemDisplayName(e.getKey()) + " 禁用的类别";
+                }
+            }
+        }
+        // 依赖未满足（dependsOn，OR 依赖）
+        Set<String> deps = ITEM_DEPENDENCIES.get(itemId);
+        if (deps != null && !deps.isEmpty()) {
+            boolean anyAvailable = false;
+            for (String dep : deps) {
+                if (storeItemIds.contains(dep) && !isItemDisabled(playerUUID, dep)) {
+                    anyAvailable = true;
+                    break;
+                }
+            }
+            if (!anyAvailable) {
+                return "依赖未满足，需要 " + joinDisplayNames(deps);
+            }
+        }
+        // 依赖未满足（dependsOnAll，AND/OR 组）
+        List<List<String>> groups = ITEM_DEPENDENCIES_ALL.get(itemId);
+        if (groups != null && !groups.isEmpty()) {
+            for (List<String> group : groups) {
+                boolean anyInGroup = false;
+                for (String dep : group) {
+                    Set<String> depIds = dep.startsWith("category:")
+                            ? Config.resolveDependencyCategory(dep.substring("category:".length()))
+                            : Set.of(dep);
+                    for (String id : depIds) {
+                        if (storeItemIds.contains(id) && !isItemDisabled(playerUUID, id)) {
+                            anyInGroup = true;
+                            break;
+                        }
+                    }
+                    if (anyInGroup) break;
+                }
+                if (!anyInGroup) {
+                    return "依赖未满足，需要 " + joinDisplayNames(group);
+                }
+            }
+        }
+        return "已禁用";
+    }
+
+    private static String itemDisplayName(String itemId) {
+        net.minecraft.world.item.Item item = BuiltInRegistries.ITEM.get(net.minecraft.resources.ResourceLocation.parse(itemId));
+        return item != null && item != net.minecraft.world.item.Items.AIR
+                ? item.getName(net.minecraft.world.item.ItemStack.EMPTY).getString() : itemId;
+    }
+
+    private static String joinDisplayNames(java.util.Collection<String> ids) {
+        return ids.stream().map(DisableSystem::itemDisplayName).collect(java.util.stream.Collectors.joining(" 或 "));
     }
 
     public static Set<String> getDisabledItems(UUID playerUUID) {

@@ -1,15 +1,13 @@
 package com.gytrinket.gytrinket.core.attribute;
 
 import com.gytrinket.gytrinket.config.Config;
-import com.gytrinket.gytrinket.storage.PlayerStore;
-import com.gytrinket.gytrinket.storage.PlayerStoreManager;
+import com.gytrinket.gytrinket.storage.PlayerStoreUtils;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.items.ItemStackHandler;
 import net.neoforged.neoforge.server.ServerLifecycleHooks;
 
 import java.util.*;
@@ -17,7 +15,7 @@ import java.util.*;
 /**
  * 机身冲突管理器
  * <p>
- * 配置中定义的机身物品，玩家光点核心中只生效第一个，后续的机身物品被禁用。
+ * 配置中定义的机身物品，玩家已装备物品（光点核心存储 + Curios 饰品栏）中只生效第一个，后续的机身物品被禁用。
  */
 public class BodyTypeManager {
 
@@ -44,15 +42,8 @@ public class BodyTypeManager {
         Set<String> disabledItemIds = new HashSet<>();
         boolean foundFirst = false;
 
-        PlayerStore store = PlayerStoreManager.getPlayerStore(player);
-        if (store == null) {
-            return disabledItemIds;
-        }
-
-        ItemStackHandler handler = store.getItemHandler();
-
-        for (int i = 0; i < handler.getSlots(); i++) {
-            ItemStack stack = handler.getStackInSlot(i);
+        // 已装备物品 = 光点核心存储 + Curios 饰品栏（光点核心内容扩展）
+        for (ItemStack stack : PlayerStoreUtils.getAllEquippedStacks(player)) {
             if (stack.isEmpty()) continue;
 
             Item item = stack.getItem();

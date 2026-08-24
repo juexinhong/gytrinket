@@ -7,6 +7,7 @@ import com.gytrinket.gytrinket.event.QuickEquipEvent;
 import com.gytrinket.gytrinket.gytrinket;
 import com.gytrinket.gytrinket.storage.PlayerStore;
 import com.gytrinket.gytrinket.storage.PlayerStoreManager;
+import com.gytrinket.gytrinket.storage.PlayerStoreUtils;
 import com.gytrinket.gytrinket.storage.datacenter.PlayerDataCenter;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
@@ -214,17 +215,11 @@ public class RandomBuildManager {
     public static List<String> generatePool(ServerPlayer player, Set<String> avoid) {
         if (!Config.isRandomBuildEnabled()) return List.of();
 
-        PlayerStore store = PlayerStoreManager.getPlayerStore(player);
+        // 已装备物品 = 光点核心存储 + Curios 饰品栏（光点核心内容扩展）
         Set<String> coreIds = new HashSet<>();
-        if (store != null) {
-            ItemStackHandler handler = store.getItemHandler();
-            for (int i = 0; i < handler.getSlots(); i++) {
-                ItemStack stack = handler.getStackInSlot(i);
-                if (!stack.isEmpty()) {
-                    ResourceLocation rl = BuiltInRegistries.ITEM.getKey(stack.getItem());
-                    if (rl != null) coreIds.add(rl.toString());
-                }
-            }
+        for (ItemStack stack : PlayerStoreUtils.getAllEquippedStacks(player)) {
+            ResourceLocation rl = BuiltInRegistries.ITEM.getKey(stack.getItem());
+            if (rl != null) coreIds.add(rl.toString());
         }
 
         List<String> pool = new ArrayList<>();

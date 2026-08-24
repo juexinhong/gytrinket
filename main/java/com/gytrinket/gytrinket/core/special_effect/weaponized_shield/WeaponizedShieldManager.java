@@ -9,8 +9,7 @@ import com.gytrinket.gytrinket.core.shield_transfer.ShieldTransferManager;
 import com.gytrinket.gytrinket.core.vulnerability.VulnerabilityApplyEvent;
 import com.gytrinket.gytrinket.core.vulnerability.VulnerabilityManager;
 import com.gytrinket.gytrinket.event.PlayerAttributesCalculatedEvent;
-import com.gytrinket.gytrinket.storage.PlayerStore;
-import com.gytrinket.gytrinket.storage.PlayerStoreManager;
+import com.gytrinket.gytrinket.storage.PlayerStoreUtils;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -172,22 +171,13 @@ public class WeaponizedShieldManager {
     public static void onAttributesCalculated(PlayerAttributesCalculatedEvent event) {
         UUID playerUUID = event.getPlayerUUID();
 
-        PlayerStore store = PlayerStoreManager.getPlayerStore(playerUUID);
-        if (store == null) {
-            PLAYER_HAS_WEAPONIZED_SHIELD.remove(playerUUID);
-            clearAllVulnerabilities(playerUUID);
-            return;
-        }
-
         boolean hasWeaponizedShield = false;
 
-        for (int i = 0; i < store.getItemHandler().getSlots(); i++) {
-            ItemStack stack = store.getItemHandler().getStackInSlot(i);
-            if (!stack.isEmpty()) {
-                if (!DisableSystem.isItemDisabled(playerUUID, stack) && Config.isWeaponizedShieldItem(stack.getItem())) {
-                    hasWeaponizedShield = true;
-                    break;
-                }
+        // 已装备物品 = 光点核心存储 + Curios 饰品栏（光点核心内容扩展）
+        for (ItemStack stack : PlayerStoreUtils.getEquippedStacks(playerUUID)) {
+            if (!DisableSystem.isItemDisabled(playerUUID, stack) && Config.isWeaponizedShieldItem(stack.getItem())) {
+                hasWeaponizedShield = true;
+                break;
             }
         }
 

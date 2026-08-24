@@ -6,8 +6,7 @@ import com.gytrinket.gytrinket.event.PlayerAttributesCalculatedEvent;
 import com.gytrinket.gytrinket.core.entity.construct.ConstructBuilder;
 import com.gytrinket.gytrinket.core.entity.construct.ConstructManager;
 import com.gytrinket.gytrinket.core.entity.construct.ConstructType;
-import com.gytrinket.gytrinket.storage.PlayerStore;
-import com.gytrinket.gytrinket.storage.PlayerStoreManager;
+import com.gytrinket.gytrinket.storage.PlayerStoreUtils;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -141,35 +140,27 @@ public class DroneManager {
     public static void onAttributesCalculated(PlayerAttributesCalculatedEvent event) {
         UUID playerUUID = event.getPlayerUUID();
 
-        PlayerStore store = PlayerStoreManager.getPlayerStore(playerUUID);
-        if (store == null) {
-            clearPlayerCache(playerUUID);
-            return;
-        }
-
         boolean hasDroneModule = false;
         boolean hasAssaultModule = false;
         boolean hasDefenseModule = false;
         boolean hasCommanderModule = false;
 
-        for (int i = 0; i < store.getItemHandler().getSlots(); i++) {
-            ItemStack stack = store.getItemHandler().getStackInSlot(i);
-            if (!stack.isEmpty()) {
-                if (DisableSystem.isItemDisabled(playerUUID, stack)) continue;
-                var item = stack.getItem();
+        // 已装备物品 = 光点核心存储 + Curios 饰品栏（光点核心内容扩展）
+        for (ItemStack stack : PlayerStoreUtils.getEquippedStacks(playerUUID)) {
+            if (DisableSystem.isItemDisabled(playerUUID, stack)) continue;
+            var item = stack.getItem();
 
-                if (Config.isDroneModuleItem(item)) {
-                    hasDroneModule = true;
-                }
-                if (Config.isAssaultDroneModuleItem(item)) {
-                    hasAssaultModule = true;
-                }
-                if (Config.isDefenseDroneModuleItem(item)) {
-                    hasDefenseModule = true;
-                }
-                if (Config.isCommanderItem(item)) {
-                    hasCommanderModule = true;
-                }
+            if (Config.isDroneModuleItem(item)) {
+                hasDroneModule = true;
+            }
+            if (Config.isAssaultDroneModuleItem(item)) {
+                hasAssaultModule = true;
+            }
+            if (Config.isDefenseDroneModuleItem(item)) {
+                hasDefenseModule = true;
+            }
+            if (Config.isCommanderItem(item)) {
+                hasCommanderModule = true;
             }
         }
 

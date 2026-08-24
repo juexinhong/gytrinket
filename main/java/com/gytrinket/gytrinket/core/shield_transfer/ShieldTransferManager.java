@@ -11,8 +11,7 @@ import com.gytrinket.gytrinket.core.entity.construct.swarm.SwarmConstructTypes;
 import com.gytrinket.gytrinket.core.shield_transfer.event.PlayerConstructListChangedEvent;
 import com.gytrinket.gytrinket.core.shield_transfer.event.ShieldTransferRebuiltEvent;
 import com.gytrinket.gytrinket.event.PlayerAttributesCalculatedEvent;
-import com.gytrinket.gytrinket.storage.PlayerStore;
-import com.gytrinket.gytrinket.storage.PlayerStoreManager;
+import com.gytrinket.gytrinket.storage.PlayerStoreUtils;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.server.level.ServerPlayer;
@@ -393,22 +392,13 @@ public class ShieldTransferManager {
     public static void onAttributesCalculated(PlayerAttributesCalculatedEvent event) {
         UUID playerUUID = event.getPlayerUUID();
 
-        PlayerStore store = PlayerStoreManager.getPlayerStore(playerUUID);
-        if (store == null) {
-            PLAYER_HAS_SHIELD_TRANSFER_ITEM.remove(playerUUID);
-            clearTransferForPlayer(playerUUID);
-            return;
-        }
-
         boolean hasShieldTransferItem = false;
 
-        for (int i = 0; i < store.getItemHandler().getSlots(); i++) {
-            ItemStack stack = store.getItemHandler().getStackInSlot(i);
-            if (!stack.isEmpty()) {
-                if (!DisableSystem.isItemDisabled(playerUUID, stack) && Config.isShieldTransferItem(stack.getItem())) {
-                    hasShieldTransferItem = true;
-                    break;
-                }
+        // 已装备物品 = 光点核心存储 + Curios 饰品栏（光点核心内容扩展）
+        for (ItemStack stack : PlayerStoreUtils.getEquippedStacks(playerUUID)) {
+            if (!DisableSystem.isItemDisabled(playerUUID, stack) && Config.isShieldTransferItem(stack.getItem())) {
+                hasShieldTransferItem = true;
+                break;
             }
         }
 

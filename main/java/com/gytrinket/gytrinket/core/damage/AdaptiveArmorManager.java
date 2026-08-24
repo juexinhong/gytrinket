@@ -4,8 +4,7 @@ import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
 import com.gytrinket.gytrinket.core.shield.DisableSystem;
 import com.gytrinket.gytrinket.event.PlayerAttributesCalculatedEvent;
-import com.gytrinket.gytrinket.storage.PlayerStore;
-import com.gytrinket.gytrinket.storage.PlayerStoreManager;
+import com.gytrinket.gytrinket.storage.PlayerStoreUtils;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
@@ -206,29 +205,20 @@ public class AdaptiveArmorManager {
     public static void onAttributesCalculated(PlayerAttributesCalculatedEvent event) {
         UUID playerUUID = event.getPlayerUUID();
 
-        PlayerStore store = PlayerStoreManager.getPlayerStore(playerUUID);
-        if (store == null) {
-            PLAYER_HAS_ADAPTIVE_ARMOR.remove(playerUUID);
-            PLAYER_HAS_ADAPTIVE_ARMOR_SHIELD_EFFECT.remove(playerUUID);
-            return;
-        }
-
         boolean hasAdaptiveArmor = false;
         boolean hasShieldEffect = false;
 
-        for (int i = 0; i < store.getItemHandler().getSlots(); i++) {
-            ItemStack stack = store.getItemHandler().getStackInSlot(i);
-            if (!stack.isEmpty()) {
-                if (DisableSystem.isItemDisabled(playerUUID, stack)) continue;
-                if (Config.isAdaptiveArmorItem(stack.getItem())) {
-                    hasAdaptiveArmor = true;
-                }
-                if (Config.isAdaptiveArmorShieldEffectItem(stack.getItem())) {
-                    hasShieldEffect = true;
-                }
-                if (hasAdaptiveArmor && hasShieldEffect) {
-                    break;
-                }
+        // 已装备物品 = 光点核心存储 + Curios 饰品栏（光点核心内容扩展）
+        for (ItemStack stack : PlayerStoreUtils.getEquippedStacks(playerUUID)) {
+            if (DisableSystem.isItemDisabled(playerUUID, stack)) continue;
+            if (Config.isAdaptiveArmorItem(stack.getItem())) {
+                hasAdaptiveArmor = true;
+            }
+            if (Config.isAdaptiveArmorShieldEffectItem(stack.getItem())) {
+                hasShieldEffect = true;
+            }
+            if (hasAdaptiveArmor && hasShieldEffect) {
+                break;
             }
         }
 

@@ -9,8 +9,7 @@ import com.gytrinket.gytrinket.core.shield_transfer.ShieldTransferManager;
 import com.gytrinket.gytrinket.event.ShieldBreakEvent;
 import com.gytrinket.gytrinket.gytrinket;
 import com.gytrinket.gytrinket.network.NetworkHandler;
-import com.gytrinket.gytrinket.storage.PlayerStore;
-import com.gytrinket.gytrinket.storage.PlayerStoreManager;
+import com.gytrinket.gytrinket.storage.PlayerStoreUtils;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.LivingEntity;
@@ -74,13 +73,8 @@ public class ExplosiveShieldEffect {
     }
 
     private static boolean hasExplosiveShieldItem(Player player) {
-        PlayerStore store = PlayerStoreManager.getPlayerStore(player.getUUID());
-        if (store == null) {
-            return false;
-        }
-
-        for (int i = 0; i < store.getItemHandler().getSlots(); i++) {
-            ItemStack stack = store.getItemHandler().getStackInSlot(i);
+        // 已装备物品 = 光点核心存储 + Curios 饰品栏（光点核心内容扩展）
+        for (ItemStack stack : PlayerStoreUtils.getAllEquippedStacks(player)) {
             if (!stack.isEmpty()) {
                 if (!DisableSystem.isItemDisabled(player.getUUID(), stack) && Config.isExplosiveShieldItem(stack.getItem())) {
                     return true;

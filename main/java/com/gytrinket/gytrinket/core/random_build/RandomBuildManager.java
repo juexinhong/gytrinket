@@ -9,6 +9,8 @@ import com.gytrinket.gytrinket.storage.PlayerStore;
 import com.gytrinket.gytrinket.storage.PlayerStoreManager;
 import com.gytrinket.gytrinket.storage.PlayerStoreUtils;
 import com.gytrinket.gytrinket.storage.datacenter.PlayerDataCenter;
+import net.minecraft.advancements.AdvancementHolder;
+import net.minecraft.advancements.critereon.InventoryChangeTrigger;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
@@ -29,7 +31,7 @@ import java.util.UUID;
 /**
  * 随机构建系统
  *
- * 启用后玩家面板经验条上方会出现 3x3 随机池，
+ * 启用后玩家面板经验条上方会出现 7 格（六边形排列）随机池，
  * 玩家消耗 1 个升级点即可将随机物品装备到光点核心。
  *
  * 随机池优先级：
@@ -45,7 +47,7 @@ import java.util.UUID;
  */
 public class RandomBuildManager {
 
-    public static final int POOL_SIZE = 9;
+    public static final int POOL_SIZE = 7;
     /** 兑换一件随机物品消耗的升级点 */
     public static final int EQUIP_COST = 1;
 
@@ -378,9 +380,53 @@ public class RandomBuildManager {
             }
         }
 
+        // 装备成功：物品直接进入光点核心（绕过玩家背包），手动触发对应物品的"获得物品"进度
+        triggerItemAdvancements(player, new ItemStack(item, 1));
+
         CACHED_POOLS.remove(uuid);
         clearStoredPool(uuid);
         return true;
+    }
+
+    /**
+     * 触发该物品对应的"获得物品"进度。
+     * <p>
+     * 原版 {@link InventoryChangeTrigger}（inventory_changed）在物品进入玩家背包时触发；
+     * 随机构建池将物品直接装备到光点核心存储，不经过背包，因此需要手动遍历进度，
+     * 对 criterion 中 inventory_changed 条件匹配该物品的进度调用 award
+     * （award 内部会校验前置进度，前置未满足时自动忽略）。
+     */
+    public static void triggerItemAdvancements(ServerPlayer player, ItemStack stack) {
+        if (stack.isEmpty()) return;
+        int matched = 0;
+        for (AdvancementHolder holder : player.server.getAdvancements().getAllAdvancements()) {
+            for (var criterionEntry : holder.value().criteria().entrySet()) {
+                net.minecraft.advancements.Criterion<?> criterion = criterionEntry.getValue();
+                if (criterion.trigger() instanceof InventoryChangeTrigger
+                        && criterion.triggerInstance() instanceof InventoryChangeTrigger.TriggerInstance t
+                        && matchesInventoryTrigger(t, stack)) {
+                    matched++;
+                    boolean awarded = player.getAdvancements().award(holder, criterionEntry.getKey());
+                    com.gytrinket.gytrinket.gytrinket.LOGGER.info("进度触发：{} criterion={} 物品={} award={}",
+                            holder.id(), criterionEntry.getKey(), stack.getItem(), awarded);
+                }
+            }
+        }
+        if (matched > 0) {
+            com.gytrinket.gytrinket.gytrinket.LOGGER.info("进度触发扫描：物品={} 匹配 {} 个 criterion", stack.getItem(), matched);
+        } else {
+            com.gytrinket.gytrinket.gytrinket.LOGGER.info("进度触发扫描：物品={} 未匹配到 inventory_changed criterion", stack.getItem());
+        }
+    }
+
+    /** 判断 inventory_changed 条件的物品谓词列表是否匹配该物品（忽略 count/slots 约束） */
+    private static boolean matchesInventoryTrigger(InventoryChangeTrigger.TriggerInstance t, ItemStack stack) {
+        for (net.minecraft.advancements.critereon.ItemPredicate p : t.items()) {
+            if (p.test(stack)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** 解析配置中的代币物品；无效配置返回 null */

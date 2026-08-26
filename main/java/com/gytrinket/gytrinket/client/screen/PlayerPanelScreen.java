@@ -364,26 +364,38 @@ public class PlayerPanelScreen extends AbstractPanelScreen {
         }
     }
 
-    // ===== 随机构建随机池（右栏经验条上方 3x3） =====
-    private static final int POOL_COLS = 3;
+    // ===== 随机构建随机池（右栏经验条上方 7 格六边形排列） =====
     private static final int POOL_SIZE = 18;
     private static final int POOL_STEP = 20;
-    private static final int POOL_GRID = POOL_COLS * POOL_STEP - 2; // 58
+    /** 六边形每行格数：第一/三排 2 格居中，第二排 3 格 */
+    private static final int[] POOL_ROW_COLS = {2, 3, 2};
+    /** 最宽行（3 格）的宽度 */
+    private static final int POOL_GRID = 3 * POOL_STEP - 2; // 58
+    private static final int POOL_SLOTS = 7;
 
     private int poolX0() { return rightColX() + (rightColWidth() - POOL_GRID) / 2; }
     private int poolY0() { return bodyTop() + 24; }
+
+    /** 行内格数（超出行宽按最宽行处理） */
+    private static int poolRowCols(int row) {
+        return row >= 0 && row < POOL_ROW_COLS.length ? POOL_ROW_COLS[row] : 0;
+    }
 
     private int poolIndexAt(double mouseX, double mouseY) {
         if (!Config.isRandomBuildEnabled()) return -1;
         int x0 = poolX0();
         int y0 = poolY0();
-        for (int i = 0; i < randomPool.size() && i < POOL_COLS * POOL_COLS; i++) {
-            int col = i % POOL_COLS;
-            int row = i / POOL_COLS;
-            int sx = x0 + col * POOL_STEP;
-            int sy = y0 + row * POOL_STEP;
-            if (mouseX >= sx && mouseX < sx + POOL_SIZE && mouseY >= sy && mouseY < sy + POOL_SIZE) {
-                return i;
+        int idx = 0;
+        for (int row = 0; row < POOL_ROW_COLS.length; row++) {
+            int cols = poolRowCols(row);
+            int rowX0 = x0 + (3 - cols) * POOL_STEP / 2; // 居中对齐
+            for (int col = 0; col < cols; col++) {
+                int sx = rowX0 + col * POOL_STEP;
+                int sy = y0 + row * POOL_STEP;
+                if (mouseX >= sx && mouseX < sx + POOL_SIZE && mouseY >= sy && mouseY < sy + POOL_SIZE) {
+                    return idx;
+                }
+                idx++;
             }
         }
         return -1;
@@ -407,21 +419,27 @@ public class PlayerPanelScreen extends AbstractPanelScreen {
         renderer.drawTitleUnderline(g, colX + 2, bodyTop() + 9, 56);
 
         hoveredPoolIndex = -1;
-        for (int i = 0; i < randomPool.size() && i < POOL_COLS * POOL_COLS; i++) {
-            int col = i % POOL_COLS;
-            int row = i / POOL_COLS;
-            int sx = x0 + col * POOL_STEP;
-            int sy = y0 + row * POOL_STEP;
+        int idx = 0;
+        outer:
+        for (int row = 0; row < POOL_ROW_COLS.length; row++) {
+            int cols = poolRowCols(row);
+            int rowX0 = x0 + (3 - cols) * POOL_STEP / 2; // 居中对齐
+            for (int col = 0; col < cols; col++) {
+                if (idx >= randomPool.size() || idx >= POOL_SLOTS) break outer;
+                int sx = rowX0 + col * POOL_STEP;
+                int sy = y0 + row * POOL_STEP;
 
-            boolean hovered = mouseX >= sx && mouseX < sx + POOL_SIZE && mouseY >= sy && mouseY < sy + POOL_SIZE;
-            renderer.drawSlot(g, sx, sy, POOL_SIZE, POOL_SIZE, hovered);
+                boolean hovered = mouseX >= sx && mouseX < sx + POOL_SIZE && mouseY >= sy && mouseY < sy + POOL_SIZE;
+                renderer.drawSlot(g, sx, sy, POOL_SIZE, POOL_SIZE, hovered);
 
-            net.minecraft.world.item.Item item = net.minecraft.core.registries.BuiltInRegistries.ITEM
-                .get(net.minecraft.resources.ResourceLocation.parse(randomPool.get(i)));
-            if (item != null && item != net.minecraft.world.item.Items.AIR) {
-                g.renderItem(new ItemStack(item), sx + 1, sy + 1);
+                net.minecraft.world.item.Item item = net.minecraft.core.registries.BuiltInRegistries.ITEM
+                    .get(net.minecraft.resources.ResourceLocation.parse(randomPool.get(idx)));
+                if (item != null && item != net.minecraft.world.item.Items.AIR) {
+                    g.renderItem(new ItemStack(item), sx + 1, sy + 1);
+                }
+                if (hovered) hoveredPoolIndex = idx;
+                idx++;
             }
-            if (hovered) hoveredPoolIndex = i;
         }
     }
 

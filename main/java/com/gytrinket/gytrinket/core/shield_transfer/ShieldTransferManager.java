@@ -12,17 +12,24 @@ import com.gytrinket.gytrinket.core.shield_transfer.event.PlayerConstructListCha
 import com.gytrinket.gytrinket.core.shield_transfer.event.ShieldTransferRebuiltEvent;
 import com.gytrinket.gytrinket.event.PlayerAttributesCalculatedEvent;
 import com.gytrinket.gytrinket.storage.PlayerStoreUtils;
+import net.minecraft.core.component.DataComponentType;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.TamableAnimal;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent;
 import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.server.ServerLifecycleHooks;
@@ -37,11 +44,195 @@ public class ShieldTransferManager {
     private static final Map<UUID, Set<ShieldTransferData>> PLAYER_TO_TRANSFERS = new ConcurrentHashMap<>();
     private static final Map<UUID, UUID> ENTITY_TO_PLAYER = new ConcurrentHashMap<>();
     private static final Set<UUID> PLAYER_HAS_SHIELD_TRANSFER_ITEM = new HashSet<>();
+    /**
+     * 神龛复活补标签队列：女仆主人UUID -> 标签owner。
+     * 拦截神龛右键时若胶片内女仆NBT携带护盾移植标签，登记此队列；
+     * 复活女仆加入世界时凭此队列补打标签（女仆模组的 filmToMaid 不会还原持久化数据）。
+     */
+    private static final Map<UUID, UUID> PENDING_SHRINE_RE_TAG = new ConcurrentHashMap<>();
+
+    /** 女仆模组的胶片/魂符等存储物品数据组件与神龛标识（仅按注册ID识别，不引用女仆模组类） */
+    private static final String MAID_MOD_ID = "touhou_little_maid";
+    private static final String MAID_INFO_COMPONENT = "maid_info";
+    private static final String MAID_SHRINE_BLOCK = "shrine";
+    private static final String MAID_SHRINE_STORAGE_KEY = "StorageItem";
 
     private static final String NBT_TRANSFER_LIST = "gytrinket.shield_transfers";
     private static final String DYNAMIC_ATTR_NAMESPACE = "shield_transfer";
 
+    /** 实体持久化NBT上的护盾移植标签键（随实体保存/加载/复制而保留，作为保护身份的依据） */
+    private static final String ENTITY_TAG_KEY = "gytrinket.shield_transfer";
+    private static final String ENTITY_TAG_OWNER = "owner";
+
     private ShieldTransferManager() {}
+
+    // ===== 实体标签读写 =====
+
+    /**
+     * 读取女仆模组存储物品（胶片/魂符等）内 maid_info 数据组件中的护盾移植标签owner；
+     * 无标签返回 null。仅按数据组件注册ID读取，不引用女仆模组类。
+     */
+    private static UUID readMaidInfoTagOwner(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) {
+            return null;
+        }
+        DataComponentType<?> compType = BuiltInRegistries.DATA_COMPONENT_TYPE
+                .get(ResourceLocation.fromNamespaceAndPath(MAID_MOD_ID, MAID_INFO_COMPONENT));
+        if (compType == null || !stack.has(compType)) {
+            return null;
+        }
+        Object comp = stack.get(compType);
+        if (!(comp instanceof CustomData customData)) {
+            return null;
+        }
+        CompoundTag maidNbt = customData.copyTag();
+        if (!maidNbt.contains("NeoForgeData", 10)) {
+            return null;
+        }
+        CompoundTag forgeData = maidNbt.getCompound("NeoForgeData");
+        if (!forgeData.contains(ENTITY_TAG_KEY, 10)) {
+            return null;
+        }
+        CompoundTag tag = forgeData.getCompound(ENTITY_TAG_KEY);
+        if (tag.contains(ENTITY_TAG_OWNER)) {
+            return tag.getUUID(ENTITY_TAG_OWNER);
+        }
+        return null;
+    }
+
+    /**
+     * 拦截女仆模组神龛右键（不引用女仆模组类，仅按方块注册ID识别）。
+     * 若神龛内的胶片携带护盾移植标签，登记补标签队列，
+     * 待神龛复活的女仆加入世界时补打标签（filmToMaid 不会还原持久化数据）。
+     */
+    @SubscribeEvent
+    public static void onShrineRightClick(PlayerInteractEvent.RightClickBlock event) {
+        if (event.getLevel().isClientSide()) {
+            return;
+        }
+        Player player = event.getEntity();
+        if (player == null || player.isShiftKeyDown() || !player.getMainHandItem().isEmpty()) {
+            return;
+        }
+        ResourceLocation blockId = BuiltInRegistries.BLOCK.getKey(event.getLevel().getBlockState(event.getPos()).getBlock());
+        if (!MAID_MOD_ID.equals(blockId.getNamespace()) || !MAID_SHRINE_BLOCK.equals(blockId.getPath())) {
+            return;
+        }
+        // 从神龛方块实体持久化数据读取胶片（TileEntityShrine 将 StorageItem 存在 getPersistentData()）
+        BlockEntity be = event.getLevel().getBlockEntity(event.getPos());
+        if (be == null) {
+            return;
+        }
+        ItemStack film = readShrineFilm(be);
+        if (film == null || film.isEmpty()) {
+            return;
+        }
+        UUID tagOwner = readMaidInfoTagOwner(film);
+        if (tagOwner == null) {
+            return;
+        }
+        // 以复活后女仆的主人（胶片内 Owner）为键登记；读不到则用右键玩家
+        UUID maidOwner = readMaidInfoOwner(film);
+        UUID pendingKey = maidOwner != null ? maidOwner : player.getUUID();
+        PENDING_SHRINE_RE_TAG.put(pendingKey, tagOwner);
+        gytrinket.LOGGER.debug("[ShieldTransfer] 神龛胶片含护盾标签: 女仆主人={} 标签owner={} → 登记补标签",
+                pendingKey, tagOwner);
+    }
+
+    /**
+     * 从神龛方块实体的持久化数据中读取胶片（ItemStackHandler 序列化格式，取 slot 0）。
+     */
+    private static ItemStack readShrineFilm(BlockEntity be) {
+        CompoundTag handlerTag = be.getPersistentData().getCompound(MAID_SHRINE_STORAGE_KEY);
+        if (handlerTag.isEmpty()) {
+            return ItemStack.EMPTY;
+        }
+        ListTag items = handlerTag.getList("Items", 10);
+        Level level = be.getLevel();
+        if (level == null) {
+            return ItemStack.EMPTY;
+        }
+        for (int i = 0; i < items.size(); i++) {
+            CompoundTag itemTag = items.getCompound(i);
+            if (itemTag.getByte("Slot") == 0) {
+                return ItemStack.parse(level.registryAccess(), itemTag).orElse(ItemStack.EMPTY);
+            }
+        }
+        return ItemStack.EMPTY;
+    }
+
+    /**
+     * 读取胶片 maid_info 中女仆的主人（TamableAnimal 的 Owner UUID）。
+     */
+    private static UUID readMaidInfoOwner(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) {
+            return null;
+        }
+        DataComponentType<?> compType = BuiltInRegistries.DATA_COMPONENT_TYPE
+                .get(ResourceLocation.fromNamespaceAndPath(MAID_MOD_ID, MAID_INFO_COMPONENT));
+        if (compType == null || !stack.has(compType)) {
+            return null;
+        }
+        Object comp = stack.get(compType);
+        if (!(comp instanceof CustomData customData)) {
+            return null;
+        }
+        CompoundTag maidNbt = customData.copyTag();
+        if (maidNbt.contains("Owner", 11)) {
+            return maidNbt.getUUID("Owner");
+        }
+        return null;
+    }
+
+    /**
+     * 为实体打上护盾移植标签（记录所属玩家）。
+     * 标签写入实体持久化NBT，实体被复制/重建（UUID变化）时仍随NBT保留，
+     * 从而在实体加入世界时重新登记保护，避免因UUID变化丢失保护。
+     */
+    private static void setEntityTransferTag(LivingEntity entity, UUID ownerUUID) {
+        if (entity == null) {
+            return;
+        }
+        CompoundTag tag = entity.getPersistentData().getCompound(ENTITY_TAG_KEY);
+        tag.putUUID(ENTITY_TAG_OWNER, ownerUUID);
+        entity.getPersistentData().put(ENTITY_TAG_KEY, tag);
+    }
+
+    private static void removeEntityTransferTag(LivingEntity entity) {
+        if (entity != null) {
+            entity.getPersistentData().remove(ENTITY_TAG_KEY);
+        }
+    }
+
+    /**
+     * 读取实体上的护盾移植标签所属玩家；无标签返回 null。
+     */
+    public static UUID getEntityTransferTagOwner(LivingEntity entity) {
+        if (entity == null) {
+            return null;
+        }
+        CompoundTag tag = entity.getPersistentData().getCompound(ENTITY_TAG_KEY);
+        if (tag.contains(ENTITY_TAG_OWNER)) {
+            return tag.getUUID(ENTITY_TAG_OWNER);
+        }
+        return null;
+    }
+
+    /**
+     * 在所有维度中按UUID查找实体（跨维度保护判定用）。
+     */
+    private static LivingEntity findEntityAnywhere(UUID entityUUID) {
+        var server = ServerLifecycleHooks.getCurrentServer();
+        if (server == null) {
+            return null;
+        }
+        for (ServerLevel serverLevel : server.getAllLevels()) {
+            if (serverLevel.getEntity(entityUUID) instanceof LivingEntity livingEntity) {
+                return livingEntity;
+            }
+        }
+        return null;
+    }
 
     /**
      * 判定构造体是否应被护盾移植保护。
@@ -54,6 +245,18 @@ public class ShieldTransferManager {
         }
         // 其他构造体（无人机/僚机等均为标准阶或以上）：受保护
         return true;
+    }
+
+    /**
+     * 登记一条护盾移植记录（写入内存映射 + 实体标签）。
+     */
+    private static void registerTransfer(UUID ownerUUID, LivingEntity target) {
+        ShieldTransferData transferData = new ShieldTransferData(ownerUUID, target);
+        PLAYER_TO_TRANSFERS.computeIfAbsent(ownerUUID, k -> new HashSet<>()).add(transferData);
+        ENTITY_TO_PLAYER.put(target.getUUID(), ownerUUID);
+        setEntityTransferTag(target, ownerUUID);
+
+        updateShieldTransferPenalty(ownerUUID);
     }
 
     public static void transferShieldToEntity(Player owner, LivingEntity target) {
@@ -76,18 +279,14 @@ public class ShieldTransferManager {
 
         if (isEntityProtectedByShield(target)) {
             UUID existingOwner = ENTITY_TO_PLAYER.get(targetUUID);
-            if (!existingOwner.equals(ownerUUID)) {
-                clearTransferForEntity(targetUUID);
-            } else {
+            if (existingOwner != null && existingOwner.equals(ownerUUID)) {
                 return;
             }
+            // 被其他玩家保护，或仅残留标签（如实体重建后标签未登记）
+            clearTransferForEntity(targetUUID);
         }
 
-        ShieldTransferData transferData = new ShieldTransferData(ownerUUID, target);
-        PLAYER_TO_TRANSFERS.computeIfAbsent(ownerUUID, k -> new HashSet<>()).add(transferData);
-        ENTITY_TO_PLAYER.put(targetUUID, ownerUUID);
-
-        updateShieldTransferPenalty(ownerUUID);
+        registerTransfer(ownerUUID, target);
 
         gytrinket.LOGGER.debug("玩家 {} 将护盾转移给实体 {} (UUID: {})", ownerUUID, target.getName().getString(), targetUUID);
     }
@@ -106,6 +305,8 @@ public class ShieldTransferManager {
             }
             updateShieldTransferPenalty(playerUUID);
         }
+        // 玩家主动用护盾接收器取消保护：同时移除实体标签，使取消永久生效
+        removeEntityTransferTag(findEntityAnywhere(entityUUID));
     }
 
     public static boolean isEntityProtected(UUID playerUUID, UUID entityUUID) {
@@ -149,6 +350,8 @@ public class ShieldTransferManager {
         if (transfers != null) {
             for (ShieldTransferData data : transfers) {
                 ENTITY_TO_PLAYER.remove(data.getProtectedEntityUUID());
+                // 清空：同时移除实体标签（实体不在已加载区块时无法找到则保留，待其回归时凭标签恢复）
+                removeEntityTransferTag(findEntityAnywhere(data.getProtectedEntityUUID()));
             }
             updateShieldTransferPenalty(playerUUID);
             gytrinket.LOGGER.debug("清除玩家 {} 的所有护盾转移", playerUUID);
@@ -188,10 +391,18 @@ public class ShieldTransferManager {
     }
 
     public static boolean isEntityProtectedByShield(LivingEntity entity) {
+        // 实体标签优先（实体复制/重建后标签随NBT保留），内存映射兜底
+        if (getEntityTransferTagOwner(entity) != null) {
+            return true;
+        }
         return ENTITY_TO_PLAYER.containsKey(entity.getUUID());
     }
 
     public static UUID getShieldOwnerUUID(LivingEntity entity) {
+        UUID tagOwner = getEntityTransferTagOwner(entity);
+        if (tagOwner != null) {
+            return tagOwner;
+        }
         return ENTITY_TO_PLAYER.get(entity.getUUID());
     }
 
@@ -316,8 +527,9 @@ public class ShieldTransferManager {
             return;
         }
 
-        UUID entityUUID = event.getEntity().getUUID();
-        if (ENTITY_TO_PLAYER.containsKey(entityUUID)) {
+        LivingEntity entity = event.getEntity();
+        UUID entityUUID = entity.getUUID();
+        if (ENTITY_TO_PLAYER.containsKey(entityUUID) || getEntityTransferTagOwner(entity) != null) {
             clearTransferForEntity(entityUUID);
             gytrinket.LOGGER.debug("被保护的实体死亡，清除护盾转移: UUID {}", entityUUID);
         }
@@ -336,15 +548,75 @@ public class ShieldTransferManager {
             return;
         }
 
-        UUID entityUUID = event.getEntity().getUUID();
+        if (!(event.getEntity() instanceof LivingEntity livingEntity)) {
+            return;
+        }
+
+        UUID entityUUID = livingEntity.getUUID();
         UUID ownerUUID = ENTITY_TO_PLAYER.get(entityUUID);
+        UUID tagOwner = getEntityTransferTagOwner(livingEntity);
+        String typeId = BuiltInRegistries.ENTITY_TYPE.getKey(livingEntity.getType()).toString();
+
         if (ownerUUID != null) {
-            LivingEntity entity = (LivingEntity) event.getEntity();
-            if (!entity.isAlive()) {
+            if (!livingEntity.isAlive()) {
                 clearTransferForEntity(entityUUID);
                 gytrinket.LOGGER.debug("实体重新加入世界但已死亡，清除护盾转移: UUID {}", entityUUID);
             }
+            return;
         }
+
+        if (tagOwner != null) {
+            if (livingEntity.isAlive()) {
+                // 实体携带护盾移植标签但未登记：
+                // 实体被复制/重建（UUID变化）或跨维度加载后，凭标签恢复保护
+                replaceStaleTransfer(tagOwner, livingEntity);
+            }
+            return;
+        }
+
+        // 无记录无标签：女仆系实体检查神龛复活补标签
+        if (typeId.startsWith("touhou_little_maid")) {
+            if (!PENDING_SHRINE_RE_TAG.isEmpty() && livingEntity.isAlive()) {
+                UUID maidOwner = livingEntity instanceof TamableAnimal tamable ? tamable.getOwnerUUID() : null;
+                if (maidOwner != null) {
+                    UUID pendingTagOwner = PENDING_SHRINE_RE_TAG.remove(maidOwner);
+                    if (pendingTagOwner != null) {
+                        // 神龛复活：女仆模组 filmToMaid 未还原持久化数据，此处补打标签并恢复保护
+                        gytrinket.LOGGER.debug("[ShieldTransfer] 神龛复活女仆补标签: 实体UUID={} 标签owner={}",
+                                entityUUID, pendingTagOwner);
+                        registerTransfer(pendingTagOwner, livingEntity);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * 用携带标签的实体重新登记护盾移植。
+     * 若玩家名下存在无法解析的旧记录（实体重建导致UUID变化），替换旧记录，避免重复计数与重复惩罚。
+     */
+    private static void replaceStaleTransfer(UUID ownerUUID, LivingEntity entity) {
+        UUID newUUID = entity.getUUID();
+        Set<ShieldTransferData> transfers = PLAYER_TO_TRANSFERS.get(ownerUUID);
+
+        if (transfers != null) {
+            if (transfers.stream().anyMatch(data -> data.getProtectedEntityUUID().equals(newUUID))) {
+                return; // 已登记
+            }
+            Iterator<ShieldTransferData> iterator = transfers.iterator();
+            while (iterator.hasNext()) {
+                ShieldTransferData data = iterator.next();
+                if (data.getProtectedEntityAnywhere() == null) {
+                    iterator.remove();
+                    ENTITY_TO_PLAYER.remove(data.getProtectedEntityUUID());
+                    gytrinket.LOGGER.debug("护盾移植: 实体重建导致UUID变化, 旧UUID {} → 新UUID {}", data.getProtectedEntityUUID(), newUUID);
+                    registerTransfer(ownerUUID, entity);
+                    return;
+                }
+            }
+        }
+
+        registerTransfer(ownerUUID, entity);
     }
 
     @SubscribeEvent
@@ -554,8 +826,10 @@ public class ShieldTransferManager {
                 Iterator<ShieldTransferData> iterator = transfers.iterator();
                 while (iterator.hasNext()) {
                     ShieldTransferData data = iterator.next();
-                    LivingEntity protectedEntity = data.getProtectedEntity(player.level());
+                    // 跨维度查找，避免实体在其他维度时被误判为已消失
+                    LivingEntity protectedEntity = data.getProtectedEntityAnywhere();
                     if (protectedEntity == null || !protectedEntity.isAlive()) {
+                        // 仅移除记录档案；实体标签保留，实体回归/复活时凭标签自动恢复保护
                         iterator.remove();
                         ENTITY_TO_PLAYER.remove(data.getProtectedEntityUUID());
                     }
@@ -569,6 +843,11 @@ public class ShieldTransferManager {
             for (UUID uuid : toRemove) {
                 PLAYER_TO_TRANSFERS.remove(uuid);
                 gytrinket.LOGGER.debug("清理无效的护盾转移: 玩家 {}", uuid);
+            }
+
+            // 神龛补标签队列为瞬时状态，定期整体清空，防止残留
+            if (!PENDING_SHRINE_RE_TAG.isEmpty()) {
+                PENDING_SHRINE_RE_TAG.clear();
             }
         });
     }

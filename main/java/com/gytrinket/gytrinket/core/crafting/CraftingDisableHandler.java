@@ -1,6 +1,7 @@
 package com.gytrinket.gytrinket.core.crafting;
 
 import com.gytrinket.gytrinket.config.Config;
+import com.gytrinket.gytrinket.core.upgrade.UpgradeManager;
 import com.gytrinket.gytrinket.event.QuickEquipEvent;
 import com.gytrinket.gytrinket.gytrinket;
 import net.minecraft.core.RegistryAccess;
@@ -73,10 +74,14 @@ public class CraftingDisableHandler {
 
     /**
      * 过滤配方：移除输出为禁用物品的配方并重建配方表。
+     * 被移除的配方（含升级配方）会先快照到 {@link UpgradeManager}，
+     * 使升级系统不依赖被过滤的配方表，升级界面照常可用。
      */
     public static void filterRecipes(RecipeManager recipeManager) {
         int mode = Config.DISABLE_CRAFTING_MODE.get();
         if (mode <= 0) {
+            // 未开启合成禁用时清空快照，升级系统回退到配方管理器
+            UpgradeManager.clearUpgradeRecipeSnapshot();
             return;
         }
         MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
@@ -86,8 +91,13 @@ public class CraftingDisableHandler {
         RegistryAccess access = server.registryAccess();
         List<RecipeHolder<?>> kept = new ArrayList<>();
         int removed = 0;
+        // 每次过滤前清空并重建快照
+        UpgradeManager.clearUpgradeRecipeSnapshot();
         for (RecipeHolder<?> holder : recipeManager.getRecipes()) {
             if (isCraftingDisabled(holder, access, mode)) {
+                // 快照被移除的配方（含升级配方），供升级系统独立读取
+                UpgradeManager.snapshotUpgradeRecipe(
+                        holder.value().getResultItem(access).getItem(), holder.value());
                 removed++;
             } else {
                 kept.add(holder);

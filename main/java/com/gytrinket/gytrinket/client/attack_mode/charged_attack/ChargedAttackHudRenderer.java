@@ -37,6 +37,14 @@ public class ChargedAttackHudRenderer {
         chargedDamage = damage;
     }
 
+    /**
+     * 充能HUD当前是否实际可见（正在充能或仍有充能值，且平滑显示值>0）
+     * 供其他HUD元素（如幽灵隐身进度）判断充能HUD的占位位置
+     */
+    public static boolean isHudVisible() {
+        return (ChargedAttackInputHandler.isCharging() || chargeValue > 0) && INSTANCE.displayChargeValue > 0;
+    }
+
     public void render(GuiGraphics guiGraphics) {
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.player == null || minecraft.screen != null) {

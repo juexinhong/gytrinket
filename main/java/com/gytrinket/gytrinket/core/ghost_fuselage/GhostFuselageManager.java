@@ -37,7 +37,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * 机制：
  * <ul>
  *   <li>玩家持续进入隐身状态（不算为原版隐身），需要2秒达到完全隐身（100%进度）</li>
- *   <li>达到完全隐身（100%进度）时才会完全隐身，阻挡敌人获取玩家为目标</li>
+ *   <li>隐身进度达到95%时进入完全隐身，阻挡敌人获取玩家为目标；低于90%时退出（滞回容差）</li>
  *   <li>随着隐身进度增加，持续获得动态独立乘区玩家伤害属性加成，加伤与进度同步变化</li>
  *   <li>达到完全隐身时，属性值到达+300%（受光点等级提升上限）</li>
  *   <li>攻击、部署构造体、使用物品（含充能）会立即破隐，隐身进度不会立刻消失，
@@ -52,8 +52,14 @@ public class GhostFuselageManager {
     private static final String NAMESPACE = "ghost_fuselage";
     private static final String ATTR_DAMAGE_INDEPENDENT = "attack_damage_independent";
 
-    /** 隐身进度上限（100% = 完全隐身） */
+    /** 隐身进度上限（100% = 完全隐身，用于伤害属性归一化） */
     private static final double STEALTH_CAP = 1.0;
+
+    /** 完全隐身进入阈值：隐身进度达到该值时触发完全隐身（invisible/阻挡目标） */
+    private static final double STEALTH_ENTER_THRESHOLD = 0.95;
+
+    /** 完全隐身退出阈值：隐身进度低于该值时退出完全隐身（滞回容差，避免边界抖动） */
+    private static final double STEALTH_EXIT_THRESHOLD = 0.9;
 
     /** 拥有幽灵机身能力的玩家集合 */
     private static final Set<UUID> PLAYER_HAS_GHOST = new java.util.concurrent.CopyOnWriteArraySet<>();
@@ -121,13 +127,16 @@ public class GhostFuselageManager {
 
     /**
      * 判断玩家是否处于完全隐身状态（供Mixin调用）
+     * <p>
+     * 使用滞回后的持久状态（wasFullyStealthed）而非直接比较进度，
+     * 使滞回带（90%~95%）内的进度波动不会导致状态反复切换。
      */
     public static boolean isFullyStealthed(Player player) {
         if (!PLAYER_HAS_GHOST.contains(player.getUUID())) {
             return false;
         }
         GhostData data = PLAYER_GHOST_DATA.get(player.getUUID());
-        return data != null && data.progress >= STEALTH_CAP;
+        return data != null && data.wasFullyStealthed;
     }
 
     /**
@@ -201,20 +210,22 @@ public class GhostFuselageManager {
 
         // 完全隐身时设置原版invisible标签（供渲染/其他系统识别）
         // 目标选取排除由 TargetingConditionsMixin 处理
-        if (data.progress >= STEALTH_CAP) {
+        // 进入阈值95%，退出阈值90%（滞回容差，避免边界抖动）
+        if (data.progress >= STEALTH_ENTER_THRESHOLD) {
             player.setInvisible(true);
             // 首次进入完全隐身时清理一次仇恨
             if (!data.wasFullyStealthed) {
                 clearMobAggro(player);
                 data.wasFullyStealthed = true;
             }
-        } else {
+        } else if (data.progress < STEALTH_EXIT_THRESHOLD) {
             // 恢复时避免覆盖药水隐身
             if (!player.hasEffect(net.minecraft.world.effect.MobEffects.INVISIBILITY)) {
                 player.setInvisible(false);
             }
             data.wasFullyStealthed = false;
         }
+        // 滞回带（90%~95%）内保持当前完全隐身状态不变
 
         // 同步隐身进度到客户端
         setPlayerVisibility(player, data.progress);
@@ -397,7 +408,7 @@ public class GhostFuselageManager {
         double progress;
         /** 破隐状态：为true时隐身进度每刻按当前值比例极速消退，直至归零后重新累加 */
         boolean breaking;
-        /** 上一tick是否处于完全隐身状态（用于首次进入时清理仇恨） */
+        /** 完全隐身持久状态（滞回后）：进入=进度>=95%，退出=进度<90%；同时用于首次进入时清理仇恨 */
         boolean wasFullyStealthed;
 
         GhostData() {

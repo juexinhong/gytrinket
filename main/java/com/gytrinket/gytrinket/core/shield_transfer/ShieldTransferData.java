@@ -5,6 +5,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.Level;
+import net.neoforged.neoforge.server.ServerLifecycleHooks;
 
 import java.util.UUID;
 
@@ -41,6 +42,24 @@ public class ShieldTransferData {
             return null;
         }
         if (level instanceof ServerLevel serverLevel) {
+            Entity entity = serverLevel.getEntity(protectedEntityUUID);
+            if (entity instanceof LivingEntity livingEntity) {
+                return livingEntity;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 在所有维度中查找被保护实体。
+     * 用于跨维度保护判定与定期清理，避免因实体位于其他维度而被误判为已消失。
+     */
+    public LivingEntity getProtectedEntityAnywhere() {
+        var server = ServerLifecycleHooks.getCurrentServer();
+        if (server == null) {
+            return null;
+        }
+        for (ServerLevel serverLevel : server.getAllLevels()) {
             Entity entity = serverLevel.getEntity(protectedEntityUUID);
             if (entity instanceof LivingEntity livingEntity) {
                 return livingEntity;

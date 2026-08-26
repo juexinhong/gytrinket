@@ -41,8 +41,9 @@ public class ShieldReceiverItem extends Item {
             return InteractionResult.FAIL;
         }
 
-        // 检查目标实体是否已经被当前玩家保护
-        boolean isProtected = ShieldTransferManager.isEntityProtected(player.getUUID(), target.getUUID());
+        // 检查目标实体是否已经被当前玩家保护（内存记录或实体标签，标签随实体复制/重建保留）
+        boolean isProtected = ShieldTransferManager.isEntityProtected(player.getUUID(), target.getUUID())
+                || player.getUUID().equals(ShieldTransferManager.getEntityTransferTagOwner(target));
 
         if (isProtected) {
             // 移除实体的护盾保护

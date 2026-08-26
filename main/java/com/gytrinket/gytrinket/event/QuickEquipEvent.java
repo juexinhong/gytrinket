@@ -3,6 +3,7 @@ package com.gytrinket.gytrinket.event;
 import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
 import com.gytrinket.gytrinket.core.level.ModLevelManager;
+import com.gytrinket.gytrinket.core.random_build.RandomBuildManager;
 import com.gytrinket.gytrinket.gytrinket;
 import com.gytrinket.gytrinket.storage.PlayerStore;
 import com.gytrinket.gytrinket.storage.PlayerStoreManager;
@@ -39,6 +40,11 @@ public class QuickEquipEvent {
         }
 
         if (stack.isEmpty()) {
+            return;
+        }
+
+        // 代币指定物品：即使注册了属性或特殊机制，也禁止快速装备（代币右键用于打开玩家面板）
+        if (stack.getItem() == RandomBuildManager.getTokenItem()) {
             return;
         }
 

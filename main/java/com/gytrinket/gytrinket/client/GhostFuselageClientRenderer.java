@@ -3,7 +3,6 @@ package com.gytrinket.gytrinket.client;
 import com.gytrinket.gytrinket.client.compat.ShaderModCompat;
 import com.gytrinket.gytrinket.core.ghost_fuselage.GhostFuselageClientData;
 import com.gytrinket.gytrinket.gytrinket;
-import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -17,7 +16,7 @@ import net.neoforged.neoforge.client.event.RenderPlayerEvent;
 /**
  * 幽灵机身客户端渲染器
  * <p>
- * 根据隐身进度调整玩家模型的透明度：
+ * 根据隐身进度调整玩家模型身体层的透明度：
  * <ul>
  *   <li>进度0%时完全可见（alpha=1.0）</li>
  *   <li>进度100%（完全隐身）时alpha=0.3（最低值）</li>
@@ -26,23 +25,23 @@ import net.neoforged.neoforge.client.event.RenderPlayerEvent;
  * 服务端在完全隐身时设置原版invisible标签（阻止怪物目标选取），
  * 这会导致客户端模型完全不可见。因此在Pre中临时恢复可见。
  * <p>
- * 渲染策略：
- * <ul>
- *   <li>非光影模式：使用 setShaderColor 设置全局 alpha（vanilla endBatch 立即绘制）</li>
- *   <li>光影模式（Iris）：取消事件，手动渲染，通过 GhostAlphaBufferSource 包装
- *       MultiBufferSource，将 RenderType 替换为 entityTranslucent（启用半透明混合），
- *       并通过 GhostAlphaVertexConsumer 修改顶点颜色 alpha（绕过 Iris 的 endBatch 延迟）</li>
- * </ul>
+ * 渲染策略（光影/非光影统一）：
+ * 取消事件并手动渲染，通过 GhostAlphaBufferSource 包装 MultiBufferSource，
+ * 仅将玩家身体层替换为 entityTranslucent 并通过 GhostAlphaVertexConsumer 修改顶点 alpha；
+ * 铠甲层 / 手持物品层保持原渲染类型原样透传，材质正确且不受透明度影响。
  * <p>
- * Iris 兼容性根因：Iris 的 FullyBufferedMultiBufferSource 延迟 endBatch 到 renderLevel
- * 的 translucent 阶段，此时 setShaderColor 已被重置为 1.0，alpha 丢失。
- * 顶点颜色 alpha 不受 endBatch 时序影响，在顶点写入时即固定。
+ * 使用顶点颜色 alpha 而非 setShaderColor 的原因：
+ * Iris 的 FullyBufferedMultiBufferSource 延迟 endBatch，setShaderColor 的 alpha
+ * 会在绘制时被重置；顶点颜色 alpha 在顶点写入时即固定，不受 endBatch 时序影响。
  */
 @EventBusSubscriber(modid = gytrinket.MODID, value = Dist.CLIENT)
 public class GhostFuselageClientRenderer {
 
-    /** 完全隐身进度阈值 */
+    /** 完全隐身进度上限（alpha曲线基准：进度满时透明度最低） */
     private static final float STEALTH_CAP = 1.0f;
+
+    /** 完全隐身进入阈值（与服务端一致：进度>=95%时服务端设置invisible，需同步恢复） */
+    private static final float STEALTH_ENTER_THRESHOLD = 0.95f;
 
     /** 最低透明度（完全隐身时） */
     private static final float MIN_ALPHA = 0.3f;
@@ -69,55 +68,34 @@ public class GhostFuselageClientRenderer {
             player.setInvisible(false);
         }
 
-        boolean shaderActive = ShaderModCompat.isShaderPackInUse();
+        // 取消原渲染，手动渲染：仅玩家身体层通过 GhostAlphaBufferSource 降低顶点 alpha，
+        // 铠甲/手持物品按原渲染类型正常绘制（不透明、材质正确）
+        event.setCanceled(true);
 
-        if (shaderActive) {
-            // 光影模式：取消事件，手动渲染，使用包装的 BufferSource
-            // 注意：取消事件后 Post 不会触发，invisible 恢复需在此完成
-            event.setCanceled(true);
+        PlayerRenderer renderer = event.getRenderer();
+        ResourceLocation texture = renderer.getTextureLocation(player);
+        PoseStack poseStack = event.getPoseStack();
+        MultiBufferSource wrappedSource = new GhostAlphaBufferSource(
+                event.getMultiBufferSource(), alpha, texture);
 
-            PlayerRenderer renderer = event.getRenderer();
-            ResourceLocation texture = renderer.getTextureLocation(player);
-            PoseStack poseStack = event.getPoseStack();
-            MultiBufferSource wrappedSource = new GhostAlphaBufferSource(
-                    event.getMultiBufferSource(), alpha, texture);
-
-            isManualRendering = true;
-            try {
-                renderer.render(player, player.getYRot(), event.getPartialTick(),
-                        poseStack, wrappedSource, event.getPackedLight());
-            } finally {
-                isManualRendering = false;
-            }
-
-            // 光影模式：在此恢复 invisible（Post 不会触发）
-            if (wasInvisible && progress >= STEALTH_CAP) {
-                player.setInvisible(true);
-            }
-        } else {
-            // 非光影模式：使用 setShaderColor（vanilla endBatch 立即绘制，alpha 生效）
-            // invisible 恢复在 Post 中完成
-            RenderSystem.setShaderColor(1f, 1f, 1f, alpha);
+        isManualRendering = true;
+        try {
+            renderer.render(player, player.getYRot(), event.getPartialTick(),
+                    poseStack, wrappedSource, event.getPackedLight());
+        } finally {
+            isManualRendering = false;
         }
-    }
 
-    @SubscribeEvent
-    public static void onRenderPlayerPost(RenderPlayerEvent.Post event) {
-        float progress = GhostFuselageClientData.getStealthProgress(event.getEntity().getId());
-        if (progress <= 0.001f) return;
-
-        // 非光影模式：endBatch + 重置 shaderColor
+        // 非光影模式：立即刷新缓冲，让半透明身体按顶点 alpha 正确绘制
         if (!ShaderModCompat.isShaderPackInUse()) {
             if (event.getMultiBufferSource() instanceof MultiBufferSource.BufferSource bufferSource) {
                 bufferSource.endBatch();
             }
-            RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
         }
-        // 光影模式：无需 endBatch（顶点 alpha 已固定），无需重置 shaderColor（未设置）
 
-        // 恢复 invisible 状态（服务端同步值）
-        if (progress >= STEALTH_CAP) {
-            event.getEntity().setInvisible(true);
+        // 恢复 invisible 状态（服务端同步值；取消事件后 Post 不会触发）
+        if (wasInvisible && progress >= STEALTH_ENTER_THRESHOLD) {
+            player.setInvisible(true);
         }
     }
 }

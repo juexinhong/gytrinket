@@ -5,9 +5,7 @@
       "conditions": {
         "items": [
           {
-            "items": [
-              "gytrinket:shield_gy"
-              ]
+            "items": "gytrinket:shield_gy"
           }
         ]
       },
@@ -142,19 +140,21 @@
       "gytrinket:taskmaster_part",
       "gytrinket:grudge_module",
       "gytrinket:mothership_body",
-      "gytrinket:totem",
-      "gytrinket:wingman_part",
+      "gytrinket:ghost_fuselage",
+      "gytrinket:engineering_fuselage",
       "gytrinket:interceptor_part",
-      "gytrinket:evolution_part",
-      "gytrinket:shockwave_part",
-      "gytrinket:nano_regen_part",
-      "gytrinket:suppression_part",
-      "gytrinket:wingman_module",
       "gytrinket:interceptor_module",
+      "gytrinket:evolution_part",
       "gytrinket:evolution_module",
-      "gytrinket:shockwave_module",
+      "gytrinket:wingman_part",
+      "gytrinket:nano_regen_part",
       "gytrinket:nano_regen_module",
-      "gytrinket:suppression_module"
+      "gytrinket:suppression_part",
+      "gytrinket:suppression_module",
+      "gytrinket:shockwave_part",
+      "gytrinket:shockwave_module",
+      "gytrinket:wrench",
+      "gytrinket:apex_apparatus_module"
     ]
   }
 }

@@ -12,33 +12,28 @@ public class DroneModel extends GeoModel<DroneConstructEntity> {
     @Override
     public ResourceLocation getModelResource(DroneConstructEntity entity) {
         if (entity.isAssaultDrone()) {
-            return ResourceLocation.fromNamespaceAndPath("gytrinket", "geo/assaultdrone.geo.json");
+            return new ResourceLocation("gytrinket", "geo/assaultdrone.geo.json");
         } else if (entity.isDefenseDrone()) {
-            return ResourceLocation.fromNamespaceAndPath("gytrinket", "geo/defense_drone.geo.json");
+            return new ResourceLocation("gytrinket", "geo/defense_drone.geo.json");
         } else {
-            return ResourceLocation.fromNamespaceAndPath("gytrinket", "geo/drone.geo.json");
+            return new ResourceLocation("gytrinket", "geo/drone.geo.json");
         }
     }
 
     @Override
     public ResourceLocation getTextureResource(DroneConstructEntity entity) {
         if (entity.isAssaultDrone()) {
-            return ResourceLocation.fromNamespaceAndPath("gytrinket", "textures/entity/assaultdrone1.png");
+            return new ResourceLocation("gytrinket", "textures/entity/assaultdrone1.png");
         } else if (entity.isDefenseDrone()) {
-            return ResourceLocation.fromNamespaceAndPath("gytrinket", "textures/entity/defense_drone1.png");
+            return new ResourceLocation("gytrinket", "textures/entity/defense_drone1.png");
         } else {
-            return ResourceLocation.fromNamespaceAndPath("gytrinket", "textures/entity/drone1.png");
+            return new ResourceLocation("gytrinket", "textures/entity/drone1.png");
         }
     }
 
     @Override
     public ResourceLocation getAnimationResource(DroneConstructEntity entity) {
-        if (entity.isAssaultDrone()) {
-            return ResourceLocation.fromNamespaceAndPath("gytrinket", "animations/assaultdrone.animation.json");
-        } else if (entity.isDefenseDrone()) {
-            return ResourceLocation.fromNamespaceAndPath("gytrinket", "animations/drone.animation.json");
-        } else {
-            return ResourceLocation.fromNamespaceAndPath("gytrinket", "animations/drone.animation.json");
-        }
+        return null;
     }
 }
+

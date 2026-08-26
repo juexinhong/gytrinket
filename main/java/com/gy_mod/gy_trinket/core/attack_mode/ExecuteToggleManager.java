@@ -1,4 +1,3 @@
-
 package com.gy_mod.gy_trinket.core.attack_mode;
 
 import com.gy_mod.gy_trinket.config.Config;
@@ -59,3 +58,4 @@ public class ExecuteToggleManager {
         playerToggles.remove(playerUUID);
     }
 }
+

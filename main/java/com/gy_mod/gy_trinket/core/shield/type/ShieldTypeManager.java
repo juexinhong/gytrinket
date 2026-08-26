@@ -2,8 +2,7 @@ package com.gy_mod.gy_trinket.core.shield.type;
 
 import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.gytrinket;
-import com.gy_mod.gy_trinket.storage.PlayerStore;
-import com.gy_mod.gy_trinket.storage.PlayerStoreManager;
+import com.gy_mod.gy_trinket.storage.PlayerStoreUtils;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.MinecraftServer;
@@ -17,7 +16,6 @@ import net.minecraftforge.event.TickEvent.PlayerTickEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.items.ItemStackHandler;
 import net.minecraftforge.server.ServerLifecycleHooks;
 
 import java.util.*;
@@ -231,16 +229,8 @@ public class ShieldTypeManager {
     private static List<IShieldType.ShieldTypeData> collectShieldTypes(Player player, Set<String> preDisabledItems) {
         List<IShieldType.ShieldTypeData> collected = new ArrayList<>();
 
-        PlayerStore store = PlayerStoreManager.getPlayerStore(player);
-        if (store == null) {
-            return collected;
-        }
-
-        ItemStackHandler handler = store.getItemHandler();
-
-        for (int i = 0; i < handler.getSlots(); i++) {
-            ItemStack stack = handler.getStackInSlot(i);
-
+        // 已装备物品 = 光点核心存储 + Curios 饰品栏（光点核心内容扩展）
+        for (ItemStack stack : PlayerStoreUtils.getAllEquippedStacks(player)) {
             if (stack.isEmpty()) {
                 continue;
             }

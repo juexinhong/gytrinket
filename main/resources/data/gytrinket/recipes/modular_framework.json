@@ -1,4 +1,4 @@
-﻿{
+{
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
@@ -18,7 +18,7 @@
     "ILI"
   ],
   "result": {
-    "item": "gytrinket:modular_framework",
+    "id": "gytrinket:modular_framework",
     "count": 1
   }
 }

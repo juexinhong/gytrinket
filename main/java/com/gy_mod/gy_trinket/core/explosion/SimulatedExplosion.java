@@ -25,10 +25,10 @@ import java.util.function.Predicate;
  * 击退速度公式：
  * - 基础速度 = MAX_BASE_SPEED × radius / (radius + HALF_MAX_RADIUS)（反比递减，边际收益递减）
  * - 距离衰减 = 1 - 0.7 × (距离 / 半径)
- * - 最终速度 = 基础速度 × 距离衰减
+ * - 最终速度 = 基础速度 × 距离衰减 × KNOCKBACK_MULTIPLIER
  * <p>
  * 击退方向：
- * - 距离爆心越近，方向越向竖直方向靠近（最多修正70%，爆心处100%）
+ * - 距离爆心越近，方向越向竖直方向靠近（最多修正50%，爆心处100%）
  * - 竖直方向由实体相对爆心的位置决定：上方则向上，下方则向下
  * - 水平方向视为竖直方向
  * - 爆心处纯竖直
@@ -184,3 +184,4 @@ public class SimulatedExplosion {
         entity.hurtMarked = true;
     }
 }
+

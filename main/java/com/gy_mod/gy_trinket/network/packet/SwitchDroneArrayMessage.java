@@ -13,16 +13,14 @@ public class SwitchDroneArrayMessage {
 
     public SwitchDroneArrayMessage(FriendlyByteBuf buf) {}
 
-    public void handle(Supplier<NetworkEvent.Context> ctx) {
-        NetworkEvent.Context context = ctx.get();
-
+    public void handle(Supplier<NetworkEvent.Context> contextSupplier) {
+        NetworkEvent.Context context = contextSupplier.get();
         context.enqueueWork(() -> {
             var player = context.getSender();
             if (player != null) {
                 DroneArrayManager.getInstance().switchToNextArray(player);
             }
         });
-
         context.setPacketHandled(true);
     }
 }

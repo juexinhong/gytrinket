@@ -49,3 +49,4 @@ public class ShieldTypeSlot implements IDataSlot<String> {
         return "none";
     }
 }
+

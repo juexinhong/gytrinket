@@ -23,11 +23,7 @@ public class SyncLightPointCoreMessage {
     public SyncLightPointCoreMessage(FriendlyByteBuf buf) {
         this.slotCount = buf.readInt();
         CompoundTag tag = buf.readNbt();
-        if (tag != null) {
-            this.itemList = tag.getList("items", 10);
-        } else {
-            this.itemList = new ListTag();
-        }
+        this.itemList = tag != null ? tag.getList("items", 10) : new ListTag();
     }
 
     public void toBytes(FriendlyByteBuf buf) {
@@ -37,19 +33,12 @@ public class SyncLightPointCoreMessage {
         buf.writeNbt(tag);
     }
 
-    public static void handle(SyncLightPointCoreMessage msg, Supplier<NetworkEvent.Context> ctx) {
-        NetworkEvent.Context context = ctx.get();
-
+    public void handle(Supplier<NetworkEvent.Context> contextSupplier) {
+        NetworkEvent.Context context = contextSupplier.get();
         context.enqueueWork(() -> {
-            DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> {
-                handleSyncLightPointCoreOnClient(msg.itemList, msg.slotCount);
-            });
+            DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () ->
+                com.gy_mod.gy_trinket.client.network.ClientNetworkHandler.handleSyncLightPointCoreMessage(itemList, slotCount));
         });
-
         context.setPacketHandled(true);
-    }
-
-    private static void handleSyncLightPointCoreOnClient(ListTag itemList, int slotCount) {
-        com.gy_mod.gy_trinket.client.network.ClientNetworkHandler.handleSyncLightPointCoreMessage(itemList, slotCount);
     }
 }

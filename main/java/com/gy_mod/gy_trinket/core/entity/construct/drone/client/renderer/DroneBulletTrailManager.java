@@ -4,9 +4,9 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.projectile.ThrowableItemProjectile;
 import net.minecraftforge.client.event.RenderLevelStageEvent;
 
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 无人机子弹拖尾管理器。
@@ -15,20 +15,16 @@ import java.util.concurrent.ConcurrentHashMap;
  * 使用全局渲染事件驱动，即使子弹实体被移除，拖尾仍能继续渲染到最终位置。
  */
 public class DroneBulletTrailManager {
-    private static final Map<ThrowableItemProjectile, DroneBulletTrail> trailMap = new ConcurrentHashMap<>();
+    private static final Map<ThrowableItemProjectile, DroneBulletTrail> trailMap = new HashMap<>();
 
     /**
-     * 注册子弹的拖尾（由渲染器调用）。
-     * 若该子弹尚未有拖尾对象则创建一个（默认无人机子弹类型）。
+     * 注册子弹的拖尾（由DroneBulletRenderer调用）。
+     * 若该子弹尚未有拖尾对象则创建一个。
      */
     public static void registerTrail(ThrowableItemProjectile bullet) {
         registerTrail(bullet, TrailType.DRONE_BULLET);
     }
 
-    /**
-     * 注册弹射物的拖尾，指定轨迹类型。
-     * 若该弹射物尚未有拖尾对象则创建一个。
-     */
     public static void registerTrail(ThrowableItemProjectile bullet, TrailType trailType) {
         if (bullet.isRemoved()) return;
         trailMap.computeIfAbsent(bullet, b -> new DroneBulletTrail(b, trailType));
@@ -59,7 +55,7 @@ public class DroneBulletTrailManager {
             }
 
             // 渲染拖尾
-            trail.render(event.getPoseStack(), partialTicks);
+            trail.render(partialTicks);
 
             // 移除已完成的拖尾
             if (trail.shouldBeRemoved()) {

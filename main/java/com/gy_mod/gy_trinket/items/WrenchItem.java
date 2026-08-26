@@ -4,7 +4,7 @@ import com.gy_mod.gy_trinket.core.entity.construct.wingman.InterceptorConfigCont
 import com.gy_mod.gy_trinket.core.entity.construct.wingman.InterceptorWeaponManager;
 import com.gy_mod.gy_trinket.core.entity.construct.wingman.WingmanManager;
 import net.minecraft.network.chat.Component;
-import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.MenuProvider;
 import net.minecraft.world.entity.player.Inventory;
@@ -13,8 +13,6 @@ import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.InteractionHand;
-import net.minecraftforge.network.NetworkHooks;
 
 import java.util.UUID;
 
@@ -22,7 +20,7 @@ import java.util.UUID;
  * 扳手物品
  * <p>
  * 右键打开拦截机配置UI，用于配置拦截机的武器和弹药。
- * 使用 NetworkHooks.openScreen 打开容器界面（女仆模模式）。
+ * 使用 player.openMenu 打开容器界面。
  */
 public class WrenchItem extends Item {
 
@@ -47,25 +45,23 @@ public class WrenchItem extends Item {
         ItemStack ammo = InterceptorWeaponManager.getAmmo(playerUUID);
         String attackModeName = InterceptorWeaponManager.getAttackMode(playerUUID).getSerializedName();
 
-        NetworkHooks.openScreen((ServerPlayer) player,
-                new MenuProvider() {
-                    @Override
-                    public Component getDisplayName() {
-                        return Component.translatable("screen.gytrinket.interceptor_config");
-                    }
+        net.minecraftforge.network.NetworkHooks.openScreen((net.minecraft.server.level.ServerPlayer) player, new MenuProvider() {
+            @Override
+            public Component getDisplayName() {
+                return Component.translatable("screen.gytrinket.interceptor_config");
+            }
 
-                    @Override
-                    public AbstractContainerMenu createMenu(int containerId, Inventory inventory, Player player) {
-                        return new InterceptorConfigContainer(containerId, inventory, weapon, ammo, attackModeName);
-                    }
-                },
-                buf -> {
-                    buf.writeItem(weapon);
-                    buf.writeItem(ammo);
-                    buf.writeUtf(attackModeName);
-                }
-        );
+            @Override
+            public AbstractContainerMenu createMenu(int containerId, Inventory inventory, Player player) {
+                return new InterceptorConfigContainer(containerId, inventory, weapon, ammo, attackModeName);
+            }
+        }, buf -> {
+            buf.writeItem(weapon);
+            buf.writeItem(ammo);
+            buf.writeUtf(attackModeName);
+        });
 
-        return InteractionResultHolder.sidedSuccess(player.getItemInHand(hand), level.isClientSide());
+        return InteractionResultHolder.success(player.getItemInHand(hand));
     }
 }
+

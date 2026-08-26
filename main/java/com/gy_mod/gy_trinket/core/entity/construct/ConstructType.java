@@ -94,11 +94,20 @@ public class ConstructType {
 
     /**
      * 检查此构造体类型是否匹配目标类别
+     *
+     * @param targetCategories 目标类别集合
+     * @return 如果匹配返回true
      */
     public boolean matchesCategories(Set<ConstructCategory> targetCategories) {
         return ConstructCategory.matches(targetCategories, this.categories);
     }
 
+    /**
+     * 创建类型构建器
+     *
+     * @param id 唯一标识符
+     * @return 新的构建器实例
+     */
     public static Builder builder(String id) {
         return new Builder(id);
     }

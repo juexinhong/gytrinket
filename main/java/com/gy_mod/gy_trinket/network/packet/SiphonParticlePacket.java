@@ -49,18 +49,13 @@ public class SiphonParticlePacket {
         buf.writeDouble(playerHeadZ);
     }
 
-    public static void handle(SiphonParticlePacket msg, Supplier<NetworkEvent.Context> ctx) {
-        NetworkEvent.Context context = ctx.get();
-
+    public void handle(Supplier<NetworkEvent.Context> contextSupplier) {
+        NetworkEvent.Context context = contextSupplier.get();
         context.enqueueWork(() -> {
-            DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> {
+            DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () ->
                 com.gy_mod.gy_trinket.client.network.ClientNetworkHandler.handleSiphonParticlesMessage(
-                    msg.targetX, msg.targetY, msg.targetZ, msg.targetHeight,
-                    msg.playerHeadX, msg.playerHeadY, msg.playerHeadZ
-                );
-            });
+                    targetX, targetY, targetZ, targetHeight, playerHeadX, playerHeadY, playerHeadZ));
         });
-
         context.setPacketHandled(true);
     }
 }

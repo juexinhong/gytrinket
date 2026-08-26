@@ -5,6 +5,7 @@ import com.gy_mod.gy_trinket.core.attack_mode.ExecuteToggleManager;
 import com.gy_mod.gy_trinket.core.entity.construct.HostileTargetManager;
 import com.gy_mod.gy_trinket.core.modifier.player.knockback.KnockbackManager;
 import com.gy_mod.gy_trinket.core.vulnerability.VulnerabilityApplyEvent;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
@@ -23,6 +24,10 @@ import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.common.MinecraftForge;
 import org.jetbrains.annotations.Nullable;
+import software.bernie.geckolib.animatable.GeoEntity;
+import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache;
+import software.bernie.geckolib.core.animation.AnimatableManager;
+import software.bernie.geckolib.util.GeckoLibUtil;
 
 import java.util.List;
 
@@ -30,10 +35,10 @@ import java.util.List;
  * 无人机子弹
  * <p>
  * 无人机发射的弹射物实体，对碰撞到的实体造成固定伤害。
- * 仅渲染轨迹，不渲染3D模型。
+ * 使用GeckoLib进行3D模型渲染。
  * 无物理模式：子弹穿过方块，每刻自行检测实体碰撞。
  */
-public class DroneBullet extends ThrowableItemProjectile {
+public class DroneBullet extends ThrowableItemProjectile implements GeoEntity {
     /** 子弹基础伤害（实际值由Config决定） */
     public static float getBaseDamage() {
         return (float) Config.getDroneBaseDamage();
@@ -41,6 +46,8 @@ public class DroneBullet extends ThrowableItemProjectile {
 
     private static final EntityDataAccessor<Boolean> FROM_DRONE = SynchedEntityData.defineId(DroneBullet.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Float> DAMAGE = SynchedEntityData.defineId(DroneBullet.class, EntityDataSerializers.FLOAT);
+
+    private final AnimatableInstanceCache animatableInstanceCache = GeckoLibUtil.createInstanceCache(this);
 
     public DroneBullet(EntityType<? extends DroneBullet> type, Level level) {
         super(type, level);
@@ -80,20 +87,12 @@ public class DroneBullet extends ThrowableItemProjectile {
     @Override
     protected void defineSynchedData() {
         super.defineSynchedData();
-        entityData.define(FROM_DRONE, false);
-        entityData.define(DAMAGE, getBaseDamage());
+        this.entityData.define(FROM_DRONE, false);
+        this.entityData.define(DAMAGE, getBaseDamage());
     }
 
     private DamageSource createDamageSource() {
         return ModDamageSources.droneBullet(this.level(), this, this.getOwner() instanceof LivingEntity living ? living : null);
-    }
-
-    /**
-     * 创建带有守卫阵列仇恨集中的伤害源
-     */
-    private DamageSource createDamageSourceWithGuardAggro() {
-        LivingEntity attacker = this.getOwner() instanceof LivingEntity living ? living : null;
-        return ModDamageSources.droneBulletWithGuardAggro(this.level(), this, attacker);
     }
 
     @Override
@@ -222,13 +221,17 @@ public class DroneBullet extends ThrowableItemProjectile {
         float damage = getDamage();
         KnockbackManager.markNoKnockback(target.getUUID());
         if (target.getHealth() < damage) {
-            DamageSource executeSource = ModDamageSources.getExecuteDamageSource(target, ownerPlayer, owner);
-            target.hurt(executeSource, damage * 2);
+            // 斩杀：伤害源统一为无人机子弹，斩杀归属启用时归属玩家，否则归属无人机
+            LivingEntity cause = ExecuteToggleManager.isExecuteEnabled(ownerPlayer)
+                    ? ownerPlayer
+                    : owner instanceof LivingEntity living ? living : null;
+            DamageSource executeSource = ModDamageSources.droneBullet(target.level(), this, cause);
+            target.hurt(executeSource, damage);
             if (ExecuteToggleManager.isExecuteEnabled(ownerPlayer)) {
                 target.setLastHurtByMob(ownerPlayer);
             }
         } else {
-            target.hurt(createDamageSourceWithGuardAggro(), damage);
+            target.hurt(createDamageSource(), damage);
         }
 
         if (owner instanceof DroneConstructEntity droneShooter && droneShooter.isCommanderDrone()) {
@@ -259,5 +262,14 @@ public class DroneBullet extends ThrowableItemProjectile {
         this.entityData.set(DAMAGE, tag.getFloat("damage"));
         this.noPhysics = true;
         this.setNoGravity(true);
+    }
+
+    @Override
+    public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
+    }
+
+    @Override
+    public AnimatableInstanceCache getAnimatableInstanceCache() {
+        return this.animatableInstanceCache;
     }
 }

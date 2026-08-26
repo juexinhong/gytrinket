@@ -74,13 +74,13 @@ public class InterceptorConfigContainer extends AbstractContainerMenu {
         // 玩家背包（3行9列）
         for (int row = 0; row < 3; row++) {
             for (int col = 0; col < 9; col++) {
-                this.addSlot(new Slot(inventory, col + row * 9 + 9, 8 + col * 18, 84 + row * 18));
+                this.addSlot(new Slot(inventory, col + row * 9 + 9, 8 + col * 20, 84 + row * 20));
             }
         }
 
         // 快捷栏
         for (int col = 0; col < 9; col++) {
-            this.addSlot(new Slot(inventory, col, 8 + col * 18, 142));
+            this.addSlot(new Slot(inventory, col, 8 + col * 20, 148));
         }
 
         // 监听器：物品变更时同步到 InterceptorWeaponManager

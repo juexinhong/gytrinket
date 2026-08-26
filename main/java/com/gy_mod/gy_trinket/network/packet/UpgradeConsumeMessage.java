@@ -44,15 +44,14 @@ public class UpgradeConsumeMessage {
         buf.writeUtf(upgradedItemKey);
     }
 
-    public static void handle(UpgradeConsumeMessage msg, Supplier<NetworkEvent.Context> ctx) {
-        NetworkEvent.Context context = ctx.get();
-
+    public void handle(Supplier<NetworkEvent.Context> contextSupplier) {
+        NetworkEvent.Context context = contextSupplier.get();
         context.enqueueWork(() -> {
             var player = context.getSender();
             if (player == null) return;
             if (!Config.UPGRADE_SYSTEM_ENABLED.get()) return;
 
-            ItemStack clickedItem = player.getInventory().getItem(msg.slotIndex);
+            ItemStack clickedItem = player.getInventory().getItem(slotIndex);
             if (clickedItem.isEmpty()) return;
 
             PlayerStore store = PlayerStoreManager.getPlayerStore(player);
@@ -62,11 +61,11 @@ public class UpgradeConsumeMessage {
             UUID playerUUID = player.getUUID();
             UpgradeData upgradeData = UpgradeManager.getUpgradeData(playerUUID);
 
-            ResourceLocation baseItemRes = new ResourceLocation(msg.baseItemKey);
+            ResourceLocation baseItemRes = new ResourceLocation(baseItemKey);
             Item baseItem = net.minecraftforge.registries.ForgeRegistries.ITEMS.getValue(baseItemRes);
             if (baseItem == null) return;
 
-            ResourceLocation upgradedItemRes = new ResourceLocation(msg.upgradedItemKey);
+            ResourceLocation upgradedItemRes = new ResourceLocation(upgradedItemKey);
             Item upgradedItem = net.minecraftforge.registries.ForgeRegistries.ITEMS.getValue(upgradedItemRes);
             if (upgradedItem == null) return;
 
@@ -99,7 +98,7 @@ public class UpgradeConsumeMessage {
             String pathKey = baseKey + "->" + UpgradeManager.getItemKey(upgradedItem);
 
             Map<String, int[]> ingredientStatus = UpgradeManager.getIngredientStatus(
-                    handler, upgradeData, pathKey, recipe);
+                handler, upgradeData, pathKey, recipe);
 
             boolean isNeeded = false;
             for (Map.Entry<String, int[]> entry : ingredientStatus.entrySet()) {
@@ -138,7 +137,6 @@ public class UpgradeConsumeMessage {
 
             NetworkHandler.sendPanelUpdate(player);
         });
-
         context.setPacketHandled(true);
     }
 }

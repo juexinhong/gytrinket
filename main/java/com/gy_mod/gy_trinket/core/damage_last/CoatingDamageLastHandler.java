@@ -50,3 +50,4 @@ public class CoatingDamageLastHandler implements LastDamageHandler {
         return PRIORITY;
     }
 }
+

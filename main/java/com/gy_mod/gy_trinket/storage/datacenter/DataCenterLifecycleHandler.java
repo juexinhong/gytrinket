@@ -7,22 +7,22 @@ import com.gy_mod.gy_trinket.core.entity.construct.ConstructData;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructManager;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructType;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.*;
+import com.gy_mod.gy_trinket.core.entity.construct.swarm.SwarmConstructData;
 import com.gy_mod.gy_trinket.core.entity.construct.wingman.InterceptorWeaponManager;
 import com.gy_mod.gy_trinket.core.entity.construct.wingman.attack_mode.InterceptorAttackModeManager;
 import com.gy_mod.gy_trinket.core.entity.construct.wingman.WingmanConstructData;
-import com.gy_mod.gy_trinket.network.NetworkHandler;
-import com.gy_mod.gy_trinket.core.entity.construct.swarm.SwarmConstructData;
+import com.gy_mod.gy_trinket.core.level.ModLevelDataSlot;
 import com.gy_mod.gy_trinket.core.shield.ShieldData;
 import com.gy_mod.gy_trinket.core.shield.ShieldManager;
 import com.gy_mod.gy_trinket.core.shield_transfer.ShieldTransferManager;
 import com.gy_mod.gy_trinket.gytrinket;
+import com.gy_mod.gy_trinket.network.NetworkHandler;
 import com.gy_mod.gy_trinket.storage.PlayerStore;
 import com.gy_mod.gy_trinket.storage.PlayerStoreManager;
 import com.gy_mod.gy_trinket.core.upgrade.UpgradeDataSlot;
 import com.gy_mod.gy_trinket.storage.datacenter.slot.HealthDataSlot;
 import com.gy_mod.gy_trinket.storage.datacenter.slot.LightPointStoreSlot;
 import com.gy_mod.gy_trinket.storage.datacenter.slot.ShieldDataSlot;
-import com.gy_mod.gy_trinket.storage.datacenter.slot.ModLevelDataSlot;
 import com.gy_mod.gy_trinket.storage.datacenter.slot.ShieldTypeSlot;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -62,6 +62,7 @@ public class DataCenterLifecycleHandler {
         PlayerDataCenter.registerSlot(new ShieldDataSlot());
         PlayerDataCenter.registerSlot(new HealthDataSlot());
         PlayerDataCenter.registerSlot(new ModLevelDataSlot());
+        PlayerDataCenter.registerSlot(new com.gy_mod.gy_trinket.core.random_build.RandomBuildDataSlot());
 
         gytrinket.LOGGER.info("PlayerDataCenter 数据槽注册完成");
     }

@@ -13,21 +13,35 @@ import java.util.function.Supplier;
 
 public class LightningRenderMessage {
     private List<double[]> segments;
+    private int duration;
+    private float maxWidth;
 
-    public LightningRenderMessage() {}
+    public LightningRenderMessage() {
+        this.segments = new ArrayList<>();
+        this.duration = 8;
+        this.maxWidth = -1.0f;
+    }
 
     public LightningRenderMessage(List<ElectricDischargeManager.LightningSegment> segments) {
+        this(segments, 8, -1.0f);
+    }
+
+    public LightningRenderMessage(List<ElectricDischargeManager.LightningSegment> segments, int duration, float maxWidth) {
         this.segments = new ArrayList<>();
         for (var segment : segments) {
             this.segments.add(new double[] {
-                segment.start().x(), segment.start().y(), segment.start().z(),
-                segment.end().x(), segment.end().y(), segment.end().z()
+                segment.start().x, segment.start().y, segment.start().z,
+                segment.end().x, segment.end().y, segment.end().z
             });
         }
+        this.duration = duration;
+        this.maxWidth = maxWidth;
     }
 
     public LightningRenderMessage(FriendlyByteBuf buf) {
         int size = buf.readInt();
+        this.duration = buf.readInt();
+        this.maxWidth = buf.readFloat();
         this.segments = new ArrayList<>();
         for (int i = 0; i < size; i++) {
             double[] segment = new double[6];
@@ -40,6 +54,8 @@ public class LightningRenderMessage {
 
     public void toBytes(FriendlyByteBuf buf) {
         buf.writeInt(segments.size());
+        buf.writeInt(duration);
+        buf.writeFloat(maxWidth);
         for (double[] segment : segments) {
             for (double value : segment) {
                 buf.writeDouble(value);
@@ -47,9 +63,8 @@ public class LightningRenderMessage {
         }
     }
 
-    public void handle(Supplier<NetworkEvent.Context> ctx) {
-        NetworkEvent.Context context = ctx.get();
-
+    public void handle(Supplier<NetworkEvent.Context> contextSupplier) {
+        NetworkEvent.Context context = contextSupplier.get();
         context.enqueueWork(() -> {
             DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> {
                 List<ElectricDischargeManager.LightningSegment> lightningSegments = new ArrayList<>();
@@ -59,10 +74,9 @@ public class LightningRenderMessage {
                         new Vec3(segment[3], segment[4], segment[5])
                     ));
                 }
-                com.gy_mod.gy_trinket.core.attack_mode.electric_discharge.client.LightningRenderManager.addLightning(lightningSegments);
+                com.gy_mod.gy_trinket.core.attack_mode.electric_discharge.client.LightningRenderManager.addLightning(lightningSegments, duration, maxWidth);
             });
         });
-
         context.setPacketHandled(true);
     }
 }

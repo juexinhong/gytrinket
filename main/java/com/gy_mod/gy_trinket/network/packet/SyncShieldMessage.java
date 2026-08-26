@@ -17,10 +17,11 @@ public class SyncShieldMessage {
     private double shieldEffectRadius;
     private int[] protectedEntityIds;
     private boolean auraDamaging;
+    private double amplificationProgress;
 
     public SyncShieldMessage() {}
 
-    public SyncShieldMessage(double currentShield, double maxShield, int currentCooldown, int maxCooldown, double adaptiveArmorReduction, int siphonStacks, double shieldEffectRadius, int[] protectedEntityIds, boolean auraDamaging) {
+    public SyncShieldMessage(double currentShield, double maxShield, int currentCooldown, int maxCooldown, double adaptiveArmorReduction, int siphonStacks, double shieldEffectRadius, int[] protectedEntityIds, boolean auraDamaging, double amplificationProgress) {
         this.currentShield = currentShield;
         this.maxShield = maxShield;
         this.currentCooldown = currentCooldown;
@@ -30,6 +31,7 @@ public class SyncShieldMessage {
         this.shieldEffectRadius = shieldEffectRadius;
         this.protectedEntityIds = protectedEntityIds;
         this.auraDamaging = auraDamaging;
+        this.amplificationProgress = amplificationProgress;
     }
 
     public SyncShieldMessage(FriendlyByteBuf buf) {
@@ -42,6 +44,7 @@ public class SyncShieldMessage {
         this.shieldEffectRadius = buf.readDouble();
         this.protectedEntityIds = buf.readVarIntArray();
         this.auraDamaging = buf.readBoolean();
+        this.amplificationProgress = buf.readDouble();
     }
 
     public void toBytes(FriendlyByteBuf buf) {
@@ -54,17 +57,18 @@ public class SyncShieldMessage {
         buf.writeDouble(shieldEffectRadius);
         buf.writeVarIntArray(protectedEntityIds);
         buf.writeBoolean(auraDamaging);
+        buf.writeDouble(amplificationProgress);
     }
 
-    public void handle(Supplier<NetworkEvent.Context> ctx) {
-        NetworkEvent.Context context = ctx.get();
-
+    public void handle(Supplier<NetworkEvent.Context> contextSupplier) {
+        NetworkEvent.Context context = contextSupplier.get();
         context.enqueueWork(() -> {
-            DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> {
-                com.gy_mod.gy_trinket.client.network.ClientNetworkHandler.handleSyncShieldMessage(currentShield, maxShield, currentCooldown, maxCooldown, adaptiveArmorReduction, siphonStacks, shieldEffectRadius, protectedEntityIds, auraDamaging);
-            });
+            DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () ->
+                com.gy_mod.gy_trinket.client.network.ClientNetworkHandler.handleSyncShieldMessage(
+                    currentShield, maxShield, currentCooldown, maxCooldown,
+                    adaptiveArmorReduction, siphonStacks, shieldEffectRadius,
+                    protectedEntityIds, auraDamaging, amplificationProgress));
         });
-
         context.setPacketHandled(true);
     }
 }

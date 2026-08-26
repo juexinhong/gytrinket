@@ -5,9 +5,7 @@
       "conditions": {
         "items": [
           {
-            "items": [
-              "gytrinket:shield_siphon"
-            ]
+            "items": "gytrinket:shield_siphon"
           }
         ]
       },
@@ -20,7 +18,7 @@
     },
     "icon": {
       "count": 1,
-      "item": "gytrinket:shield_siphon"
+      "id": "gytrinket:shield_siphon"
     },
     "title": {
       "translate": "advancements.gytrinket.story.obtain_siphon_shield.title"

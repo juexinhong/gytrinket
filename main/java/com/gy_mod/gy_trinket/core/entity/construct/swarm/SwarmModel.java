@@ -22,3 +22,4 @@ public class SwarmModel extends GeoModel<SwarmConstructEntity> {
         return new ResourceLocation("gytrinket", "animations/drone.animation.json");
     }
 }
+

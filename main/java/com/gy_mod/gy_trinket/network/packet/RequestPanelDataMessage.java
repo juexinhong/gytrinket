@@ -9,20 +9,18 @@ import java.util.function.Supplier;
 public class RequestPanelDataMessage {
     public RequestPanelDataMessage() {}
 
-    public RequestPanelDataMessage(FriendlyByteBuf buf) {}
-
     public void toBytes(FriendlyByteBuf buf) {}
 
-    public static void handle(RequestPanelDataMessage msg, Supplier<NetworkEvent.Context> ctx) {
-        NetworkEvent.Context context = ctx.get();
+    public RequestPanelDataMessage(FriendlyByteBuf buf) {}
 
+    public void handle(Supplier<NetworkEvent.Context> contextSupplier) {
+        NetworkEvent.Context context = contextSupplier.get();
         context.enqueueWork(() -> {
             var player = context.getSender();
             if (player != null) {
                 NetworkHandler.sendPanelUpdate(player);
             }
         });
-
         context.setPacketHandled(true);
     }
 }

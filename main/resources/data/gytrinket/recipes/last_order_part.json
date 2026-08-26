@@ -13,7 +13,7 @@
     "L": { "item": "minecraft:lever" }
   },
   "result": {
-    "item": "gytrinket:last_order_part",
+    "id": "gytrinket:last_order_part",
     "count": 1
   }
 }

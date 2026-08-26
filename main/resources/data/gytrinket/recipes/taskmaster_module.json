@@ -9,11 +9,11 @@
   "key": {
     "#": { "item": "gytrinket:construct_frame" },
     "X": { "item": "minecraft:string" },
-    "@": { "item": "gytrinket:totem" },
+    "@": { "item": "gytrinket:taskmaster_part" },
     "*": { "item": "minecraft:blue_wool" }
   },
   "result": {
-    "item": "gytrinket:taskmaster_module",
+    "id": "gytrinket:taskmaster_module",
     "count": 1
   }
 }

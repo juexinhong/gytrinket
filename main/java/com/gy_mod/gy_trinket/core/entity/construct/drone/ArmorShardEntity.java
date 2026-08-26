@@ -6,6 +6,8 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundAddEntityPacket;
+import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.server.level.ServerEntity;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.entity.Entity;
@@ -68,10 +70,8 @@ public class ArmorShardEntity extends Entity implements GeoEntity {
         tag.putInt("Lifetime", this.lifetime);
     }
 
-    @Override
-    public Packet<ClientGamePacketListener> getAddEntityPacket() {
-        return new ClientboundAddEntityPacket(this);
-    }
+    // In 1.21.1, getAddEntityPacket() is handled automatically by the entity system.
+    // No need to override it.
 
     @Override
     public void tick() {
@@ -161,3 +161,4 @@ public class ArmorShardEntity extends Entity implements GeoEntity {
         return this.animatableInstanceCache;
     }
 }
+

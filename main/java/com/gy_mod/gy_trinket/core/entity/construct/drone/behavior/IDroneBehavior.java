@@ -48,3 +48,4 @@ public interface IDroneBehavior {
      */
     boolean isCombatMode();
 }
+

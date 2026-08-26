@@ -5,9 +5,7 @@
       "conditions": {
         "items": [
           {
-            "items": [
-              "gytrinket:shield_aura_ring"
-              ]
+            "items": "gytrinket:shield_aura_ring"
           }
         ]
       },
@@ -20,7 +18,7 @@
     },
     "icon": {
       "count": 1,
-      "item": "gytrinket:shield_aura_ring"
+      "id": "gytrinket:shield_aura_ring"
     },
     "title": {
       "translate": "advancements.gytrinket.story.obtain_aura_ring_shield.title"

@@ -6,22 +6,15 @@ import net.minecraftforge.network.NetworkEvent;
 
 import java.util.function.Supplier;
 
-/**
- * 客户端→服务端：通知玩家空挥（左键攻击空气）
- * <p>
- * PlayerInteractEvent.LeftClickEmpty 仅在客户端触发，
- * 需通过网络包通知服务端扣除隐身进度。
- */
 public class GhostFuselageAttackMessage {
-
     public GhostFuselageAttackMessage() {}
-
-    public GhostFuselageAttackMessage(FriendlyByteBuf buf) {}
 
     public void toBytes(FriendlyByteBuf buf) {}
 
-    public void handle(Supplier<NetworkEvent.Context> ctx) {
-        NetworkEvent.Context context = ctx.get();
+    public GhostFuselageAttackMessage(FriendlyByteBuf buf) {}
+
+    public void handle(Supplier<NetworkEvent.Context> contextSupplier) {
+        NetworkEvent.Context context = contextSupplier.get();
         context.enqueueWork(() -> {
             var player = context.getSender();
             if (player != null) {

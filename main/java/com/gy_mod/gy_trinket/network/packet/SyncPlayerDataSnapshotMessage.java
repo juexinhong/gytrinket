@@ -26,15 +26,12 @@ public class SyncPlayerDataSnapshotMessage {
         buf.writeNbt(snapshotData);
     }
 
-    public static void handle(SyncPlayerDataSnapshotMessage msg, Supplier<NetworkEvent.Context> ctx) {
-        NetworkEvent.Context context = ctx.get();
-
+    public void handle(Supplier<NetworkEvent.Context> contextSupplier) {
+        NetworkEvent.Context context = contextSupplier.get();
         context.enqueueWork(() -> {
-            DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> {
-                com.gy_mod.gy_trinket.client.datacenter.ClientDataCenter.loadFromNBT(msg.snapshotData);
-            });
+            DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () ->
+                com.gy_mod.gy_trinket.client.datacenter.ClientDataCenter.loadFromNBT(snapshotData));
         });
-
         context.setPacketHandled(true);
     }
 }

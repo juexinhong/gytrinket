@@ -51,3 +51,4 @@ public class ReshapingLastDamageHandler implements LastDamageHandler {
         return PRIORITY;
     }
 }
+

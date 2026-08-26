@@ -24,7 +24,7 @@ public class FormationBehavior implements IDroneBehavior {
     private static float getConfigAttackRange() { return Config.FORMATION_ATTACK_RANGE.get().floatValue(); }
     private static float getConfigAttackInterval() { return Config.FORMATION_ATTACK_INTERVAL.get().floatValue(); }
     private static int getConfigAttackPassDelay() { return Config.FORMATION_ATTACK_PASS_DELAY.get(); }
-    private static final float VIEW_ANGLE = 20.0F;
+    private static final float VIEW_ANGLE = 30.0F;
 
     private final float lineSpacing = 0.7F;
     private final float lineHeight = 1.0F;
@@ -224,15 +224,11 @@ public class FormationBehavior implements IDroneBehavior {
                     continue;
                 }
             }
-            
+
             if (!hasLineOfSight(drone, target)) {
                 continue;
             }
-            
-            if (!isInViewAngle(drone, target)) {
-                continue;
-            }
-            
+
             validTargets.add(target);
         }
 
@@ -240,21 +236,25 @@ public class FormationBehavior implements IDroneBehavior {
         return validTargets;
     }
 
+    /**
+     * 视线判定：仅检查无人机朝向是否指向目标（含俯仰角），不检查墙体遮挡
+     * 列队阵列的子弹可以越过障碍攻击，因此只需确认目标在视野范围内即可
+     */
     private boolean hasLineOfSight(Entity drone, LivingEntity target) {
-        return drone instanceof LivingEntity livingDrone && livingDrone.hasLineOfSight(target);
+        return isInViewAngle(drone, target);
     }
 
     private boolean isInViewAngle(Entity drone, LivingEntity target) {
         Vec3 dronePos = drone.position();
         Vec3 targetPos = target.position().add(0, target.getBbHeight() / 2, 0);
-        
+
         Vec3 lookDir = drone.getLookAngle().normalize();
         Vec3 toTarget = targetPos.subtract(dronePos).normalize();
-        
+
         double dotProduct = lookDir.dot(toTarget);
         double viewAngleRad = Math.toRadians(VIEW_ANGLE);
         double minDot = Math.cos(viewAngleRad);
-        
+
         return dotProduct >= minDot;
     }
 
@@ -407,3 +407,4 @@ public class FormationBehavior implements IDroneBehavior {
         return true;
     }
 }
+

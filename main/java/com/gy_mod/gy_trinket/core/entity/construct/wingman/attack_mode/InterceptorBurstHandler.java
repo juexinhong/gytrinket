@@ -207,3 +207,4 @@ public class InterceptorBurstHandler implements InterceptorAttackModeHandler {
         return wingman.getPersistentData().getInt(BURST_REMAINING_KEY) > 0;
     }
 }
+

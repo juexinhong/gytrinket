@@ -10,8 +10,16 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 拦截机攻击模式管理器
@@ -35,17 +43,17 @@ import java.util.*;
  *   <li>三者组合：充能期间叠加强袭，释放后触起点射</li>
  * </ul>
  */
-@net.minecraftforge.fml.common.Mod.EventBusSubscriber(modid = gytrinket.MODID)
+@Mod.EventBusSubscriber(modid = gytrinket.MODID)
 public class InterceptorAttackModeManager {
 
     // ===== 武器模式注册 =====
-    private static final Map<String, InterceptorWeaponMode> WEAPON_MODES = new LinkedHashMap<>();
+    private static final Map<String, InterceptorWeaponMode> WEAPON_MODES = new java.util.LinkedHashMap<>();
 
     // ===== 模块模式注册 =====
-    private static final Map<String, InterceptorAttackModeHandler> MODULE_HANDLERS = new LinkedHashMap<>();
+    private static final Map<String, InterceptorAttackModeHandler> MODULE_HANDLERS = new java.util.LinkedHashMap<>();
 
     // ===== 每个拦截机实体当前激活的模块模式 =====
-    private static final Map<UUID, Set<String>> ACTIVE_MODULES = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final Map<UUID, Set<String>> ACTIVE_MODULES = new ConcurrentHashMap<>();
 
     static {
         // 注册武器模式
@@ -81,7 +89,7 @@ public class InterceptorAttackModeManager {
      */
     public static InterceptorWeaponMode getCurrentWeaponMode(WingmanConstructEntity wingman) {
         String modeName = wingman.getInterceptorAttackMode().getSerializedName();
-        InterceptorWeaponMode mode = getWeaponMode(modeName);
+        InterceptorWeaponMode mode = WEAPON_MODES.get(modeName);
         if (mode == null) {
             InterceptorDebug.logSlow(wingman, "no_weapon_mode_" + wingman.getId(),
                     "未找到武器模式: modeName=" + modeName + " 已注册=" + WEAPON_MODES.keySet());
@@ -270,6 +278,7 @@ public class InterceptorAttackModeManager {
                 com.gy_mod.gy_trinket.core.entity.construct.ConstructManager.getInstance();
         Map<UUID, Entity> entities =
                 cm.getActiveConstructEntities(player.getUUID(), WingmanConstructTypes.WINGMAN);
+        if (entities == null) return;
         for (Entity entity : entities.values()) {
             if (entity instanceof WingmanConstructEntity wingman) {
                 clearAllModules(wingman);
@@ -295,8 +304,9 @@ public class InterceptorAttackModeManager {
         if (!hasModule(wingman, InterceptorAssaultHandler.NAME)) return;
 
         int counter = InterceptorChargedHandler.getAndIncrementAssaultCounter(wingman);
-        double interceptorSpeed = wingman.getAttackSpeedMultiplier() * wingman.getWeaponAttackSpeedMultiplier();
-        int weaponInterval = interceptorSpeed > 0 ? (int) (20.0 / interceptorSpeed) : 20;
+        ItemStack weapon = wingman.getInterceptorWeapon();
+        if (weapon.isEmpty()) weapon = owner.getMainHandItem();
+        int weaponInterval = calculateWeaponCooldown(wingman, weapon, owner);
         weaponInterval = Math.max(2, weaponInterval);
 
         if (counter > 0 && counter % weaponInterval == 0) {
@@ -314,5 +324,29 @@ public class InterceptorAttackModeManager {
         if (hasModule(wingman, InterceptorBurstHandler.NAME)) {
             InterceptorBurstHandler.startBurstFromCharged(wingman, target, owner);
         }
+    }
+
+    // ===== 事件处理 =====
+
+    @SubscribeEvent
+    public static void onServerTick(TickEvent.ServerTickEvent event) {
+        if (event.phase != TickEvent.Phase.END) return;
+        for (ServerPlayer player : event.getServer().getPlayerList().getPlayers()) {
+            for (WingmanConstructEntity wingman : getWingmansOwnedBy(player)) {
+                tick(wingman, player);
+            }
+        }
+    }
+
+    private static Iterable<WingmanConstructEntity> getWingmansOwnedBy(Player player) {
+        java.util.List<WingmanConstructEntity> list = new java.util.ArrayList<>();
+        for (var entity : player.level().getEntitiesOfClass(
+                WingmanConstructEntity.class,
+                player.getBoundingBox().inflate(64),
+                e -> player.getUUID().equals(e.getOwnerUUID())
+        )) {
+            list.add(entity);
+        }
+        return list;
     }
 }

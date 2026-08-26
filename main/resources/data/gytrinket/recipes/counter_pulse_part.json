@@ -10,7 +10,7 @@
     "%": { "item": "minecraft:observer" }
   },
   "result": {
-    "item": "gytrinket:counter_pulse_part",
+    "id": "gytrinket:counter_pulse_part",
     "count": 1
   }
 }

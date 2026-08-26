@@ -1,8 +1,8 @@
 package com.gy_mod.gy_trinket.core.entity.construct;
 
+import net.minecraftforge.event.server.ServerStartingEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.event.server.ServerStartingEvent;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -42,7 +42,7 @@ import java.util.List;
  * ConstructTypeRegistry.register(new MyConstructRegistry());
  * </pre>
  */
-@Mod.EventBusSubscriber(modid = "gytrinket", bus = Mod.EventBusSubscriber.Bus.FORGE)
+@Mod.EventBusSubscriber(modid = "gytrinket")
 public class ConstructTypeRegistry {
     /** 已注册的注册器列表 */
     private static final List<IConstructRegistry> REGISTRIES = new ArrayList<>();

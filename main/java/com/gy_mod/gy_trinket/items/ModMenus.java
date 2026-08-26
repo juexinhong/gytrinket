@@ -14,4 +14,7 @@ public class ModMenus {
 
     public static final RegistryObject<MenuType<InterceptorConfigContainer>> INTERCEPTOR_CONFIG =
             MENUS.register("interceptor_config", () -> InterceptorConfigContainer.TYPE);
+
+    public static final RegistryObject<MenuType<com.gy_mod.gy_trinket.menu.LightPointCoreMenu>> LIGHT_POINT_CORE =
+            MENUS.register("light_point_core", () -> com.gy_mod.gy_trinket.menu.LightPointCoreMenu.TYPE);
 }

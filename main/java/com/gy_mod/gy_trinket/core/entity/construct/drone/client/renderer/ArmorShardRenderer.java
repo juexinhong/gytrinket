@@ -17,3 +17,4 @@ public class ArmorShardRenderer extends GeoEntityRenderer<ArmorShardEntity> {
         return 15;
     }
 }
+

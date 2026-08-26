@@ -15,17 +15,16 @@ public class RequestAttributesMessage {
 
     public RequestAttributesMessage(FriendlyByteBuf buf) {}
 
-    public void handle(Supplier<NetworkEvent.Context> ctx) {
-        NetworkEvent.Context context = ctx.get();
-
+    public void handle(Supplier<NetworkEvent.Context> contextSupplier) {
+        NetworkEvent.Context context = contextSupplier.get();
         context.enqueueWork(() -> {
             var player = context.getSender();
             if (player != null) {
                 var attributes = AttributeManager.getPlayerAttributes(player);
-                NetworkHandler.INSTANCE.send(PacketDistributor.PLAYER.with(() -> player), new ResponseAttributesMessage(attributes));
+                NetworkHandler.INSTANCE.send(PacketDistributor.PLAYER.with(() -> player),
+                    new ResponseAttributesMessage(attributes));
             }
         });
-
         context.setPacketHandled(true);
     }
 }

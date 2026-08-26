@@ -1,8 +1,8 @@
 package com.gy_mod.gy_trinket.event;
 
 import com.gy_mod.gy_trinket.core.TickScheduler;
+import com.gy_mod.gy_trinket.core.entity.construct.ConstructAttributeApplier;
 import com.gy_mod.gy_trinket.core.entity.construct.swarm.MothershipManager;
-import com.gy_mod.gy_trinket.core.entity.construct.wingman.EvolutionManager;
 import com.gy_mod.gy_trinket.core.level.ModLevelChangeEvent;
 import com.gy_mod.gy_trinket.gytrinket;
 import net.minecraft.server.MinecraftServer;
@@ -64,12 +64,10 @@ public class PlayerLevelDebouncer {
                 continue;
             }
 
-            // 设置动态属性 → 自动触发防抖局部重算 → PlayerAttributesCalculatedEvent
-            // 无需手动调用 ConstructAttributeApplier.refreshForPlayer
             AdvancedEngineeringEventHandler.applyEngineeringBonus(player);
             PrecisionConstructEventHandler.applyPrecisionConstructBonus(player);
             MothershipManager.applyMothershipBonus(player);
-            EvolutionManager.applyEvolutionBonus(player);
+            ConstructAttributeApplier.refreshForPlayer(uuid, player);
         }
     }
 }

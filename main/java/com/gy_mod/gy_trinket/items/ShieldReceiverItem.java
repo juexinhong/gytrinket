@@ -31,27 +31,28 @@ public class ShieldReceiverItem extends Item {
 
         // 检查玩家是否装备了护盾移植模块
         if (!ShieldTransferManager.hasShieldTransferItem(player.getUUID())) {
-            player.sendSystemMessage(Component.translatable("message.gy_trinket.shield_receiver.need_transfer_module"));
+            player.sendSystemMessage(Component.translatable("message.gytrinket.shield_receiver.need_transfer_module"));
             return InteractionResult.FAIL;
         }
 
         // 检查目标实体是否是玩家自己
         if (target == player) {
-            player.sendSystemMessage(Component.translatable("message.gy_trinket.shield_receiver.cannot_add_self"));
+            player.sendSystemMessage(Component.translatable("message.gytrinket.shield_receiver.cannot_add_self"));
             return InteractionResult.FAIL;
         }
 
-        // 检查目标实体是否已经被当前玩家保护
-        boolean isProtected = ShieldTransferManager.isEntityProtected(player.getUUID(), target.getUUID());
+        // 检查目标实体是否已经被当前玩家保护（内存记录或实体标签，标签随实体复制/重建保留）
+        boolean isProtected = ShieldTransferManager.isEntityProtected(player.getUUID(), target.getUUID())
+                || player.getUUID().equals(ShieldTransferManager.getEntityTransferTagOwner(target));
 
         if (isProtected) {
             // 移除实体的护盾保护
             ShieldTransferManager.removeProtectionForEntity(player.getUUID(), target.getUUID());
-            player.sendSystemMessage(Component.translatable("message.gy_trinket.shield_receiver.target_removed"));
+            player.sendSystemMessage(Component.translatable("message.gytrinket.shield_receiver.target_removed"));
         } else {
             // 添加实体的护盾保护
             ShieldTransferManager.transferShieldToEntity(player, target);
-            player.sendSystemMessage(Component.translatable("message.gy_trinket.shield_receiver.target_added"));
+            player.sendSystemMessage(Component.translatable("message.gytrinket.shield_receiver.target_added"));
         }
 
         return InteractionResult.SUCCESS;
@@ -65,16 +66,16 @@ public class ShieldReceiverItem extends Item {
 
         // 检查玩家是否装备了护盾移植模块
         if (!ShieldTransferManager.hasShieldTransferItem(player.getUUID())) {
-            player.sendSystemMessage(Component.translatable("message.gy_trinket.shield_receiver.need_transfer_module"));
+            player.sendSystemMessage(Component.translatable("message.gytrinket.shield_receiver.need_transfer_module"));
             return InteractionResultHolder.fail(player.getItemInHand(hand));
         }
 
         // 显示当前保护的实体列表
         List<LivingEntity> protectedEntities = ShieldTransferManager.getProtectedEntities(player.getUUID(), level);
         if (protectedEntities.isEmpty()) {
-            player.sendSystemMessage(Component.translatable("message.gy_trinket.shield_receiver.no_protected"));
+            player.sendSystemMessage(Component.translatable("message.gytrinket.shield_receiver.no_protected"));
         } else {
-            player.sendSystemMessage(Component.translatable("message.gy_trinket.shield_receiver.protected_list"));
+            player.sendSystemMessage(Component.translatable("message.gytrinket.shield_receiver.protected_list"));
             for (LivingEntity entity : protectedEntities) {
                 player.sendSystemMessage(Component.literal("- " + entity.getName().getString()));
             }
@@ -83,3 +84,4 @@ public class ShieldReceiverItem extends Item {
         return InteractionResultHolder.success(player.getItemInHand(hand));
     }
 }
+

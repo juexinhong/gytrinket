@@ -1,7 +1,10 @@
 package com.gy_mod.gy_trinket.core.entity.construct;
 
-
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
+import net.minecraftforge.common.MinecraftForge;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -86,7 +89,7 @@ public class ConstructManager {
             .computeIfAbsent(constructId, k -> new ConcurrentHashMap<>())
             .put(entity.getUUID(), entity);
         
-        net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(
+        MinecraftForge.EVENT_BUS.post(
             new com.gy_mod.gy_trinket.core.shield_transfer.event.PlayerConstructListChangedEvent(playerUUID, entity, 
                 com.gy_mod.gy_trinket.core.shield_transfer.event.PlayerConstructListChangedEvent.ChangeType.ADDED)
         );
@@ -104,7 +107,7 @@ public class ConstructManager {
                 entities.remove(entityUUID);
                 
                 if (removedEntity != null) {
-                    net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(
+                    MinecraftForge.EVENT_BUS.post(
                         new com.gy_mod.gy_trinket.core.shield_transfer.event.PlayerConstructListChangedEvent(playerUUID, removedEntity, 
                             com.gy_mod.gy_trinket.core.shield_transfer.event.PlayerConstructListChangedEvent.ChangeType.REMOVED)
                     );
@@ -167,7 +170,7 @@ public class ConstructManager {
     }
 
     /**
-     * 注册构造体类型构建条件检查器
+     * 注册构造体类型的构建条件检查器
      *
      * @param constructId 构造体类型ID
      * @param checker     检查函数，返回true表示玩家满足该类型的构建条件
@@ -205,7 +208,8 @@ public class ConstructManager {
     /**
      * 添加构造体到玩家
      * <p>
-     * 如果构造体数量超过上限，会自动移除最早的构造体并销毁对应的实体
+     * 如果当前维度的构造体数量超过上限，会自动移除当前维度最早的构造体并销毁对应的实体。
+     * 其他维度的遗留构造体不会被占用/淘汰。
      *
      * @param player       玩家
      * @param constructData 构造体数据
@@ -223,27 +227,58 @@ public class ConstructManager {
         ConstructType type = getConstructType(constructId);
         if (type != null) {
             double effectiveMaxCount = ConstructAttributeApplier.getEffectiveMaxCount(playerUUID, type);
-            while (constructList.size() >= effectiveMaxCount) {
-                ConstructData oldestData = constructList.get(0);
-                UUID entityUUID = oldestData.getEntityUUID();
+            ResourceKey<Level> playerDim = player.level().dimension();
 
-                Map<String, Map<UUID, net.minecraft.world.entity.Entity>> playerEntities = activeConstructEntities.get(playerUUID);
-                if (playerEntities != null) {
-                    Map<UUID, net.minecraft.world.entity.Entity> entities = playerEntities.get(constructId);
-                    if (entities != null) {
-                        net.minecraft.world.entity.Entity entity = entities.get(entityUUID);
-                        if (entity != null && entity.isAlive()) {
-                            entity.remove(net.minecraft.world.entity.Entity.RemovalReason.DISCARDED);
-                        }
-                    }
+            // 统计当前维度已有的构造体数量（以活跃实体为准）
+            long currentDimCount = 0;
+            Map<String, Map<UUID, net.minecraft.world.entity.Entity>> playerEntities = activeConstructEntities.get(playerUUID);
+            if (playerEntities != null) {
+                Map<UUID, net.minecraft.world.entity.Entity> entities = playerEntities.get(constructId);
+                if (entities != null) {
+                    currentDimCount = entities.values().stream()
+                            .filter(e -> !e.isRemoved() && e.level() != null && e.level().dimension().equals(playerDim))
+                            .count();
                 }
+            }
 
-                unregisterConstructEntity(playerUUID, constructId, entityUUID);
-                constructList.remove(0);
+            while (currentDimCount >= effectiveMaxCount) {
+                ConstructData oldestData = evictOldestInDimension(playerUUID, constructId, constructList, playerDim);
+                if (oldestData == null) break;
+                currentDimCount--;
             }
         }
 
         constructList.add(constructData);
+    }
+
+    /**
+     * 在指定维度中淘汰最早构建的一个构造体（销毁实体并清理数据）
+     *
+     * @return 被淘汰的构造体数据；如果没有可淘汰的返回 null
+     */
+    @Nullable
+    private ConstructData evictOldestInDimension(UUID playerUUID, String constructId,
+                                                 List<ConstructData> constructList, ResourceKey<Level> dim) {
+        for (ConstructData data : constructList) {
+            UUID entityUUID = data.getEntityUUID();
+            if (entityUUID == null) continue;
+
+            Map<String, Map<UUID, net.minecraft.world.entity.Entity>> playerEntities = activeConstructEntities.get(playerUUID);
+            if (playerEntities == null) return null;
+            Map<UUID, net.minecraft.world.entity.Entity> entities = playerEntities.get(constructId);
+            if (entities == null) return null;
+
+            net.minecraft.world.entity.Entity entity = entities.get(entityUUID);
+            if (entity != null && !entity.isRemoved() && entity.level() != null && entity.level().dimension().equals(dim)) {
+                if (entity.isAlive()) {
+                    entity.remove(net.minecraft.world.entity.Entity.RemovalReason.DISCARDED);
+                }
+                unregisterConstructEntity(playerUUID, constructId, entityUUID);
+                constructList.remove(data);
+                return data;
+            }
+        }
+        return null;
     }
 
     /**
@@ -388,6 +423,8 @@ public class ConstructManager {
 
     /**
      * 检查是否可以创建构造体
+     * <p>
+     * 只统计玩家当前维度的构造体数量，其他维度的遗留构造体不占用当前维度的上限。
      *
      * @param player      玩家
      * @param constructId 构造体ID
@@ -414,7 +451,12 @@ public class ConstructManager {
 
         entities.entrySet().removeIf(entry -> entry.getValue().isRemoved());
 
-        return entities.size() < effectiveMaxCount;
+        ResourceKey<Level> playerDim = player.level().dimension();
+        long currentDimCount = entities.values().stream()
+                .filter(e -> e.level() != null && e.level().dimension().equals(playerDim))
+                .count();
+
+        return currentDimCount < effectiveMaxCount;
     }
 
     /**
@@ -510,7 +552,6 @@ public class ConstructManager {
 
         Map<String, ConstructBuilder> builders = playerBuilders.get(playerUUID);
         if (builders != null && !builders.isEmpty()) {
-            boolean buildingDisabled = buildingDisabledPlayers.contains(playerUUID);
             List<String> completedBuilds = new ArrayList<>();
             List<String> cancelledBuilds = new ArrayList<>();
 
@@ -523,8 +564,10 @@ public class ConstructManager {
                     continue;
                 }
 
-                // 待机阵列期间暂停构建进度
-                if (buildingDisabled) continue;
+                // 构建禁用时暂停但不取消构建进度
+                if (buildingDisabledPlayers.contains(playerUUID)) {
+                    continue;
+                }
 
                 if (builder.tick()) {
                     completedBuilds.add(constructId);
@@ -550,7 +593,8 @@ public class ConstructManager {
     /**
      * 清理超出数量上限的构造体
      * <p>
-     * 检查玩家所有类型的构造体，销毁超出上限数量的实体
+     * 只按玩家当前维度统计，仅销毁当前维度中超出上限的实体。
+     * 其他维度遗留的构造体不受影响。
      *
      * @param player 玩家
      */
@@ -563,6 +607,7 @@ public class ConstructManager {
         }
 
         Map<String, List<ConstructData>> constructsMap = playerConstructs.get(playerUUID);
+        ResourceKey<Level> playerDim = player.level().dimension();
 
         for (Map.Entry<String, Map<UUID, net.minecraft.world.entity.Entity>> entry : playerEntities.entrySet()) {
             String constructId = entry.getKey();
@@ -576,11 +621,16 @@ public class ConstructManager {
             }
 
             double effectiveMaxCount = ConstructAttributeApplier.getEffectiveMaxCount(playerUUID, type);
-            if (entities.size() <= effectiveMaxCount) {
+
+            List<net.minecraft.world.entity.Entity> currentDimEntities = entities.values().stream()
+                    .filter(e -> e.level() != null && e.level().dimension().equals(playerDim))
+                    .collect(Collectors.toList());
+
+            if (currentDimEntities.size() <= effectiveMaxCount) {
                 continue;
             }
 
-            int excessCount = entities.size() - (int) effectiveMaxCount;
+            int excessCount = currentDimEntities.size() - (int) effectiveMaxCount;
             int removed = 0;
 
             if (constructsMap != null) {
@@ -591,7 +641,8 @@ public class ConstructManager {
                         if (removed >= excessCount) break;
                         UUID entityUUID = data.getEntityUUID();
                         net.minecraft.world.entity.Entity entity = entities.get(entityUUID);
-                        if (entity != null) {
+                        if (entity != null && !entity.isRemoved()
+                                && entity.level() != null && entity.level().dimension().equals(playerDim)) {
                             if (entity.isAlive()) {
                                 entity.remove(net.minecraft.world.entity.Entity.RemovalReason.DISCARDED);
                             }
@@ -609,7 +660,8 @@ public class ConstructManager {
                 for (UUID entityUUID : remainingUUIDs) {
                     if (removed >= excessCount) break;
                     net.minecraft.world.entity.Entity entity = entities.get(entityUUID);
-                    if (entity != null) {
+                    if (entity != null && !entity.isRemoved()
+                            && entity.level() != null && entity.level().dimension().equals(playerDim)) {
                         if (entity.isAlive()) {
                             entity.remove(net.minecraft.world.entity.Entity.RemovalReason.DISCARDED);
                         }
@@ -662,7 +714,6 @@ public class ConstructManager {
         activeConstructEntities.remove(playerUUID);
         playerBuilders.remove(playerUUID);
         buildingDisabledPlayers.remove(playerUUID);
-        // 清理构造体组共享缓存
         ConstructGroupCache.getInstance().clearPlayerCache(playerUUID);
     }
 

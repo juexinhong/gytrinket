@@ -1,9 +1,13 @@
 package com.gy_mod.gy_trinket.network.packet;
 
+import com.gy_mod.gy_trinket.core.entity.construct.ConstructManager;
 import com.gy_mod.gy_trinket.core.entity.construct.wingman.InterceptorWeaponManager;
+import com.gy_mod.gy_trinket.core.entity.construct.wingman.WingmanConstructEntity;
+import com.gy_mod.gy_trinket.core.entity.construct.wingman.WingmanConstructTypes;
 import com.gy_mod.gy_trinket.network.NetworkHandler;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.network.NetworkEvent;
 
@@ -36,26 +40,17 @@ public class SetInterceptorWeaponMessage {
             ServerPlayer player = context.getSender();
             if (player != null) {
                 InterceptorWeaponManager.setWeapon(player.getUUID(), weapon);
-                // Sync back to client
                 NetworkHandler.sendInterceptorWeaponToPlayer(player, weapon);
 
-                // Update all wingman entities for this player
-                updateWingmanWeapons(player, weapon);
+                Map<UUID, Entity> entities = ConstructManager.getInstance()
+                    .getActiveConstructEntities(player.getUUID(), WingmanConstructTypes.WINGMAN);
+                for (Entity entity : entities.values()) {
+                    if (entity instanceof WingmanConstructEntity wingman) {
+                        wingman.refreshInterceptorData();
+                    }
+                }
             }
         });
         context.setPacketHandled(true);
-    }
-
-    private static void updateWingmanWeapons(ServerPlayer player, ItemStack weapon) {
-        com.gy_mod.gy_trinket.core.entity.construct.ConstructManager cm =
-            com.gy_mod.gy_trinket.core.entity.construct.ConstructManager.getInstance();
-        Map<UUID, net.minecraft.world.entity.Entity> entities =
-            cm.getActiveConstructEntities(player.getUUID(),
-                com.gy_mod.gy_trinket.core.entity.construct.wingman.WingmanConstructTypes.WINGMAN);
-        for (net.minecraft.world.entity.Entity entity : entities.values()) {
-            if (entity instanceof com.gy_mod.gy_trinket.core.entity.construct.wingman.WingmanConstructEntity wingman) {
-                wingman.refreshInterceptorData();
-            }
-        }
     }
 }

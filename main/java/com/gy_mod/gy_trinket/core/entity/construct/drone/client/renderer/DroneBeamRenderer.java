@@ -48,3 +48,4 @@ public class DroneBeamRenderer extends GeoEntityRenderer<DroneBeamProjectile> {
         return new DroneBeamModel().getTextureResource(entity);
     }
 }
+

@@ -3,6 +3,7 @@ package com.gy_mod.gy_trinket.event;
 import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
 import com.gy_mod.gy_trinket.core.level.ModLevelManager;
+import com.gy_mod.gy_trinket.core.random_build.RandomBuildManager;
 import com.gy_mod.gy_trinket.gytrinket;
 import com.gy_mod.gy_trinket.storage.PlayerStore;
 import com.gy_mod.gy_trinket.storage.PlayerStoreManager;
@@ -39,6 +40,11 @@ public class QuickEquipEvent {
         }
 
         if (stack.isEmpty()) {
+            return;
+        }
+
+        // 代币指定物品：即使注册了属性或特殊机制，也禁止快速装备（代币右键用于打开玩家面板）
+        if (stack.getItem() == RandomBuildManager.getTokenItem()) {
             return;
         }
 
@@ -138,6 +144,7 @@ public class QuickEquipEvent {
             return;
         }
 
+        int uniqueItemsCount = countUniqueItems(handler);
         int cost = Config.getQuickEquipUpgradePointsCost();
         if (ModLevelManager.getUpgradePoints(player.getUUID()) < cost) {
             player.sendSystemMessage(Component.translatable("message.gytrinket.quick_equip.not_enough_points"));
@@ -169,7 +176,7 @@ public class QuickEquipEvent {
         return slots;
     }
 
-    private static boolean isQuickEquipItem(String itemId, Item item) {
+    public static boolean isQuickEquipItem(String itemId, Item item) {
         if (AttributeManager.isItemAttributeRegistered(itemId)) {
             return true;
         }
@@ -206,10 +213,16 @@ public class QuickEquipEvent {
                 || Config.isFormationArrayItem(item)
                 || Config.isGuardArrayItem(item)
                 || Config.isSelfDestructItem(item)
+                || Config.isTaskmasterItem(item)
                 || Config.isWingmanModuleItem(item)
+                || Config.isSwarmModuleItem(item)
                 || Config.isInterceptorModuleItem(item)
                 || Config.isEvolutionModuleItem(item)
-                || Config.isSwarmModuleItem(item);
+                || Config.isNanoRegenModuleItem(item)
+                || Config.isShockwaveModuleItem(item)
+                || Config.isFurnaceCoreItem(item)
+                || Config.isGhostFuselageItem(item)
+                || Config.isBodyItem(item);
     }
 
     private static boolean hasSameItemInStore(ItemStackHandler handler, Item item) {

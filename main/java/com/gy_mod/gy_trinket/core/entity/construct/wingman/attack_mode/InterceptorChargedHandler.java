@@ -12,7 +12,6 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.SwordItem;
 
 import java.util.UUID;
 
@@ -311,12 +310,15 @@ public class InterceptorChargedHandler implements InterceptorAttackModeHandler {
 
         // 临时提升攻击伤害属性
         var attackDamageAttr = wingman.getAttribute(Attributes.ATTACK_DAMAGE);
-        java.util.UUID chargedModifierUUID = java.util.UUID.fromString("a1b2c3d4-e5f6-7890-abcd-ef1234567890");
+        net.minecraft.resources.ResourceLocation chargedModifierId =
+                new net.minecraft.resources.ResourceLocation("gytrinket", "interceptor_charged_attack");
+        java.util.UUID chargedModifierUuid =
+                java.util.UUID.nameUUIDFromBytes(chargedModifierId.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
         if (attackDamageAttr != null) {
-            attackDamageAttr.removeModifier(chargedModifierUUID);
+            attackDamageAttr.removeModifier(chargedModifierUuid);
             attackDamageAttr.addTransientModifier(new net.minecraft.world.entity.ai.attributes.AttributeModifier(
-                chargedModifierUUID,
-                "gytrinket:interceptor_charged_attack",
+                chargedModifierUuid,
+                chargedModifierId.toString(),
                 damageBonus,
                 net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation.MULTIPLY_TOTAL
             ));
@@ -327,7 +329,7 @@ public class InterceptorChargedHandler implements InterceptorAttackModeHandler {
 
         // 移除临时伤害修饰符
         if (attackDamageAttr != null) {
-            attackDamageAttr.removeModifier(chargedModifierUUID);
+            attackDamageAttr.removeModifier(chargedModifierUuid);
         }
 
         // 剑类武器触发充能横扫增强
@@ -423,3 +425,4 @@ public class InterceptorChargedHandler implements InterceptorAttackModeHandler {
         return counter;
     }
 }
+

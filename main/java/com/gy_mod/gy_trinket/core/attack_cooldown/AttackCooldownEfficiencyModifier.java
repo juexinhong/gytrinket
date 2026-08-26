@@ -4,8 +4,7 @@ import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
 import com.gy_mod.gy_trinket.core.shield.DisableSystem;
 import com.gy_mod.gy_trinket.event.PlayerAttributesCalculatedEvent;
-import com.gy_mod.gy_trinket.storage.PlayerStore;
-import com.gy_mod.gy_trinket.storage.PlayerStoreManager;
+import com.gy_mod.gy_trinket.storage.PlayerStoreUtils;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 
@@ -40,19 +39,10 @@ public class AttackCooldownEfficiencyModifier {
     public static void onAttributesCalculated(PlayerAttributesCalculatedEvent event) {
         UUID playerUUID = event.getPlayerUUID();
 
-        PlayerStore store = PlayerStoreManager.getPlayerStore(playerUUID);
-        if (store == null) {
-            PLAYER_HAS_EFFICIENCY_ITEM.remove(playerUUID);
-            PLAYER_ATTACK_COOLDOWN_STATE.remove(playerUUID);
-            AttributeManager.removeDynamicAttribute(playerUUID, NAMESPACE, SHIELD_COOLDOWN_ATTR);
-            AttributeManager.removeDynamicAttribute(playerUUID, NAMESPACE, RECOVERY_EFFICIENCY_ATTR);
-            return;
-        }
-
         boolean hasEfficiencyItem = false;
-        for (int i = 0; i < store.getItemHandler().getSlots(); i++) {
-            ItemStack stack = store.getItemHandler().getStackInSlot(i);
-            if (!stack.isEmpty() && !DisableSystem.isItemDisabled(playerUUID, stack) && Config.isAttackCooldownEfficiencyItem(stack.getItem())) {
+        // 已装备物品 = 光点核心存储 + Curios 饰品栏（光点核心内容扩展）
+        for (ItemStack stack : PlayerStoreUtils.getEquippedStacks(playerUUID)) {
+            if (!DisableSystem.isItemDisabled(playerUUID, stack) && Config.isAttackCooldownEfficiencyItem(stack.getItem())) {
                 hasEfficiencyItem = true;
                 break;
             }

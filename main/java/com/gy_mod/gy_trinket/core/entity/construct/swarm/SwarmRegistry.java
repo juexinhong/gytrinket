@@ -11,3 +11,4 @@ public class SwarmRegistry implements ConstructTypeRegistry.IConstructRegistry {
         SwarmConstructTypes.register();
     }
 }
+

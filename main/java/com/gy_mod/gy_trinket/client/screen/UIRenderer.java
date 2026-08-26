@@ -7,6 +7,9 @@ public interface UIRenderer {
 
     void drawPanelBorder(GuiGraphics g, int x, int y, int w, int h);
 
+    /** 面板顶部标题栏（略深底 + 底部霓虹线） */
+    void drawPanelHeader(GuiGraphics g, int x, int y, int w, int h);
+
     void drawSlot(GuiGraphics g, int x, int y, int w, int h, boolean hovered);
 
     void drawSelectedRow(GuiGraphics g, int x, int y, int w, int h);
@@ -23,6 +26,12 @@ public interface UIRenderer {
 
     void drawOverlayBorder(GuiGraphics g, int x, int y, int w, int h);
 
+    /** 标题下方霓虹下划线 */
+    void drawTitleUnderline(GuiGraphics g, int x, int y, int w);
+
+    /** 带描边的进度条 */
+    void drawProgressBar(GuiGraphics g, int x, int y, int w, int h, float progress, int fillColor);
+
     int getAccentColor();
 
     int getTextColor();
@@ -35,3 +44,4 @@ public interface UIRenderer {
 
     int getDividerColor();
 }
+

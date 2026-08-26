@@ -30,3 +30,4 @@ public interface IDataSlot<T> {
 
     default void onClone(UUID oldUUID, UUID newUUID, T oldValue, T newValue) {}
 }
+

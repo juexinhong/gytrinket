@@ -150,11 +150,14 @@ public class ReflectDamageHandler implements DamageHandler {
         );
 
         // 发送带位置同步的能量波爆炸特效（护盾移植时跟随被保护实体，否则跟随玩家位置，保持初始方向）
+        // 特效长度与伤害范围一致：溅射长度 × 爆炸半径属性增幅
         if (shieldOwner.level() instanceof net.minecraft.server.level.ServerLevel serverLevel) {
             int positionSyncId = ShieldTransferManager.hasTransferredShield(shieldOwnerUUID)
                 ? attackedEntity.getId()
                 : shieldOwner.getId();
-            NetworkHandler.sendEnergyWaveExplosionToAll(serverLevel, center, direction, sputterLength, positionSyncId, 1, 1.0);
+            double explosionRadiusMultiplier = AttributeManager.getGroupAttribute(shieldOwnerUUID, "explosion_radius");
+            NetworkHandler.sendEnergyWaveExplosionToAll(serverLevel, center, direction,
+                    sputterLength * explosionRadiusMultiplier, positionSyncId, 1, 1.0);
         }
 
         // 计算粒子参数
@@ -183,3 +186,4 @@ public class ReflectDamageHandler implements DamageHandler {
         return PRIORITY;
     }
 }
+

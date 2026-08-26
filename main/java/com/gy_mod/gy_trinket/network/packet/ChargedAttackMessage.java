@@ -2,9 +2,9 @@ package com.gy_mod.gy_trinket.network.packet;
 
 import com.gy_mod.gy_trinket.core.attack_mode.PlayerAttackLockManager;
 import com.gy_mod.gy_trinket.core.attack_mode.charged_attack.ChargedAttackDamageTracker;
+import com.gy_mod.gy_trinket.core.attack_mode.charged_attack.ChargedAttackEvent;
 import com.gy_mod.gy_trinket.core.attack_mode.charged_attack.ChargedAttackManager;
 import com.gy_mod.gy_trinket.core.attack_mode.charged_attack.ChargedAttackSweepHandler;
-import com.gy_mod.gy_trinket.core.attack_mode.charged_attack.ChargedAttackEvent;
 import com.gy_mod.gy_trinket.network.NetworkHandler;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
@@ -29,8 +29,8 @@ public class ChargedAttackMessage {
         buf.writeVarInt(action);
     }
 
-    public void handle(Supplier<NetworkEvent.Context> ctx) {
-        NetworkEvent.Context context = ctx.get();
+    public void handle(Supplier<NetworkEvent.Context> contextSupplier) {
+        NetworkEvent.Context context = contextSupplier.get();
         context.enqueueWork(() -> {
             var player = context.getSender();
             if (player == null) return;
@@ -76,6 +76,7 @@ public class ChargedAttackMessage {
                         net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(
                             new ChargedAttackEvent(ChargedAttackEvent.Type.RELEASED, player));
                     }
+                    // 对射线上非生命实体施加充能伤害（穿透非生命实体）
                     ChargedAttackSweepHandler.damageNonLivingTargetsAlongRaycast(player, chargeValue);
                     // 充能释放后的点射触发在 AttackModeManager.onPlayerAttack 中处理
                     // 同步0到客户端，清空HUD显示
@@ -99,6 +100,7 @@ public class ChargedAttackMessage {
                         net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(
                             new ChargedAttackEvent(ChargedAttackEvent.Type.RELEASED, player));
                         ChargedAttackSweepHandler.executeChargedSweepAttack(player, chargeValue);
+                        // 对射线上非生命实体施加充能伤害（穿透非生命实体）
                         ChargedAttackSweepHandler.damageNonLivingTargetsAlongRaycast(player, chargeValue);
                     }
                     NetworkHandler.sendChargedAttackSyncToPlayer(player, 0);

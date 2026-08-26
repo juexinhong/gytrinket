@@ -1,7 +1,6 @@
 package com.gy_mod.gy_trinket.items;
 
 import com.gy_mod.gy_trinket.blocks.ModBlocks;
-import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
@@ -10,13 +9,14 @@ import net.minecraftforge.registries.RegistryObject;
 public class ModItems {
     public static final DeferredRegister<Item> ITEMS = DeferredRegister.create(ForgeRegistries.ITEMS, com.gy_mod.gy_trinket.gytrinket.MODID);
 
-    // 基础方块
-    public static final RegistryObject<Item> LIGHT_POINT_CORE = ITEMS.register("light_point_core", () -> new BlockItem(ModBlocks.LIGHT_POINT_CORE.get(), new Item.Properties())); // 光点核心方块
+    // 基础方块（使用 GeoItem 渲染3D模型）
+    public static final RegistryObject<Item> LIGHT_POINT_CORE = ITEMS.register("light_point_core", () -> new LightPointCoreBlockItem(ModBlocks.LIGHT_POINT_CORE.get(), new Item.Properties())); // 光点核心方块
     
     // 机身物品
     public static final RegistryObject<Item> GUARDIAN = ITEMS.register("guardian", () -> new Item(new Item.Properties())); // 哨卫机身
     public static final RegistryObject<Item> SWARM_MODULE = ITEMS.register("mothership_body", () -> new Item(new Item.Properties())); // 母舰机身
     public static final RegistryObject<Item> GHOST_FUSELAGE = ITEMS.register("ghost_fuselage", () -> new Item(new Item.Properties())); // 幽灵机身
+    public static final RegistryObject<Item> ENGINEERING_FUSELAGE = ITEMS.register("engineering_fuselage", () -> new Item(new Item.Properties())); // 工程机身
 
     // 基础护盾物品
     public static final RegistryObject<Item> SHIELD_GY = ITEMS.register("shield_gy", () -> new Item(new Item.Properties())); // 基础护盾
@@ -146,6 +146,8 @@ public class ModItems {
     // 超越模块
     public static final RegistryObject<Item> CHARGED_SHIELD_MODULE = ITEMS.register("charged_shield_module", () -> new Item(new Item.Properties())); // 充能护盾模块
     public static final RegistryObject<Item> GRUDGE_MODULE = ITEMS.register("grudge_module", () -> new Item(new Item.Properties())); // 积怨模块
+    public static final RegistryObject<Item> APEX_APPARATUS_MODULE = ITEMS.register("apex_apparatus_module", () -> new Item(new Item.Properties())); // 尖端器械模块
+    public static final RegistryObject<Item> FURNACE_CORE_MODULE = ITEMS.register("furnace_core_module", () -> new Item(new Item.Properties())); // 炉心融解模块
     
     // 零件
     public static final RegistryObject<Item> TOTEM = ITEMS.register("totem", () -> new Item(new Item.Properties())); // 图腾
@@ -176,6 +178,7 @@ public class ModItems {
     public static final RegistryObject<Item> AERODYNAMIC_DESIGN_DRAFT = ITEMS.register("aerodynamic_design_draft", () -> new Item(new Item.Properties())); // 流线设计稿
     public static final RegistryObject<Item> COORDINATE = ITEMS.register("coordinate", () -> new Item(new Item.Properties())); // 坐标
     public static final RegistryObject<Item> PRECISION_CONSTRUCT_PART = ITEMS.register("precision_construct_part", () -> new Item(new Item.Properties())); // 精密构造零件
+    public static final RegistryObject<Item> TASKMASTER_PART = ITEMS.register("taskmaster_part", () -> new Item(new Item.Properties())); // 督战者零件
     public static final RegistryObject<Item> SHIELD_TRANSFER_PART = ITEMS.register("shield_transfer_part", () -> new Item(new Item.Properties())); // 护盾移植零件
     public static final RegistryObject<Item> DRONE_PART = ITEMS.register("drone_part", () -> new Item(new Item.Properties())); // 无人机零件
     public static final RegistryObject<Item> WIDE_PROTOCOL = ITEMS.register("wide_protocol", () -> new Item(new Item.Properties())); // 宽限协议
@@ -194,5 +197,8 @@ public class ModItems {
     public static final RegistryObject<Item> SHOCKWAVE_PART = ITEMS.register("shockwave_part", () -> new Item(new Item.Properties())); // 震撼弹零件
     public static final RegistryObject<Item> NANO_REGEN_PART = ITEMS.register("nano_regen_part", () -> new Item(new Item.Properties())); // 纳米再生零件
     public static final RegistryObject<Item> SUPPRESSION_PART = ITEMS.register("suppression_part", () -> new Item(new Item.Properties())); // 压制零件
+
+    // 代币（随机构建代币机制，默认代币；不可合成、无战利品掉落）
+    public static final RegistryObject<Item> TOKEN = ITEMS.register("token", () -> new Item(new Item.Properties())); // 代币
 
 }

@@ -97,14 +97,24 @@ void main() {
     vec3 localOrigin = toLocal(worldPos);
     vec3 localCamPos = toLocal(camWorld);
     vec3 rd = normalize(localOrigin - localCamPos);
-    vec3 ro = localOrigin;
+
+    // 盒内视角：相机在包围盒内时从相机起跑（否则从盒面片段起跑，外部视角不变）。
+    // 这样波内也能看到波体，而非直接穿出盒子导致看不见。
+    bool camInBox = abs(localCamPos.x) <= MaxSpan && abs(localCamPos.y) <= MaxSpan
+            && localCamPos.z >= -MaxBack && localCamPos.z <= MaxForward;
+    vec3 ro = camInBox ? localCamPos : localOrigin;
+
+    // 判断相机相对各层的内外：相机在层外记录“进入”交叉，在层内记录“退出”交叉（支持波内视角）
+    bool camInsideOuter = revolutionSDF(localCamPos, OuterHW, OuterLen) >= 0.0;
+    bool camInsideColor = revolutionSDF(localCamPos, ColorHW, ColorLen) >= 0.0;
+    bool camInsideCenter = revolutionSDF(localCamPos, CenterHW, CenterLen) >= 0.0;
 
     float baseStep = min(min(MaxSpan, MaxForward), 1.0) * 0.035;
     float minStep = baseStep * 0.08;
     float maxDist = (MaxSpan + MaxBack + MaxForward) * 3.0;
 
     // ===== Phase 1: 光线行进，收集数据 =====
-    // 收集表面交叉（只记录进入交叉：SDF从负变正）
+    // 收集表面交叉（相机在层外只记录进入交叉：SDF从负变正；在层内只记录退出交叉：SDF从正变负）
     // 同时累积泛光体积
 
     const int MAX_CROSSINGS = 6;
@@ -135,17 +145,24 @@ void main() {
         float colorSDF = revolutionSDF(p, ColorHW, ColorLen);
         float centerSDF = revolutionSDF(p, CenterHW, CenterLen);
 
-        // --- 收集表面进入交叉 ---
+        // --- 收集表面交叉 ---
         // 外层交叉（最先遇到，将是合成时的最底层）
-        if (prevOuterSDF < 0.0 && outerSDF >= 0.0 && numCrossings < MAX_CROSSINGS) {
-            float edgeSoft = smoothstep(-0.02, 0.02, outerSDF);
+        bool outerCross = camInsideOuter
+                ? (prevOuterSDF >= 0.0 && outerSDF < 0.0)
+                : (prevOuterSDF < 0.0 && outerSDF >= 0.0);
+        if (outerCross && numCrossings < MAX_CROSSINGS) {
+            // edgeSoft范围改为(-0.02, 0.0)，交叉点outerSDF>=0时alpha完整
+            float edgeSoft = smoothstep(-0.02, 0.0, outerSDF);
             crossingColors[numCrossings] = OuterLayerColor.rgb;
             crossingAlphas[numCrossings] = OuterLayerColor.a * edgeSoft;
             numCrossings++;
         }
 
         // 颜色层交叉
-        if (prevColorSDF < 0.0 && colorSDF >= 0.0 && numCrossings < MAX_CROSSINGS) {
+        bool colorCross = camInsideColor
+                ? (prevColorSDF >= 0.0 && colorSDF < 0.0)
+                : (prevColorSDF < 0.0 && colorSDF >= 0.0);
+        if (colorCross && numCrossings < MAX_CROSSINGS) {
             float glow = glowFactor3D(p);
             crossingColors[numCrossings] = applyGlow(ColorLayerColor.rgb, glow);
             crossingAlphas[numCrossings] = ColorLayerColor.a;
@@ -153,7 +170,10 @@ void main() {
         }
 
         // 中心层交叉（最后遇到，将是合成时的最顶层）
-        if (prevCenterSDF < 0.0 && centerSDF >= 0.0 && numCrossings < MAX_CROSSINGS) {
+        bool centerCross = camInsideCenter
+                ? (prevCenterSDF >= 0.0 && centerSDF < 0.0)
+                : (prevCenterSDF < 0.0 && centerSDF >= 0.0);
+        if (centerCross && numCrossings < MAX_CROSSINGS) {
             float glow = glowFactor3D(p);
             crossingColors[numCrossings] = applyGlow(CenterColor.rgb, glow);
             crossingAlphas[numCrossings] = CenterColor.a;
@@ -185,31 +205,28 @@ void main() {
         if (t > maxDist) break;
     }
 
-    // ===== Phase 2: 后处理合成（Screen Blending）=====
-    // Screen混合: result = 1 - (1-a)(1-b)(1-c)...
-    // 每层独立贡献，不会被其他层遮挡，所有层级清晰可见
-    // 解决source-over下外焰层alpha遮挡泛光层的问题：
-    //   source-over: bloom贡献被外焰层(1-outerAlpha)衰减
-    //   screen: bloom贡献独立叠加，不受任何层遮挡
+    // ===== Phase 2: 后处理合成（Front-to-Back Alpha Blending）=====
+    // 从顶到底合成：中心层(顶) → 颜色层 → 外焰层 → 泛光(底)
+    // 里层完全遮盖外层，外层只在里层未覆盖处显示
+    // 交叉数组顺序：[0]=外焰(底), [1]=颜色, [2]=中心(顶)
 
-    vec3 invResult = vec3(1.0);
-    float invAlpha = 1.0;
-
-    // 泛光体积贡献
-    vec3 bloomContrib = min(bloomAccumColor, vec3(1.0));
     float bloomAlpha = min(1.0 - bloomTransmittance, 1.0);
-    invResult *= (1.0 - bloomContrib);
-    invAlpha *= (1.0 - bloomAlpha);
 
-    // 表面交叉贡献（Screen混合与顺序无关，每层独立叠加）
-    for (int i = 0; i < numCrossings; i++) {
-        vec3 contrib = min(crossingColors[i] * crossingAlphas[i], vec3(1.0));
-        invResult *= (1.0 - contrib);
-        invAlpha *= (1.0 - crossingAlphas[i]);
+    vec3 resultColor = vec3(0.0);
+    float resultAlpha = 0.0;
+
+    // 表面交叉（从顶到底：中心→颜色→外焰）
+    for (int i = numCrossings - 1; i >= 0; i--) {
+        float srcAlpha = crossingAlphas[i];
+        resultColor += (1.0 - resultAlpha) * crossingColors[i] * srcAlpha;
+        resultAlpha += (1.0 - resultAlpha) * srcAlpha;
     }
 
-    vec3 resultColor = 1.0 - invResult;
-    float resultAlpha = 1.0 - invAlpha;
+    // 泛光（最底层，在所有交叉层后面）
+    if (bloomAlpha > 0.0) {
+        resultColor += (1.0 - resultAlpha) * bloomAccumColor;
+        resultAlpha += (1.0 - resultAlpha) * bloomAlpha;
+    }
 
     if (resultAlpha <= 0.001) discard;
 

@@ -6,13 +6,11 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
+import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
 
 /**
- * 爆破弹渲染器 - 仅渲染轨迹，不渲染模型
- * <p>
- * 与无人机子弹使用相同的轨迹渲染系统，
- * 通过 {@link DroneBulletTrailManager} 注册拖尾。
+ * 爆破弹渲染器（纯拖尾，无3D模型）
  */
 public class ExplosiveProjectileRenderer extends EntityRenderer<ExplosiveProjectile> {
 
@@ -27,7 +25,13 @@ public class ExplosiveProjectileRenderer extends EntityRenderer<ExplosiveProject
     }
 
     @Override
+    protected int getBlockLightLevel(ExplosiveProjectile entity, BlockPos blockPos) {
+        return 15;
+    }
+
+    @Override
     public ResourceLocation getTextureLocation(ExplosiveProjectile entity) {
-        return ResourceLocation.fromNamespaceAndPath("minecraft", "textures/entity/explosive_projectile.png");
+        return new ResourceLocation("textures/entity/explosive_projectile.png");
     }
 }
+

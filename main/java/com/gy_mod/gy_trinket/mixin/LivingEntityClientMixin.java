@@ -75,3 +75,4 @@ public class LivingEntityClientMixin {
         return volume;
     }
 }
+

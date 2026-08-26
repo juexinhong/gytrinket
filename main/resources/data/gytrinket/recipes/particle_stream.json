@@ -1,4 +1,4 @@
-﻿{
+{
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
@@ -18,7 +18,7 @@
     "QRQ"
   ],
   "result": {
-    "item": "gytrinket:particle_stream",
+    "id": "gytrinket:particle_stream",
     "count": 1
   }
 }

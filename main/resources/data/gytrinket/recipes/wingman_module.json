@@ -3,17 +3,17 @@
   "category": "misc",
   "pattern": [
     " % ",
-    "#&#",
-    " @ "
+    "#@#",
+    " * "
   ],
   "key": {
     "#": { "item": "minecraft:string" },
     "%": { "item": "gytrinket:construct_frame" },
-    "&": { "item": "gytrinket:wingman_part" },
-    "@": { "item": "minecraft:blue_wool" }
+    "@": { "item": "gytrinket:wingman_part" },
+    "*": { "item": "minecraft:blue_wool" }
   },
   "result": {
-    "item": "gytrinket:wingman_module",
+    "id": "gytrinket:wingman_module",
     "count": 1
   }
 }

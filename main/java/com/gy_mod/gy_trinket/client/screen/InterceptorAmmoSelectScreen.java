@@ -1,157 +1,88 @@
 package com.gy_mod.gy_trinket.client.screen;
 
-import com.gy_mod.gy_trinket.core.entity.construct.wingman.InterceptorWeaponManager;
 import com.gy_mod.gy_trinket.network.NetworkHandler;
 import com.gy_mod.gy_trinket.network.packet.SetInterceptorAmmoMessage;
-import net.minecraft.client.Minecraft;
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
-import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.ArrowItem;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 
-public class InterceptorAmmoSelectScreen extends AbstractPanelScreen {
+import java.util.ArrayList;
+import java.util.List;
 
-    private ItemStack currentAmmo;
-    private ItemStack hoveredItem = ItemStack.EMPTY;
-    private int hoveredSlotIndex = -1;
+public class InterceptorAmmoSelectScreen extends Screen {
+    private static final ResourceLocation BACKGROUND = new ResourceLocation("gytrinket", "textures/gui/ammo_select.png");
+    private final List<AmmoOption> ammoOptions = new ArrayList<>();
+    private final UIRenderer renderer = SolidUIRenderer.CONFIG;
+    private int selectedAmmo = -1;
+    private int entityId;
 
-    public InterceptorAmmoSelectScreen(Screen parentScreen) {
-        super(Component.translatable("screen.gytrinket.interceptor_ammo_select"), parentScreen, SolidUIRenderer.PANEL);
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.player != null) {
-            this.currentAmmo = InterceptorWeaponManager.getAmmo(mc.player.getUUID());
-        } else {
-            this.currentAmmo = ItemStack.EMPTY;
-        }
+    public InterceptorAmmoSelectScreen(int entityId) {
+        super(Component.translatable("screen.gytrinket.interceptor_ammo_select"));
+        this.entityId = entityId;
+        initAmmoOptions();
     }
+
+    private void initAmmoOptions() {
+        ammoOptions.add(new AmmoOption(0, Component.translatable("ammo.gytrinket.standard"), ChatFormatting.WHITE));
+        ammoOptions.add(new AmmoOption(1, Component.translatable("ammo.gytrinket.incendiary"), ChatFormatting.RED));
+        ammoOptions.add(new AmmoOption(2, Component.translatable("ammo.gytrinket.explosive"), ChatFormatting.GOLD));
+        ammoOptions.add(new AmmoOption(3, Component.translatable("ammo.gytrinket.armor_piercing"), ChatFormatting.AQUA));
+    }
+
+    private int panelWidth() { return 180; }
+    private int panelHeight() { return ammoOptions.size() * 25 + 40; }
+    private int panelX() { return (this.width - panelWidth()) / 2; }
+    private int panelY() { return (this.height - panelHeight()) / 2 - 10; }
 
     @Override
     protected void init() {
         super.init();
-        initPanelSize(200, 250, 20, 40);
+        int buttonWidth = 130;
+        int buttonHeight = 20;
+        int startX = panelX() + (panelWidth() - buttonWidth) / 2;
+        int startY = panelY() + 26;
 
-        int btnY = panelY + panelHeight + 5;
-        int btnWidth = (panelWidth - 16) / 3;
+        for (int i = 0; i < ammoOptions.size(); i++) {
+            final int index = i;
+            AmmoOption option = ammoOptions.get(i);
 
-        this.addRenderableWidget(Button.builder(
-                Component.translatable("screen.gytrinket.clear_ammo"),
-                button -> {
-                    currentAmmo = ItemStack.EMPTY;
-                    NetworkHandler.INSTANCE.sendToServer(new SetInterceptorAmmoMessage(ItemStack.EMPTY));
-                }
-        ).bounds(panelX + 5, btnY, btnWidth, 16).build());
+            this.addRenderableWidget(SciFiButton.create(option.name(), button -> {
+                selectedAmmo = option.id();
+                sendAmmoSelection();
+                this.onClose();
+            }).pos(startX, startY + i * (buttonHeight + 5)).size(buttonWidth, buttonHeight).build());
+        }
+    }
 
-        this.addRenderableWidget(Button.builder(
-                Component.translatable("screen.gytrinket.back"),
-                button -> Minecraft.getInstance().setScreen(parentScreen)
-        ).bounds(panelX + panelWidth - btnWidth - 5, btnY, btnWidth, 16).build());
+    private void sendAmmoSelection() {
+        if (selectedAmmo >= 0) {
+            ItemStack ammoStack = new ItemStack(net.minecraft.world.item.Items.PAPER);
+            NetworkHandler.INSTANCE.sendToServer(new SetInterceptorAmmoMessage(ammoStack));
+        }
     }
 
     @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        renderPanelBackground(guiGraphics);
+        this.renderBackground(guiGraphics);
 
-        guiGraphics.drawString(font, Component.translatable("screen.gytrinket.interceptor_ammo_select_title").getString(),
-                panelX + 8, panelY + 6, renderer.getAccentColor());
-
-        guiGraphics.drawString(font, Component.translatable("screen.gytrinket.interceptor_ammo_select_hint").getString(),
-                panelX + 8, panelY + 18, renderer.getHintColor());
-
-        // 当前弹药显示
-        int currentY = panelY + 30;
-        guiGraphics.drawString(font, Component.translatable("screen.gytrinket.current_ammo").getString(),
-                panelX + 8, currentY, renderer.getTextColor());
-
-        if (!currentAmmo.isEmpty()) {
-            guiGraphics.renderItem(currentAmmo, panelX + 8, currentY + 12);
-            guiGraphics.renderItemDecorations(font, currentAmmo, panelX + 8, currentY + 12);
-            String ammoName = currentAmmo.getHoverName().getString();
-            guiGraphics.drawString(font, ammoName + " x" + currentAmmo.getCount(), panelX + 26, currentY + 14, renderer.getValueColor());
-            currentY += 30;
-        } else {
-            guiGraphics.drawString(font, Component.translatable("screen.gytrinket.no_ammo_set").getString(),
-                    panelX + 26, currentY + 12, renderer.getHintColor());
-            currentY += 30;
-        }
-
-        // 物品栏网格
-        Player player = Minecraft.getInstance().player;
-        if (player == null) {
-            super.render(guiGraphics, mouseX, mouseY, partialTick);
-            return;
-        }
-
-        Inventory inventory = player.getInventory();
-        int cols = 9;
-        int slotSize = 16;
-        int startX = panelX + (panelWidth - cols * slotSize) / 2;
-        int startY = currentY + 2;
-
-        hoveredItem = ItemStack.EMPTY;
-        hoveredSlotIndex = -1;
-
-        // 主物品栏 (3行)
-        for (int row = 0; row < 3; row++) {
-            for (int col = 0; col < cols; col++) {
-                int slot = 9 + row * cols + col;
-                renderInventorySlot(guiGraphics, inventory, slot, startX + col * slotSize, startY + row * slotSize, slotSize, mouseX, mouseY);
-            }
-        }
-
-        // 快捷栏 (1行)
-        int hotbarY = startY + 3 * slotSize + 4;
-        for (int col = 0; col < cols; col++) {
-            renderInventorySlot(guiGraphics, inventory, col, startX + col * slotSize, hotbarY, slotSize, mouseX, mouseY);
-        }
+        int px = panelX();
+        int py = panelY();
+        renderer.drawPanelBackground(guiGraphics, px, py, panelWidth(), panelHeight());
+        renderer.drawPanelBorder(guiGraphics, px, py, panelWidth(), panelHeight());
+        renderer.drawPanelHeader(guiGraphics, px + 1, py + 1, panelWidth() - 2, 16);
+        guiGraphics.drawString(this.font, this.title.getString(), px + 10, py + 5, renderer.getAccentColor(), false);
 
         super.render(guiGraphics, mouseX, mouseY, partialTick);
-
-        if (!hoveredItem.isEmpty()) {
-            guiGraphics.renderTooltip(font, hoveredItem, mouseX, mouseY);
-        }
-    }
-
-    private void renderInventorySlot(GuiGraphics guiGraphics, Inventory inventory, int slot, int x, int y, int slotSize, int mouseX, int mouseY) {
-        boolean hovered = mouseX >= x && mouseX < x + slotSize && mouseY >= y && mouseY < y + slotSize;
-        ItemStack stack = inventory.getItem(slot);
-        boolean isArrow = !stack.isEmpty() && stack.getItem() instanceof ArrowItem;
-        boolean isSelected = !currentAmmo.isEmpty() && isSameItem(stack, currentAmmo);
-
-        if (isSelected) {
-            guiGraphics.fill(x - 1, y - 1, x + slotSize, y + slotSize, 0xFF5555FF);
-        } else if (!isArrow && !stack.isEmpty()) {
-            // 非箭矢物品半透明
-            guiGraphics.fill(x, y, x + slotSize - 1, y + slotSize - 1, 0x40505050);
-        }
-
-        renderer.drawSlot(guiGraphics, x, y, slotSize - 1, slotSize - 1, hovered && isArrow);
-
-        if (!stack.isEmpty()) {
-            guiGraphics.renderItem(stack, x, y);
-            guiGraphics.renderItemDecorations(font, stack, x, y);
-            if (hovered && isArrow) {
-                hoveredItem = stack;
-                hoveredSlotIndex = slot;
-            }
-        }
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (button == 0 && hoveredSlotIndex >= 0 && !hoveredItem.isEmpty()) {
-            currentAmmo = hoveredItem.copy();
-            NetworkHandler.INSTANCE.sendToServer(new SetInterceptorAmmoMessage(hoveredItem.copy()));
-            return true;
-        }
-        return super.mouseClicked(mouseX, mouseY, button);
+    public boolean isPauseScreen() {
+        return false;
     }
 
-    private boolean isSameItem(ItemStack a, ItemStack b) {
-        if (a.isEmpty() || b.isEmpty()) return false;
-        return ItemStack.isSameItemSameTags(a, b);
+    private record AmmoOption(int id, Component name, ChatFormatting color) {
     }
 }

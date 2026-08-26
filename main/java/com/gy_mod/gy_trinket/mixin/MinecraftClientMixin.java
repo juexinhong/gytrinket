@@ -19,12 +19,20 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  * 确保充能攻击和强袭系统无论是否安装其他战斗模组都能正常工作。
  * <p>
  * 使用较低的 Mixin priority（999）确保在 Better Combat（默认 1000）之前执行。
+ * <p>
+ * 拦截逻辑：
+ * - startAttack：充能攻击启动时取消攻击
+ * - continueAttack：充能期间/强袭模式下阻止 Better Combat 接管长按攻击
  */
 @Mixin(value = Minecraft.class, priority = 999)
 public class MinecraftClientMixin {
 
     /**
      * 拦截 startAttack（单次点击攻击）
+     * <p>
+     * 在充能状态下取消攻击；如果应该启动充能，则启动充能并取消攻击。
+     * 此注入在 Better Combat 的 startAttack 拦截之前执行（priority=999 < 1000），
+     * 因此充能攻击的优先级高于 Better Combat 的连击系统。
      */
     @Inject(method = "startAttack", at = @At("HEAD"), cancellable = true)
     private void gytrinket$onStartAttack(CallbackInfoReturnable<Boolean> cir) {
@@ -60,6 +68,11 @@ public class MinecraftClientMixin {
 
     /**
      * 拦截 continueAttack（长按攻击/持续挖掘）
+     * <p>
+     * 1. 充能期间：阻止所有攻击行为
+     * 2. 强袭模式下：阻止 Better Combat 接管长按攻击，让强袭自己的自动攻击逻辑执行
+     * <p>
+     * 此注入在 Better Combat 的 continueAttack 拦截之前执行。
      */
     @Inject(method = "continueAttack", at = @At("HEAD"), cancellable = true)
     private void gytrinket$onContinueAttack(boolean leftClick, CallbackInfo ci) {
@@ -70,8 +83,11 @@ public class MinecraftClientMixin {
         }
 
         // 强袭模式：阻止 Better Combat 接管长按攻击
+        // 强袭系统通过 AssaultInputHandler 在客户端 tick 中自行控制攻击频率和触发
+        // 如果不拦截，Better Combat 的长按自动攻击会绕过强袭的攻击速度控制
         if (AssaultInputHandler.isAssaultMode()) {
             ci.cancel();
         }
     }
 }
+

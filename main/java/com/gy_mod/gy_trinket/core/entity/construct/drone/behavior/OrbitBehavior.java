@@ -3,6 +3,7 @@ package com.gy_mod.gy_trinket.core.entity.construct.drone.behavior;
 import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructGroupCache;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructManager;
+import com.gy_mod.gy_trinket.core.entity.construct.IConstructEntity;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneArrayType;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneBullet;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneConstructTypes;
@@ -54,9 +55,9 @@ public class OrbitBehavior implements IDroneBehavior {
     @Override
     public Vec3 updatePosition(Entity drone, LivingEntity owner, float orbitAngle, float deltaTime) {
         // 直接从 ConstructManager 获取玩家的所有无人机
-        Map<UUID, net.minecraft.world.entity.Entity> entitiesMap = 
+        Map<UUID, net.minecraft.world.entity.Entity> entitiesMap =
             ConstructManager.getInstance().getActiveConstructEntities(owner.getUUID(), DroneConstructTypes.DRONE);
-        
+
         List<DroneConstructEntity> allDrones = new ArrayList<>();
         for (net.minecraft.world.entity.Entity entity : entitiesMap.values()) {
             if (entity instanceof DroneConstructEntity droneEntity &&
@@ -65,10 +66,10 @@ public class OrbitBehavior implements IDroneBehavior {
                 allDrones.add(droneEntity);
             }
         }
-        
+
         // 按ID排序（越老越先创建，索引越小），确保索引稳定
         allDrones.sort(Comparator.comparingInt(Entity::getId));
-        
+
         int totalDrones = allDrones.size();
         int droneIndex = allDrones.indexOf(drone);
         if (droneIndex < 0) {
@@ -77,12 +78,14 @@ public class OrbitBehavior implements IDroneBehavior {
 
         // 使用游戏时间计算旋转角度
         double gameTime = owner.level().getGameTime() / 20.0;
-        double rotationAngle = gameTime * ANGULAR_VELOCITY * Math.PI * 2;
+        // 环绕转速受 orbitSpeedMultiplier 影响（炉心融解等模块）
+        double orbitMultiplier = drone instanceof IConstructEntity cEntity ? cEntity.getOrbitSpeedMultiplier() : 1.0;
+        double rotationAngle = gameTime * ANGULAR_VELOCITY * Math.PI * 2 * orbitMultiplier;
 
         // 计算每个无人机的初始角度，确保均匀分布
         // 公式：2π * (droneIndex / totalDrones)
         double initialAngle = Math.PI * 2.0D * droneIndex / Math.max(totalDrones, 1);
-        
+
         // 最终角度 = 初始角度 + 旋转角度
         double finalAngle = initialAngle + rotationAngle;
 
@@ -98,39 +101,30 @@ public class OrbitBehavior implements IDroneBehavior {
             owner.getZ() + ORBIT_RADIUS * Math.sin(finalAngle)
         );
 
-        // 无人机自己移动到目标位置（不是直接传送）
-        Vec3 dronePos = drone.position();
-        Vec3 direction = targetPos.subtract(dronePos);
-        double distance = direction.length();
-
-        if (drone instanceof DroneConstructEntity droneEntity && droneEntity.isDefenseDrone()) {
-            // 防御无人机：直接传送到目标位置，避免增量移动导致的抖动
-            // 距离过大时限制每tick移动距离模拟平滑接近
-            if (distance > 10.0) {
-                Vec3 limitedDir = direction.normalize().scale(10.0);
-                droneEntity.setPos(dronePos.x + limitedDir.x, dronePos.y + limitedDir.y, dronePos.z + limitedDir.z);
-            } else if (distance > 0.01) {
-                droneEntity.setPos(targetPos.x, targetPos.y, targetPos.z);
+        // 检查与玩家的距离，超出40格视为丢失，移除无人机
+        double distanceToOwner = drone.distanceTo(owner);
+        if (distanceToOwner > 40.0) {
+            if (drone instanceof DroneConstructEntity droneEntity) {
+                UUID ownerUUID = owner.getUUID();
+                String constructId = droneEntity.getConstructTypeId();
+                UUID entityUUID = droneEntity.getUUID();
+                droneEntity.remove(Entity.RemovalReason.DISCARDED);
+                ConstructManager manager = ConstructManager.getInstance();
+                manager.unregisterConstructEntity(ownerUUID, constructId, entityUUID);
+                manager.removeConstruct(ownerUUID, entityUUID);
             }
-            droneEntity.setDeltaMovement(Vec3.ZERO);
-        } else if (distance > 0.1) {
-            direction = direction.normalize();
-            float moveDistance = (float)(MOVE_SPEED * deltaTime);
-            if (moveDistance > distance) {
-                moveDistance = (float) distance;
-            }
-            Vec3 moveVector = direction.scale(moveDistance);
-            drone.setDeltaMovement(moveVector);
-        } else {
-            drone.setDeltaMovement(Vec3.ZERO);
+            return Vec3.ZERO;
         }
+
+        // 所有无人机直接定位到目标位置，确保阵列刚性与连贯性
+        drone.setPos(targetPos.x, targetPos.y, targetPos.z);
+        drone.setDeltaMovement(Vec3.ZERO);
 
         return Vec3.ZERO;
     }
 
     @Override
     public List<LivingEntity> searchTargets(Entity drone, LivingEntity owner, float range) {
-        // 使用共享缓存索敌，从玩家中心的缓存结果中过滤当前位置附近的敌人
         return ConstructGroupCache.getInstance().findTargetsInRange(
             owner.getUUID(), owner, drone.position(), SEARCH_RANGE);
     }
@@ -175,12 +169,12 @@ public class OrbitBehavior implements IDroneBehavior {
 
         Vec3 dronePos = drone.position();
         Vec3 targetPos = target.position().add(0, target.getEyeHeight() * 0.5, 0);
-        
+
         Vec3 direction = targetPos.subtract(dronePos).normalize();
 
         float damage = DroneBullet.getBaseDamage();
         float cooldown = getConfigAttackInterval() * 20.0f;
-        
+
         if (drone instanceof DroneConstructEntity droneEntity) {
             damage = (float) droneEntity.getAttributeValue(Attributes.ATTACK_DAMAGE);
             cooldown /= (float) droneEntity.getAttackSpeedMultiplier();
@@ -208,3 +202,4 @@ public class OrbitBehavior implements IDroneBehavior {
         return false;
     }
 }
+

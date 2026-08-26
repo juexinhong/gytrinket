@@ -5,9 +5,7 @@
       "conditions": {
         "items": [
           {
-            "items": [
-              "gytrinket:last_order_module"
-            ]
+            "items": "gytrinket:last_order_module"
           }
         ]
       },
@@ -20,7 +18,7 @@
     },
     "icon": {
       "count": 1,
-      "item": "gytrinket:last_order_module"
+      "id": "gytrinket:last_order_module"
     },
     "title": {
       "translate": "advancements.gytrinket.story.obtain_last_order_module.title"

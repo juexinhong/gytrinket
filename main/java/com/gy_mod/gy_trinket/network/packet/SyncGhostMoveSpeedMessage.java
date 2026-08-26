@@ -6,14 +6,7 @@ import net.minecraftforge.network.NetworkEvent;
 
 import java.util.function.Supplier;
 
-/**
- * 客户端→服务端：同步移动导致的隐身消耗量
- * <p>
- * 客户端计算真实位移速度和消耗量，仅发送消耗值以减少网络压力。
- * 值相同时不发送（客户端缓存上次发送值）。
- */
 public class SyncGhostMoveSpeedMessage {
-    /** 移动导致的隐身进度消耗量（0.0~1.0） */
     private float moveReduction;
 
     public SyncGhostMoveSpeedMessage() {}
@@ -30,12 +23,13 @@ public class SyncGhostMoveSpeedMessage {
         buf.writeFloat(moveReduction);
     }
 
-    public void handle(Supplier<NetworkEvent.Context> ctx) {
-        NetworkEvent.Context context = ctx.get();
+    public void handle(Supplier<NetworkEvent.Context> contextSupplier) {
+        NetworkEvent.Context context = contextSupplier.get();
         context.enqueueWork(() -> {
             var player = context.getSender();
             if (player != null) {
-                GhostFuselageManager.setSyncedMoveReduction(player.getUUID(), moveReduction);
+                GhostFuselageManager.setSyncedMoveReduction(
+                    player.getUUID(), moveReduction);
             }
         });
         context.setPacketHandled(true);

@@ -9,20 +9,18 @@ import java.util.function.Supplier;
 public class AssaultAttackMessage {
     public AssaultAttackMessage() {}
 
-    public AssaultAttackMessage(FriendlyByteBuf buf) {}
-
     public void toBytes(FriendlyByteBuf buf) {}
 
-    public static void handle(AssaultAttackMessage msg, Supplier<NetworkEvent.Context> ctx) {
-        NetworkEvent.Context context = ctx.get();
+    public AssaultAttackMessage(FriendlyByteBuf buf) {}
 
+    public void handle(Supplier<NetworkEvent.Context> contextSupplier) {
+        NetworkEvent.Context context = contextSupplier.get();
         context.enqueueWork(() -> {
             var player = context.getSender();
             if (player != null) {
                 AssaultManager.triggerAssault(player);
             }
         });
-
         context.setPacketHandled(true);
     }
 }

@@ -1,7 +1,7 @@
 package com.gy_mod.gy_trinket.client.particle;
 
 import com.gy_mod.gy_trinket.particle.ModParticles;
-import com.gy_mod.gy_trinket.client.particle.ReflectShieldParticle;
+import com.gy_mod.gy_trinket.particle.ReflectShieldParticle;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.RegisterParticleProvidersEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;

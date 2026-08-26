@@ -6,12 +6,10 @@ import com.gy_mod.gy_trinket.core.shield.DisableSystem;
 import com.gy_mod.gy_trinket.gytrinket;
 import com.gy_mod.gy_trinket.event.AttributeDynamicChangeEvent;
 import com.gy_mod.gy_trinket.event.PlayerAttributesCalculatedEvent;
-import com.gy_mod.gy_trinket.storage.PlayerStore;
-import com.gy_mod.gy_trinket.storage.PlayerStoreManager;
+import com.gy_mod.gy_trinket.storage.PlayerStoreUtils;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -39,7 +37,7 @@ public class AttributeManager {
     private static final Map<UUID, Long> PENDING_RECALC = new ConcurrentHashMap<>();
 
     /** 防抖延迟 tick 数 */
-    private static final int RECALC_DEBOUNCE_TICKS = 2;
+    private static final int RECALC_DEBOUNCE_TICKS = 1;
 
     /** 防抖调度器是否已注册 */
     private static boolean recalcSchedulerRegistered = false;
@@ -55,7 +53,12 @@ public class AttributeManager {
         ATTRIBUTE_DEFINITIONS.put(name, definition);
 
         if (group != null) {
-            ATTRIBUTE_GROUPS.computeIfAbsent(group, k -> new ArrayList<>()).add(name);
+            // 组列表查重：数据包 registry 每次重进世界都会重新加载并重新注册，
+            // 若不查重会导致组内属性重复累积，getGroupAttribute 累加翻倍（如护盾值 8→16→24）
+            List<String> groupList = ATTRIBUTE_GROUPS.computeIfAbsent(group, k -> new ArrayList<>());
+            if (!groupList.contains(name)) {
+                groupList.add(name);
+            }
         }
 
         gytrinket.LOGGER.info("注册属性: {} (类型: {}, 组: {})", name, type, group);
@@ -187,21 +190,15 @@ public class AttributeManager {
             staticAttrs.put(attrName, new AttributeValueSet());
         }
 
-        PlayerStore store = PlayerStoreManager.getPlayerStore(playerUUID);
-        if (store != null) {
-            for (int i = 0; i < store.getItemHandler().getSlots(); i++) {
-                ItemStack stack = store.getItemHandler().getStackInSlot(i);
-                if (!stack.isEmpty()) {
-                    String itemId = net.minecraftforge.registries.ForgeRegistries.ITEMS.getKey(stack.getItem()).toString();
-                    ItemAttributeConfig itemConfig = ITEM_ATTRIBUTES.get(itemId);
-                    if (itemConfig != null) {
-                        if (DisableSystem.isItemDisabled(playerUUID, itemId)) {
-                        } else if (processedItems.contains(itemId)) {
-                        } else {
-                            processedItems.add(itemId);
-                            applyItemAttributes(itemConfig, staticAttrs);
-                        }
-                    }
+        // 已装备物品 = 光点核心存储 + Curios 饰品栏（光点核心内容扩展）
+        for (String itemId : PlayerStoreUtils.getAllEquippedItemIds(playerUUID)) {
+            ItemAttributeConfig itemConfig = ITEM_ATTRIBUTES.get(itemId);
+            if (itemConfig != null) {
+                if (DisableSystem.isItemDisabled(playerUUID, itemId)) {
+                } else if (processedItems.contains(itemId)) {
+                } else {
+                    processedItems.add(itemId);
+                    applyItemAttributes(itemConfig, staticAttrs);
                 }
             }
         }

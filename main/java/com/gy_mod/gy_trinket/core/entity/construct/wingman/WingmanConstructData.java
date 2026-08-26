@@ -22,12 +22,8 @@ public class WingmanConstructData extends ConstructData {
         double maxHealth = tag.getDouble("maxHealth");
 
         WingmanConstructData data = new WingmanConstructData(constructId, entityUUID, maxHealth);
-        data.setHealth(tag.getDouble("health"));
-        data.setActive(tag.getBoolean("active"));
-        if (tag.contains("dimension")) {
-            data.setSavedPos(tag.getDouble("posX"), tag.getDouble("posY"), tag.getDouble("posZ"));
-            data.setDimension(tag.getString("dimension"));
-        }
+        loadCommonFields(data, tag);
         return data;
     }
 }
+

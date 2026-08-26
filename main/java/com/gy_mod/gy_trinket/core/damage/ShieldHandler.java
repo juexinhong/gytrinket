@@ -35,6 +35,11 @@ public class ShieldHandler implements DamageHandler {
         UUID shieldOwnerUUID = shieldOwner.getUUID();
         LivingEntity attackedEntity = context.getAttackedEntity();
 
+        if (InvincibilityMarkerManager.hasMarker(attackedEntity)) {
+            context.setCanceled(true);
+            return;
+        }
+
         if (context.isPlayerSelfDamage()) {
             return;
         }
@@ -54,15 +59,6 @@ public class ShieldHandler implements DamageHandler {
 
         double currentShield = shieldData.getCurrentShield();
         if (currentShield <= 0) {
-            return;
-        }
-
-        // 无敌帧期间：取消伤害但仍然播放护盾受击音效
-        if (InvincibilityMarkerManager.hasMarker(attackedEntity)) {
-            context.setCanceled(true);
-            if (!isShieldSelfDamage) {
-                playShieldHitSound(attackedEntity);
-            }
             return;
         }
 
@@ -119,3 +115,4 @@ public class ShieldHandler implements DamageHandler {
         }
     }
 }
+

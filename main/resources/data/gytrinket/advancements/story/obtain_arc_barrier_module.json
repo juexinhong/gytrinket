@@ -5,9 +5,7 @@
       "conditions": {
         "items": [
           {
-            "items": [
-              "gytrinket:arc_barrier_module"
-              ]
+            "items": "gytrinket:arc_barrier_module"
           }
         ]
       },
@@ -16,11 +14,11 @@
   },
   "display": {
     "description": {
-      "translate": "advancements.gy_trinket.story.obtain_arc_barrier_module.description"
+      "translate": "advancements.gytrinket.story.obtain_arc_barrier_module.description"
     },
     "icon": {
       "count": 1,
-      "item": "gytrinket:arc_barrier_module"
+      "id": "gytrinket:arc_barrier_module"
     },
     "title": {
       "translate": "advancements.gytrinket.story.obtain_arc_barrier_module.title"

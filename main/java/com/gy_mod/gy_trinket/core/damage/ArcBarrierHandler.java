@@ -187,3 +187,4 @@ public class ArcBarrierHandler implements DamageHandler {
         return PRIORITY;
     }
 }
+

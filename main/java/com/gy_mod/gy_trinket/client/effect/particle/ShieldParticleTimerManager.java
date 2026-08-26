@@ -1,22 +1,22 @@
 package com.gy_mod.gy_trinket.client.effect.particle;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class ShieldParticleTimerManager {
-    
+
     private static ShieldParticleTimerManager instance;
-    private final List<PendingParticle> pendingParticles = new ArrayList<>();
-    
+    private final List<PendingParticle> pendingParticles = new CopyOnWriteArrayList<>();
+
     private ShieldParticleTimerManager() {}
-    
+
     public static ShieldParticleTimerManager getInstance() {
         if (instance == null) {
             instance = new ShieldParticleTimerManager();
         }
         return instance;
     }
-    
+
     public void addPendingParticle(int entityId,
                                    double originOffsetX, double originOffsetY, double originOffsetZ,
                                    double offsetX, double offsetY, double offsetZ,
@@ -27,7 +27,7 @@ public class ShieldParticleTimerManager {
                                                  dirX, dirY, dirZ,
                                                  delayTicks));
     }
-    
+
     public void tick() {
         pendingParticles.removeIf(p -> {
             if (p.delayTicks <= 0) {
@@ -42,14 +42,14 @@ public class ShieldParticleTimerManager {
             return false;
         });
     }
-    
+
     private static class PendingParticle {
         final int entityId;
         final double originOffsetX, originOffsetY, originOffsetZ;
         final double offsetX, offsetY, offsetZ;
         final double dirX, dirY, dirZ;
         int delayTicks;
-        
+
         PendingParticle(int entityId,
                        double originOffsetX, double originOffsetY, double originOffsetZ,
                        double offsetX, double offsetY, double offsetZ,
@@ -69,3 +69,4 @@ public class ShieldParticleTimerManager {
         }
     }
 }
+

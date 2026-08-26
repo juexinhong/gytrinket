@@ -1,5 +1,6 @@
 package com.gy_mod.gy_trinket.network.packet;
 
+import com.gy_mod.gy_trinket.core.entity.construct.ConstructManager;
 import com.gy_mod.gy_trinket.core.entity.construct.wingman.InterceptorAttackMode;
 import com.gy_mod.gy_trinket.core.entity.construct.wingman.InterceptorWeaponManager;
 import com.gy_mod.gy_trinket.core.entity.construct.wingman.WingmanConstructEntity;
@@ -7,32 +8,34 @@ import com.gy_mod.gy_trinket.core.entity.construct.wingman.WingmanConstructTypes
 import com.gy_mod.gy_trinket.network.NetworkHandler;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
 import net.minecraftforge.network.NetworkEvent;
 
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Supplier;
 
-/**
- * 设置拦截机攻击模式消息（客户端→服务端）
- */
 public class SetInterceptorAttackModeMessage {
-    private final InterceptorAttackMode attackMode;
+    private final String attackModeName;
 
     public SetInterceptorAttackModeMessage() {
-        this.attackMode = InterceptorAttackMode.MELEE;
+        this.attackModeName = "";
     }
 
-    public SetInterceptorAttackModeMessage(InterceptorAttackMode attackMode) {
-        this.attackMode = attackMode;
+    public SetInterceptorAttackModeMessage(String attackModeName) {
+        this.attackModeName = attackModeName;
+    }
+
+    public SetInterceptorAttackModeMessage(com.gy_mod.gy_trinket.core.entity.construct.wingman.InterceptorAttackMode attackMode) {
+        this.attackModeName = attackMode.getSerializedName();
     }
 
     public SetInterceptorAttackModeMessage(FriendlyByteBuf buf) {
-        this.attackMode = InterceptorAttackMode.byName(buf.readUtf());
+        this.attackModeName = buf.readUtf();
     }
 
     public void toBytes(FriendlyByteBuf buf) {
-        buf.writeUtf(attackMode.getSerializedName());
+        buf.writeUtf(attackModeName);
     }
 
     public void handle(Supplier<NetworkEvent.Context> contextSupplier) {
@@ -40,25 +43,19 @@ public class SetInterceptorAttackModeMessage {
         context.enqueueWork(() -> {
             ServerPlayer player = context.getSender();
             if (player != null) {
-                InterceptorWeaponManager.setAttackMode(player.getUUID(), attackMode);
-                NetworkHandler.sendInterceptorAttackModeToPlayer(player, attackMode);
+                InterceptorAttackMode mode = InterceptorAttackMode.byName(attackModeName);
+                InterceptorWeaponManager.setAttackMode(player.getUUID(), mode);
+                NetworkHandler.sendInterceptorAttackModeToPlayer(player, mode);
 
-                // 更新所有僚机实体
-                updateWingmanAttackMode(player, attackMode);
+                Map<UUID, Entity> entities = ConstructManager.getInstance()
+                    .getActiveConstructEntities(player.getUUID(), WingmanConstructTypes.WINGMAN);
+                for (Entity entity : entities.values()) {
+                    if (entity instanceof WingmanConstructEntity wingman) {
+                        wingman.refreshInterceptorData();
+                    }
+                }
             }
         });
         context.setPacketHandled(true);
-    }
-
-    private static void updateWingmanAttackMode(ServerPlayer player, InterceptorAttackMode mode) {
-        com.gy_mod.gy_trinket.core.entity.construct.ConstructManager cm =
-            com.gy_mod.gy_trinket.core.entity.construct.ConstructManager.getInstance();
-        Map<UUID, net.minecraft.world.entity.Entity> entities =
-            cm.getActiveConstructEntities(player.getUUID(), WingmanConstructTypes.WINGMAN);
-        for (net.minecraft.world.entity.Entity entity : entities.values()) {
-            if (entity instanceof WingmanConstructEntity wingman) {
-                wingman.refreshInterceptorData();
-            }
-        }
     }
 }

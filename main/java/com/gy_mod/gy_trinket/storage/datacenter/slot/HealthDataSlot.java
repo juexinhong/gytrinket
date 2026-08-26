@@ -39,3 +39,4 @@ public class HealthDataSlot implements IDataSlot<Double> {
         return true;
     }
 }
+

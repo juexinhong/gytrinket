@@ -6,7 +6,6 @@ import com.gy_mod.gy_trinket.core.attack_mode.charged_attack.ChargedAttackDamage
 import com.gy_mod.gy_trinket.core.attack_mode.charged_attack.ChargedAttackManager;
 import com.gy_mod.gy_trinket.core.attack_mode.electric_discharge.ElectricDischargeManager;
 import com.gy_mod.gy_trinket.gytrinket;
-import com.gy_mod.gy_trinket.network.NetworkHandler;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -304,11 +303,6 @@ public class AttackModeManager {
         // ===== 攻击锁定：取消进行中的特殊攻击模式 =====
         if (PlayerAttackLockManager.isLocked(uuid)) {
             PlayerAttackLockManager.cancelActiveModes(uuid);
-            // 同步充能状态到客户端（cancelActiveModes可能先于ChargedAttackManager的tick运行，
-            // 此时需要确保客户端收到reset，避免HUD残留）
-            if (ChargedAttackManager.hasChargedAttack(player)) {
-                NetworkHandler.sendChargedAttackSyncToPlayer(player, 0);
-            }
             // 跳过所有特殊攻击模式逻辑
             PLAYER_ATTACKED_THIS_TICK.remove(uuid);
             ELECTRIC_TRIGGERED_THIS_TICK.remove(uuid);

@@ -74,3 +74,4 @@ public class ItemAttributeConfig {
         return new ItemAttributeConfig(itemId);
     }
 }
+

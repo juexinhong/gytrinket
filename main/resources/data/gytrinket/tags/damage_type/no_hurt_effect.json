@@ -6,6 +6,7 @@
     "gytrinket:player_self_damage",
     "gytrinket:shield_self_damage",
     "gytrinket:protocol_player_self_damage",
-    "gytrinket:protocol_shield_self_damage"
+    "gytrinket:protocol_shield_self_damage",
+    "gytrinket:construct_self_damage"
   ]
 }

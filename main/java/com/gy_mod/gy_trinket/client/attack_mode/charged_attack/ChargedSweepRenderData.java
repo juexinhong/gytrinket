@@ -2,39 +2,21 @@ package com.gy_mod.gy_trinket.client.attack_mode.charged_attack;
 
 /**
  * 充能横扫渲染数据
- * (使用普通类替代Java record，兼容Forge 1.20.1)
+ *
+ * @param x            粒子中心 X 坐标（世界坐标）
+ * @param y            粒子中心 Y 坐标（世界坐标）
+ * @param z            粒子中心 Z 坐标（世界坐标）
+ * @param yaw          玩家视线方向的 Y 轴旋转角度（弧度），用于粒子旋转
+ * @param pitch        玩家视线方向的 X 轴旋转角度（弧度），用于粒子倾斜
+ * @param scale        粒子缩放倍率
+ * @param creationTime 创建时的游戏刻
+ * @param lifetime     生命周期（tick）
  */
-public class ChargedSweepRenderData {
-    private final double x;
-    private final double y;
-    private final double z;
-    private final float yaw;
-    private final float pitch;
-    private final float scale;
-    private final long creationTime;
-    private final int lifetime;
+public record ChargedSweepRenderData(
+        double x, double y, double z,
+        float yaw, float pitch,
+        float scale,
+        long creationTime,
+        int lifetime
+) {}
 
-    public ChargedSweepRenderData(double x, double y, double z,
-                                  float yaw, float pitch,
-                                  float scale,
-                                  long creationTime,
-                                  int lifetime) {
-        this.x = x;
-        this.y = y;
-        this.z = z;
-        this.yaw = yaw;
-        this.pitch = pitch;
-        this.scale = scale;
-        this.creationTime = creationTime;
-        this.lifetime = lifetime;
-    }
-
-    public double x() { return x; }
-    public double y() { return y; }
-    public double z() { return z; }
-    public float yaw() { return yaw; }
-    public float pitch() { return pitch; }
-    public float scale() { return scale; }
-    public long creationTime() { return creationTime; }
-    public int lifetime() { return lifetime; }
-}

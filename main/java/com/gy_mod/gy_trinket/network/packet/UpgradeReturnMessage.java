@@ -34,9 +34,8 @@ public class UpgradeReturnMessage {
         buf.writeUtf(upgradedItemKey);
     }
 
-    public static void handle(UpgradeReturnMessage msg, Supplier<NetworkEvent.Context> ctx) {
-        NetworkEvent.Context context = ctx.get();
-
+    public void handle(Supplier<NetworkEvent.Context> contextSupplier) {
+        NetworkEvent.Context context = contextSupplier.get();
         context.enqueueWork(() -> {
             var player = context.getSender();
             if (player == null) return;
@@ -45,7 +44,7 @@ public class UpgradeReturnMessage {
             UUID playerUUID = player.getUUID();
             UpgradeData upgradeData = UpgradeManager.getUpgradeData(playerUUID);
 
-            String pathKey = msg.baseItemKey + "->" + msg.upgradedItemKey;
+            String pathKey = baseItemKey + "->" + upgradedItemKey;
             List<ItemStack> materials = upgradeData.getMaterials(pathKey);
             if (materials.isEmpty()) return;
 
@@ -67,7 +66,6 @@ public class UpgradeReturnMessage {
 
             NetworkHandler.sendPanelUpdate(player);
         });
-
         context.setPacketHandled(true);
     }
 }

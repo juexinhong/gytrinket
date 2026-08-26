@@ -224,8 +224,8 @@ public class ExplosiveProjectile extends ThrowableItemProjectile {
     }
 
     /**
-     * 销毁时产生能量波爆炸（方向为爆破弹飞行方向，溅射长度2格）
-     * 若玩家拥有震撼弹模块，伤害和溅射长度提升50%
+     * 销毁时产生能量波爆炸（方向为爆破弹飞行方向，溅射长度1.5格）
+     * 若玩家拥有震撼弹模块，伤害和溅射长度提升
      */
     private void triggerExplosionAndDiscard() {
         if (!this.level().isClientSide) {
@@ -243,11 +243,12 @@ public class ExplosiveProjectile extends ThrowableItemProjectile {
                 splashLength *= Config.getWingmanShockwaveSplashLengthMultiplier();
             }
 
+            // 爆炸伤害归属僚机（非斩杀时）；斩杀时由 EnergyWaveExplosion 内部切换为玩家归属
+            Entity owner = this.getOwner();
             DamageSource damageSource;
-            if (ownerPlayer != null) {
-                damageSource = this.damageSources().explosion(this, ownerPlayer);
+            if (owner instanceof LivingEntity livingOwner) {
+                damageSource = this.damageSources().explosion(this, livingOwner);
             } else {
-                Entity owner = this.getOwner();
                 damageSource = this.damageSources().explosion(this, owner);
             }
 
@@ -291,3 +292,4 @@ public class ExplosiveProjectile extends ThrowableItemProjectile {
         this.setNoGravity(true);
     }
 }
+

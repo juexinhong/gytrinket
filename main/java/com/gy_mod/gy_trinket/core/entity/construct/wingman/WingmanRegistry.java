@@ -11,3 +11,4 @@ public class WingmanRegistry implements ConstructTypeRegistry.IConstructRegistry
         WingmanConstructTypes.register();
     }
 }
+

@@ -1,6 +1,7 @@
 package com.gy_mod.gy_trinket.core.upgrade;
 
 import com.gy_mod.gy_trinket.config.Config;
+import com.gy_mod.gy_trinket.core.defs.DefsManager;
 import com.gy_mod.gy_trinket.gytrinket;
 import com.gy_mod.gy_trinket.storage.datacenter.PlayerDataCenter;
 import net.minecraft.core.RegistryAccess;
@@ -22,6 +23,7 @@ public class UpgradeManager {
 
     private static final Map<Item, List<Item>> UPGRADE_MAP = new HashMap<>();
     private static final Map<Item, Recipe<?>> RECIPE_CACHE = new HashMap<>();
+    private static final Map<Item, Recipe<?>> UPGRADE_RECIPE_SNAPSHOT = new HashMap<>();
     private static final String SLOT_KEY = "upgrade_data";
 
     private static final Map<Item, Set<Item>> MATERIAL_TO_TARGETS = new HashMap<>();
@@ -38,23 +40,18 @@ public class UpgradeManager {
         MATERIAL_TO_TARGETS.clear();
         reverseIndexBuilt = false;
 
-        List<? extends String> paths = Config.UPGRADE_PATHS.get();
-        for (String path : paths) {
-            if (path == null || path.trim().isEmpty()) continue;
-            String[] parts = path.trim().split("\\.");
-            if (parts.length != 2) {
-                gytrinket.LOGGER.warn("无效的升级路径格式: {} (应为 基础物品ID.升级物品ID)", path);
-                continue;
+        DefsManager.getUpgradePaths().forEach((baseId, upgradeIds) -> {
+            Item baseItem = ForgeRegistries.ITEMS.getValue(new ResourceLocation(baseId));
+            for (String upgradeId : upgradeIds) {
+                Item upgradedItem = ForgeRegistries.ITEMS.getValue(new ResourceLocation(upgradeId));
+                if (baseItem == null || upgradedItem == null) {
+                    gytrinket.LOGGER.warn("升级路径中的物品未找到: {} -> {}", baseId, upgradeId);
+                    continue;
+                }
+                UPGRADE_MAP.computeIfAbsent(baseItem, k -> new ArrayList<>()).add(upgradedItem);
+                gytrinket.LOGGER.info("注册升级路径: {} -> {}", baseId, upgradeId);
             }
-            Item baseItem = ForgeRegistries.ITEMS.getValue(new ResourceLocation(parts[0].trim()));
-            Item upgradedItem = ForgeRegistries.ITEMS.getValue(new ResourceLocation(parts[1].trim()));
-            if (baseItem == null || upgradedItem == null) {
-                gytrinket.LOGGER.warn("升级路径中的物品未找到: {}", path);
-                continue;
-            }
-            UPGRADE_MAP.computeIfAbsent(baseItem, k -> new ArrayList<>()).add(upgradedItem);
-            gytrinket.LOGGER.info("注册升级路径: {} -> {}", parts[0].trim(), parts[1].trim());
-        }
+        });
     }
 
     public static void buildReverseIndex(RecipeManager recipeManager, RegistryAccess registryAccess) {
@@ -115,8 +112,20 @@ public class UpgradeManager {
     }
 
     public static Recipe<?> getUpgradeRecipe(RecipeManager recipeManager, RegistryAccess registryAccess, Item upgradedItem) {
+        Recipe<?> cached = RECIPE_CACHE.get(upgradedItem);
+        if (cached != null) {
+            return cached;
+        }
+
+        // 优先从合成禁用前快照的升级配方读取（配方表被过滤后升级系统仍可用）
+        Recipe<?> snapshotRecipe = UPGRADE_RECIPE_SNAPSHOT.get(upgradedItem);
+        if (snapshotRecipe != null) {
+            RECIPE_CACHE.put(upgradedItem, snapshotRecipe);
+            return snapshotRecipe;
+        }
+
         if (RECIPE_CACHE.containsKey(upgradedItem)) {
-            return RECIPE_CACHE.get(upgradedItem);
+            return null; // 已缓存为null（此前确认无配方）
         }
 
         ResourceLocation itemKey = ForgeRegistries.ITEMS.getKey(upgradedItem);
@@ -140,6 +149,26 @@ public class UpgradeManager {
 
         RECIPE_CACHE.put(upgradedItem, null);
         return null;
+    }
+
+    /**
+     * 清空升级配方快照（由合成禁用系统在每次过滤前调用）
+     */
+    public static void clearUpgradeRecipeSnapshot() {
+        UPGRADE_RECIPE_SNAPSHOT.clear();
+    }
+
+    /**
+     * 快照一个被合成禁用移除的配方（按输出物品为键），供升级系统独立读取。
+     * 由合成禁用系统在过滤移除前调用。
+     *
+     * @param resultItem 配方输出物品
+     * @param recipe     配方
+     */
+    public static void snapshotUpgradeRecipe(Item resultItem, Recipe<?> recipe) {
+        if (resultItem != null && recipe != null) {
+            UPGRADE_RECIPE_SNAPSHOT.put(resultItem, recipe);
+        }
     }
 
     public static String getItemKey(Item item) {

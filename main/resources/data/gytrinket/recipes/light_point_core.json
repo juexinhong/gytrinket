@@ -1,4 +1,4 @@
-﻿{
+{
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
@@ -24,7 +24,7 @@
     "Z#Z"
   ],
   "result": {
-    "item": "gytrinket:light_point_core",
+    "id": "gytrinket:light_point_core",
     "count": 1
   }
 }

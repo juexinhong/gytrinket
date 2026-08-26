@@ -2,6 +2,7 @@ package com.gy_mod.gy_trinket.core.shield.type;
 
 import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
+import com.gy_mod.gy_trinket.core.attack_mode.ExecuteToggleManager;
 import com.gy_mod.gy_trinket.core.entity.construct.HostileTargetManager;
 import com.gy_mod.gy_trinket.core.modifier.player.knockback.KnockbackManager;
 import com.gy_mod.gy_trinket.core.shield.ShieldManager;
@@ -20,6 +21,9 @@ import java.util.*;
 public class SiphonShieldType implements IShieldType {
 
     private static final Map<UUID, SiphonData> PLAYER_SIPHON_DATA = new HashMap<>();
+
+    // 方案B追踪Map：目标UUID → 玩家UUID，用于SiphonDamageListener获取玩家引用
+    private static final Map<UUID, UUID> SIPHON_TARGET_TO_PLAYER = new HashMap<>();
 
     private static class SiphonData {
         int stacks;
@@ -129,12 +133,22 @@ public class SiphonShieldType implements IShieldType {
             for (LivingEntity target : targets) {
                 KnockbackManager.markNoKnockback(target.getUUID());
                 target.invulnerableTime = 0;
-                boolean usePlayerOwner = target.getHealth() <= damagePerTarget;
-                DamageSource siphonSource = usePlayerOwner
-                        ? ModDamageTypes.getSiphonDamageSource(player.level(), player)
-                        : ModDamageTypes.getSiphonDamageSource(player.level(), null);
+
+                // 斩杀归属：仅当伤害足以击杀且斩杀开关启用时，将玩家作为伤害源（归属击杀）
+                boolean canKill = target.getHealth() <= damagePerTarget;
+                boolean executeEnabled = canKill && ExecuteToggleManager.isExecuteEnabled(player);
+                DamageSource siphonSource = ModDamageTypes.getSiphonDamageSource(
+                    player.level(), executeEnabled ? player : null);
+
+                // 记录目标→玩家映射，供SiphonDamageListener使用
+                SIPHON_TARGET_TO_PLAYER.put(target.getUUID(), player.getUUID());
+
                 target.hurt(siphonSource, damagePerTarget);
                 target.invulnerableTime = 0;  //这个决定不能删除!害我找半天哪里有问题.
+
+                // hurt()同步执行，监听器已处理完毕，移除追踪
+                SIPHON_TARGET_TO_PLAYER.remove(target.getUUID());
+
                 sendSiphonParticles(player, target);
             }
 
@@ -247,6 +261,13 @@ public class SiphonShieldType implements IShieldType {
 
     public static boolean hasSiphonShieldType(UUID playerUUID) {
         return ShieldTypeManager.hasActiveShieldType(playerUUID, "siphon");
+    }
+
+    /**
+     * 获取虹吸伤害追踪Map中目标对应的玩家UUID，供SiphonDamageListener使用
+     */
+    public static UUID getSiphonPlayerUUID(UUID targetUUID) {
+        return SIPHON_TARGET_TO_PLAYER.get(targetUUID);
     }
 
     public static void clearPlayerData(UUID playerUUID) {

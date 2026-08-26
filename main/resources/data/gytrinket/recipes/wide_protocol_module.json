@@ -13,7 +13,7 @@
     "*": { "item": "minecraft:blue_wool" }
   },
   "result": {
-    "item": "gytrinket:wide_protocol_module",
+    "id": "gytrinket:wide_protocol_module",
     "count": 1
   }
 }

@@ -1,15 +1,9 @@
 package com.gy_mod.gy_trinket.client.screen;
 
 import com.gy_mod.gy_trinket.network.NetworkHandler;
-import com.gy_mod.gy_trinket.network.packet.ConfigAddItemMessage;
-import com.gy_mod.gy_trinket.network.packet.ConfigDeleteItemMessage;
-import com.gy_mod.gy_trinket.network.packet.ConfigReorderMessage;
-import com.gy_mod.gy_trinket.network.packet.ConfigRemoveAttrMessage;
-import com.gy_mod.gy_trinket.network.packet.ConfigResetMessage;
-import com.gy_mod.gy_trinket.network.packet.ConfigUpdateMessage;
+import com.gy_mod.gy_trinket.network.packet.*;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -17,7 +11,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.core.registries.BuiltInRegistries;
 
 import java.util.*;
 
@@ -51,6 +45,8 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
 
     private boolean isAddingItem = false;
     private String addingItemId = "";
+    /** 添加物品输入框的光标位置（0..addingItemId.length()） */
+    private int addingCursorIndex = 0;
 
     private boolean isDraggingItem = false;
     private int dragFromIndex = -1;
@@ -77,23 +73,24 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
         initPanelSize(400, 300, 20, 40);
 
         int btnY = panelY + panelHeight + 5;
-        this.addRenderableWidget(Button.builder(
+        this.addRenderableWidget(SciFiButton.create(
                 Component.translatable("screen.gytrinket.add_item"),
                 button -> {
                     isAddingItem = true;
                     addingItemId = "";
+                    addingCursorIndex = 0;
                 }
-        ).bounds(panelX + 5, btnY, 80, 16).build());
+        ).bounds(panelX + 5, btnY, 80, 16).renderer(renderer).build());
 
-        this.addRenderableWidget(Button.builder(
+        this.addRenderableWidget(SciFiButton.create(
                 Component.translatable("screen.gytrinket.reset_defaults"),
                 button -> NetworkHandler.INSTANCE.sendToServer(new ConfigResetMessage())
-        ).bounds(panelX + 90, btnY, 80, 16).build());
+        ).bounds(panelX + 90, btnY, 80, 16).renderer(renderer).build());
 
-        this.addRenderableWidget(Button.builder(
+        this.addRenderableWidget(SciFiButton.create(
                 Component.translatable("screen.gytrinket.back"),
                 button -> Minecraft.getInstance().setScreen(parentScreen)
-        ).bounds(panelX + panelWidth - 85, btnY, 80, 16).build());
+        ).bounds(panelX + panelWidth - 85, btnY, 80, 16).renderer(renderer).build());
     }
 
     @Override
@@ -105,18 +102,45 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
             } else if (keyCode == 256) {
                 isAddingItem = false;
                 addingItemId = "";
+                addingCursorIndex = 0;
                 return true;
-            } else if (keyCode == 259) {
-                if (!addingItemId.isEmpty()) {
-                    addingItemId = addingItemId.substring(0, addingItemId.length() - 1);
+            } else if (keyCode == 259) { // Backspace：删除光标前一字符
+                if (addingCursorIndex > 0) {
+                    addingItemId = addingItemId.substring(0, addingCursorIndex - 1)
+                            + addingItemId.substring(addingCursorIndex);
+                    addingCursorIndex--;
                 }
+                return true;
+            } else if (keyCode == 261) { // Delete：删除光标后一字符
+                if (addingCursorIndex < addingItemId.length()) {
+                    addingItemId = addingItemId.substring(0, addingCursorIndex)
+                            + addingItemId.substring(addingCursorIndex + 1);
+                }
+                return true;
+            } else if (keyCode == 263) { // 左箭头：光标左移
+                if (addingCursorIndex > 0) {
+                    addingCursorIndex--;
+                }
+                return true;
+            } else if (keyCode == 262) { // 右箭头：光标右移
+                if (addingCursorIndex < addingItemId.length()) {
+                    addingCursorIndex++;
+                }
+                return true;
+            } else if (keyCode == 268) { // Home：光标移到开头
+                addingCursorIndex = 0;
+                return true;
+            } else if (keyCode == 269) { // End：光标移到末尾
+                addingCursorIndex = addingItemId.length();
                 return true;
             } else if (keyCode == 86 && hasControlDown()) {
                 String clip = Minecraft.getInstance().keyboardHandler.getClipboard();
                 if (clip != null) {
                     clip = clip.replaceAll("[\\s\\n\\r]", "");
                     if (!clip.isEmpty()) {
-                        addingItemId += clip;
+                        addingItemId = addingItemId.substring(0, addingCursorIndex)
+                                + clip + addingItemId.substring(addingCursorIndex);
+                        addingCursorIndex += clip.length();
                     }
                 }
                 return true;
@@ -159,7 +183,9 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
     public boolean charTyped(char codePoint, int modifiers) {
         if (isAddingItem) {
             if (codePoint != ' ' && codePoint >= 33) {
-                addingItemId += codePoint;
+                addingItemId = addingItemId.substring(0, addingCursorIndex)
+                        + codePoint + addingItemId.substring(addingCursorIndex);
+                addingCursorIndex++;
             }
             return true;
         }
@@ -301,7 +327,8 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
 
     @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        renderPanelBackground(guiGraphics);
+        this.renderBackground(guiGraphics);
+        renderPanelBackground(guiGraphics, mouseX, mouseY, partialTick);
 
         guiGraphics.drawString(font, Component.translatable("screen.gytrinket.config_panel_title").getString(),
                 panelX + 8, panelY + 6, renderer.getAccentColor());
@@ -313,7 +340,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
 
         if (isDraggingItem) {
             guiGraphics.drawString(font, Component.translatable("screen.gytrinket.reorder_hint").getString(),
-                    panelX + panelWidth / 2 + 5, panelY + 6, 0xFF00FF00);
+                    panelX + panelWidth / 2 + 5, panelY + 6, renderer.getAccentColor());
         }
 
         boolean hasOverlay = isSelectingAttr || isAddingItem;
@@ -322,7 +349,9 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
             renderContent(guiGraphics, mouseX, mouseY);
         }
 
-        super.render(guiGraphics, mouseX, mouseY, partialTick);
+        for (var renderable : this.renderables) {
+            renderable.render(guiGraphics, mouseX, mouseY, partialTick);
+        }
 
         if (isSelectingAttr) {
             renderSelectAttrOverlay(guiGraphics, mouseX, mouseY);
@@ -371,7 +400,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
 
             if (isDraggingItem && i == dragTargetIndex) {
                 int dragRowHeight = calcRowHeight(dragFromIndex);
-                guiGraphics.fill(panelX + 5, y, panelX + panelWidth - 5, y + 2, 0xFF00FF00);
+                guiGraphics.fill(panelX + 5, y, panelX + panelWidth - 5, y + 2, renderer.getAccentColor());
                 y += dragRowHeight;
             }
 
@@ -394,7 +423,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
                 hoveredItemIndex = i;
             }
 
-            Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(itemId));
+            Item item = BuiltInRegistries.ITEM.get(new ResourceLocation(itemId));
             if (item != null) {
                 ItemStack itemStack = new ItemStack(item);
                 guiGraphics.renderItem(itemStack, panelX + 10, y + 1);
@@ -414,7 +443,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
                 hoveredDelete = true;
                 hoveredItemIndex = i;
             }
-            guiGraphics.drawString(font, "X", delX + 4, y + 3, delHovered ? renderer.getDeleteColor() : 0xFF664444);
+            guiGraphics.drawString(font, "X", delX + 4, y + 3, delHovered ? renderer.getDeleteColor() : renderer.getHintColor());
 
             if (isSelected) {
                 int attrX = panelX + 28;
@@ -425,7 +454,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
                     if (!isSelectingAttr && !isEditing && !isDeletingAttr) {
                         guiGraphics.drawString(font,
                                 Component.translatable("screen.gytrinket.no_attributes").getString(),
-                                attrX, attrY + 2, 0xFF888888);
+                                attrX, attrY + 2, renderer.getHintColor());
 
                         String addText = "[+]";
                         int hintWidth = font.width(Component.translatable("screen.gytrinket.no_attributes").getString());
@@ -434,7 +463,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
                         if (btnY < contentBottom) {
                             boolean addHovered = mouseX >= btnX && mouseX < btnX + font.width(addText) + 6
                                     && mouseY >= btnY && mouseY < btnY + ATTR_LINE_HEIGHT - 1;
-                            guiGraphics.drawString(font, addText, btnX + 3, btnY + 2, addHovered ? 0xFF55FF55 : 0xFF558855);
+                            guiGraphics.drawString(font, addText, btnX + 3, btnY + 2, addHovered ? renderer.getAccentColor() : renderer.getHintColor());
                             if (addHovered) {
                                 hoveredAddBtn = true;
                                 hoveredItemIndex = i;
@@ -447,7 +476,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
                         if (remBtnY < contentBottom) {
                             boolean remHovered = mouseX >= remBtnX && mouseX < remBtnX + font.width(removeText) + 6
                                     && mouseY >= remBtnY && mouseY < remBtnY + ATTR_LINE_HEIGHT - 1;
-                            guiGraphics.drawString(font, removeText, remBtnX + 3, remBtnY + 2, remHovered ? renderer.getDeleteColor() : 0xFF885555);
+                            guiGraphics.drawString(font, removeText, remBtnX + 3, remBtnY + 2, remHovered ? renderer.getDeleteColor() : renderer.getHintColor());
                             if (remHovered) {
                                 hoveredRemoveBtn = true;
                                 hoveredItemIndex = i;
@@ -492,10 +521,10 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
                         if (isEditing && j == findAttrIndex(attrs, editingAttrName)) {
                             String displayName = Component.translatable("tooltip.gytrinket.attr." + attrName).getString();
                             String editText = displayName + "=" + editingValue + "_";
-                            guiGraphics.drawString(font, editText, attrX + 4, attrY + 2, 0xFFFFFF00);
+                            guiGraphics.drawString(font, editText, attrX + 4, attrY + 2, renderer.getValueColor());
                         } else if (isDeletingAttr) {
                             guiGraphics.drawString(font, attrText, attrX + 4, attrY + 2,
-                                    attrHovered ? renderer.getDeleteColor() : 0xFFAA6666);
+                                    attrHovered ? renderer.getDeleteColor() : renderer.getHintColor());
                         } else {
                             guiGraphics.drawString(font, attrText, attrX + 4, attrY + 2, renderer.getValueColor());
                         }
@@ -514,7 +543,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
                         if (btnY < contentBottom) {
                             boolean addHovered = mouseX >= btnX && mouseX < btnX + font.width(addText) + 6
                                     && mouseY >= btnY && mouseY < btnY + ATTR_LINE_HEIGHT - 1;
-                            guiGraphics.drawString(font, addText, btnX + 3, btnY + 2, addHovered ? 0xFF55FF55 : 0xFF558855);
+                            guiGraphics.drawString(font, addText, btnX + 3, btnY + 2, addHovered ? renderer.getAccentColor() : renderer.getHintColor());
                             if (addHovered) {
                                 hoveredAddBtn = true;
                                 hoveredItemIndex = i;
@@ -531,7 +560,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
                         if (remBtnY < contentBottom) {
                             boolean remHovered = mouseX >= remBtnX && mouseX < remBtnX + font.width(removeText) + 6
                                     && mouseY >= remBtnY && mouseY < remBtnY + ATTR_LINE_HEIGHT - 1;
-                            guiGraphics.drawString(font, removeText, remBtnX + 3, remBtnY + 2, remHovered ? renderer.getDeleteColor() : 0xFF885555);
+                            guiGraphics.drawString(font, removeText, remBtnX + 3, remBtnY + 2, remHovered ? renderer.getDeleteColor() : renderer.getHintColor());
                             if (remHovered) {
                                 hoveredRemoveBtn = true;
                                 hoveredItemIndex = i;
@@ -546,12 +575,12 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
 
         if (isDraggingItem && dragTargetIndex >= itemConfigData.size()) {
             int dragRowHeight = calcRowHeight(dragFromIndex);
-            guiGraphics.fill(panelX + 5, y, panelX + panelWidth - 5, y + 2, 0xFF00FF00);
+            guiGraphics.fill(panelX + 5, y, panelX + panelWidth - 5, y + 2, renderer.getAccentColor());
         }
 
         if (itemConfigData.isEmpty()) {
             guiGraphics.drawString(font, Component.translatable("screen.gytrinket.no_config_items").getString(),
-                    panelX + 15, contentY, 0xFF888888);
+                    panelX + 15, contentY, renderer.getHintColor());
         }
 
         guiGraphics.disableScissor();
@@ -591,9 +620,9 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
         int dragY = mouseY - rowHeight / 2;
         dragY = Math.max(contentY, Math.min(dragY, contentBottom - rowHeight));
 
-        guiGraphics.fill(panelX + 5, dragY, panelX + panelWidth - 5, dragY + rowHeight, 0xDD2a2a3a);
+        guiGraphics.fill(panelX + 5, dragY, panelX + panelWidth - 5, dragY + rowHeight, 0xE6283D66);
 
-        Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(itemId));
+        Item item = BuiltInRegistries.ITEM.get(new ResourceLocation(itemId));
         if (item != null) {
             ItemStack itemStack = new ItemStack(item);
             guiGraphics.renderItem(itemStack, panelX + 10, dragY + 1);
@@ -603,8 +632,8 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
             guiGraphics.drawString(font, itemId, panelX + 10, dragY + 3, renderer.getTextColor());
         }
 
-        guiGraphics.fill(panelX + 5, dragY, panelX + panelWidth - 5, dragY + 2, 0xFF00FF00);
-        guiGraphics.fill(panelX + 5, dragY + rowHeight - 2, panelX + panelWidth - 5, dragY + rowHeight, 0xFF00FF00);
+        guiGraphics.fill(panelX + 5, dragY, panelX + panelWidth - 5, dragY + 2, renderer.getAccentColor());
+        guiGraphics.fill(panelX + 5, dragY + rowHeight - 2, panelX + panelWidth - 5, dragY + rowHeight, renderer.getAccentColor());
     }
 
     private void renderSelectAttrOverlay(GuiGraphics guiGraphics, int mouseX, int mouseY) {
@@ -632,18 +661,18 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
                     && mouseY >= listY && mouseY < listY + 10;
 
             if (alreadyHas) {
-                guiGraphics.drawString(font, displayName, overlayX + 8, listY, 0xFF555555);
+                guiGraphics.drawString(font, displayName, overlayX + 8, listY, renderer.getHintColor());
                 if (hovered) {
-                    guiGraphics.drawString(font, " *", overlayX + 8 + font.width(displayName), listY, 0xFF666666);
+                    guiGraphics.drawString(font, " *", overlayX + 8 + font.width(displayName), listY, renderer.getHintColor());
                 }
             } else {
-                guiGraphics.drawString(font, displayName, overlayX + 8, listY, hovered ? 0xFFFFFF00 : renderer.getTextColor());
+                guiGraphics.drawString(font, displayName, overlayX + 8, listY, hovered ? renderer.getValueColor() : renderer.getTextColor());
             }
             listY += 10;
         }
 
         if (allAttributeNames.isEmpty()) {
-            guiGraphics.drawString(font, Component.translatable("screen.gytrinket.no_attributes_registered").getString(), overlayX + 8, listY, 0xFF888888);
+            guiGraphics.drawString(font, Component.translatable("screen.gytrinket.no_attributes_registered").getString(), overlayX + 8, listY, renderer.getHintColor());
         }
     }
 
@@ -659,7 +688,29 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
         guiGraphics.drawString(font, Component.translatable("screen.gytrinket.add_item_prompt").getString(),
                 overlayX + 8, overlayY + 8, renderer.getAccentColor());
 
-        guiGraphics.drawString(font, addingItemId + "_", overlayX + 8, overlayY + 28, 0xFFFFFF00);
+        int textX = overlayX + 8;
+        int textY = overlayY + 28;
+        guiGraphics.drawString(font, addingItemId, textX, textY, renderer.getValueColor());
+
+        // 光标竖线
+        int caretX = textX + font.width(addingItemId.substring(0, addingCursorIndex));
+        guiGraphics.fill(caretX, textY, caretX + 1, textY + 9, renderer.getAccentColor());
+    }
+
+    /**
+     * 根据鼠标点击的 X 坐标计算输入框光标位置（最近字符边界）。
+     */
+    private int calcCursorIndexFromClick(double mouseX, int textX) {
+        int cursor = addingItemId.length();
+        for (int i = 0; i < addingItemId.length(); i++) {
+            int charStart = textX + font.width(addingItemId.substring(0, i));
+            int charHalf = font.width(String.valueOf(addingItemId.charAt(i))) / 2;
+            if (mouseX < charStart + charHalf) {
+                cursor = i;
+                break;
+            }
+        }
+        return cursor;
     }
 
     @Override
@@ -683,9 +734,17 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
             int overlayH = 60;
             int overlayX = panelX + panelWidth / 2 - overlayW / 2;
             int overlayY = panelY + panelHeight / 2 - overlayH / 2;
+            // 点击输入文本：将光标定位到点击位置
+            int textX = overlayX + 8;
+            int textY = overlayY + 28;
+            if (mouseX >= textX && mouseY >= textY && mouseY < textY + 9) {
+                addingCursorIndex = calcCursorIndexFromClick(mouseX, textX);
+                return true;
+            }
             if (mouseX < overlayX || mouseX >= overlayX + overlayW || mouseY < overlayY || mouseY >= overlayY + overlayH) {
                 isAddingItem = false;
                 addingItemId = "";
+                addingCursorIndex = 0;
             }
             return true;
         }

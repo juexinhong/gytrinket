@@ -10,7 +10,7 @@
     "%": { "item": "minecraft:obsidian" }
   },
   "result": {
-    "item": "gytrinket:arc_barrier_part",
+    "id": "gytrinket:arc_barrier_part",
     "count": 1
   }
 }

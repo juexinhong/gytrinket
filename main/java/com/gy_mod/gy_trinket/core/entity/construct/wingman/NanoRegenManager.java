@@ -2,11 +2,9 @@ package com.gy_mod.gy_trinket.core.entity.construct.wingman;
 
 import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.core.TickScheduler;
-import com.gy_mod.gy_trinket.core.shield.DisableSystem;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructManager;
-import com.gy_mod.gy_trinket.gytrinket;
-import com.gy_mod.gy_trinket.storage.PlayerStore;
-import com.gy_mod.gy_trinket.storage.PlayerStoreManager;
+import com.gy_mod.gy_trinket.core.shield.DisableSystem;
+import com.gy_mod.gy_trinket.storage.PlayerStoreUtils;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.ItemStack;
@@ -73,14 +71,10 @@ public class NanoRegenManager {
     }
 
     /**
-     * 检查玩家光点核心是否拥有纳米再生模块
+     * 检查玩家已装备物品（光点核心存储 + Curios 饰品栏）是否拥有纳米再生模块
      */
     public static boolean hasNanoRegenModule(UUID playerUUID) {
-        PlayerStore store = PlayerStoreManager.getPlayerStore(playerUUID);
-        if (store == null) return false;
-
-        for (int i = 0; i < store.getItemHandler().getSlots(); i++) {
-            ItemStack stack = store.getItemHandler().getStackInSlot(i);
+        for (ItemStack stack : PlayerStoreUtils.getEquippedStacks(playerUUID)) {
             if (!stack.isEmpty() && !DisableSystem.isItemDisabled(playerUUID, stack)) {
                 if (Config.isNanoRegenModuleItem(stack.getItem())) {
                     return true;

@@ -171,16 +171,13 @@ public class ChargedAttackManager {
 
     /**
      * 取消充能（不释放攻击）
-     * 同时清理伤害追踪器，避免残留的充能值影响后续攻击
      */
     public static void cancelCharging(UUID playerUUID) {
         ChargedAttackData data = PLAYER_CHARGE_DATA.get(playerUUID);
         if (data != null) {
             data.charging = false;
-            data.releasing = false;
             data.chargeValue = 0;
         }
-        ChargedAttackDamageTracker.removePlayer(playerUUID);
     }
 
     @SubscribeEvent

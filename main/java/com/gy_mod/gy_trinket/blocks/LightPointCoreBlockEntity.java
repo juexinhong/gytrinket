@@ -8,7 +8,6 @@ import net.minecraft.world.MenuProvider;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
-import net.minecraft.world.inventory.ChestMenu;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
@@ -47,7 +46,7 @@ public class LightPointCoreBlockEntity extends BlockEntity implements MenuProvid
      */
     @Override
     public Component getDisplayName() {
-        return Component.translatable("block.gy_trinket.light_point_core_block_gy");
+        return Component.translatable("block.gytrinket.light_point_core");
     }
 
     /**
@@ -65,8 +64,13 @@ public class LightPointCoreBlockEntity extends BlockEntity implements MenuProvid
         PlayerStore store = PlayerStoreManager.getOrCreatePlayerStore(player);
         ItemStackHandler playerHandler = store.getItemHandler();
 
+        // 玩家打开光点核心容器时同步各槽位禁用原因（容器界面灰色遮罩用）
+        if (player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
+            com.gy_mod.gy_trinket.network.NetworkHandler.sendDisabledReasonsToPlayer(serverPlayer);
+        }
+
         // 创建 Container 接口的匿名实现
-        return ChestMenu.threeRows(containerId, playerInventory, new net.minecraft.world.Container() {
+        return new com.gy_mod.gy_trinket.menu.LightPointCoreMenu(containerId, playerInventory, new net.minecraft.world.Container() {
             /**
              * 获取容器大小
              * @return 容器大小，这里是 27

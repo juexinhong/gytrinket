@@ -14,3 +14,4 @@ public interface ParticleEngineAccessor {
     @Accessor("spriteSets")
     Map<ResourceLocation, SpriteSet> gytrinket$getSpriteSets();
 }
+

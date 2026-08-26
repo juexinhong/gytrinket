@@ -5,9 +5,7 @@
       "conditions": {
         "items": [
           {
-            "items": [
-              "gytrinket:ultimate_shield_module"
-            ]
+            "items": "gytrinket:ultimate_shield_module"
           }
         ]
       },
@@ -20,7 +18,7 @@
     },
     "icon": {
       "count": 1,
-      "item": "gytrinket:ultimate_shield_module"
+      "id": "gytrinket:ultimate_shield_module"
     },
     "title": {
       "translate": "advancements.gytrinket.story.obtain_ultimate_shield_module.title"

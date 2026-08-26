@@ -40,3 +40,4 @@ public class UpgradeDataSlot implements IDataSlot<UpgradeData> {
         return true;
     }
 }
+

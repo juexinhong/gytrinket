@@ -23,14 +23,14 @@ public class SwarmEnergyWavePacket {
     }
 
     public SwarmEnergyWavePacket(FriendlyByteBuf buf) {
-        this.entityId = buf.readInt();
+        this.entityId = buf.readVarInt();
         this.x = buf.readDouble(); this.y = buf.readDouble(); this.z = buf.readDouble();
         this.dirX = buf.readDouble(); this.dirY = buf.readDouble(); this.dirZ = buf.readDouble();
         this.isRepair = buf.readBoolean();
     }
 
     public void toBytes(FriendlyByteBuf buf) {
-        buf.writeInt(entityId);
+        buf.writeVarInt(entityId);
         buf.writeDouble(x); buf.writeDouble(y); buf.writeDouble(z);
         buf.writeDouble(dirX); buf.writeDouble(dirY); buf.writeDouble(dirZ);
         buf.writeBoolean(isRepair);
@@ -39,11 +39,10 @@ public class SwarmEnergyWavePacket {
     public void handle(Supplier<NetworkEvent.Context> contextSupplier) {
         NetworkEvent.Context context = contextSupplier.get();
         context.enqueueWork(() -> {
-            DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> {
+            DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () ->
                 com.gy_mod.gy_trinket.client.effect.energywave.EnergyWaveVisualManager.addSwarmWave(
                     entityId, x, y, z, dirX, dirY, dirZ, isRepair
-                );
-            });
+                ));
         });
         context.setPacketHandled(true);
     }

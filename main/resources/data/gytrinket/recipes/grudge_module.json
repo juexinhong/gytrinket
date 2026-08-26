@@ -11,7 +11,7 @@
     "@": { "item": "gytrinket:focus_core" }
   },
   "result": {
-    "item": "gytrinket:grudge_module",
+    "id": "gytrinket:grudge_module",
     "count": 1
   }
 }

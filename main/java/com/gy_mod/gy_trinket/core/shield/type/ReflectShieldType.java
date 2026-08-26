@@ -133,6 +133,11 @@ public class ReflectShieldType implements IShieldType {
             return;
         }
 
+        // 跳过已反射的弹射物，防止二次反射
+        if (REFLECTED_PROJECTILES.containsKey(projectile.getId())) {
+            return;
+        }
+
         ProjectileDamageInfo info = createProjectileDamageInfo(projectile);
         LAST_PROJECTILE_INFO.put(player.getUUID(), info);
         EXPLOSION_PREVENTION_PROJECTILES.put(projectile.getId(), System.currentTimeMillis() + EXPLOSION_PREVENTION_DURATION);

@@ -5,9 +5,7 @@
       "conditions": {
         "items": [
           {
-            "items": [
-              "gytrinket:shield_warp"
-              ]
+            "items": "gytrinket:shield_warp"
           }
         ]
       },
@@ -20,7 +18,7 @@
     },
     "icon": {
       "count": 1,
-      "item": "gytrinket:shield_warp"
+      "id": "gytrinket:shield_warp"
     },
     "title": {
       "translate": "advancements.gytrinket.story.obtain_warp_shield.title"

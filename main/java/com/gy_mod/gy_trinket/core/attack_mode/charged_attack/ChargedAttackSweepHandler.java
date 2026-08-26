@@ -1,6 +1,7 @@
 package com.gy_mod.gy_trinket.core.attack_mode.charged_attack;
 
 import com.gy_mod.gy_trinket.core.entity.construct.IConstructEntity;
+import com.gy_mod.gy_trinket.gytrinket;
 import com.gy_mod.gy_trinket.network.NetworkHandler;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
@@ -24,6 +25,8 @@ import java.util.function.Predicate;
  * 1. 必定触发横扫攻击（无视冲刺、移动等原版限制）
  * 2. 横扫伤害根据充能值提升（每点充能值+10%，最高100%加成）
  * 3. 横扫范围根据充能值扩大（每点+10%，无上限）
+ * <p>
+ * 不使用Mixin注入，而是在服务端直接执行自定义扇形范围伤害。
  */
 public class ChargedAttackSweepHandler {
 
@@ -98,7 +101,7 @@ public class ChargedAttackSweepHandler {
         float sweepDamage = baseDamage * 0.15F * sweepDamageMultiplier;
 
         // 扇形范围搜索
-        double entityReach = player.getEntityReach();
+        double entityReach = 3.0; // 1.20.1 无实体交互距离属性，使用原版固定值
         double expandedDist = entityReach * rangeMultiplier;
         AABB searchBox = player.getBoundingBox().inflate(expandedDist + 1.0);
         List<LivingEntity> nearbyEntities = player.level().getEntitiesOfClass(LivingEntity.class, searchBox);
@@ -164,7 +167,7 @@ public class ChargedAttackSweepHandler {
      * @return 准星对准的最近实体，或null
      */
     public static Entity findTargetInCrosshair(ServerPlayer player, boolean livingOnly) {
-        double reachDistance = player.getEntityReach();
+        double reachDistance = 3.0; // 1.20.1 无实体交互距离属性，使用原版固定值
         Vec3 eyePos = player.getEyePosition(1.0f);
         Vec3 lookVec = player.getLookAngle();
         Vec3 endPos = eyePos.add(lookVec.scale(reachDistance));
@@ -207,7 +210,7 @@ public class ChargedAttackSweepHandler {
             return;
         }
 
-        double reachDistance = player.getEntityReach();
+        double reachDistance = 3.0; // 1.20.1 无实体交互距离属性，使用原版固定值
         Vec3 eyePos = player.getEyePosition(1.0f);
         Vec3 lookVec = player.getLookAngle();
         Vec3 endPos = eyePos.add(lookVec.scale(reachDistance));
@@ -265,3 +268,4 @@ public class ChargedAttackSweepHandler {
         );
     }
 }
+

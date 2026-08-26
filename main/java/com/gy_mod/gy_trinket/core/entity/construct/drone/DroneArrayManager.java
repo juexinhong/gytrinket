@@ -6,15 +6,15 @@ import com.gy_mod.gy_trinket.core.entity.construct.ConstructManager;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructType;
 import com.gy_mod.gy_trinket.core.entity.construct.IEntityRestorer;
 import com.gy_mod.gy_trinket.core.entity.construct.swarm.SwarmConstructTypes;
-import com.gy_mod.gy_trinket.core.entity.construct.swarm.SwarmManager;
 import com.gy_mod.gy_trinket.core.entity.construct.wingman.WingmanConstructTypes;
-import com.gy_mod.gy_trinket.core.entity.construct.wingman.WingmanManager;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -47,6 +47,7 @@ public class DroneArrayManager {
     }
 
     public DroneArrayType getPlayerArrayType(Player player) {
+        if (player == null) return DroneArrayType.Types.ORBIT;
         return playerArrayTypes.getOrDefault(player.getUUID(), DroneArrayType.Types.ORBIT);
     }
 
@@ -186,122 +187,130 @@ public class DroneArrayManager {
         return arrayType != null && arrayType.hasTag(DroneArrayType.Tags.STANDBY);
     }
 
-    // ===== 统一备份/恢复流程 =====
+
+
+    // ===== 通用备份/恢复流程 =====
 
     /**
-     * 备份所有类型的构造体到待机存储，并移除实体。
-     * <p>
-     * 使用 {@link AbstractConstructEntity#snapshotToData()} 统一提取实体状态。
+     * 备份指定类型的所有构造体到待机存储，并移除实体。
+     * 只处理玩家当前维度的构造体，其他维度遗留的构造体不受影响。
+     * @param player 玩家
+     * @param typeId 构造体类型ID
      */
-    private void backupAllConstructs(Player player) {
+    private void backupConstructs(Player player, String typeId) {
         UUID playerUUID = player.getUUID();
-        ConstructManager cm = ConstructManager.getInstance();
+        ResourceKey<Level> playerDim = player.level().dimension();
+        Map<UUID, Entity> entitiesMap = ConstructManager.getInstance().getActiveConstructEntities(playerUUID, typeId);
 
-        for (String typeId : cm.getAllConstructTypeIds()) {
-            Map<UUID, Entity> entitiesMap = cm.getActiveConstructEntities(playerUUID, typeId);
-            List<ConstructData> backupList = new ArrayList<>();
+        List<ConstructData> backupList = new ArrayList<>();
+        for (Entity entity : entitiesMap.values()) {
+            if (!(entity instanceof AbstractConstructEntity constructEntity) || !constructEntity.isAlive()) continue;
+            // 只备份玩家当前维度的构造体
+            if (entity.level() == null || !entity.level().dimension().equals(playerDim)) continue;
 
-            for (Entity entity : entitiesMap.values()) {
-                if (entity instanceof AbstractConstructEntity constructEntity && constructEntity.isAlive()) {
-                    ConstructData snapshot = constructEntity.snapshotToData();
-                    if (snapshot != null) {
-                        backupList.add(snapshot);
-                    }
-                }
-            }
-            setStandbyBackup(playerUUID, typeId, backupList);
+            ConstructData copy = constructEntity.snapshotToData();
+            double currentMaxHealth = constructEntity.getMaxHealth();
+            float currentHealth = constructEntity.getHealth();
+            copy.setHealthRatio(currentMaxHealth > 0 ? currentHealth / currentMaxHealth : 1.0);
+            copy.setActive(true);
+            copy.setSavedPos(entity.getX(), entity.getY(), entity.getZ());
+            copy.setDimension(entity.level().dimension().location().toString());
+            backupList.add(copy);
+        }
+        setStandbyBackup(playerUUID, typeId, backupList);
 
-            // 移除实体
-            for (Entity entity : entitiesMap.values()) {
-                if (entity.isAlive()) {
-                    entity.remove(Entity.RemovalReason.DISCARDED);
-                }
-            }
-            cm.removeConstructsByType(player, typeId);
+        for (Entity entity : entitiesMap.values()) {
+            if (!entity.isAlive()) continue;
+            if (entity.level() == null || !entity.level().dimension().equals(playerDim)) continue;
+            entity.remove(Entity.RemovalReason.DISCARDED);
+            UUID entityUUID = entity.getUUID();
+            ConstructManager.getInstance().unregisterConstructEntity(playerUUID, typeId, entityUUID);
+            ConstructManager.getInstance().removeConstruct(playerUUID, entityUUID);
         }
     }
 
     /**
-     * 从待机备份恢复所有类型的构造体实体。
-     * <p>
-     * 使用 {@link IEntityRestorer} 统一恢复实体。
+     * 从待机备份恢复指定类型的构造体实体。
+     * @return true 如果存在备份并已恢复；false 如果无备份
      */
-    private void restoreAllConstructs(Player player) {
+    private boolean restoreConstructs(Player player, String typeId, DroneArrayType newArray,
+                                       boolean hasAssault, boolean hasDefense) {
         UUID playerUUID = player.getUUID();
-        ConstructManager cm = ConstructManager.getInstance();
         Map<String, List<ConstructData>> playerBackups = standbyDataBackup.get(playerUUID);
+        List<ConstructData> backupList = playerBackups != null ? playerBackups.remove(typeId) : null;
 
-        if (playerBackups == null || playerBackups.isEmpty()) return;
-        if (!(player.level() instanceof ServerLevel serverLevel)) return;
-
-        for (Map.Entry<String, List<ConstructData>> entry : playerBackups.entrySet()) {
-            String typeId = entry.getKey();
-            List<ConstructData> backupList = entry.getValue();
-
-            if (backupList == null || backupList.isEmpty()) continue;
-
-            ConstructType constructType = cm.getConstructType(typeId);
-            if (constructType == null || !constructType.hasEntityRestorer()) continue;
-
-            for (ConstructData data : backupList) {
-                if (!(player instanceof ServerPlayer serverPlayer)) continue;
-                Entity entity = constructType.getEntityRestorer().restore(serverPlayer, data, serverLevel);
-                if (entity != null) {
-                    cm.registerConstructEntity(playerUUID, typeId, entity);
-                    cm.addConstruct(player, data);
-                }
-            }
+        if (backupList == null || backupList.isEmpty()) {
+            return false;
         }
 
-        // 清空备份数据
-        playerBackups.clear();
+        if (!(player.level() instanceof ServerLevel serverLevel)) {
+            return true;
+        }
+
+        ConstructType constructType = ConstructManager.getInstance().getConstructType(typeId);
+        if (constructType == null || !constructType.hasEntityRestorer()) {
+            return false;
+        }
+
+        IEntityRestorer restorer = constructType.getEntityRestorer();
+
+        for (ConstructData restoredData : backupList) {
+            Entity restoredEntity = restorer.restore((ServerPlayer) player, restoredData, serverLevel);
+            if (restoredEntity == null) continue;
+
+            if (restoredEntity instanceof AbstractConstructEntity constructEntity) {
+                // 无人机特有：设置阵列类型和模块
+                if (constructEntity instanceof DroneConstructEntity droneEntity && restoredData instanceof DroneConstructData droneData) {
+                    droneData.setArrayType(newArray);
+                    droneData.setHasAssaultModule(hasAssault);
+                    droneData.setHasDefenseModule(hasDefense);
+                    droneEntity.setArrayType(newArray);
+                    if (hasAssault) droneEntity.addEffectTag(DroneConstructEntity.DroneEffectTag.ASSAULT);
+                    if (hasDefense) droneEntity.addEffectTag(DroneConstructEntity.DroneEffectTag.DEFENSE);
+                    if (!hasAssault && !hasDefense) droneEntity.refreshConstructAttributes();
+                }
+
+                // 用保存的生命值比例恢复当前生命值
+                float healthRatio = (float) restoredData.getHealthRatio();
+                float newMaxHealth = constructEntity.getMaxHealth();
+                constructEntity.setHealth(newMaxHealth * healthRatio);
+
+                restoredData.setEntityUUID(constructEntity.getUUID());
+                ConstructManager.getInstance().registerConstructEntity(playerUUID, typeId, constructEntity);
+                ConstructManager.getInstance().addConstruct(player, restoredData);
+            }
+        }
+        return true;
     }
 
     // ===== 进入/退出待机 =====
 
     private void enterStandby(Player player) {
-        backupAllConstructs(player);
+        // 备份所有类型的构造体
+        backupConstructs(player, DroneConstructTypes.DRONE);
+        backupConstructs(player, WingmanConstructTypes.WINGMAN);
+        backupConstructs(player, SwarmConstructTypes.SWARM);
+
+        // 禁用构建
         ConstructManager.getInstance().setBuildingDisabled(player, true);
     }
 
     private void exitStandby(Player player, DroneArrayType newArray) {
         ConstructManager.getInstance().setBuildingDisabled(player, false);
 
-        // 恢复所有类型的构造体（无备份时回退到更新现有无人机阵列类型）
-        if (getAllStandbyBackups(player.getUUID()).isEmpty()) {
+        boolean currentHasAssault = DroneManager.getInstance().hasAssaultModule(player);
+        boolean currentHasDefense = DroneManager.getInstance().hasDefenseModule(player);
+
+        // 恢复无人机（无备份时回退到更新现有实体阵列类型）
+        if (!restoreConstructs(player, DroneConstructTypes.DRONE, newArray, currentHasAssault, currentHasDefense)) {
             updateExistingDroneArrayType(player, newArray);
-        } else {
-            // 先更新备份数据中无人机的阵列类型和模块状态
-            boolean currentHasAssault = DroneManager.getInstance().hasAssaultModule(player);
-            boolean currentHasDefense = DroneManager.getInstance().hasDefenseModule(player);
-            updateStandbyBackupModules(player.getUUID(), currentHasAssault, currentHasDefense);
-
-            // 检查玩家是否仍拥有对应模块，如果没有则清除备份不恢复
-            UUID playerUUID = player.getUUID();
-            if (!DroneManager.getInstance().canBuildDroneInternal(player)) {
-                List<ConstructData> backup = getStandbyBackup(playerUUID, DroneConstructTypes.DRONE);
-                if (backup != null) backup.clear();
-            }
-            if (!WingmanManager.getInstance().canBuildWingmanInternal(player)) {
-                List<ConstructData> backup = getStandbyBackup(playerUUID, WingmanConstructTypes.WINGMAN);
-                if (backup != null) backup.clear();
-            }
-            if (!SwarmManager.getInstance().canBuildSwarmInternal(player)) {
-                List<ConstructData> backup = getStandbyBackup(playerUUID, SwarmConstructTypes.SWARM);
-                if (backup != null) backup.clear();
-            }
-
-            List<ConstructData> droneBackup = getStandbyBackup(player.getUUID(), DroneConstructTypes.DRONE);
-            if (droneBackup != null) {
-                for (ConstructData data : droneBackup) {
-                    if (data instanceof DroneConstructData droneData) {
-                        droneData.setArrayType(newArray);
-                    }
-                }
-            }
-
-            restoreAllConstructs(player);
         }
+
+        // 恢复僚机
+        restoreConstructs(player, WingmanConstructTypes.WINGMAN, newArray, currentHasAssault, currentHasDefense);
+
+        // 恢复蜂群
+        restoreConstructs(player, SwarmConstructTypes.SWARM, newArray, currentHasAssault, currentHasDefense);
     }
 
     /**
@@ -325,3 +334,4 @@ public class DroneArrayManager {
         }
     }
 }
+

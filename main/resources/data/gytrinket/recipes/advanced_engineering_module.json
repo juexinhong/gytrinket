@@ -13,7 +13,7 @@
     "*": { "item": "minecraft:blue_wool" }
   },
   "result": {
-    "item": "gytrinket:advanced_engineering_module",
+    "id": "gytrinket:advanced_engineering_module",
     "count": 1
   }
 }

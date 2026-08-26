@@ -5,7 +5,6 @@ import com.gy_mod.gy_trinket.network.packet.UpgradeConsumeMessage;
 import com.gy_mod.gy_trinket.network.packet.UpgradeReturnMessage;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -15,7 +14,7 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.core.registries.BuiltInRegistries;
 
 public class UpgradeSelectScreen extends AbstractPanelScreen {
 
@@ -56,23 +55,24 @@ public class UpgradeSelectScreen extends AbstractPanelScreen {
         initPanelSize(200, 260, 20, 40);
 
         int btnY = panelY + panelHeight + 5;
-        this.addRenderableWidget(Button.builder(
+        this.addRenderableWidget(SciFiButton.create(
                 Component.translatable("screen.gytrinket.return_materials"),
                 button -> {
                     NetworkHandler.INSTANCE.sendToServer(new UpgradeReturnMessage(baseItemKey, upgradedItemKey));
                     Minecraft.getInstance().setScreen(parentScreen);
                 }
-        ).bounds(panelX + 5, btnY, 90, 16).build());
+        ).bounds(panelX + 5, btnY, 90, 16).renderer(renderer).build());
 
-        this.addRenderableWidget(Button.builder(
+        this.addRenderableWidget(SciFiButton.create(
                 Component.translatable("screen.gytrinket.back"),
                 button -> Minecraft.getInstance().setScreen(parentScreen)
-        ).bounds(panelX + panelWidth - 95, btnY, 90, 16).build());
+        ).bounds(panelX + panelWidth - 95, btnY, 90, 16).renderer(renderer).build());
     }
 
     @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        renderPanelBackground(guiGraphics);
+        this.renderBackground(guiGraphics);
+        renderPanelBackground(guiGraphics, mouseX, mouseY, partialTick);
 
         guiGraphics.drawString(font, Component.translatable("screen.gytrinket.upgrade_select_title").getString(),
                 panelX + 8, panelY + 6, renderer.getAccentColor());
@@ -84,7 +84,7 @@ public class UpgradeSelectScreen extends AbstractPanelScreen {
             int required = ing.getInt("required");
             int collected = ing.getInt("collected");
 
-            Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(itemKey));
+            Item item = BuiltInRegistries.ITEM.get(new ResourceLocation(itemKey));
             String itemName = item != null ? new ItemStack(item).getHoverName().getString() : itemKey;
 
             String text = itemName + " " + collected + "/" + required;
@@ -103,7 +103,7 @@ public class UpgradeSelectScreen extends AbstractPanelScreen {
 
         Inventory inventory = player.getInventory();
         int cols = 9;
-        int slotSize = 16;
+        int slotSize = 20; // 网格步进（格子 18px，间隙 2px）
         int startX = panelX + (panelWidth - cols * slotSize) / 2;
         int startY = y;
 
@@ -117,12 +117,12 @@ public class UpgradeSelectScreen extends AbstractPanelScreen {
                 int iy = startY + row * slotSize;
 
                 boolean hovered = mouseX >= x && mouseX < x + slotSize && mouseY >= iy && mouseY < iy + slotSize;
-                renderer.drawSlot(guiGraphics, x, iy, slotSize - 1, slotSize - 1, hovered);
+                renderer.drawSlot(guiGraphics, x, iy, slotSize - 2, slotSize - 2, hovered);
 
                 ItemStack stack = inventory.getItem(slot);
                 if (!stack.isEmpty()) {
-                    guiGraphics.renderItem(stack, x, iy);
-                    guiGraphics.renderItemDecorations(font, stack, x, iy);
+                    guiGraphics.renderItem(stack, x + 1, iy + 1);
+                    guiGraphics.renderItemDecorations(font, stack, x + 1, iy + 1);
                     if (hovered) {
                         hoveredItem = stack;
                         hoveredSlotIndex = slot;
@@ -137,12 +137,12 @@ public class UpgradeSelectScreen extends AbstractPanelScreen {
             int x = startX + col * slotSize;
 
             boolean hovered = mouseX >= x && mouseX < x + slotSize && mouseY >= hotbarY && mouseY < hotbarY + slotSize;
-            renderer.drawSlot(guiGraphics, x, hotbarY, slotSize - 1, slotSize - 1, hovered);
+            renderer.drawSlot(guiGraphics, x, hotbarY, slotSize - 2, slotSize - 2, hovered);
 
             ItemStack stack = inventory.getItem(slot);
             if (!stack.isEmpty()) {
-                guiGraphics.renderItem(stack, x, hotbarY);
-                guiGraphics.renderItemDecorations(font, stack, x, hotbarY);
+                guiGraphics.renderItem(stack, x + 1, hotbarY + 1);
+                guiGraphics.renderItemDecorations(font, stack, x + 1, hotbarY + 1);
                 if (hovered) {
                     hoveredItem = stack;
                     hoveredSlotIndex = slot;
@@ -150,7 +150,9 @@ public class UpgradeSelectScreen extends AbstractPanelScreen {
             }
         }
 
-        super.render(guiGraphics, mouseX, mouseY, partialTick);
+        for (var renderable : this.renderables) {
+            renderable.render(guiGraphics, mouseX, mouseY, partialTick);
+        }
 
         if (!hoveredItem.isEmpty()) {
             guiGraphics.renderTooltip(font, hoveredItem, mouseX, mouseY);

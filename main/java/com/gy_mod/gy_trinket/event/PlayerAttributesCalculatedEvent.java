@@ -2,7 +2,6 @@ package com.gy_mod.gy_trinket.event;
 
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.event.entity.player.PlayerEvent;
-import net.minecraftforge.fml.common.Mod;
 
 import java.util.Collections;
 import java.util.Map;
@@ -13,7 +12,6 @@ import java.util.UUID;
  * 玩家属性计算完毕事件
  * 当玩家的属性计算完成后触发此事件
  */
-@Mod.EventBusSubscriber(modid = com.gy_mod.gy_trinket.gytrinket.MODID)
 public class PlayerAttributesCalculatedEvent extends PlayerEvent {
     private final UUID playerUUID;
     private final Map<String, Double> attributes;

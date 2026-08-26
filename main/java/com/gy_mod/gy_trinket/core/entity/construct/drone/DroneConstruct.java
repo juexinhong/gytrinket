@@ -72,10 +72,7 @@ public class DroneConstruct extends AbstractConstruct {
         Vec3 spawnPos = owner.position().add(0, 2, 0);
         drone.setPos(spawnPos.x, spawnPos.y, spawnPos.z);
 
-        // 主动获取构造体属性（进化/母舰等动态属性需在实体创建后应用）
-        drone.refreshConstructAttributes();
-
-        // 属性应用后再设置满血（此时maxHealth已包含动态加成）
+        // 设置生命值为最大生命值
         drone.setHealth(drone.getMaxHealth());
 
         level.addFreshEntity(drone);
@@ -83,16 +80,6 @@ public class DroneConstruct extends AbstractConstruct {
 
         // 注册到构造体管理器
         ConstructManager.getInstance().registerConstructEntity(owner.getUUID(), constructId, drone);
-    }
-
-    @Override
-    public ConstructData createData(java.util.UUID entityUUID) {
-        DroneConstructData data = new DroneConstructData(
-                constructId, entityUUID, maxHealth, arrayType
-        );
-        data.setHasAssaultModule(isAssaultDrone());
-        data.setHasDefenseModule(isDefenseDrone());
-        return data;
     }
 
     public DroneArrayType getArrayType() {
@@ -137,6 +124,16 @@ public class DroneConstruct extends AbstractConstruct {
     }
 
     @Override
+    public ConstructData createData(java.util.UUID entityUUID) {
+        DroneConstructData data = new DroneConstructData(
+                constructId, entityUUID, maxHealth, arrayType
+        );
+        data.setHasAssaultModule(isAssaultDrone());
+        data.setHasDefenseModule(isDefenseDrone());
+        return data;
+    }
+
+    @Override
     public Set<String> getCurrentTags() {
         Set<String> allTags = super.getCurrentTags();
         for (IDroneEffect effect : effects) {
@@ -148,3 +145,4 @@ public class DroneConstruct extends AbstractConstruct {
         return allTags;
     }
 }
+

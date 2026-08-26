@@ -1,20 +1,26 @@
 package com.gy_mod.gy_trinket.core.entity.construct.drone.behavior;
 
 import com.gy_mod.gy_trinket.config.Config;
-import com.gy_mod.gy_trinket.core.shield.DisableSystem;
+import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
+import com.gy_mod.gy_trinket.core.burn.BurnManager;
+import com.gy_mod.gy_trinket.core.burn.IBurnSource;
 import com.gy_mod.gy_trinket.core.entity.construct.IConstructEntity;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneConstructEntity;
-import com.gy_mod.gy_trinket.core.explosion.SimulatedExplosion;
 import com.gy_mod.gy_trinket.core.entity.construct.HostileTargetManager;
-import com.gy_mod.gy_trinket.storage.PlayerStore;
-import com.gy_mod.gy_trinket.storage.PlayerStoreManager;
+import com.gy_mod.gy_trinket.core.explosion.SimulatedExplosion;
+import com.gy_mod.gy_trinket.core.ignite.IIgniteSource;
+import com.gy_mod.gy_trinket.core.ignite.IgniteManager;
+import com.gy_mod.gy_trinket.core.shield.DisableSystem;
+import com.gy_mod.gy_trinket.storage.PlayerStoreUtils;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.Set;
@@ -60,8 +66,9 @@ public class SelfDestructBehavior implements IDroneSpecialBehavior {
     }
 
     /**
-     * 自毁装置已移至 AbstractConstructEntity.die() 中统一触发，
-     * 此处保留空实现以兼容无人机行为系统。
+     * 当构造体实际死亡时触发自毁爆炸
+     * 注意：如果宽限协议或最终指令阻止了死亡，die()方法会提前返回，
+     * onDeath()不会被调用，因此自毁装置不会触发。
      */
     @Override
     public void onDeath(DroneConstructEntity drone, DamageSource source) {
@@ -69,7 +76,9 @@ public class SelfDestructBehavior implements IDroneSpecialBehavior {
     }
 
     /**
-     * 执行自毁爆炸（无人机专用，保持兼容）
+     * 执行自毁爆炸
+     * 此方法也可由最终指令的explodeAndRemove()调用，
+     * 使最终指令的自爆也能触发自毁装置。
      */
     public static void triggerSelfDestructExplosion(DroneConstructEntity drone) {
         triggerSelfDestructExplosion((LivingEntity) drone);
@@ -107,9 +116,37 @@ public class SelfDestructBehavior implements IDroneSpecialBehavior {
                         && !(entity instanceof Player)
                         && entity instanceof net.minecraft.world.entity.Mob
                         && HostileTargetManager.shouldAttackPlayer(entity, playerOwner),
-                false,
+                true,
                 playerOwner
         );
+
+        // 炉心融解模块：自毁附带等量灼烧并默认点燃
+        if (playerOwner != null && PlayerStoreUtils.hasActiveItem(playerOwner, Config::isFurnaceCoreItem)) {
+            float burnDamage = damage;
+            if (playerOwner != null) {
+                double explosionDamageMultiplier = AttributeManager.getGroupAttribute(playerOwner.getUUID(), "explosion_damage");
+                burnDamage = (float) (damage * explosionDamageMultiplier);
+            }
+            IBurnSource burnSource = new IBurnSource.DefaultBurnSource(playerOwner);
+            IIgniteSource igniteSource = new IIgniteSource.DefaultIgniteSource(playerOwner);
+
+            AABB aabb = new AABB(
+                    pos.x - radius, pos.y - radius, pos.z - radius,
+                    pos.x + radius, pos.y + radius, pos.z + radius
+            );
+            for (LivingEntity entity : construct.level().getEntitiesOfClass(LivingEntity.class, aabb)) {
+                if (entity == construct || !entity.isAlive() || entity instanceof Player
+                        || !(entity instanceof Mob)
+                        || !HostileTargetManager.shouldAttackPlayer(entity, playerOwner)) {
+                    continue;
+                }
+                if (entity.position().distanceTo(pos) > radius) {
+                    continue;
+                }
+                BurnManager.applyBurnCharge(entity, burnDamage, burnSource);
+                IgniteManager.applyIgnite(entity, igniteSource, "self_destruct", true);
+            }
+        }
 
         if (construct.level() instanceof ServerLevel serverLevel) {
             serverLevel.sendParticles(ParticleTypes.EXPLOSION_EMITTER,
@@ -118,7 +155,7 @@ public class SelfDestructBehavior implements IDroneSpecialBehavior {
     }
 
     /**
-     * 检查玩家光点核心中是否有自毁装置所需物品（无人机专用，保持兼容）
+     * 检查玩家光点核心中是否有自毁装置所需物品
      */
     public static boolean hasRequiredItems(DroneConstructEntity drone) {
         return hasRequiredItems((LivingEntity) drone);
@@ -132,12 +169,8 @@ public class SelfDestructBehavior implements IDroneSpecialBehavior {
         if (ownerUUID == null) {
             return false;
         }
-        PlayerStore store = PlayerStoreManager.getPlayerStore(ownerUUID);
-        if (store == null) {
-            return false;
-        }
-        for (int i = 0; i < store.getItemHandler().getSlots(); i++) {
-            ItemStack stack = store.getItemHandler().getStackInSlot(i);
+        // 已装备物品 = 光点核心存储 + Curios 饰品栏（光点核心内容扩展）
+        for (ItemStack stack : PlayerStoreUtils.getEquippedStacks(ownerUUID)) {
             if (!stack.isEmpty() && !DisableSystem.isItemDisabled(ownerUUID, stack) && Config.isSelfDestructItem(stack.getItem())) {
                 return true;
             }
@@ -145,3 +178,4 @@ public class SelfDestructBehavior implements IDroneSpecialBehavior {
         return false;
     }
 }
+

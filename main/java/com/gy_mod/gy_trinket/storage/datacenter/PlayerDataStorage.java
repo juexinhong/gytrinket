@@ -12,7 +12,7 @@ import java.util.UUID;
 
 public class PlayerDataStorage extends SavedData {
 
-    private static final String DATA_NAME = "gy_trinket_player_data";
+    private static final String DATA_NAME = "gytrinket_player_data";
 
     private final Map<UUID, CompoundTag> playerDataMap = new HashMap<>();
 

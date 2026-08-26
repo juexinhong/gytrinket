@@ -5,8 +5,7 @@ import com.gy_mod.gy_trinket.core.damage.InvincibilityMarkerManager;
 import com.gy_mod.gy_trinket.core.shield.DisableSystem;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneConstructEntity;
 import com.gy_mod.gy_trinket.core.entity.construct.HostileTargetManager;
-import com.gy_mod.gy_trinket.storage.PlayerStore;
-import com.gy_mod.gy_trinket.storage.PlayerStoreManager;
+import com.gy_mod.gy_trinket.storage.PlayerStoreUtils;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
@@ -164,12 +163,8 @@ public class NearDeathExplosionBehavior implements IDroneSpecialBehavior {
         if (ownerUUID == null) {
             return false;
         }
-        PlayerStore store = PlayerStoreManager.getPlayerStore(ownerUUID);
-        if (store == null) {
-            return false;
-        }
-        for (int i = 0; i < store.getItemHandler().getSlots(); i++) {
-            ItemStack stack = store.getItemHandler().getStackInSlot(i);
+        // 已装备物品 = 光点核心存储 + Curios 饰品栏（光点核心内容扩展）
+        for (ItemStack stack : PlayerStoreUtils.getEquippedStacks(ownerUUID)) {
             if (!stack.isEmpty() && !DisableSystem.isItemDisabled(ownerUUID, stack) && Config.isNearDeathExplosionItem(stack.getItem())) {
                 return true;
             }
@@ -177,3 +172,4 @@ public class NearDeathExplosionBehavior implements IDroneSpecialBehavior {
         return false;
     }
 }
+

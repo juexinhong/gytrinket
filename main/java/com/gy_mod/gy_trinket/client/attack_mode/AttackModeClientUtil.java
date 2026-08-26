@@ -35,7 +35,7 @@ public class AttackModeClientUtil {
             }
         }
 
-        double reachDistance = player.getEntityReach();
+        double reachDistance = mc.gameMode.getPickRange();
         Vec3 eyePos = player.getEyePosition(1.0f);
         Vec3 lookVec = player.getLookAngle();
         Vec3 endPos = eyePos.add(lookVec.scale(reachDistance));
@@ -126,3 +126,4 @@ public class AttackModeClientUtil {
         return hasActiveItem(Config::isAssaultItem);
     }
 }
+

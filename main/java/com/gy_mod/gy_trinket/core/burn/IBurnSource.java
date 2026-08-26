@@ -61,3 +61,4 @@ public interface IBurnSource {
         }
     }
 }
+

@@ -13,7 +13,7 @@
     "*": { "item": "minecraft:blue_wool" }
   },
   "result": {
-    "item": "gytrinket:last_order_module",
+    "id": "gytrinket:last_order_module",
     "count": 1
   }
 }

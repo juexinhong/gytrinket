@@ -5,6 +5,9 @@ import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
 import com.gy_mod.gy_trinket.core.entity.construct.HostileTargetManager;
 import com.gy_mod.gy_trinket.core.shield.ShieldManager;
 import com.gy_mod.gy_trinket.core.shield_transfer.ShieldTransferManager;
+import com.gy_mod.gy_trinket.network.NetworkHandler;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
@@ -22,7 +25,7 @@ import java.util.*;
  * 功能：
  * 1. 当玩家有护盾值时，提供基础攻击伤害加成（20%独立乘区）
  * 2. 每5刻检测玩家或被保护实体周围的威胁实体（敌对生物、危险物）
- * 3. 每个威胁实体额外增加50%攻击伤害加成
+ * 3. 每个威胁实体提供固定伤害加成（5%），并按敌人最大生命提供额外加成（每点+1%）
  * 4. 攻击伤害加成上限为100%
  * 5. 当有护盾值时，提供移动速度独立乘区加成（受护盾效果影响，不受威胁数量影响）
  * <p>
@@ -30,41 +33,68 @@ import java.util.*;
  * - shield_effect 属性组：影响基础加成、上限和移动速度加成
  * - shield_effect_radius 属性组：影响检测半径
  * <p>
+ * 伤害加成施加方式：
+ * - 玩家：通过 AttributeManager 动态属性（类似幽灵机身的伤害修改机制），
+ *   与其他动态属性（如幽灵机身）按独立乘区叠加
+ * - 护盾移植时：被保护实体为玩家时同样使用动态属性；非玩家实体（构造体/其他生物）
+ *   回退为原版 ATTACK_DAMAGE 修饰符
+ * <p>
  * 护盾移植支持：
  * - 当护盾移植时，在被保护实体位置检测威胁
- * - 攻击伤害和移动速度修饰符直接施加在被保护实体上
+ * - 攻击伤害通过动态属性/修饰符施加，移动速度修饰符直接施加在被保护实体上
  */
 public class AmplificationShieldType implements IShieldType {
+
+    /** 动态属性命名空间（用于 AttributeManager 动态属性，与其他系统独立叠加） */
+    private static final String NAMESPACE = "amplification_shield";
+
+    /** 攻击伤害独立乘区属性名（与幽灵机身共用同一属性，按乘区叠加） */
+    private static final String ATTR_DAMAGE_INDEPENDENT = "attack_damage_independent";
 
     /** 追踪的威胁实体：玩家UUID -> 威胁实体集合 */
     private static final Map<UUID, Set<Entity>> TRACKED_THREAT_ENTITIES = new HashMap<>();
     
     /** 计时器：玩家UUID -> 刻数 */
     private static final Map<UUID, Integer> TICK_COUNTER = new HashMap<>();
+
+    /** 增幅进度（0~1）：客户端渲染亮度的驱动值，0=无危险物/仅基础增幅，1=达到增幅上限 */
+    private static final Map<UUID, Double> AMPLIFICATION_PROGRESS = new HashMap<>();
     
     /** 威胁检测间隔（刻） */
     private static final int CHECK_INTERVAL = 5;
     
-    /** 攻击伤害修饰符UUID */
-    private static final UUID ATTACK_DAMAGE_MODIFIER_UUID = UUID.fromString("f5a6b7c8-d9e0-1234-5678-9abcdef01234");
+    /** 攻击伤害修饰符ID（仅用于非玩家实体回退） */
+    private static final ResourceLocation ATTACK_DAMAGE_MODIFIER_ID = new ResourceLocation("gytrinket", "amplification_shield_attack_damage");
 
-    /** 攻击伤害修饰符名称 */
-    private static final String ATTACK_DAMAGE_MODIFIER_NAME = "amplification_shield_attack_damage_modifier";
+    /** 移动速度修饰符ID */
+    public static final ResourceLocation MOVEMENT_SPEED_MODIFIER_ID = new ResourceLocation("gytrinket", "amplification_shield_movement_speed");
 
-    /** 移动速度修饰符UUID */
-    private static final UUID MOVEMENT_SPEED_MODIFIER_UUID = UUID.fromString("a1b2c3d4-e5f6-7890-abcd-ef0123456789");
+    /**
+     * 将 ResourceLocation 修饰符ID 转换为 1.20.1 AttributeModifier 使用的 UUID
+     * （与 1.21 的 AttributeModifier(ResourceLocation, ...) 内部实现一致，保证存档/同步兼容）
+     */
+    private static UUID modifierId(ResourceLocation id) {
+        return UUID.nameUUIDFromBytes(id.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    }
 
-    /** 移动速度修饰符名称 */
-    private static final String MOVEMENT_SPEED_MODIFIER_NAME = "amplification_shield_movement_speed_modifier";
+    /** 判断修饰符是否为增幅护盾移动速度修饰符（客户端 FOV 补偿用） */
+    public static boolean isMovementSpeedModifier(UUID uuid) {
+        return uuid.equals(modifierId(MOVEMENT_SPEED_MODIFIER_ID));
+    }
     
     /** 获取基础增幅值 */
     private static double getBaseAmplification() {
         return Config.getAmplificationBaseAmplification();
     }
     
-    /** 获取每个威胁增加的增幅值 */
+    /** 获取每个威胁的固定增幅值 */
     private static double getThreatAmplification() {
         return Config.getAmplificationThreatAmplification();
+    }
+    
+    /** 获取每个威胁按最大生命提供的增幅值（每点） */
+    private static double getHealthAmplificationPerPoint() {
+        return Config.getAmplificationHealthAmplificationPerPoint();
     }
     
     /** 获取最大增幅值 */
@@ -94,17 +124,29 @@ public class AmplificationShieldType implements IShieldType {
     @Override
     public void onRemoved(Player player) {
         UUID playerUUID = player.getUUID();
+        AMPLIFICATION_PROGRESS.put(playerUUID, 0.0);
+        AttributeManager.removeDynamicAttribute(playerUUID, NAMESPACE, ATTR_DAMAGE_INDEPENDENT);
         removeAttackDamageModifier(player);
         removeMovementSpeedModifier(player);
         
-        // 移除被保护实体上的修饰符
+        // 移除被保护实体上的动态属性/修饰符
         for (LivingEntity protectedEntity : ShieldTransferManager.getProtectedEntities(playerUUID, player.level())) {
-            removeAttackDamageModifier(protectedEntity);
+            if (protectedEntity instanceof Player targetPlayer) {
+                AttributeManager.removeDynamicAttribute(targetPlayer.getUUID(), NAMESPACE, ATTR_DAMAGE_INDEPENDENT);
+            } else {
+                removeAttackDamageModifier(protectedEntity);
+            }
             removeMovementSpeedModifier(protectedEntity);
         }
         
         TRACKED_THREAT_ENTITIES.remove(playerUUID);
         TICK_COUNTER.remove(playerUUID);
+
+        // 同步失活状态到客户端，隐藏渲染贴图
+        if (player instanceof ServerPlayer serverPlayer) {
+            NetworkHandler.sendShieldSyncToPlayer(serverPlayer,
+                ShieldManager.getCurrentShield(playerUUID), ShieldManager.getMaxShield(playerUUID));
+        }
     }
 
     /**
@@ -112,6 +154,7 @@ public class AmplificationShieldType implements IShieldType {
      * 1. 检查护盾值，无护盾时清理修饰符
      * 2. 每5刻检测威胁实体（在玩家或被保护实体位置）
      * 3. 更新攻击伤害加成（施加在玩家或被保护实体上）
+     * 4. 移动速度加成与威胁检测同频（每5刻）更新，避免属性频繁抖动
      */
     @Override
     public void onTick(Player player) {
@@ -123,14 +166,25 @@ public class AmplificationShieldType implements IShieldType {
         double currentShield = ShieldManager.getCurrentShield(playerUUID);
         
         if (currentShield <= 0) {
-            // 无护盾时清理所有修饰符
+            // 无护盾时清理所有动态属性/修饰符
+            AMPLIFICATION_PROGRESS.put(playerUUID, 0.0);
+            AttributeManager.removeDynamicAttribute(playerUUID, NAMESPACE, ATTR_DAMAGE_INDEPENDENT);
             removeAttackDamageModifier(player);
             removeMovementSpeedModifier(player);
             for (LivingEntity protectedEntity : ShieldTransferManager.getProtectedEntities(playerUUID, player.level())) {
-                removeAttackDamageModifier(protectedEntity);
+                if (protectedEntity instanceof Player targetPlayer) {
+                    AttributeManager.removeDynamicAttribute(targetPlayer.getUUID(), NAMESPACE, ATTR_DAMAGE_INDEPENDENT);
+                } else {
+                    removeAttackDamageModifier(protectedEntity);
+                }
                 removeMovementSpeedModifier(protectedEntity);
             }
             TRACKED_THREAT_ENTITIES.remove(playerUUID);
+            // 同步失活状态到客户端，隐藏渲染贴图
+            if (player instanceof ServerPlayer serverPlayer) {
+                NetworkHandler.sendShieldSyncToPlayer(serverPlayer,
+                    ShieldManager.getCurrentShield(playerUUID), ShieldManager.getMaxShield(playerUUID));
+            }
             return;
         }
         
@@ -138,12 +192,19 @@ public class AmplificationShieldType implements IShieldType {
         tickCounter++;
         TICK_COUNTER.put(playerUUID, tickCounter);
 
-        if (tickCounter >= CHECK_INTERVAL) {
+        boolean isCheckTick = tickCounter >= CHECK_INTERVAL;
+        if (isCheckTick) {
             TICK_COUNTER.put(playerUUID, 0);
             updateThreatEntities(player);
+            // 周期性同步增幅进度到客户端（客户端10刻确认超时，间隔5刻 < 10刻保持贴图可见）
+            if (player instanceof ServerPlayer serverPlayer) {
+                NetworkHandler.sendShieldSyncToPlayer(serverPlayer,
+                    ShieldManager.getCurrentShield(playerUUID), ShieldManager.getMaxShield(playerUUID));
+            }
         }
 
-        updateAttackDamageBonus(player);
+        // 移动速度加成与危险物检查同频更新（仅检查时刻重新施加）
+        updateAttackDamageBonus(player, isCheckTick);
     }
 
     /**
@@ -188,11 +249,12 @@ public class AmplificationShieldType implements IShieldType {
 
     /**
      * 更新攻击伤害加成和移动速度加成
-     * 攻击伤害：基础加成 + 威胁加成，不超过上限
-     * 移动速度：基础加成 × 护盾效果（不受威胁数量影响）
-     * 直接给生效的实体（玩家或被保护实体）施加修饰符
+     * 攻击伤害：基础加成 + 威胁加成，不超过上限（每刻更新，威胁列表每5刻刷新）
+     * 威胁加成：每个敌人固定5%，并按敌人最大生命额外加成（每点+1%）
+     * 移动速度：基础加成 × 护盾效果（不受威胁数量影响），仅检查时刻（每5刻）重新施加
+     * 玩家通过动态属性施加伤害加成（类似幽灵机身），非玩家实体回退为原版修饰符
      */
-    private void updateAttackDamageBonus(Player player) {
+    private void updateAttackDamageBonus(Player player, boolean applyMovementSpeed) {
         UUID playerUUID = player.getUUID();
         
         double shieldEffect = AttributeManager.getGroupAttribute(playerUUID, "shield_effect");
@@ -201,32 +263,58 @@ public class AmplificationShieldType implements IShieldType {
         double baseBonus = getBaseAmplification() * shieldEffect;
         double maxBonus = getMaxAmplification() * shieldEffect;
 
-        // 获取威胁数量并计算威胁加成
+        // 计算威胁加成：每个敌人固定5% + 按最大生命每点1%，总量不能超出上限
         Set<Entity> threats = TRACKED_THREAT_ENTITIES.getOrDefault(playerUUID, Collections.emptySet());
-        double threatBonus = threats.size() * getThreatAmplification();
+        double threatBonus = 0;
+        for (Entity threat : threats) {
+            double perThreat = getThreatAmplification();
+            if (threat instanceof LivingEntity living) {
+                perThreat += living.getMaxHealth() * getHealthAmplificationPerPoint();
+            }
+            threatBonus += perThreat;
+        }
 
         // 计算总加成，不超过上限
         double totalBonus = baseBonus * (1 + threatBonus);
         totalBonus = Math.min(totalBonus, maxBonus);
 
+        // 计算增幅进度（0~1）：基础增幅视为0%，达到上限视为100%，用于客户端渲染亮度
+        double progress = 0;
+        double progressDenominator = maxBonus - baseBonus;
+        if (progressDenominator > 0.0001) {
+            progress = (totalBonus - baseBonus) / progressDenominator;
+            progress = Math.max(0.0, Math.min(1.0, progress));
+        }
+        AMPLIFICATION_PROGRESS.put(playerUUID, progress);
+
         // 计算移动速度加成（受护盾效果影响，不受威胁数量影响）
         double movementSpeedBonus = Config.getAmplificationMovementSpeedBonus() * shieldEffect;
 
-        // 获取需要施加修饰符的实体
+        // 获取需要施加伤害加成的实体
         List<LivingEntity> targetEntities = new ArrayList<>();
         
         if (!ShieldTransferManager.shouldProtectPlayer(player)) {
             targetEntities.addAll(ShieldTransferManager.getProtectedEntities(playerUUID, player.level()));
+            // 玩家自身不再获得伤害/移速加成，移除其动态属性与旧修饰符
+            AttributeManager.removeDynamicAttribute(playerUUID, NAMESPACE, ATTR_DAMAGE_INDEPENDENT);
             removeAttackDamageModifier(player);
             removeMovementSpeedModifier(player);
         } else {
             targetEntities.add(player);
         }
-        
-        // 给目标实体施加攻击伤害和移动速度修饰符
+
+        // 给目标实体施加伤害加成：玩家用动态属性，非玩家回退原版修饰符
         for (LivingEntity targetEntity : targetEntities) {
-            if (targetEntity != null && targetEntity.isAlive()) {
+            if (targetEntity == null || !targetEntity.isAlive()) {
+                continue;
+            }
+            if (targetEntity instanceof Player targetPlayer) {
+                AttributeManager.setDynamicAttribute(targetPlayer.getUUID(), NAMESPACE, ATTR_DAMAGE_INDEPENDENT, totalBonus);
+            } else {
                 addAttackDamageModifier(targetEntity, totalBonus);
+            }
+            // 移动速度加成与危险物检查同频：仅在检查时刻重新施加
+            if (applyMovementSpeed) {
                 addMovementSpeedModifier(targetEntity, movementSpeedBonus);
             }
         }
@@ -248,8 +336,8 @@ public class AmplificationShieldType implements IShieldType {
 
         // 添加新修饰符（使用MULTIPLY_TOTAL，值需要-1因为原版会自动+1）
         AttributeModifier modifier = new AttributeModifier(
-            ATTACK_DAMAGE_MODIFIER_UUID,
-            ATTACK_DAMAGE_MODIFIER_NAME,
+            modifierId(ATTACK_DAMAGE_MODIFIER_ID),
+            ATTACK_DAMAGE_MODIFIER_ID.toString(),
             bonus,
             AttributeModifier.Operation.MULTIPLY_TOTAL
         );
@@ -266,7 +354,7 @@ public class AmplificationShieldType implements IShieldType {
             return;
         }
 
-        attribute.removeModifier(ATTACK_DAMAGE_MODIFIER_UUID);
+        attribute.removeModifier(modifierId(ATTACK_DAMAGE_MODIFIER_ID));
     }
 
     /**
@@ -280,11 +368,17 @@ public class AmplificationShieldType implements IShieldType {
             return;
         }
 
+        // 数值未变化且修饰符已存在时跳过（避免每刻重复移除/添加造成属性抖动）
+        AttributeModifier existing = attribute.getModifier(modifierId(MOVEMENT_SPEED_MODIFIER_ID));
+        if (existing != null && existing.getAmount() == bonus) {
+            return;
+        }
+
         removeMovementSpeedModifier(entity);
 
         AttributeModifier modifier = new AttributeModifier(
-            MOVEMENT_SPEED_MODIFIER_UUID,
-            MOVEMENT_SPEED_MODIFIER_NAME,
+            modifierId(MOVEMENT_SPEED_MODIFIER_ID),
+            MOVEMENT_SPEED_MODIFIER_ID.toString(),
             bonus,
             AttributeModifier.Operation.MULTIPLY_TOTAL
         );
@@ -301,7 +395,16 @@ public class AmplificationShieldType implements IShieldType {
             return;
         }
 
-        attribute.removeModifier(MOVEMENT_SPEED_MODIFIER_UUID);
+        attribute.removeModifier(modifierId(MOVEMENT_SPEED_MODIFIER_ID));
+    }
+
+    /**
+     * 查询增幅护盾的增幅进度（0~1），用于客户端渲染亮度
+     * 0 = 无危险物/仅基础增幅，1 = 达到增幅上限
+     * @param playerUUID 玩家UUID
+     */
+    public static double getProgress(UUID playerUUID) {
+        return AMPLIFICATION_PROGRESS.getOrDefault(playerUUID, 0.0);
     }
 
     /**
@@ -311,6 +414,7 @@ public class AmplificationShieldType implements IShieldType {
     public static void clearPlayerData(UUID playerUUID) {
         TRACKED_THREAT_ENTITIES.remove(playerUUID);
         TICK_COUNTER.remove(playerUUID);
+        AMPLIFICATION_PROGRESS.remove(playerUUID);
     }
 
     /**
@@ -319,5 +423,6 @@ public class AmplificationShieldType implements IShieldType {
     public static void clearAllData() {
         TRACKED_THREAT_ENTITIES.clear();
         TICK_COUNTER.clear();
+        AMPLIFICATION_PROGRESS.clear();
     }
 }

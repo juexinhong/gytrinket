@@ -4,6 +4,7 @@ import com.gy_mod.gy_trinket.core.shield.ShieldData;
 import com.gy_mod.gy_trinket.core.shield.type.IShieldType;
 import com.gy_mod.gy_trinket.core.shield.type.ShieldTypeManager;
 import com.gy_mod.gy_trinket.network.NetworkHandler;
+import com.gy_mod.gy_trinket.storage.PlayerStore;
 import com.gy_mod.gy_trinket.storage.PlayerStoreManager;
 import com.gy_mod.gy_trinket.storage.datacenter.PlayerDataCenter;
 import net.minecraft.nbt.CompoundTag;
@@ -27,15 +28,8 @@ public class LightPointStoreSyncHandler {
 
         var store = PlayerStoreManager.getPlayerStore(event.getPlayerUUID());
         if (store != null) {
-            ListTag itemList = new ListTag();
-            var handler = store.getItemHandler();
-            for (int i = 0; i < handler.getSlots(); i++) {
-                var item = handler.getStackInSlot(i);
-                CompoundTag itemTag = new CompoundTag();
-                item.save(itemTag);
-                itemList.add(itemTag);
-            }
-            NetworkHandler.sendLightPointCoreSyncToClient(player, itemList, handler.getSlots());
+            ListTag itemList = buildItemList(store, player);
+            NetworkHandler.sendLightPointCoreSyncToClient(player, itemList, store.getItemHandler().getSlots());
         }
 
         sendDataSnapshotToClient(player);
@@ -48,14 +42,7 @@ public class LightPointStoreSyncHandler {
 
         var store = PlayerStoreManager.getPlayerStore(uuid);
         if (store != null) {
-            ListTag itemList = new ListTag();
-            var handler = store.getItemHandler();
-            for (int i = 0; i < handler.getSlots(); i++) {
-                CompoundTag itemTag = new CompoundTag();
-                handler.getStackInSlot(i).save(itemTag);
-                itemList.add(itemTag);
-            }
-            snapshot.put("items", itemList);
+            snapshot.put("items", buildItemList(store, player));
         }
 
         ShieldData shieldData = PlayerDataCenter.getData(uuid, "shield");
@@ -76,5 +63,22 @@ public class LightPointStoreSyncHandler {
         PlayerDataCenter.setData(uuid, "active_shield_type", activeType);
 
         NetworkHandler.sendPlayerDataSnapshotToClient(player, snapshot);
+    }
+
+    /**
+     * 构建物品列表 - 只保存非空物品，带Slot索引
+     */
+    private static ListTag buildItemList(PlayerStore store, ServerPlayer player) {
+        ListTag itemList = new ListTag();
+        var handler = store.getItemHandler();
+        for (int i = 0; i < handler.getSlots(); i++) {
+            var stack = handler.getStackInSlot(i);
+            if (!stack.isEmpty()) {
+                CompoundTag itemTag = stack.save(new CompoundTag());
+                itemTag.putByte("Slot", (byte) i);
+                itemList.add(itemTag);
+            }
+        }
+        return itemList;
     }
 }

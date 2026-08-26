@@ -49,3 +49,4 @@ public interface IShieldType {
         void onReflectedProjectileHit(Player attacker, LivingEntity target, Projectile projectile);
     }
 }
+

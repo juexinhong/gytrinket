@@ -2,6 +2,8 @@ package com.gy_mod.gy_trinket.network.packet;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.StringTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.fml.DistExecutor;
@@ -20,12 +22,16 @@ public class ResponsePanelDataMessage {
     public int modLevel;
     public int upgradeExp;
     public int upgradePoints;
+    public int randomPoints;
+    public int tokenCount;
+    public String[] disabledReasons;
 
     public ResponsePanelDataMessage() {}
 
     public ResponsePanelDataMessage(Map<String, Double> attributes, ListTag items, int slotCount,
                                      CompoundTag upgradeData, ListTag upgradeTargets,
-                                     int modLevel, int upgradeExp, int upgradePoints) {
+                                     int modLevel, int upgradeExp, int upgradePoints,
+                                     int randomPoints, int tokenCount, String[] disabledReasons) {
         this.attributes = attributes;
         this.items = items;
         this.slotCount = slotCount;
@@ -34,6 +40,9 @@ public class ResponsePanelDataMessage {
         this.modLevel = modLevel;
         this.upgradeExp = upgradeExp;
         this.upgradePoints = upgradePoints;
+        this.randomPoints = randomPoints;
+        this.tokenCount = tokenCount;
+        this.disabledReasons = disabledReasons;
     }
 
     public ResponsePanelDataMessage(FriendlyByteBuf buf) {
@@ -52,6 +61,16 @@ public class ResponsePanelDataMessage {
         this.modLevel = tag != null ? tag.getInt("modLevel") : 0;
         this.upgradeExp = tag != null ? tag.getInt("upgradeExp") : 0;
         this.upgradePoints = tag != null ? tag.getInt("upgradePoints") : 0;
+        this.randomPoints = tag != null ? tag.getInt("randomPoints") : 0;
+        this.tokenCount = tag != null ? tag.getInt("tokenCount") : 0;
+        this.disabledReasons = new String[0];
+        if (tag != null && tag.contains("disabledReasons")) {
+            ListTag reasonsTag = tag.getList("disabledReasons", Tag.TAG_STRING);
+            this.disabledReasons = new String[reasonsTag.size()];
+            for (int i = 0; i < reasonsTag.size(); i++) {
+                this.disabledReasons[i] = reasonsTag.getString(i);
+            }
+        }
     }
 
     public void toBytes(FriendlyByteBuf buf) {
@@ -68,17 +87,24 @@ public class ResponsePanelDataMessage {
         tag.putInt("modLevel", modLevel);
         tag.putInt("upgradeExp", upgradeExp);
         tag.putInt("upgradePoints", upgradePoints);
+        tag.putInt("randomPoints", randomPoints);
+        tag.putInt("tokenCount", tokenCount);
+        ListTag reasonsTag = new ListTag();
+        if (disabledReasons != null) {
+            for (String s : disabledReasons) {
+                reasonsTag.add(StringTag.valueOf(s));
+            }
+        }
+        tag.put("disabledReasons", reasonsTag);
         buf.writeNbt(tag);
     }
 
-    public static void handle(ResponsePanelDataMessage msg, Supplier<NetworkEvent.Context> ctx) {
-        NetworkEvent.Context context = ctx.get();
-
+    public void handle(Supplier<NetworkEvent.Context> contextSupplier) {
+        NetworkEvent.Context context = contextSupplier.get();
         context.enqueueWork(() -> {
             DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () ->
-                com.gy_mod.gy_trinket.client.network.ClientPacketHandler.handleResponsePanelData(msg));
+                com.gy_mod.gy_trinket.client.network.ClientPacketHandler.handleResponsePanelData(this));
         });
-
         context.setPacketHandled(true);
     }
 }

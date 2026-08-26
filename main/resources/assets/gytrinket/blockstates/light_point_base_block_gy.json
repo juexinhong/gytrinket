@@ -1,7 +1,7 @@
 {
   "variants": {
     "": {
-      "model": "gy_trinket:block/light_point_base_block_gy"
+      "model": "gytrinket:block/light_point_base_block_gy"
     }
   }
 }

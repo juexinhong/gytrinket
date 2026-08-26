@@ -13,7 +13,7 @@
     "@": { "item": "minecraft:blue_wool" }
   },
   "result": {
-    "item": "gytrinket:arc_barrier_module",
+    "id": "gytrinket:arc_barrier_module",
     "count": 1
   }
 }

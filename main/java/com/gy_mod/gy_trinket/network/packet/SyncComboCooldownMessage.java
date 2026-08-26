@@ -28,15 +28,12 @@ public class SyncComboCooldownMessage {
         buf.writeInt(remainingTicks);
     }
 
-    public static void handle(SyncComboCooldownMessage msg, Supplier<NetworkEvent.Context> ctx) {
-        NetworkEvent.Context context = ctx.get();
-
+    public void handle(Supplier<NetworkEvent.Context> contextSupplier) {
+        NetworkEvent.Context context = contextSupplier.get();
         context.enqueueWork(() -> {
-            DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> {
-                com.gy_mod.gy_trinket.client.attack_mode.burst_fire.BurstFireClientHandler.handleSyncComboCooldownOnClient(msg.inCooldown, msg.remainingTicks);
-            });
+            DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () ->
+                com.gy_mod.gy_trinket.client.attack_mode.burst_fire.BurstFireClientHandler.handleSyncComboCooldownOnClient(inCooldown, remainingTicks));
         });
-
         context.setPacketHandled(true);
     }
 }

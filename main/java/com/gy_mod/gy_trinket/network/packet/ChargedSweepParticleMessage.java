@@ -52,19 +52,15 @@ public class ChargedSweepParticleMessage {
         buf.writeVarInt(lifetime);
     }
 
-    public void handle(Supplier<NetworkEvent.Context> ctx) {
-        NetworkEvent.Context context = ctx.get();
+    public void handle(Supplier<NetworkEvent.Context> contextSupplier) {
+        NetworkEvent.Context context = contextSupplier.get();
         context.enqueueWork(() -> {
-            DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> {
+            DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () ->
                 com.gy_mod.gy_trinket.client.attack_mode.charged_attack.ChargedSweepRenderer.addSweep(
                     new com.gy_mod.gy_trinket.client.attack_mode.charged_attack.ChargedSweepRenderData(
-                        x, y, z,
-                        yaw, pitch,
-                        scale,
-                        gameTime, lifetime
+                        x, y, z, yaw, pitch, scale, gameTime, lifetime
                     )
-                );
-            });
+                ));
         });
         context.setPacketHandled(true);
     }

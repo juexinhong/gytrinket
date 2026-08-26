@@ -140,3 +140,4 @@ public class AttributeResult {
         attributeTypes.clear();
     }
 }
+

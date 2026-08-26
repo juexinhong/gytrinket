@@ -36,7 +36,8 @@ public class ConstructAttributeNameParser {
 
     /** 已知的效果 token（多词组合需特殊处理） */
     private static final Set<String> EFFECT_TOKENS = Set.of(
-            "health", "damage", "count", "build_speed", "attack_speed", "weapon_attack_speed", "explosive_count"
+            "health", "damage", "count", "build_speed", "attack_speed", "weapon_attack_speed", "explosive_count",
+            "move_speed", "orbit_speed", "rotation_speed"
     );
 
     /** 已知的值类型 token */
@@ -132,7 +133,9 @@ public class ConstructAttributeNameParser {
                         continue;
                     }
                 }
-                if (combined.equals("attack_speed") || combined.equals("build_speed") || combined.equals("explosive_count") || EXCLUSION_TOKENS.containsKey(combined)) {
+                if (combined.equals("attack_speed") || combined.equals("build_speed") || combined.equals("explosive_count")
+                        || combined.equals("move_speed") || combined.equals("orbit_speed") || combined.equals("rotation_speed")
+                        || EXCLUSION_TOKENS.containsKey(combined)) {
                     tokens.add(combined);
                     i++; // 跳过下一个 part
                     continue;
@@ -154,6 +157,9 @@ public class ConstructAttributeNameParser {
             case "count" -> EffectType.MAX_COUNT;
             case "build_speed" -> EffectType.BUILD_SPEED;
             case "explosive_count" -> EffectType.EXPLOSIVE_COUNT;
+            case "move_speed" -> EffectType.MOVE_SPEED;
+            case "orbit_speed" -> EffectType.ORBIT_SPEED;
+            case "rotation_speed" -> EffectType.ROTATION_SPEED;
             default -> null;
         };
     }
@@ -236,6 +242,10 @@ public class ConstructAttributeNameParser {
         WEAPON_ATTACK_SPEED,
         BUILD_SPEED,
         MAX_COUNT,
-        EXPLOSIVE_COUNT
+        EXPLOSIVE_COUNT,
+        MOVE_SPEED,
+        ORBIT_SPEED,
+        ROTATION_SPEED
     }
 }
+

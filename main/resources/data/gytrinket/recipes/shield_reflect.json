@@ -1,4 +1,4 @@
-﻿{
+{
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
@@ -18,6 +18,6 @@
     " B "
   ],
   "result": {
-    "item": "gytrinket:shield_reflect"
+    "id": "gytrinket:shield_reflect"
   }
 }

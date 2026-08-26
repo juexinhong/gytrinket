@@ -46,8 +46,8 @@ public class EnergyWaveExplosionPacket {
         this.dirY = buf.readDouble();
         this.dirZ = buf.readDouble();
         this.splashLength = buf.readDouble();
-        this.positionSyncEntityId = buf.readInt();
-        this.colorType = buf.readInt();
+        this.positionSyncEntityId = buf.readVarInt();
+        this.colorType = buf.readVarInt();
         this.offsetDistance = buf.readDouble();
     }
 
@@ -55,19 +55,18 @@ public class EnergyWaveExplosionPacket {
         buf.writeDouble(x); buf.writeDouble(y); buf.writeDouble(z);
         buf.writeDouble(dirX); buf.writeDouble(dirY); buf.writeDouble(dirZ);
         buf.writeDouble(splashLength);
-        buf.writeInt(positionSyncEntityId);
-        buf.writeInt(colorType);
+        buf.writeVarInt(positionSyncEntityId);
+        buf.writeVarInt(colorType);
         buf.writeDouble(offsetDistance);
     }
 
     public void handle(Supplier<NetworkEvent.Context> contextSupplier) {
         NetworkEvent.Context context = contextSupplier.get();
         context.enqueueWork(() -> {
-            DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> {
+            DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () ->
                 com.gy_mod.gy_trinket.client.effect.energywave.EnergyWaveVisualManager.addExplosionWave(
                     x, y, z, dirX, dirY, dirZ, splashLength, positionSyncEntityId, colorType, offsetDistance
-                );
-            });
+                ));
         });
         context.setPacketHandled(true);
     }

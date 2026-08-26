@@ -250,3 +250,4 @@ public class ShieldHudRenderer {
         this.displayAdaptiveArmorReduction = 0;
     }
 }
+

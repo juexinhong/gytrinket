@@ -77,7 +77,6 @@ public final class ConstructGroupCache {
             return snapshot;
         }
 
-        // 计算新的快照
         snapshot = computeBoidSnapshot(ownerUUID, constructTypeId, level, groupCenter, currentTick);
         typeMap.put(constructTypeId, snapshot);
         return snapshot;
@@ -85,7 +84,6 @@ public final class ConstructGroupCache {
 
     private CachedBoidSnapshot computeBoidSnapshot(UUID ownerUUID, String constructTypeId, Level level, Vec3 groupCenter, long currentTick) {
         double scanRange = 8.0;
-        // 以组中心为基准扩大搜索范围
         Vec3 center = groupCenter != null ? groupCenter : Vec3.ZERO;
         AABB scanBox = new AABB(
             center.x - scanRange, center.y - scanRange, center.z - scanRange,
@@ -128,7 +126,6 @@ public final class ConstructGroupCache {
 
     /**
      * 获取指定实体在邻居列表中的位置和速度数据（排除自身）。
-     * 直接返回列表引用，调用方不应修改。
      */
     public NeighborData getNeighborData(UUID ownerUUID, String constructTypeId, UUID selfUUID, Level level, Vec3 groupCenter) {
         CachedBoidSnapshot snapshot = getBoidSnapshot(ownerUUID, constructTypeId, level, groupCenter);
@@ -138,7 +135,6 @@ public final class ConstructGroupCache {
             return new NeighborData(snapshot.positions, snapshot.velocities);
         }
 
-        // 排除自身
         List<Vec3> filteredPositions = new ArrayList<>(snapshot.positions.size() - 1);
         List<Vec3> filteredVelocities = new ArrayList<>(snapshot.velocities.size() - 1);
         for (int i = 0; i < snapshot.positions.size(); i++) {
@@ -154,7 +150,6 @@ public final class ConstructGroupCache {
 
     /**
      * 获取指定玩家为中心的索敌结果。
-     * 以玩家位置为中心查询，所有同玩家构造体共享。
      */
     public CachedTargetSnapshot getTargetSnapshot(UUID ownerUUID, LivingEntity owner, Level level, float searchRange) {
         long currentTick = level.getGameTime();
@@ -164,7 +159,6 @@ public final class ConstructGroupCache {
             return snapshot;
         }
 
-        // 以玩家位置为中心查询
         Vec3 ownerPos = owner.position();
         AABB searchBox = new AABB(
             ownerPos.x - searchRange, ownerPos.y - searchRange, ownerPos.z - searchRange,
@@ -186,7 +180,6 @@ public final class ConstructGroupCache {
                     return HostileTargetManager.shouldAttackPlayer(entity, player);
                 });
 
-        // 按距离玩家由近到远排序
         targets.sort(Comparator.comparingDouble(t -> ownerPos.distanceToSqr(t.position())));
 
         snapshot = new CachedTargetSnapshot(targets, ownerPos, searchRange, currentTick);
@@ -196,7 +189,6 @@ public final class ConstructGroupCache {
 
     /**
      * 从共享索敌缓存中查找距离指定位置最近的敌人。
-     * 先查共享缓存，再按到查询位置的距离重排取最近。
      */
     @Nullable
     public LivingEntity findNearestTarget(UUID ownerUUID, LivingEntity owner, Vec3 queryPos, float searchRange) {
@@ -250,9 +242,7 @@ public final class ConstructGroupCache {
         double currentShield = shieldData != null ? shieldData.getCurrentShield() : 0.0;
         double maxShield = shieldData != null ? shieldData.getMaxShield() : 0.0;
 
-        // 破裂：护盾值≤0 或 没有护盾数据，与移植无关
         boolean broken = shieldData == null || currentShield <= 0.0;
-        // 可修复：护盾未移植 且 护盾值>0 且 护盾未满
         boolean transferred = ShieldTransferManager.hasTransferredShield(ownerUUID);
         boolean canRepair = !transferred && currentShield > 0.0 && currentShield < maxShield;
 
@@ -265,7 +255,6 @@ public final class ConstructGroupCache {
 
     /**
      * 获取蜂群修复分配结果。
-     * 每tick预计算哪些蜂群被分配到修复模式，每个蜂群只需 O(1) 查询。
      */
     public CachedRepairAssignment getRepairAssignment(UUID ownerUUID, Level level) {
         long currentTick = level.getGameTime();
@@ -277,7 +266,6 @@ public final class ConstructGroupCache {
 
         CachedShieldState shieldState = getShieldState(ownerUUID, level);
 
-        // 获取所有蜂群实体并排序
         ConstructManager cm = ConstructManager.getInstance();
         Map<UUID, Entity> swarmEntities = cm.getActiveConstructEntities(ownerUUID, SwarmConstructTypes.SWARM);
 
@@ -325,7 +313,7 @@ public final class ConstructGroupCache {
     }
 
     /**
-     * 强制使指定玩家的索敌缓存失效（目标死亡等场景）
+     * 强制使指定玩家的索敌缓存失效
      */
     public void invalidateTargetCache(UUID ownerUUID) {
         targetSnapshots.remove(ownerUUID);
@@ -336,7 +324,6 @@ public final class ConstructGroupCache {
     public static final class CachedBoidSnapshot {
         public final List<Vec3> positions;
         public final List<Vec3> velocities;
-        /** 实体UUID -> 在列表中的索引 */
         public final Map<UUID, Integer> entityIndexMap;
         private final long createdTick;
 
@@ -381,11 +368,8 @@ public final class ConstructGroupCache {
     }
 
     public static final class CachedShieldState {
-        /** 破裂：护盾值≤0 或没有护盾数据，与是否移植无关 */
         public final boolean broken;
-        /** 可修复：护盾未移植 且 护盾值>0 且 护盾未满 */
         public final boolean canRepair;
-        /** 护盾是否已移植到其他实体 */
         public final boolean transferred;
         public final double currentShield;
         public final double maxShield;
@@ -423,3 +407,4 @@ public final class ConstructGroupCache {
         }
     }
 }
+

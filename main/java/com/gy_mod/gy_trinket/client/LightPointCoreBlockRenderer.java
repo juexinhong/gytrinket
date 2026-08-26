@@ -8,7 +8,6 @@ import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.resources.ResourceLocation;
 import software.bernie.geckolib.cache.object.BakedGeoModel;
-import software.bernie.geckolib.core.object.Color;
 import software.bernie.geckolib.model.GeoModel;
 import software.bernie.geckolib.renderer.GeoBlockRenderer;
 
@@ -47,34 +46,34 @@ public class LightPointCoreBlockRenderer extends GeoBlockRenderer<LightPointCore
         poseStack.pushPose();
 
         // 获取渲染颜色
-        Color renderColor = getRenderColor(animatable, partialTick, packedLight);
-        float red = renderColor.getRedFloat();
-        float green = renderColor.getGreenFloat();
-        float blue = renderColor.getBlueFloat();
-        float alpha = renderColor.getAlphaFloat();
+        software.bernie.geckolib.core.object.Color renderColorObj = new software.bernie.geckolib.core.object.Color(getRenderColor(animatable, partialTick, packedLight).argbInt());
         int packedOverlay = getPackedOverlay(animatable, 0, partialTick);
         BakedGeoModel model = getGeoModel().getBakedModel(getGeoModel().getModelResource(animatable, this));
 
         // 使用第二个材质
-        ResourceLocation secondTexture = ResourceLocation.fromNamespaceAndPath("gytrinket", "textures/block/light_point_core_block_gy3.png");
+        ResourceLocation secondTexture = new ResourceLocation("gytrinket", "textures/block/light_point_core_block_gy3.png");
         RenderType secondRenderType = RenderType.entityTranslucent(secondTexture);
         VertexConsumer secondBuffer = bufferSource.getBuffer(secondRenderType);
 
         // 执行第二层渲染
-        preRender(poseStack, animatable, model, bufferSource, secondBuffer, false, partialTick, packedLight, packedOverlay, red, green, blue, alpha);
+        preRender(poseStack, animatable, model, bufferSource, secondBuffer, false, partialTick, packedLight, packedOverlay,
+                renderColorObj.getRedFloat(), renderColorObj.getGreenFloat(), renderColorObj.getBlueFloat(), renderColorObj.getAlphaFloat());
 
         if (firePreRenderEvent(poseStack, model, bufferSource, partialTick, packedLight)) {
-            preApplyRenderLayers(poseStack, animatable, model, secondRenderType, bufferSource, secondBuffer, packedLight, packedLight, packedOverlay);
-            actuallyRender(poseStack, animatable, model, secondRenderType, bufferSource, secondBuffer, false, partialTick, packedLight, packedOverlay, red, green, blue, alpha);
+            preApplyRenderLayers(poseStack, animatable, model, secondRenderType, bufferSource, secondBuffer, partialTick, packedLight, packedOverlay);
+            actuallyRender(poseStack, animatable, model, secondRenderType, bufferSource, secondBuffer, false, partialTick, packedLight, packedOverlay,
+                    renderColorObj.getRedFloat(), renderColorObj.getGreenFloat(), renderColorObj.getBlueFloat(), renderColorObj.getAlphaFloat());
             applyRenderLayers(poseStack, animatable, model, secondRenderType, bufferSource, secondBuffer, partialTick, packedLight, packedOverlay);
-            postRender(poseStack, animatable, model, bufferSource, secondBuffer, false, partialTick, packedLight, packedOverlay, red, green, blue, alpha);
+            postRender(poseStack, animatable, model, bufferSource, secondBuffer, false, partialTick, packedLight, packedOverlay,
+                    renderColorObj.getRedFloat(), renderColorObj.getGreenFloat(), renderColorObj.getBlueFloat(), renderColorObj.getAlphaFloat());
             firePostRenderEvent(poseStack, model, bufferSource, partialTick, packedLight);
         }
 
         poseStack.popPose();
 
         // 最终渲染
-        renderFinal(poseStack, animatable, model, bufferSource, buffer, partialTick, packedLight, packedOverlay, red, green, blue, alpha);
+        renderFinal(poseStack, animatable, model, bufferSource, buffer, partialTick, packedLight, packedOverlay,
+                renderColorObj.getRedFloat(), renderColorObj.getGreenFloat(), renderColorObj.getBlueFloat(), renderColorObj.getAlphaFloat());
         doPostRenderCleanup();
     }
 
@@ -90,7 +89,7 @@ public class LightPointCoreBlockRenderer extends GeoBlockRenderer<LightPointCore
          */
         @Override
         public ResourceLocation getModelResource(LightPointCoreBlockEntity object) {
-            return ResourceLocation.fromNamespaceAndPath("gytrinket", "geo/light_point_core_block_gy.geo.json");
+            return new ResourceLocation("gytrinket", "geo/light_point_core_block_gy.geo.json");
         }
 
         /**
@@ -101,7 +100,7 @@ public class LightPointCoreBlockRenderer extends GeoBlockRenderer<LightPointCore
         @Override
         public ResourceLocation getTextureResource(LightPointCoreBlockEntity object) {
             // 使用第一个材质文件（基础层）
-            return ResourceLocation.fromNamespaceAndPath("gytrinket", "textures/block/light_point_core_block_gy1.png");
+            return new ResourceLocation("gytrinket", "textures/block/light_point_core_block_gy1.png");
         }
 
         /**
@@ -111,7 +110,7 @@ public class LightPointCoreBlockRenderer extends GeoBlockRenderer<LightPointCore
          */
         @Override
         public ResourceLocation getAnimationResource(LightPointCoreBlockEntity object) {
-            return ResourceLocation.fromNamespaceAndPath("gytrinket", "animations/light_point_core_block_gy.animation.json");
+            return new ResourceLocation("gytrinket", "animations/light_point_core_block_gy.animation.json");
         }
 
         /**
@@ -128,3 +127,4 @@ public class LightPointCoreBlockRenderer extends GeoBlockRenderer<LightPointCore
         }
     }
 }
+

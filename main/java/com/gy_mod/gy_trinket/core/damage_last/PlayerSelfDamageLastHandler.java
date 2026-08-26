@@ -39,3 +39,4 @@ public class PlayerSelfDamageLastHandler implements LastDamageHandler {
         return PRIORITY;
     }
 }
+

@@ -1,4 +1,4 @@
-﻿{
+{
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "pattern": [
@@ -11,7 +11,7 @@
     }
   },
   "result": {
-    "item": "gytrinket:protocol",
+    "id": "gytrinket:protocol",
     "count": 1
   }
 }

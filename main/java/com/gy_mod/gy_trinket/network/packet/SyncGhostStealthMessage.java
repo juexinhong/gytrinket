@@ -7,10 +7,6 @@ import net.minecraftforge.network.NetworkEvent;
 
 import java.util.function.Supplier;
 
-/**
- * 同步幽灵机身隐身进度到客户端
- * 广播给所有追踪该玩家的客户端，使其他玩家也能看到隐身效果
- */
 public class SyncGhostStealthMessage {
     private int entityId;
     private float stealthProgress;
@@ -23,21 +19,21 @@ public class SyncGhostStealthMessage {
     }
 
     public SyncGhostStealthMessage(FriendlyByteBuf buf) {
-        this.entityId = buf.readInt();
+        this.entityId = buf.readVarInt();
         this.stealthProgress = buf.readFloat();
     }
 
     public void toBytes(FriendlyByteBuf buf) {
-        buf.writeInt(entityId);
+        buf.writeVarInt(entityId);
         buf.writeFloat(stealthProgress);
     }
 
-    public void handle(Supplier<NetworkEvent.Context> ctx) {
-        NetworkEvent.Context context = ctx.get();
+    public void handle(Supplier<NetworkEvent.Context> contextSupplier) {
+        NetworkEvent.Context context = contextSupplier.get();
         context.enqueueWork(() -> {
-            DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> {
-                com.gy_mod.gy_trinket.core.ghost_fuselage.GhostFuselageClientData.setStealthProgress(entityId, stealthProgress);
-            });
+            DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () ->
+                com.gy_mod.gy_trinket.core.ghost_fuselage.GhostFuselageClientData.setStealthProgress(
+                    entityId, stealthProgress));
         });
         context.setPacketHandled(true);
     }

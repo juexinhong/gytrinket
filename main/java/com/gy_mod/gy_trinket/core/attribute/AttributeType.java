@@ -47,3 +47,4 @@ public enum AttributeType {
         return this == INDEPENDENT_MULTIPLY;
     }
 }
+

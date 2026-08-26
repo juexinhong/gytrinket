@@ -48,3 +48,4 @@ public class SwarmRenderer extends GeoEntityRenderer<SwarmConstructEntity> {
         return entity.level().getBrightness(LightLayer.BLOCK, pos);
     }
 }
+

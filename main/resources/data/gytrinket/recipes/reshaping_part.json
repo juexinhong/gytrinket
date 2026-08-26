@@ -11,7 +11,7 @@
     "%": { "item": "minecraft:blaze_powder" }
   },
   "result": {
-    "item": "gytrinket:reshaping_part",
+    "id": "gytrinket:reshaping_part",
     "count": 1
   }
 }

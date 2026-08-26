@@ -90,3 +90,4 @@ public class InterceptorAttackMode {
         return "InterceptorAttackMode{" + serializedName + "}";
     }
 }
+

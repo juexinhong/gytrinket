@@ -13,7 +13,7 @@
     "*": { "item": "minecraft:blue_wool" }
   },
   "result": {
-    "item": "gytrinket:line_formation_module",
+    "id": "gytrinket:line_formation_module",
     "count": 1
   }
 }

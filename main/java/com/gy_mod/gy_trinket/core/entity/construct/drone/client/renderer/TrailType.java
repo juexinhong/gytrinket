@@ -24,3 +24,4 @@ public enum TrailType {
         this.alphaMult = alphaMult;
     }
 }
+

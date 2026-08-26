@@ -7,6 +7,7 @@ import com.gy_mod.gy_trinket.core.entity.construct.ConstructManager;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructType;
 import com.gy_mod.gy_trinket.core.entity.construct.IEntityRestorer;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.ModEntities;
+
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
@@ -17,7 +18,7 @@ import java.util.Set;
  * 蜂群构造体类型注册
  * <p>
  * 蜂群属于基础、其他、构造体类别。
- * 构建时有小概率提升等阶（标准/高阶），由 SwarmBuilder 在构建时决定单实例的等阶。
+ * 构建时有小概率提升等阶（标准/高阶），由 rollTier() 在构建时决定单实例的等阶。
  */
 public class SwarmConstructTypes {
     public static final String SWARM = "swarm";
@@ -47,12 +48,6 @@ public class SwarmConstructTypes {
                 .build());
     }
 
-    /**
-     * 随机决定等阶：
-     * - 先判高阶概率（独立）
-     * - 否则判标准概率
-     * - 否则基础
-     */
     private static int rollTier() {
         double advancedChance = Config.getSwarmTierUpgradeChanceAdvanced();
         double standardChance = Config.getSwarmTierUpgradeChanceStandard();
@@ -67,9 +62,6 @@ public class SwarmConstructTypes {
         return TIER_BASIC;
     }
 
-    /**
-     * 蜂群实体恢复器：从持久化数据中恢复蜂群实体
-     */
     private static class SwarmEntityRestorer implements IEntityRestorer {
         @Override
         public Entity restore(ServerPlayer player, ConstructData data, ServerLevel level) {
@@ -77,7 +69,6 @@ public class SwarmConstructTypes {
 
             SwarmConstructEntity swarmEntity = new SwarmConstructEntity(ModEntities.SWARM_CONSTRUCT.get(), level);
 
-            // 恢复位置
             String currentDimension = player.level().dimension().location().toString();
             if (swarmData.hasPosition() && swarmData.getDimension().equals(currentDimension)) {
                 swarmEntity.setPos(swarmData.getPosX(), swarmData.getPosY(), swarmData.getPosZ());
@@ -89,7 +80,6 @@ public class SwarmConstructTypes {
             swarmEntity.setTier(swarmData.getTier());
             swarmEntity.applyAttributeModifiers();
 
-            // 恢复生命值比例
             float healthRatio = (float) swarmData.getHealthRatio();
             float newMaxHealth = swarmEntity.getMaxHealth();
             swarmEntity.setHealth(newMaxHealth * healthRatio);
@@ -100,3 +90,4 @@ public class SwarmConstructTypes {
         }
     }
 }
+

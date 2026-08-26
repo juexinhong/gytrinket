@@ -22,7 +22,7 @@ import java.util.List;
 @Mod.EventBusSubscriber(modid = com.gy_mod.gy_trinket.gytrinket.MODID, value = Dist.CLIENT)
 public class AuraRenderer {
 
-    private static final ResourceLocation AURA_TEXTURE = ResourceLocation.fromNamespaceAndPath(
+    private static final ResourceLocation AURA_TEXTURE = new ResourceLocation(
         com.gy_mod.gy_trinket.gytrinket.MODID, "textures/particle/aura.png"
     );
 

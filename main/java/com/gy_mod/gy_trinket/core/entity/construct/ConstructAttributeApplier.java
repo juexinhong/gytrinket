@@ -1,13 +1,20 @@
 package com.gy_mod.gy_trinket.core.entity.construct;
 
 import com.gy_mod.gy_trinket.config.Config;
-import com.gy_mod.gy_trinket.core.attribute.AttributeDefinition;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
 import com.gy_mod.gy_trinket.core.attribute.AttributeType;
+import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneConstructEntity;
+import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneConstructTypes;
 import com.gy_mod.gy_trinket.core.entity.construct.swarm.MothershipManager;
+import com.gy_mod.gy_trinket.core.entity.construct.swarm.SwarmConstructEntity;
 import com.gy_mod.gy_trinket.core.entity.construct.swarm.SwarmConstructTypes;
+import com.gy_mod.gy_trinket.core.entity.construct.wingman.WingmanConstructEntity;
+import com.gy_mod.gy_trinket.core.entity.construct.wingman.WingmanConstructTypes;
+import com.gy_mod.gy_trinket.core.modifier.ModifierHelper;
 import com.gy_mod.gy_trinket.event.PlayerAttributesCalculatedEvent;
+import com.gy_mod.gy_trinket.event.PlayerLightPointStoreChangedEvent;
 import com.gy_mod.gy_trinket.gytrinket;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
@@ -19,35 +26,32 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.server.ServerLifecycleHooks;
 
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * 构造体属性应用器
- * <p>
- * 统一管理所有构造体类型的属性计算和应用逻辑。
- * <p>
- * 核心流程：
- * <ol>
- *   <li>Config 定义构造体属性（属性名以 construct_ 开头，包含标签字段）</li>
- *   <li>属性运算系统（AttributeManager）进行初步运算</li>
- *   <li>属性重算完毕后（PlayerAttributesCalculatedEvent），本器筛选 construct_ 属性，
- *       按属性名中的标签字段匹配对应构造体，并施加属性</li>
- *   <li>构造体构建完毕、玩家重登恢复、待机恢复时，构造体主动获取自身属性</li>
- * </ol>
- * <p>
- * 使用 LOW 优先级监听 {@link PlayerAttributesCalculatedEvent}，
- * 确保动态属性提供者（EvolutionManager、MothershipManager 等）先于本器执行。
- * <p>
- * 新增构造体类型只需在 Config 中定义 construct_{type}_* 属性，即可自动接入属性系统。
- */
 @Mod.EventBusSubscriber(modid = gytrinket.MODID)
 public class ConstructAttributeApplier {
 
-    private static final UUID CONSTRUCT_HEALTH_MODIFIER_UUID = UUID.fromString("c3d4e5f6-a7b8-9012-cdef-345678901234");
-    private static final UUID CONSTRUCT_DAMAGE_MODIFIER_UUID = UUID.fromString("e5f6a7b8-c9d0-1234-efab-567890123456");
+    private static final ResourceLocation CONSTRUCT_HEALTH_MODIFIER_ID = new ResourceLocation("gytrinket", "construct_health_addition");
+    private static final ResourceLocation CONSTRUCT_HEALTH_PERCENT_MODIFIER_ID = new ResourceLocation("gytrinket", "construct_health_percent");
+    private static final ResourceLocation CONSTRUCT_DAMAGE_MODIFIER_ID = new ResourceLocation("gytrinket", "construct_damage_addition");
+    private static final ResourceLocation CONSTRUCT_DAMAGE_PERCENT_MODIFIER_ID = new ResourceLocation("gytrinket", "construct_damage_percent");
 
     private static final Map<UUID, Map<String, Double>> PLAYER_CONSTRUCT_ATTR_CACHE = new ConcurrentHashMap<>();
+
+    @SubscribeEvent
+    public static void onLightPointStoreChanged(PlayerLightPointStoreChangedEvent event) {
+        UUID playerUUID = event.getPlayerUUID();
+        ServerPlayer player = ServerLifecycleHooks.getCurrentServer() != null
+                ? ServerLifecycleHooks.getCurrentServer().getPlayerList().getPlayer(playerUUID)
+                : null;
+        if (player == null) {
+            return;
+        }
+
+        refreshForPlayer(playerUUID, player);
+    }
 
     // ===== 事件监听（LOW 优先级：确保动态属性提供者先执行） =====
 
@@ -67,52 +71,93 @@ public class ConstructAttributeApplier {
         }
     }
 
-    // ===== 核心刷新 =====
-
-    /**
-     * 全量刷新：重算所有构造体属性并应用到所有活跃构造体。
-     */
     public static void refreshForPlayer(UUID playerUUID, ServerPlayer player) {
         Map<String, Double> constructAttrs = computeConstructAttributes(playerUUID);
         PLAYER_CONSTRUCT_ATTR_CACHE.put(playerUUID, constructAttrs);
         applyAttributesToConstructs(playerUUID, player, constructAttrs);
+
+        // 属性重算后更新蜂群溢出倍率（基于数量上限，非当前数量）
+        updateSwarmOverflowMultiplier(playerUUID);
+    }
+
+    /**
+     * 计算蜂群数量上限的溢出倍率并存储到 MothershipManager。
+     * <p>
+     * 仅在属性重算时调用：溢出倍率跟随数量上限变化，而非当前蜂群数量。
+     * 当原始上限 > 极限值时，溢出倍率 = 原始上限 / 极限值，用于放大每只蜂群的属性和易伤值。
+     */
+    private static void updateSwarmOverflowMultiplier(UUID playerUUID) {
+        int swarmLimit = Config.getSwarmCountLimit();
+        if (swarmLimit <= 0) {
+            MothershipManager.setOverflowMultiplier(playerUUID, 1.0);
+            return;
+        }
+
+        ConstructType swarmType = ConstructManager.getInstance().getConstructType(SwarmConstructTypes.SWARM);
+        if (swarmType == null) {
+            MothershipManager.setOverflowMultiplier(playerUUID, 1.0);
+            return;
+        }
+
+        double rawCount = computeRawMaxCount(playerUUID, swarmType);
+
+        if (rawCount > swarmLimit) {
+            double overflowMultiplier = rawCount / swarmLimit;
+            MothershipManager.setOverflowMultiplier(playerUUID, overflowMultiplier);
+        } else {
+            MothershipManager.setOverflowMultiplier(playerUUID, 1.0);
+        }
     }
 
     /**
      * 局部刷新：根据脏属性集合，仅刷新受影响的构造体类型。
      * <p>
-     * 解析脏属性名中的类型标识，只对这些类型的构造体重新应用属性。
-     * 例如脏属性 construct_wingman_evolution_health_percent 只刷新 wingman 类型构造体。
+     * 解析脏属性的目标标签，只对这些类型的构造体重新应用属性。
+     * 如果脏属性含非构造体属性或无法确定类型，刷新所有构造体。
      */
     private static void partialRefreshForPlayer(UUID playerUUID, ServerPlayer player, Set<String> dirtyAttributes) {
         // 更新缓存
         Map<String, Double> constructAttrs = computeConstructAttributes(playerUUID);
         PLAYER_CONSTRUCT_ATTR_CACHE.put(playerUUID, constructAttrs);
 
-        // 从脏属性中提取受影响的构造体类型
-        Set<String> affectedTypes = new HashSet<>();
-        for (String attrName : dirtyAttributes) {
-            ConstructAttributeNameParser.ParsedAttribute parsed = ConstructAttributeNameParser.parse(attrName);
-            if (parsed != null) {
-                affectedTypes.addAll(parsed.getConstructTypes());
-            }
+        // 如果脏属性中含非构造体属性，刷新所有构造体
+        if (!dirtyAttributes.stream().allMatch(ConstructAttributeNameParser::isConstructAttribute)) {
+            applyAttributesToConstructs(playerUUID, player, constructAttrs);
+            return;
         }
 
-        // 如果无法确定类型或脏属性含非构造体属性，刷新所有构造体
-        if (affectedTypes.isEmpty() || !dirtyAttributes.stream().allMatch(ConstructAttributeNameParser::isConstructAttribute)) {
+        // 从脏属性中解析受影响的构造体类型
+        Set<String> affectedTypeIds = new HashSet<>();
+        boolean affectsAll = false;
+        for (String attrName : dirtyAttributes) {
+            ConstructAttributeNameParser.ParsedAttribute parsed = ConstructAttributeNameParser.parse(attrName);
+            if (parsed == null) continue;
+
+            // 无类型限制 = 影响所有构造体类型
+            if (parsed.getConstructTypes().isEmpty()) {
+                affectsAll = true;
+                break;
+            }
+            affectedTypeIds.addAll(parsed.getConstructTypes());
+        }
+
+        // 如果无法确定类型或影响所有类型，刷新所有构造体
+        if (affectsAll || affectedTypeIds.isEmpty()) {
             applyAttributesToConstructs(playerUUID, player, constructAttrs);
             return;
         }
 
         // 仅刷新受影响的构造体类型
-        for (String typeId : affectedTypes) {
-            Map<UUID, Entity> entities = ConstructManager.getInstance()
-                    .getActiveConstructEntities(playerUUID, typeId);
-
-            for (Entity entity : entities.values()) {
-                if (entity instanceof IConstructEntity constructEntity && entity.isAlive()) {
-                    applyAttributesToConstruct(playerUUID, constructEntity, (LivingEntity) entity, constructAttrs);
-                }
+        for (String typeId : affectedTypeIds) {
+            if (DroneConstructTypes.DRONE.equals(typeId)) {
+                applyToType(playerUUID, typeId, DroneConstructEntity.class,
+                        ConstructAttributeApplier::collectDroneTags, constructAttrs);
+            } else if (WingmanConstructTypes.WINGMAN.equals(typeId)) {
+                applyToType(playerUUID, typeId, WingmanConstructEntity.class,
+                        ConstructAttributeApplier::collectWingmanTags, constructAttrs);
+            } else if (SwarmConstructTypes.SWARM.equals(typeId)) {
+                applyToType(playerUUID, typeId, SwarmConstructEntity.class,
+                        ConstructAttributeApplier::collectSwarmTags, constructAttrs);
             }
         }
     }
@@ -123,7 +168,7 @@ public class ConstructAttributeApplier {
      * 构造体通过此方法获取当前已计算的属性并应用到自身。
      * 如果缓存中没有属性数据，则从 AttributeManager 实时计算。
      */
-    public static void fetchAttributesForConstruct(IConstructEntity construct, LivingEntity livingEntity) {
+    public static void fetchAttributesForConstruct(AbstractConstructEntity construct, LivingEntity livingEntity) {
         UUID ownerUUID = construct.getOwnerUUID();
         if (ownerUUID == null) return;
 
@@ -133,16 +178,12 @@ public class ConstructAttributeApplier {
             PLAYER_CONSTRUCT_ATTR_CACHE.put(ownerUUID, constructAttrs);
         }
 
-        applyAttributesToConstruct(ownerUUID, construct, livingEntity, constructAttrs);
+        String typeId = construct.getConstructTypeId();
+        ConstructType type = ConstructManager.getInstance().getConstructType(typeId);
+        Set<String> instanceTags = construct.getInstanceTags();
+        applyAttributesToConstruct(construct, instanceTags, type, constructAttrs);
     }
 
-    // ===== 属性计算 =====
-
-    /**
-     * 计算玩家的所有构造体属性。
-     * <p>
-     * 从 AttributeManager 获取所有属性，筛选以 construct_ 开头的属性。
-     */
     public static Map<String, Double> computeConstructAttributes(UUID playerUUID) {
         Map<String, Double> allAttrs = AttributeManager.getPlayerAttributes(playerUUID);
         Map<String, Double> result = new HashMap<>();
@@ -156,45 +197,94 @@ public class ConstructAttributeApplier {
         return result;
     }
 
-    // ===== 通用属性应用（基于 ConstructAttributeNameParser） =====
-
     /**
-     * 将属性应用到玩家所有活跃的构造体实体。
+     * 将缓存的构造体属性应用到玩家所有活跃的构造体实体（无人机/僚机/蜂群）。
      */
     private static void applyAttributesToConstructs(UUID playerUUID, ServerPlayer player, Map<String, Double> constructAttrs) {
-        for (String typeId : ConstructManager.getInstance().getAllConstructTypeIds()) {
-            Map<UUID, Entity> entities = ConstructManager.getInstance()
-                    .getActiveConstructEntities(playerUUID, typeId);
-
-            for (Entity entity : entities.values()) {
-                if (entity instanceof IConstructEntity constructEntity && entity.isAlive()) {
-                    applyAttributesToConstruct(playerUUID, constructEntity, (LivingEntity) entity, constructAttrs);
-                }
-            }
-        }
+        applyToType(playerUUID, DroneConstructTypes.DRONE, DroneConstructEntity.class,
+                ConstructAttributeApplier::collectDroneTags, constructAttrs);
+        applyToType(playerUUID, WingmanConstructTypes.WINGMAN, WingmanConstructEntity.class,
+                ConstructAttributeApplier::collectWingmanTags, constructAttrs);
+        applyToType(playerUUID, SwarmConstructTypes.SWARM, SwarmConstructEntity.class,
+                ConstructAttributeApplier::collectSwarmTags, constructAttrs);
     }
 
     /**
-     * 通用属性应用方法：基于属性名解析匹配并应用属性到构造体实体。
-     * <p>
-     * 流程：
-     * 1. 遍历所有 construct_ 属性
-     * 2. 解析属性名，提取类型/效果/值类型/标签等匹配条件
-     * 3. 检查是否匹配当前构造体
-     * 4. 按效果类型累加属性值
-     * 5. 计算最终值并应用
+     * 通用：对指定类型的所有活跃实体应用属性。
+     *
+     * @param typeId        构造体类型 ID
+     * @param entityClass   实体类
+     * @param tagsCollector 从实体收集 instanceTags 的回调
      */
-    public static void applyAttributesToConstruct(UUID playerUUID, IConstructEntity construct,
-                                                   LivingEntity livingEntity, Map<String, Double> constructAttrs) {
-        String typeId = construct.getConstructTypeId();
+    private static <T extends Entity & IConstructEntity> void applyToType(
+            UUID playerUUID,
+            String typeId,
+            Class<T> entityClass,
+            java.util.function.Function<T, Set<String>> tagsCollector,
+            Map<String, Double> constructAttrs) {
+        Map<UUID, Entity> entities = ConstructManager.getInstance().getActiveConstructEntities(playerUUID, typeId);
+        if (entities == null || entities.isEmpty()) {
+            return;
+        }
         ConstructType type = ConstructManager.getInstance().getConstructType(typeId);
-        Set<String> instanceTags = construct.getInstanceTags();
+        for (Entity entity : entities.values()) {
+            if (!entityClass.isInstance(entity)) continue;
+            T constructEntity = entityClass.cast(entity);
+            if (!constructEntity.isAlive()) continue;
+            Set<String> instanceTags = tagsCollector.apply(constructEntity);
+            applyAttributesToConstruct(constructEntity, instanceTags, type, constructAttrs);
+        }
+    }
 
-        // 累加各效果类型的属性值
-        double healthBase = 0, healthPercent = 1.0, healthIndependent = 1.0;
-        double damageBase = 0, damagePercent = 1.0, damageIndependent = 1.0;
-        double attackSpeedPercent = 1.0, attackSpeedIndependent = 1.0;
-        double weaponAttackSpeedPercent = 1.0, weaponAttackSpeedIndependent = 1.0;
+    private static Set<String> collectDroneTags(DroneConstructEntity drone) {
+        Set<String> tags = new HashSet<>();
+        if (drone.getDroneConstruct() != null) {
+            tags.addAll(drone.getDroneConstruct().getCurrentTags());
+        }
+        if (drone.isCommander()) {
+            tags.add("commander");
+        }
+        return tags;
+    }
+
+    private static Set<String> collectWingmanTags(WingmanConstructEntity wingman) {
+        Set<String> tags = new HashSet<>();
+        if (wingman.getWingmanConstruct() != null) {
+            tags.addAll(wingman.getWingmanConstruct().getCurrentTags());
+        }
+        return tags;
+    }
+
+    private static Set<String> collectSwarmTags(SwarmConstructEntity swarm) {
+        Set<String> tags = new HashSet<>();
+        if (swarm.getSwarmConstruct() != null) {
+            tags.addAll(swarm.getSwarmConstruct().getCurrentTags());
+        }
+        return tags;
+    }
+
+    /**
+     * 通用属性应用：基于 {@link IConstructEntity} 接口统一处理所有构造体类型。
+     * <p>
+     * 计算 HEALTH / DAMAGE / ATTACK_SPEED 三类属性的 BASE/PERCENT/INDEPENDENT_MULTIPLY 加成，
+     * 然后通过修饰器应用到实体，并按比例保留当前生命值。
+     */
+    public static void applyAttributesToConstruct(IConstructEntity entity, Set<String> instanceTags,
+                                                   ConstructType type, Map<String, Double> constructAttrs) {
+        String typeId = entity.getConstructTypeId();
+        double healthBase = 0;
+        double healthPercent = 1.0;
+        double healthIndependent = 1.0;
+        double damageBase = 0;
+        double damagePercent = 1.0;
+        double damageIndependent = 1.0;
+        double attackSpeedPercent = 1.0;
+        double attackSpeedIndependent = 1.0;
+        double weaponAttackSpeedPercent = 1.0;
+        double weaponAttackSpeedIndependent = 1.0;
+        double moveSpeedPercent = 1.0;
+        double orbitSpeedPercent = 1.0;
+        double rotationSpeedPercent = 1.0;
 
         for (Map.Entry<String, Double> entry : constructAttrs.entrySet()) {
             String attrName = entry.getKey();
@@ -237,41 +327,71 @@ public class ConstructAttributeApplier {
                         case INDEPENDENT_MULTIPLY -> weaponAttackSpeedIndependent *= value;
                     }
                 }
-                default -> {} // MAX_COUNT, BUILD_SPEED 不应用到实体属性
+                case MOVE_SPEED -> {
+                    switch (valueType) {
+                        case BASE -> {}
+                        case PERCENT -> moveSpeedPercent *= value;
+                        case INDEPENDENT_MULTIPLY -> {}
+                    }
+                }
+                case ORBIT_SPEED -> {
+                    switch (valueType) {
+                        case BASE -> {}
+                        case PERCENT -> orbitSpeedPercent *= value;
+                        case INDEPENDENT_MULTIPLY -> {}
+                    }
+                }
+                case ROTATION_SPEED -> {
+                    switch (valueType) {
+                        case BASE -> {}
+                        case PERCENT -> rotationSpeedPercent *= value;
+                        case INDEPENDENT_MULTIPLY -> {}
+                    }
+                }
+                default -> {} // MAX_COUNT, BUILD_SPEED, EXPLOSIVE_COUNT 不应用到实体属性
             }
         }
 
-        double finalMaxHealth = (construct.getBaseMaxHealth() + healthBase) * healthPercent * healthIndependent;
-        double finalAttackDamage = (construct.getBaseAttackDamage() + damageBase) * damagePercent * damageIndependent;
+        double baseMaxHealth = entity.getBaseMaxHealth();
+        double finalMaxHealth = (baseMaxHealth + healthBase) * healthPercent * healthIndependent;
+        double baseAttackDamage = entity.getBaseAttackDamage();
+        double finalAttackDamage = (baseAttackDamage + damageBase) * damagePercent * damageIndependent;
         double finalAttackSpeedMultiplier = attackSpeedPercent * attackSpeedIndependent;
         double finalWeaponAttackSpeedMultiplier = weaponAttackSpeedPercent * weaponAttackSpeedIndependent;
 
-        applyHealthModifier(livingEntity, construct, finalMaxHealth);
-        applyDamageModifier(livingEntity, construct, finalAttackDamage);
-        construct.setAttackSpeedMultiplier(finalAttackSpeedMultiplier);
-        construct.setWeaponAttackSpeedMultiplier(finalWeaponAttackSpeedMultiplier);
+        LivingEntity livingEntity = (LivingEntity) entity;
+        applyHealthModifier(livingEntity, baseMaxHealth, finalMaxHealth);
+        applyDamageModifier(livingEntity, baseAttackDamage, finalAttackDamage);
+        entity.setAttackSpeedMultiplier(finalAttackSpeedMultiplier);
+        entity.setWeaponAttackSpeedMultiplier(finalWeaponAttackSpeedMultiplier);
+        entity.setMoveSpeedMultiplier(moveSpeedPercent);
+        entity.setOrbitSpeedMultiplier(orbitSpeedPercent);
+        entity.setRotationSpeedMultiplier(rotationSpeedPercent);
+        // 重置低血量攻速独立乘区（炉心融解模块动态施加，属性重算时清除）
+        entity.setLowHpAttackSpeedMultiplier(1.0);
     }
 
-    // ===== 通用属性修饰器 =====
-
-    private static void applyHealthModifier(LivingEntity entity, IConstructEntity construct, double targetMaxHealth) {
+    /**
+     * 通用生命值修饰器应用：移除旧修饰器，添加新加成修饰器，并按比例保留当前生命值。
+     */
+    private static void applyHealthModifier(LivingEntity entity, double baseHealth, double targetMaxHealth) {
         AttributeInstance healthAttr = entity.getAttribute(Attributes.MAX_HEALTH);
-        if (healthAttr == null) return;
+        if (healthAttr == null) {
+            return;
+        }
 
         double oldMaxHealth = entity.getMaxHealth();
         float currentHealth = entity.getHealth();
         float healthRatio = oldMaxHealth > 0 ? currentHealth / (float) oldMaxHealth : 1.0f;
 
-        removeModifier(healthAttr, CONSTRUCT_HEALTH_MODIFIER_UUID);
+        ModifierHelper.removeModifier(healthAttr, CONSTRUCT_HEALTH_MODIFIER_ID);
+        ModifierHelper.removeModifier(healthAttr, CONSTRUCT_HEALTH_PERCENT_MODIFIER_ID);
 
-        double addition = targetMaxHealth - construct.getBaseMaxHealth();
+        double addition = targetMaxHealth - baseHealth;
         if (addition != 0) {
-            healthAttr.addPermanentModifier(new AttributeModifier(
-                    CONSTRUCT_HEALTH_MODIFIER_UUID,
-                    "construct_health_addition",
-                    addition,
-                    AttributeModifier.Operation.ADDITION
-            ));
+            AttributeModifier addModifier = new AttributeModifier(modifierUuid(CONSTRUCT_HEALTH_MODIFIER_ID),
+                    CONSTRUCT_HEALTH_MODIFIER_ID.toString(), addition, AttributeModifier.Operation.ADDITION);
+            healthAttr.addPermanentModifier(addModifier);
         }
 
         double newMaxHealth = entity.getMaxHealth();
@@ -282,33 +402,49 @@ public class ConstructAttributeApplier {
         entity.setHealth(newHealth);
     }
 
-    private static void applyDamageModifier(LivingEntity entity, IConstructEntity construct, double targetDamage) {
+    /**
+     * 通用伤害修饰器应用：移除旧修饰器，添加新加成修饰器。
+     */
+    private static void applyDamageModifier(LivingEntity entity, double baseDamage, double targetDamage) {
         AttributeInstance damageAttr = entity.getAttribute(Attributes.ATTACK_DAMAGE);
-        if (damageAttr == null) return;
+        if (damageAttr == null) {
+            return;
+        }
 
-        removeModifier(damageAttr, CONSTRUCT_DAMAGE_MODIFIER_UUID);
+        ModifierHelper.removeModifier(damageAttr, CONSTRUCT_DAMAGE_MODIFIER_ID);
+        ModifierHelper.removeModifier(damageAttr, CONSTRUCT_DAMAGE_PERCENT_MODIFIER_ID);
 
-        double addition = targetDamage - construct.getBaseAttackDamage();
+        double addition = targetDamage - baseDamage;
         if (addition != 0) {
-            damageAttr.addPermanentModifier(new AttributeModifier(
-                    CONSTRUCT_DAMAGE_MODIFIER_UUID,
-                    "construct_damage_addition",
-                    addition,
-                    AttributeModifier.Operation.ADDITION
-            ));
+            AttributeModifier addModifier = new AttributeModifier(modifierUuid(CONSTRUCT_DAMAGE_MODIFIER_ID),
+                    CONSTRUCT_DAMAGE_MODIFIER_ID.toString(), addition, AttributeModifier.Operation.ADDITION);
+            damageAttr.addPermanentModifier(addModifier);
         }
     }
 
-    private static void removeModifier(AttributeInstance attribute, UUID modifierUuid) {
-        for (AttributeModifier modifier : attribute.getModifiers()) {
-            if (modifier.getId().equals(modifierUuid)) {
-                attribute.removeModifier(modifier);
-                break;
-            }
-        }
+    /**
+     * 由 ResourceLocation 派生稳定的 UUID（1.20.1 AttributeModifier 以 UUID 为 ID，名称用于移除匹配）。
+     */
+    private static UUID modifierUuid(ResourceLocation id) {
+        return UUID.nameUUIDFromBytes(id.toString().getBytes(StandardCharsets.UTF_8));
     }
 
-    // ===== 数量与建造速度计算（基于属性名解析） =====
+    // ===== 类型特定的薄包装方法（保留以兼容现有调用方） =====
+
+    public static void applyAttributesToDrone(UUID playerUUID, DroneConstructEntity drone, Map<String, Double> constructAttrs) {
+        ConstructType type = ConstructManager.getInstance().getConstructType(DroneConstructTypes.DRONE);
+        applyAttributesToConstruct(drone, collectDroneTags(drone), type, constructAttrs);
+    }
+
+    public static void applyAttributesToWingman(UUID playerUUID, WingmanConstructEntity wingman, Map<String, Double> constructAttrs) {
+        ConstructType type = ConstructManager.getInstance().getConstructType(WingmanConstructTypes.WINGMAN);
+        applyAttributesToConstruct(wingman, collectWingmanTags(wingman), type, constructAttrs);
+    }
+
+    public static void applyAttributesToSwarm(UUID playerUUID, SwarmConstructEntity swarm, Map<String, Double> constructAttrs) {
+        ConstructType type = ConstructManager.getInstance().getConstructType(SwarmConstructTypes.SWARM);
+        applyAttributesToConstruct(swarm, collectSwarmTags(swarm), type, constructAttrs);
+    }
 
     public static double getCachedAttribute(UUID playerUUID, String attributeName) {
         Map<String, Double> cached = PLAYER_CONSTRUCT_ATTR_CACHE.get(playerUUID);
@@ -318,33 +454,27 @@ public class ConstructAttributeApplier {
         return cached.getOrDefault(attributeName, 0.0);
     }
 
-    /**
-     * 获取有效最大数量（含蜂群溢出截断）
-     */
     public static double getEffectiveMaxCount(UUID playerUUID, ConstructType type) {
         double rawCount = computeRawMaxCount(playerUUID, type);
 
+        // 蜂群数量极限值截断（溢出倍率在 refreshForPlayer 中计算，不在此处设置副作用）
         int swarmLimit = Config.getSwarmCountLimit();
         if (swarmLimit > 0 && SwarmConstructTypes.SWARM.equals(type.getId()) && rawCount > swarmLimit) {
-            // 蜂群溢出：通过 MothershipManager 设置独立乘区属性
-            double overflowMultiplier = rawCount / swarmLimit;
-            MothershipManager.setOverflowMultiplier(playerUUID, overflowMultiplier);
             return swarmLimit;
-        } else {
-            MothershipManager.setOverflowMultiplier(playerUUID, 1.0);
         }
 
         return rawCount;
     }
 
     /**
-     * 计算原始最大数量（基于属性名解析匹配）
+     * 计算构造体数量上限的原始值（不应用极限值截断）。
      */
     private static double computeRawMaxCount(UUID playerUUID, ConstructType type) {
         int baseCount = type.getMaxCount();
         double baseBonus = 0;
         double percent = 1.0;
         double independent = 1.0;
+        String typeId = type.getId();
 
         Map<String, Double> allAttrs = AttributeManager.getPlayerAttributes(playerUUID);
         for (Map.Entry<String, Double> entry : allAttrs.entrySet()) {
@@ -353,8 +483,6 @@ public class ConstructAttributeApplier {
 
             ConstructAttributeNameParser.ParsedAttribute parsed = ConstructAttributeNameParser.parse(attrName);
             if (parsed == null || parsed.getEffectType() != ConstructAttributeNameParser.EffectType.MAX_COUNT) continue;
-
-            String typeId = type.getId();
             if (!parsed.matches(typeId, type, Collections.emptySet())) continue;
 
             AttributeType valueType = parsed.getValueType();
@@ -368,15 +496,14 @@ public class ConstructAttributeApplier {
             }
         }
 
+        // 向下取整：小数部分累积到整数时才生效，避免半值向上取整导致超量
         return Math.floor((baseCount + baseBonus) * percent * independent);
     }
 
-    /**
-     * 获取有效建造速度（基于属性名解析匹配）
-     */
     public static double getEffectiveBuildSpeed(UUID playerUUID, ConstructType type) {
         double percent = 1.0;
         double independent = 1.0;
+        String typeId = type.getId();
 
         Map<String, Double> allAttrs = AttributeManager.getPlayerAttributes(playerUUID);
         for (Map.Entry<String, Double> entry : allAttrs.entrySet()) {
@@ -385,8 +512,6 @@ public class ConstructAttributeApplier {
 
             ConstructAttributeNameParser.ParsedAttribute parsed = ConstructAttributeNameParser.parse(attrName);
             if (parsed == null || parsed.getEffectType() != ConstructAttributeNameParser.EffectType.BUILD_SPEED) continue;
-
-            String typeId = type.getId();
             if (!parsed.matches(typeId, type, Collections.emptySet())) continue;
 
             AttributeType valueType = parsed.getValueType();
@@ -396,7 +521,6 @@ public class ConstructAttributeApplier {
             switch (valueType) {
                 case PERCENT -> percent *= value;
                 case INDEPENDENT_MULTIPLY -> independent *= value;
-                default -> {}
             }
         }
 
@@ -404,12 +528,13 @@ public class ConstructAttributeApplier {
     }
 
     /**
-     * 获取有效爆破弹数量（基于属性名解析匹配）
-     * 基础值来自 Config，加上 construct_wingman_explosive_count_base 属性的加成
+     * 获取有效爆破弹数量
+     * 基础值来自 Config，加上 wingman_explosive_count 属性的加成
      */
     public static int getEffectiveExplosiveCount(UUID playerUUID, ConstructType type) {
         int baseCount = Config.getWingmanExplosiveCount();
         double baseBonus = 0;
+        String typeId = type.getId();
 
         Map<String, Double> allAttrs = AttributeManager.getPlayerAttributes(playerUUID);
         for (Map.Entry<String, Double> entry : allAttrs.entrySet()) {
@@ -418,8 +543,6 @@ public class ConstructAttributeApplier {
 
             ConstructAttributeNameParser.ParsedAttribute parsed = ConstructAttributeNameParser.parse(attrName);
             if (parsed == null || parsed.getEffectType() != ConstructAttributeNameParser.EffectType.EXPLOSIVE_COUNT) continue;
-
-            String typeId = type.getId();
             if (!parsed.matches(typeId, type, Collections.emptySet())) continue;
 
             AttributeType valueType = parsed.getValueType();

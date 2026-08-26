@@ -31,21 +31,20 @@ public class DroneRenderer extends GeoEntityRenderer<DroneConstructEntity> {
                 RenderType glowRenderType;
 
                 if (animatable.isAssaultDrone()) {
-                    glowTexture = ResourceLocation.fromNamespaceAndPath("gytrinket", "textures/entity/assaultdrone2.png");
+                    glowTexture = new ResourceLocation("gytrinket", "textures/entity/assaultdrone2.png");
                     glowRenderType = RenderType.eyes(glowTexture);
                 } else if (animatable.isDefenseDrone()) {
-                    glowTexture = ResourceLocation.fromNamespaceAndPath("gytrinket", "textures/entity/defense_drone2.png");
+                    glowTexture = new ResourceLocation("gytrinket", "textures/entity/defense_drone2.png");
                     glowRenderType = RenderType.entityTranslucent(glowTexture);
                 } else {
-                    glowTexture = ResourceLocation.fromNamespaceAndPath("gytrinket", "textures/entity/drone2.png");
+                    glowTexture = new ResourceLocation("gytrinket", "textures/entity/drone2.png");
                     glowRenderType = RenderType.eyes(glowTexture);
                 }
 
                 VertexConsumer glowBuffer = bufferSource.getBuffer(glowRenderType);
 
                 getRenderer().reRender(bakedModel, poseStack, bufferSource, animatable, glowRenderType,
-                    glowBuffer, partialTick, packedLight, packedOverlay,
-                    1.0F, 1.0F, 1.0F, 1.0F);
+                    glowBuffer, partialTick, packedLight, packedOverlay, 1.0F, 1.0F, 1.0F, 1.0F);
             }
         });
     }
@@ -88,3 +87,4 @@ public class DroneRenderer extends GeoEntityRenderer<DroneConstructEntity> {
         return entity.level().getBrightness(LightLayer.BLOCK, pos);
     }
 }
+

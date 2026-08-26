@@ -1,7 +1,6 @@
 package com.gy_mod.gy_trinket.network.packet;
 
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.world.entity.Entity;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.network.NetworkEvent;
@@ -23,10 +22,6 @@ public class AuraParticlePacket {
         this.radius = radius;
     }
 
-    public AuraParticlePacket(Entity entity, double radius) {
-        this(entity.getX(), entity.getY() + entity.getBbHeight() / 2.0, entity.getZ(), radius);
-    }
-
     public AuraParticlePacket(FriendlyByteBuf buf) {
         this.x = buf.readDouble();
         this.y = buf.readDouble();
@@ -41,15 +36,12 @@ public class AuraParticlePacket {
         buf.writeDouble(radius);
     }
 
-    public void handle(Supplier<NetworkEvent.Context> ctx) {
-        NetworkEvent.Context context = ctx.get();
-
+    public void handle(Supplier<NetworkEvent.Context> contextSupplier) {
+        NetworkEvent.Context context = contextSupplier.get();
         context.enqueueWork(() -> {
-            DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> {
-                com.gy_mod.gy_trinket.client.network.ClientNetworkHandler.handleAuraParticlesMessage(x, y, z, radius);
-            });
+            DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () ->
+                com.gy_mod.gy_trinket.client.network.ClientNetworkHandler.handleAuraParticlesMessage(x, y, z, radius));
         });
-
         context.setPacketHandled(true);
     }
 }

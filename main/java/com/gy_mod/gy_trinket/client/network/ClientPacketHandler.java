@@ -7,8 +7,8 @@ import com.gy_mod.gy_trinket.client.screen.PlayerPanelScreen;
 import com.gy_mod.gy_trinket.client.screen.UpgradeSelectScreen;
 import com.gy_mod.gy_trinket.client.screen.UpgradeTargetScreen;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
-import com.gy_mod.gy_trinket.network.packet.ResponsePanelDataMessage;
-import com.gy_mod.gy_trinket.network.packet.ResponseConfigDataMessage;
+import com.gy_mod.gy_trinket.network.NetworkHandler;
+import com.gy_mod.gy_trinket.network.packet.*;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.nbt.CompoundTag;
@@ -20,7 +20,30 @@ import java.util.Map;
 public final class ClientPacketHandler {
     private ClientPacketHandler() {}
 
+    public static void handleSyncModLevel(SyncModLevelMessage msg) {
+        com.gy_mod.gy_trinket.client.datacenter.ClientDataCenter.updateModLevel(
+            msg.modLevel, msg.upgradeExp, msg.upgradePoints, msg.randomPoints);
+    }
+
+    public static void handleSyncTokenCount(SyncTokenCountMessage msg) {
+        com.gy_mod.gy_trinket.client.datacenter.ClientDataCenter.updateTokenCount(msg.tokenCount);
+    }
+
+    public static void handleSyncDisabledReasons(SyncDisabledReasonsMessage msg) {
+        com.gy_mod.gy_trinket.client.datacenter.ClientDataCenter.updateDisabledReasons(msg.reasons);
+    }
+
+    public static void handleResponseRandomBuild(ResponseRandomBuildMessage msg) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.screen instanceof PlayerPanelScreen ps) {
+            ps.updateRandomPool(msg.itemIds);
+        }
+    }
+
     public static void handleResponsePanelData(ResponsePanelDataMessage msg) {
+        com.gy_mod.gy_trinket.client.datacenter.ClientDataCenter.updateModLevel(
+            msg.modLevel, msg.upgradeExp, msg.upgradePoints, msg.randomPoints);
+        com.gy_mod.gy_trinket.client.datacenter.ClientDataCenter.updateTokenCount(msg.tokenCount);
         Minecraft mc = Minecraft.getInstance();
         Screen currentScreen = mc.screen;
         PlayerPanelScreen panelScreen = null;
@@ -56,14 +79,14 @@ public final class ClientPacketHandler {
 
         if (currentScreen instanceof PlayerPanelScreen ps) {
             ps.updateData(msg.attributes, msg.items, msg.slotCount, msg.upgradeData, msg.upgradeTargets,
-                    msg.modLevel, msg.upgradeExp, msg.upgradePoints);
+                    msg.modLevel, msg.upgradeExp, msg.upgradePoints, msg.randomPoints, msg.tokenCount, msg.disabledReasons);
         } else if (panelScreen != null) {
             panelScreen.updateData(msg.attributes, msg.items, msg.slotCount, msg.upgradeData, msg.upgradeTargets,
-                    msg.modLevel, msg.upgradeExp, msg.upgradePoints);
+                    msg.modLevel, msg.upgradeExp, msg.upgradePoints, msg.randomPoints, msg.tokenCount, msg.disabledReasons);
         } else {
             mc.setScreen(new PlayerPanelScreen(
                 msg.attributes, msg.items, msg.slotCount, msg.upgradeData, msg.upgradeTargets,
-                msg.modLevel, msg.upgradeExp, msg.upgradePoints));
+                msg.modLevel, msg.upgradeExp, msg.upgradePoints, msg.randomPoints, msg.tokenCount, msg.disabledReasons));
         }
     }
 

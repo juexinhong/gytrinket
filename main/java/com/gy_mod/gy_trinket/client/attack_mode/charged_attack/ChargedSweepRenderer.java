@@ -10,6 +10,7 @@ import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
@@ -21,10 +22,10 @@ import org.joml.Matrix4f;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * 充能横扫自定义渲染器
@@ -33,12 +34,12 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * 粒子方向完全由玩家视线方向决定，不面向相机。
  * 粒子为垂直平面，垂直于玩家的水平视线方向。
  */
-@Mod.EventBusSubscriber(modid = gytrinket.MODID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.FORGE)
+@Mod.EventBusSubscriber(modid = gytrinket.MODID, value = Dist.CLIENT)
 public class ChargedSweepRenderer {
 
     private static final Logger LOGGER = LoggerFactory.getLogger("GyTrinket-Debug");
 
-    private static final List<ChargedSweepRenderData> ACTIVE_SWEEPS = new CopyOnWriteArrayList<>();
+    private static final List<ChargedSweepRenderData> ACTIVE_SWEEPS = new ArrayList<>();
 
     private ChargedSweepRenderer() {}
 
@@ -86,13 +87,12 @@ public class ChargedSweepRenderer {
         poseStack.pushPose();
         Matrix4f matrix = poseStack.last().pose();
 
-        BufferBuilder bufferBuilder = Tesselator.getInstance().getBuilder();
-
-        List<ChargedSweepRenderData> expired = new java.util.ArrayList<>();
-        for (ChargedSweepRenderData data : ACTIVE_SWEEPS) {
+        Iterator<ChargedSweepRenderData> it = ACTIVE_SWEEPS.iterator();
+        while (it.hasNext()) {
+            ChargedSweepRenderData data = it.next();
             int age = (int) (currentTick - data.creationTime());
             if (age >= data.lifetime()) {
-                expired.add(data);
+                it.remove();
                 continue;
             }
 
@@ -112,6 +112,7 @@ public class ChargedSweepRenderer {
             // 计算透明度（随年龄衰减）
             float ageRatio = (age + partialTick) / data.lifetime();
             float alpha = 1.0F - ageRatio;
+            int packedColor = ((int) (alpha * 255) << 24) | 0xFFFFFF;
 
             // 基于玩家完整视线方向（yaw + pitch）构建平面
             float yaw = data.yaw();
@@ -133,36 +134,36 @@ public class ChargedSweepRenderer {
             float halfH = data.scale() * 0.5F;
 
             // 构建四个顶点
+            Tesselator tessellator = Tesselator.getInstance();
+            BufferBuilder bufferBuilder = tessellator.getBuilder();
             bufferBuilder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
 
             // 左后
-            bufferBuilder.vertex(matrix, px + (-halfW * rightX - halfH * forwardX),
-                    py + (-halfW * rightY - halfH * forwardY),
-                    pz + (-halfW * rightZ - halfH * forwardZ))
-                    .uv(u0, v1).color(1.0F, 1.0F, 1.0F, alpha).endVertex();
+            float x0 = px + (-halfW * rightX - halfH * forwardX);
+            float y0 = py + (-halfW * rightY - halfH * forwardY);
+            float z0 = pz + (-halfW * rightZ - halfH * forwardZ);
+            bufferBuilder.vertex(matrix, x0, y0, z0).uv(u0, v1).color(packedColor);
 
             // 右后
-            bufferBuilder.vertex(matrix, px + (halfW * rightX - halfH * forwardX),
-                    py + (halfW * rightY - halfH * forwardY),
-                    pz + (halfW * rightZ - halfH * forwardZ))
-                    .uv(u1, v1).color(1.0F, 1.0F, 1.0F, alpha).endVertex();
+            float x1 = px + (halfW * rightX - halfH * forwardX);
+            float y1 = py + (halfW * rightY - halfH * forwardY);
+            float z1 = pz + (halfW * rightZ - halfH * forwardZ);
+            bufferBuilder.vertex(matrix, x1, y1, z1).uv(u1, v1).color(packedColor);
 
             // 右前
-            bufferBuilder.vertex(matrix, px + (halfW * rightX + halfH * forwardX),
-                    py + (halfW * rightY + halfH * forwardY),
-                    pz + (halfW * rightZ + halfH * forwardZ))
-                    .uv(u1, v0).color(1.0F, 1.0F, 1.0F, alpha).endVertex();
+            float x2 = px + (halfW * rightX + halfH * forwardX);
+            float y2 = py + (halfW * rightY + halfH * forwardY);
+            float z2 = pz + (halfW * rightZ + halfH * forwardZ);
+            bufferBuilder.vertex(matrix, x2, y2, z2).uv(u1, v0).color(packedColor);
 
             // 左前
-            bufferBuilder.vertex(matrix, px + (-halfW * rightX + halfH * forwardX),
-                    py + (-halfW * rightY + halfH * forwardY),
-                    pz + (-halfW * rightZ + halfH * forwardZ))
-                    .uv(u0, v0).color(1.0F, 1.0F, 1.0F, alpha).endVertex();
+            float x3 = px + (-halfW * rightX + halfH * forwardX);
+            float y3 = py + (-halfW * rightY + halfH * forwardY);
+            float z3 = pz + (-halfW * rightZ + halfH * forwardZ);
+            bufferBuilder.vertex(matrix, x3, y3, z3).uv(u0, v0).color(packedColor);
 
             BufferUploader.drawWithShader(bufferBuilder.end());
         }
-
-        ACTIVE_SWEEPS.removeAll(expired);
 
         poseStack.popPose();
         RenderSystem.enableCull();
@@ -173,7 +174,7 @@ public class ChargedSweepRenderer {
     private static SpriteSet getSweepSpriteSet(Minecraft mc) {
         try {
             Map<ResourceLocation, SpriteSet> spriteSets = ((ParticleEngineAccessor) mc.particleEngine).gytrinket$getSpriteSets();
-            ResourceLocation sweepId = net.minecraftforge.registries.ForgeRegistries.PARTICLE_TYPES.getKey(ParticleTypes.SWEEP_ATTACK);
+            ResourceLocation sweepId = BuiltInRegistries.PARTICLE_TYPE.getKey(ParticleTypes.SWEEP_ATTACK);
             return spriteSets.get(sweepId);
         } catch (Exception e) {
             return null;

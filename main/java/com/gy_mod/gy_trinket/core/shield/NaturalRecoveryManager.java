@@ -42,7 +42,39 @@ public class NaturalRecoveryManager {
     /** 恢复触发间隔：每4刻触发一次（相当于1秒触发5次） */
     private static final int RECOVERY_INTERVAL = 4;
 
+    /**
+     * 自然恢复上限标准（格）：指最大护盾值或最大玩家生命。
+     * 以 25 为周期：第一个 25 正常恢复，每超出一个周期，该周期的部分恢复量再减半。
+     * （25→正常，50→第二段减半，75→第三段1/4，以此类推），防止高最大值导致恢复数值崩坏。
+     */
+    private static final double RECOVERY_BASE_LIMIT = 25.0;
+
+    /**
+     * 最大周期数：超过此周期数后不再计算恢复（阈值限制，防止算力浪费）。
+     * 16 个周期（400 生命/护盾）后恢复效果收敛，后续数值不再提供有效恢复。
+     */
+    private static final int MAX_RECOVERY_CYCLES = 16;
+
     private NaturalRecoveryManager() {}
+
+    /**
+     * 计算有限制的恢复量：以 25 为周期，逐段恢复。
+     * 第 i 个周期的部分按 (0.5)^i 系数恢复，最多计算 MAX_RECOVERY_CYCLES 个周期。
+     */
+    private static double computeLimitedRecovery(double maxValue, double rate) {
+        double total = 0;
+        double remaining = maxValue;
+        double factor = 1.0;
+        int cycle = 0;
+        while (remaining > 0 && cycle < MAX_RECOVERY_CYCLES) {
+            double portion = Math.min(remaining, RECOVERY_BASE_LIMIT);
+            total += portion * rate * factor;
+            remaining -= portion;
+            factor *= 0.5;
+            cycle++;
+        }
+        return total;
+    }
 
     /**
      * 监听属性计算完毕事件
@@ -114,7 +146,8 @@ public class NaturalRecoveryManager {
         data.lastShieldRecovery = shieldRecovery;
 
         if (player.isAlive() && player.getHealth() > 0 && player.getHealth() < player.getMaxHealth()) {
-            float healAmount = (float)(player.getMaxHealth() * playerHealthRecovery);
+            // 恢复量限制：最大生命超过25的部分恢复量折半
+            float healAmount = (float) computeLimitedRecovery(player.getMaxHealth(), playerHealthRecovery);
             player.heal(healAmount);
         }
 
@@ -122,7 +155,8 @@ public class NaturalRecoveryManager {
             double currentShield = ShieldManager.getCurrentShield(playerUUID);
             double maxShield = ShieldManager.getMaxShield(playerUUID);
             if (currentShield > 0 && currentShield < maxShield) {
-                double shieldHealAmount = maxShield * shieldRecovery;
+                // 恢复量限制：最大护盾超过25的部分恢复量折半
+                double shieldHealAmount = computeLimitedRecovery(maxShield, shieldRecovery);
                 ShieldManager.addShield(playerUUID, shieldHealAmount);
             }
         }

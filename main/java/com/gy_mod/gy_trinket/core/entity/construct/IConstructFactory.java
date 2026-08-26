@@ -19,3 +19,4 @@ public interface IConstructFactory {
      */
     IConstruct create(Player player, ConstructType type);
 }
+

@@ -3,8 +3,7 @@ package com.gy_mod.gy_trinket.core.entity.construct.drone;
 import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.core.shield.DisableSystem;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructManager;
-import com.gy_mod.gy_trinket.storage.PlayerStore;
-import com.gy_mod.gy_trinket.storage.PlayerStoreManager;
+import com.gy_mod.gy_trinket.storage.PlayerStoreUtils;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -127,10 +126,8 @@ public class CommanderManager {
     }
 
     private boolean hasRequiredItems(UUID playerUUID) {
-        PlayerStore store = PlayerStoreManager.getPlayerStore(playerUUID);
-        if (store == null) return false;
-        for (int i = 0; i < store.getItemHandler().getSlots(); i++) {
-            ItemStack stack = store.getItemHandler().getStackInSlot(i);
+        // 已装备物品 = 光点核心存储 + Curios 饰品栏（光点核心内容扩展）
+        for (ItemStack stack : PlayerStoreUtils.getEquippedStacks(playerUUID)) {
             if (!stack.isEmpty() && !DisableSystem.isItemDisabled(playerUUID, stack) && Config.isCommanderItem(stack.getItem())) {
                 return true;
             }
@@ -138,3 +135,4 @@ public class CommanderManager {
         return false;
     }
 }
+

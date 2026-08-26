@@ -12,22 +12,22 @@ import java.util.function.Supplier;
  * 同步拦截机攻击模式消息（服务端→客户端）
  */
 public class SyncInterceptorAttackModeMessage {
-    private final InterceptorAttackMode attackMode;
+    private final String attackModeName;
 
     public SyncInterceptorAttackModeMessage() {
-        this.attackMode = InterceptorAttackMode.MELEE;
+        this.attackModeName = "";
     }
 
-    public SyncInterceptorAttackModeMessage(InterceptorAttackMode attackMode) {
-        this.attackMode = attackMode;
+    public SyncInterceptorAttackModeMessage(String attackModeName) {
+        this.attackModeName = attackModeName;
     }
 
     public SyncInterceptorAttackModeMessage(FriendlyByteBuf buf) {
-        this.attackMode = InterceptorAttackMode.byName(buf.readUtf());
+        this.attackModeName = buf.readUtf();
     }
 
     public void toBytes(FriendlyByteBuf buf) {
-        buf.writeUtf(attackMode.getSerializedName());
+        buf.writeUtf(attackModeName);
     }
 
     public void handle(Supplier<NetworkEvent.Context> contextSupplier) {
@@ -36,7 +36,8 @@ public class SyncInterceptorAttackModeMessage {
             DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> {
                 net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
                 if (mc.player != null) {
-                    com.gy_mod.gy_trinket.client.attack_mode.interceptor.InterceptorWeaponClientData.setAttackMode(mc.player.getUUID(), attackMode);
+                    InterceptorAttackMode mode = InterceptorAttackMode.byName(attackModeName);
+                    com.gy_mod.gy_trinket.client.attack_mode.interceptor.InterceptorWeaponClientData.setAttackMode(mc.player.getUUID(), mode);
                 }
             });
         });

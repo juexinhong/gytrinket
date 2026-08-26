@@ -37,3 +37,4 @@ public class GhostFuselageClientData {
         STEALTH_PROGRESS.clear();
     }
 }
+

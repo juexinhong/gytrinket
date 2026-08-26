@@ -12,8 +12,14 @@ import java.util.UUID;
 /**
  * 构造体逻辑基类
  * <p>
- * 抽取 DroneConstruct / WingmanConstruct 共有的字段与方法。
- * 子类只需实现 spawnEntity() 完成具体实体生成与注册。
+ * 抽取 DroneConstruct / WingmanConstruct / SwarmConstruct 共有的字段与方法：
+ * <ul>
+ *   <li>身份与生命值管理（constructId, owner, maxHealth, health, active）</li>
+ *   <li>实体 UUID 跟踪与查找（使用 {@link Level#getEntity(UUID)} O(1) 查询，避免全维度 AABB 扫描）</li>
+ *   <li>默认生命周期回调（onCreated 调用 {@link #spawnEntity()}，onDestroyed 通过 UUID discard）</li>
+ *   <li>标签聚合（{@link #getCurrentTags()} 来自 {@link ConstructType}）</li>
+ * </ul>
+ * 子类只需实现 {@link #spawnEntity()} 完成具体实体生成与注册。
  */
 public abstract class AbstractConstruct implements IConstruct {
 
@@ -42,22 +48,18 @@ public abstract class AbstractConstruct implements IConstruct {
         return ConstructManager.getInstance().getConstructType(constructId);
     }
 
+    /**
+     * 通过 UUID O(1) 查找关联实体。
+     * <p>
+     * 替代原先的 AABB(-1000..1000) 全维度扫描，避免每 tick 遍历维度内所有实体。
+     * 仅在服务端有效（{@link ServerLevel#getEntity(UUID)} 提供 UUID 索引查询）。
+     */
     @Override
     public Entity getEntity() {
         if (entityUUID == null || owner == null) return null;
         Level level = owner.level();
-        if (level instanceof ServerLevel serverLevel) {
-            return serverLevel.getEntity(entityUUID);
-        }
-        // Fallback: AABB scan
-        net.minecraft.world.phys.AABB searchBox = new net.minecraft.world.phys.AABB(-1000, -1000, -1000, 1000, 1000, 1000);
-        java.util.List<Entity> entities = level.getEntities(null, searchBox);
-        for (Entity entity : entities) {
-            if (entity.getUUID().equals(entityUUID)) {
-                return entity;
-            }
-        }
-        return null;
+        if (!(level instanceof ServerLevel serverLevel)) return null;
+        return serverLevel.getEntity(entityUUID);
     }
 
     @Override
@@ -92,6 +94,7 @@ public abstract class AbstractConstruct implements IConstruct {
 
     @Override
     public void tick() {
+        // 行为逻辑已在 *ConstructEntity 中实现
     }
 
     @Override
@@ -103,11 +106,10 @@ public abstract class AbstractConstruct implements IConstruct {
     public void onDestroyed() {
         if (entityUUID == null || owner == null) return;
         Level level = owner.level();
-        if (level instanceof ServerLevel serverLevel) {
-            Entity entity = serverLevel.getEntity(entityUUID);
-            if (entity != null) {
-                entity.discard();
-            }
+        if (!(level instanceof ServerLevel serverLevel)) return;
+        Entity entity = serverLevel.getEntity(entityUUID);
+        if (entity != null) {
+            entity.discard();
         }
     }
 
@@ -125,7 +127,6 @@ public abstract class AbstractConstruct implements IConstruct {
         return new ConstructData(constructId, entityUUID, maxHealth);
     }
 
-    @Override
     public UUID getEntityUUID() {
         return entityUUID;
     }
@@ -144,5 +145,9 @@ public abstract class AbstractConstruct implements IConstruct {
         return allTags;
     }
 
+    /**
+     * 子类实现：生成对应实体并设置 {@link #entityUUID}，注册到 {@link ConstructManager}。
+     */
     protected abstract void spawnEntity();
 }
+

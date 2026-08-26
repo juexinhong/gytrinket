@@ -13,7 +13,7 @@
     "*": { "item": "minecraft:blue_wool" }
   },
   "result": {
-    "item": "gytrinket:self_destruct_module",
+    "id": "gytrinket:self_destruct_module",
     "count": 1
   }
 }

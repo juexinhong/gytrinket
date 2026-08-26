@@ -25,6 +25,7 @@ public class ModCreativeModeTabs {
                         output.accept(ModItems.GUARDIAN.get());
                         output.accept(ModItems.SWARM_MODULE.get());
                         output.accept(ModItems.GHOST_FUSELAGE.get());
+                        output.accept(ModItems.ENGINEERING_FUSELAGE.get());
 
                         // 基础护盾物品
                         output.accept(ModItems.SHIELD_GY.get());
@@ -156,6 +157,8 @@ public class ModCreativeModeTabs {
                         // 超越模块
                         output.accept(ModItems.CHARGED_SHIELD_MODULE.get());
                         output.accept(ModItems.GRUDGE_MODULE.get());
+                        output.accept(ModItems.APEX_APPARATUS_MODULE.get());
+                        output.accept(ModItems.FURNACE_CORE_MODULE.get());
                         
                         // 零件
                         output.accept(ModItems.BEAM.get());
@@ -185,6 +188,7 @@ public class ModCreativeModeTabs {
                         output.accept(ModItems.AERODYNAMIC_DESIGN_DRAFT.get());
                         output.accept(ModItems.COORDINATE.get());
                         output.accept(ModItems.PRECISION_CONSTRUCT_PART.get());
+                        output.accept(ModItems.TASKMASTER_PART.get());
                         output.accept(ModItems.SHIELD_TRANSFER_PART.get());
                         output.accept(ModItems.TOTEM.get());
                         output.accept(ModItems.DRONE_PART.get());
@@ -204,6 +208,9 @@ public class ModCreativeModeTabs {
                         output.accept(ModItems.SHOCKWAVE_PART.get());
                         output.accept(ModItems.NANO_REGEN_PART.get());
                         output.accept(ModItems.SUPPRESSION_PART.get());
+
+                        // 代币
+                        output.accept(ModItems.TOKEN.get());
                     })
                     .build()
     );

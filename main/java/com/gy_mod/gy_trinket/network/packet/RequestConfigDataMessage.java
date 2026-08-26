@@ -9,18 +9,18 @@ import java.util.function.Supplier;
 public class RequestConfigDataMessage {
     public RequestConfigDataMessage() {}
 
-    public RequestConfigDataMessage(FriendlyByteBuf buf) {}
-
     public void toBytes(FriendlyByteBuf buf) {}
 
-    public void handle(Supplier<NetworkEvent.Context> ctx) {
-        NetworkEvent.Context context = ctx.get();
+    public RequestConfigDataMessage(FriendlyByteBuf buf) {}
+
+    public void handle(Supplier<NetworkEvent.Context> contextSupplier) {
+        NetworkEvent.Context context = contextSupplier.get();
         context.enqueueWork(() -> {
             var player = context.getSender();
-            if (player == null) return;
-            if (!player.hasPermissions(2)) return;
-
-            NetworkHandler.sendConfigDataToPlayer(player);
+            if (player != null) {
+                if (!player.hasPermissions(2)) return;
+                NetworkHandler.sendConfigDataToPlayer(player);
+            }
         });
         context.setPacketHandled(true);
     }

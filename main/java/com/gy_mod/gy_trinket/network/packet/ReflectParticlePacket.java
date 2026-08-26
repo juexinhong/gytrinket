@@ -40,7 +40,7 @@ public class ReflectParticlePacket {
         this.dirX = buf.readDouble();
         this.dirY = buf.readDouble();
         this.dirZ = buf.readDouble();
-        this.particleCount = buf.readInt();
+        this.particleCount = buf.readVarInt();
         this.maxAngleDegrees = buf.readDouble();
         this.speedMultiplier = buf.readDouble();
     }
@@ -52,21 +52,18 @@ public class ReflectParticlePacket {
         buf.writeDouble(dirX);
         buf.writeDouble(dirY);
         buf.writeDouble(dirZ);
-        buf.writeInt(particleCount);
+        buf.writeVarInt(particleCount);
         buf.writeDouble(maxAngleDegrees);
         buf.writeDouble(speedMultiplier);
     }
 
-    public void handle(Supplier<NetworkEvent.Context> ctx) {
-        NetworkEvent.Context context = ctx.get();
-
+    public void handle(Supplier<NetworkEvent.Context> contextSupplier) {
+        NetworkEvent.Context context = contextSupplier.get();
         context.enqueueWork(() -> {
-            DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> {
+            DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () ->
                 com.gy_mod.gy_trinket.client.network.ClientNetworkHandler.handleReflectParticlesMessage(
-                    x, y, z, dirX, dirY, dirZ, particleCount, maxAngleDegrees, speedMultiplier);
-            });
+                    x, y, z, dirX, dirY, dirZ, particleCount, maxAngleDegrees, speedMultiplier));
         });
-
         context.setPacketHandled(true);
     }
 }

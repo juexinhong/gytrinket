@@ -1,6 +1,7 @@
 package com.gy_mod.gy_trinket.core.entity.construct.drone;
 
 import com.gy_mod.gy_trinket.config.Config;
+import com.gy_mod.gy_trinket.core.defs.DefsManager;
 import com.gy_mod.gy_trinket.core.shield.DisableSystem;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.behavior.IDroneBehavior;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.behavior.OrbitBehavior;
@@ -8,6 +9,7 @@ import com.gy_mod.gy_trinket.core.entity.construct.drone.behavior.PursuitBehavio
 import com.gy_mod.gy_trinket.core.entity.construct.drone.behavior.StandbyBehavior;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.behavior.FormationBehavior;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.behavior.GuardBehavior;
+import com.gy_mod.gy_trinket.storage.PlayerStoreUtils;
 
 import java.util.*;
 
@@ -56,9 +58,9 @@ public class DroneArrayType {
 
     private Set<String> getRequiredItemIdsFromConfig() {
         return switch (id) {
-            case "pursuit" -> new HashSet<>(Config.PURSUIT_ARRAY_REQUIRED_ITEMS.get());
-            case "formation" -> new HashSet<>(Config.FORMATION_ARRAY_REQUIRED_ITEMS.get());
-            case "guard" -> new HashSet<>(Config.GUARD_ARRAY_REQUIRED_ITEMS.get());
+            case "pursuit" -> new HashSet<>(DefsManager.getItemSet("pursuit_array_required_items"));
+            case "formation" -> new HashSet<>(DefsManager.getItemSet("formation_array_required_items"));
+            case "guard" -> new HashSet<>(DefsManager.getItemSet("guard_array_required_items"));
             default -> Collections.emptySet();
         };
     }
@@ -68,18 +70,11 @@ public class DroneArrayType {
         if (required.isEmpty()) {
             return true;
         }
-        com.gy_mod.gy_trinket.storage.PlayerStore store =
-                com.gy_mod.gy_trinket.storage.PlayerStoreManager.getPlayerStore(playerUUID);
-        if (store == null) {
-            return false;
-        }
+        // 已装备物品 = 光点核心存储 + Curios 饰品栏（光点核心内容扩展）
         Set<String> ownedItemIds = new HashSet<>();
-        for (int i = 0; i < store.getItemHandler().getSlots(); i++) {
-            net.minecraft.world.item.ItemStack stack = store.getItemHandler().getStackInSlot(i);
-            if (!stack.isEmpty()) {
-                if (DisableSystem.isItemDisabled(playerUUID, stack)) continue;
-                ownedItemIds.add(net.minecraftforge.registries.ForgeRegistries.ITEMS.getKey(stack.getItem()).toString());
-            }
+        for (net.minecraft.world.item.ItemStack stack : PlayerStoreUtils.getEquippedStacks(playerUUID)) {
+            if (DisableSystem.isItemDisabled(playerUUID, stack)) continue;
+            ownedItemIds.add(net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()).toString());
         }
         return ownedItemIds.containsAll(required);
     }
@@ -214,3 +209,4 @@ public class DroneArrayType {
         }
     }
 }
+

@@ -1,4 +1,4 @@
-{
+﻿{
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "pattern": [
@@ -12,7 +12,7 @@
     "W": { "item": "gytrinket:wingman_part" }
   },
   "result": {
-    "item": "gytrinket:interceptor_part",
+    "id": "gytrinket:interceptor_part",
     "count": 1
   }
 }

@@ -1,4 +1,4 @@
-﻿{
+{
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
@@ -14,7 +14,7 @@
     " C "
   ],
   "result": {
-    "item": "gytrinket:clock",
+    "id": "gytrinket:clock",
     "count": 1
   }
 }

@@ -1,4 +1,4 @@
-﻿{
+{
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "pattern": [
@@ -15,7 +15,7 @@
     }
   },
   "result": {
-    "item": "gytrinket:barrier",
+    "id": "gytrinket:barrier",
     "count": 1
   }
 }

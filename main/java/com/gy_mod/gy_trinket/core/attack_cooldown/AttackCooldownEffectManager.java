@@ -153,3 +153,4 @@ public class AttackCooldownEffectManager {
         return EFFECTS.containsKey(name);
     }
 }
+

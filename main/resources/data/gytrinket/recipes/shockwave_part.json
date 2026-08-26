@@ -1,4 +1,4 @@
-{
+﻿{
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "pattern": [
@@ -11,7 +11,7 @@
     "C": { "item": "minecraft:copper_ingot" }
   },
   "result": {
-    "item": "gytrinket:shockwave_part",
+    "id": "gytrinket:shockwave_part",
     "count": 1
   }
 }

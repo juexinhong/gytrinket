@@ -5,8 +5,7 @@ import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
 import com.gy_mod.gy_trinket.core.shield.DisableSystem;
 import com.gy_mod.gy_trinket.core.modifier.player.health.PlayerHealthManager;
 import com.gy_mod.gy_trinket.event.PlayerAttributesCalculatedEvent;
-import com.gy_mod.gy_trinket.storage.PlayerStore;
-import com.gy_mod.gy_trinket.storage.PlayerStoreManager;
+import com.gy_mod.gy_trinket.storage.PlayerStoreUtils;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -27,10 +26,12 @@ public class ConversionEffectManager {
     private static class ConversionBaseValues {
         double shield;
         double health;
+        double healthMult;
 
-        ConversionBaseValues(double shield, double health) {
+        ConversionBaseValues(double shield, double health, double healthMult) {
             this.shield = shield;
             this.health = health;
+            this.healthMult = healthMult;
         }
     }
 
@@ -38,32 +39,13 @@ public class ConversionEffectManager {
     public static void onAttributesCalculated(PlayerAttributesCalculatedEvent event) {
         UUID playerUUID = event.getPlayerUUID();
 
-        PlayerStore store = PlayerStoreManager.getPlayerStore(playerUUID);
-        if (store == null) {
+        if (!hasConversionItem(playerUUID)) {
             removeConversionAttributes(playerUUID);
             PLAYER_BASE_VALUES.remove(playerUUID);
             return;
         }
 
-        boolean hasConversionItem = false;
-        for (int i = 0; i < store.getItemHandler().getSlots(); i++) {
-            ItemStack stack = store.getItemHandler().getStackInSlot(i);
-            if (!stack.isEmpty() && !DisableSystem.isItemDisabled(playerUUID, stack) && Config.isConversionItem(stack.getItem())) {
-                hasConversionItem = true;
-                break;
-            }
-        }
-
-        if (!hasConversionItem) {
-            removeConversionAttributes(playerUUID);
-            PLAYER_BASE_VALUES.remove(playerUUID);
-            return;
-        }
-
-        // 获取排除转化自身影响后的护盾值，避免循环膨胀
-        double shieldValue = AttributeManager.getGroupAttributeExcludingNamespace(playerUUID, "shield", DYNAMIC_ATTRIBUTE_KEY);
-
-        // 获取玩家最大生命值
+        // 确保生命修饰符已应用，maxHealth 为当前正确值（幂等，不触发重算）
         ServerPlayer player = event.getPlayer();
         if (player == null) {
             var server = ServerLifecycleHooks.getCurrentServer();
@@ -71,24 +53,33 @@ public class ConversionEffectManager {
                 player = server.getPlayerList().getPlayer(playerUUID);
             }
         }
-
-        double healthValue = 20.0;
-        if (player != null && player.isAlive()) {
-            double healthBase = AttributeManager.getPlayerAttribute(playerUUID, "player_health");
-            double healthPercent = AttributeManager.getPlayerAttribute(playerUUID, "player_health_percent");
-            double healthIndependent = AttributeManager.getPlayerAttribute(playerUUID, "player_health_independent");
-
-            if (healthBase != 0 || healthPercent != 1.0 || healthIndependent != 1.0) {
-                PlayerHealthManager.onAttributesCalculated(event);
-            }
-
-            healthValue = player.getMaxHealth();
+        if (player == null || !player.isAlive()) {
+            return;
         }
+        PlayerHealthManager.onAttributesCalculated(event);
 
-        PLAYER_BASE_VALUES.put(playerUUID, new ConversionBaseValues(shieldValue, healthValue));
+        // 基础护盾：排除转化命名空间的贡献（不物理移除动态属性，避免触发重算循环）
+        double shieldBase = AttributeManager.getGroupAttributeExcludingNamespace(playerUUID, "shield", "conversion");
 
-        // 直接计算并设置（不再先清除再设置）
+        // 基础生命：用当前 maxHealth 反推，除以转化独立乘区贡献 (1 + 上次转化生命倍率)
+        ConversionBaseValues prev = PLAYER_BASE_VALUES.get(playerUUID);
+        double lastHealthMult = prev != null ? prev.healthMult : 0.0;
+        double healthBase = player.getMaxHealth() / (1.0 + lastHealthMult);
+
+        PLAYER_BASE_VALUES.put(playerUUID, new ConversionBaseValues(shieldBase, healthBase, lastHealthMult));
+
+        // 计算并设置转化倍率（setDynamicAttribute 值未变化时跳过，避免循环）
         performConversion(playerUUID);
+    }
+
+    private static boolean hasConversionItem(UUID playerUUID) {
+        // 已装备物品 = 光点核心存储 + Curios 饰品栏（光点核心内容扩展）
+        for (ItemStack stack : PlayerStoreUtils.getEquippedStacks(playerUUID)) {
+            if (!stack.isEmpty() && !DisableSystem.isItemDisabled(playerUUID, stack) && Config.isConversionItem(stack.getItem())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static void performConversion(UUID playerUUID) {
@@ -109,16 +100,21 @@ public class ConversionEffectManager {
         double conversionRatio = Config.CONVERSION_RATIO.get();
 
         if (health <= shield) {
+            // 生命值 <= 护盾值：将生命转化给护盾
             double convertAmount = health * conversionRatio;
             healthMultiplier = (health - convertAmount) / health - 1;
             shieldMultiplier = (shield + convertAmount) / shield - 1;
         } else {
+            // 护盾值 < 生命值：将护盾转化给生命
             double convertAmount = shield * conversionRatio;
             shieldMultiplier = (shield - convertAmount) / shield - 1;
             healthMultiplier = (health + convertAmount) / health - 1;
         }
 
-        // 直接设置，setDynamicAttribute 内部会检查值是否变化，相同则跳过
+        // 记录当前转化生命倍率，供下次反推基础生命
+        baseValues.healthMult = healthMultiplier;
+
+        // 设置动态属性（独立乘区）；值未变化时 setDynamicAttribute 会跳过，不会继续触发重算
         AttributeManager.setDynamicAttribute(playerUUID, DYNAMIC_ATTRIBUTE_KEY, "player_health_independent", healthMultiplier);
         AttributeManager.setDynamicAttribute(playerUUID, DYNAMIC_ATTRIBUTE_KEY, "shield_independent", shieldMultiplier);
     }

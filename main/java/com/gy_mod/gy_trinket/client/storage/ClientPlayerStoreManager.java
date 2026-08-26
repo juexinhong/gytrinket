@@ -103,19 +103,28 @@ public class ClientPlayerStoreManager {
         public void saveToNBT(CompoundTag tag) {
             ListTag itemList = new ListTag();
             for (int i = 0; i < 27; i++) {
-                CompoundTag itemTag = new CompoundTag();
-                items[i].save(itemTag);
-                itemList.add(itemTag);
+                if (!items[i].isEmpty()) {
+                    CompoundTag itemTag = items[i].save(new CompoundTag());
+                    itemTag.putByte("Slot", (byte) i);
+                    itemList.add(itemTag);
+                }
             }
             tag.put("items", itemList);
         }
 
         public void loadFromNBT(CompoundTag tag) {
+            for (int i = 0; i < 27; i++) {
+                items[i] = ItemStack.EMPTY;
+            }
             ListTag itemList = tag.getList("items", Tag.TAG_COMPOUND);
-            for (int i = 0; i < itemList.size() && i < 27; i++) {
+            for (int i = 0; i < itemList.size(); i++) {
                 CompoundTag itemTag = itemList.getCompound(i);
-                items[i] = ItemStack.of(itemTag);
+                int slot = itemTag.contains("Slot") ? itemTag.getByte("Slot") : i;
+                if (slot >= 0 && slot < 27) {
+                    items[slot] = ItemStack.of(itemTag);
+                }
             }
         }
     }
 }
+

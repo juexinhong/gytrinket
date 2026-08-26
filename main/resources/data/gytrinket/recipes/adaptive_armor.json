@@ -1,4 +1,4 @@
-﻿{
+{
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "pattern": [
@@ -23,7 +23,7 @@
     }
   },
   "result": {
-    "item": "gytrinket:adaptive_armor",
+    "id": "gytrinket:adaptive_armor",
     "count": 1
   }
 }

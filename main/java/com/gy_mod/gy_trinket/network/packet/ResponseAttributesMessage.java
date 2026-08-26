@@ -37,15 +37,12 @@ public class ResponseAttributesMessage {
         }
     }
 
-    public void handle(Supplier<NetworkEvent.Context> ctx) {
-        NetworkEvent.Context context = ctx.get();
-
+    public void handle(Supplier<NetworkEvent.Context> contextSupplier) {
+        NetworkEvent.Context context = contextSupplier.get();
         context.enqueueWork(() -> {
-            DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> {
-                com.gy_mod.gy_trinket.client.network.ClientNetworkHandler.handleResponseAttributesMessage(attributes);
-            });
+            DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () ->
+                com.gy_mod.gy_trinket.client.network.ClientNetworkHandler.handleResponseAttributesMessage(attributes));
         });
-
         context.setPacketHandled(true);
     }
 }

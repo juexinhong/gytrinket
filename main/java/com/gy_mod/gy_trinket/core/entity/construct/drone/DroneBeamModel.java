@@ -10,16 +10,17 @@ public class DroneBeamModel extends GeoModel<DroneBeamProjectile> {
 
     @Override
     public ResourceLocation getModelResource(DroneBeamProjectile animatable) {
-        return ResourceLocation.fromNamespaceAndPath("gytrinket", "geo/drone_beam.geo.json");
+        return new ResourceLocation("gytrinket", "geo/drone_beam.geo.json");
     }
 
     @Override
     public ResourceLocation getAnimationResource(DroneBeamProjectile animatable) {
-        return ResourceLocation.fromNamespaceAndPath("gytrinket", "animations/drone_beam.animation.json");
+        return new ResourceLocation("gytrinket", "animations/drone_beam.animation.json");
     }
 
     @Override
     public ResourceLocation getTextureResource(DroneBeamProjectile animatable) {
-        return ResourceLocation.fromNamespaceAndPath("gytrinket", "textures/entity/drone_beam.png");
+        return new ResourceLocation("gytrinket", "textures/entity/drone_beam.png");
     }
 }
+

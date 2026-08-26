@@ -20,10 +20,6 @@ public class ExplosiveShieldFlashPacket {
         this.z = z;
     }
 
-    public ExplosiveShieldFlashPacket(net.minecraft.world.entity.Entity entity) {
-        this(entity.getX(), entity.getY() + entity.getBbHeight() / 2.0, entity.getZ());
-    }
-
     public ExplosiveShieldFlashPacket(FriendlyByteBuf buf) {
         this.x = buf.readDouble();
         this.y = buf.readDouble();
@@ -36,19 +32,12 @@ public class ExplosiveShieldFlashPacket {
         buf.writeDouble(z);
     }
 
-    public static void handle(ExplosiveShieldFlashPacket msg, Supplier<NetworkEvent.Context> ctx) {
-        NetworkEvent.Context context = ctx.get();
-
+    public void handle(Supplier<NetworkEvent.Context> contextSupplier) {
+        NetworkEvent.Context context = contextSupplier.get();
         context.enqueueWork(() -> {
-            DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> {
-                handleExplosiveShieldFlashOnClient(msg.x, msg.y, msg.z);
-            });
+            DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () ->
+                com.gy_mod.gy_trinket.client.network.ClientNetworkHandler.handleExplosiveShieldFlashMessage(x, y, z));
         });
-
         context.setPacketHandled(true);
-    }
-
-    private static void handleExplosiveShieldFlashOnClient(double x, double y, double z) {
-        com.gy_mod.gy_trinket.client.network.ClientNetworkHandler.handleExplosiveShieldFlashMessage(x, y, z);
     }
 }

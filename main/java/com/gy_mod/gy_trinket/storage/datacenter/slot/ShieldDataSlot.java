@@ -41,3 +41,4 @@ public class ShieldDataSlot implements IDataSlot<ShieldData> {
         return true;
     }
 }
+

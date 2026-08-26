@@ -49,3 +49,4 @@ public class ChargedAttackDamageTracker {
         PENDING_CHARGE_DAMAGE.clear();
     }
 }
+

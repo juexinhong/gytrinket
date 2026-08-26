@@ -28,7 +28,7 @@ import org.jetbrains.annotations.Nullable;
  * </ul>
  * <p>
  * 每个伤害类型都需要对应的JSON数据文件，位于：
- * {@code resources/data/gy_trinket/damage_type/}
+ * {@code resources/data/gytrinket/damage_type/}
  *
  * @see DamageSource
  */
@@ -41,52 +41,57 @@ public class ModDamageTypes {
 
     /** 护盾自伤 */
     public static final ResourceKey<DamageType> SHIELD_SELF_DAMAGE = ResourceKey.create(
-            Registries.DAMAGE_TYPE, ResourceLocation.fromNamespaceAndPath(NAMESPACE, "shield_self_damage")
+            Registries.DAMAGE_TYPE, new ResourceLocation(NAMESPACE, "shield_self_damage")
     );
 
     /** 玩家自伤 */
     public static final ResourceKey<DamageType> PLAYER_SELF_DAMAGE = ResourceKey.create(
-            Registries.DAMAGE_TYPE, ResourceLocation.fromNamespaceAndPath(NAMESPACE, "player_self_damage")
+            Registries.DAMAGE_TYPE, new ResourceLocation(NAMESPACE, "player_self_damage")
     );
 
     /** 最终伤害（用于绕过护盾等特殊处理的伤害） */
     public static final ResourceKey<DamageType> FINAL_DAMAGE = ResourceKey.create(
-            Registries.DAMAGE_TYPE, ResourceLocation.fromNamespaceAndPath(NAMESPACE, "final_damage")
+            Registries.DAMAGE_TYPE, new ResourceLocation(NAMESPACE, "final_damage")
     );
 
     /** 灼烧伤害 */
     public static final ResourceKey<DamageType> BURN_DAMAGE = ResourceKey.create(
-            Registries.DAMAGE_TYPE, ResourceLocation.fromNamespaceAndPath(NAMESPACE, "burn_damage")
+            Registries.DAMAGE_TYPE, new ResourceLocation(NAMESPACE, "burn_damage")
     );
 
     /** 点燃伤害 */
     public static final ResourceKey<DamageType> ON_FIRE_DAMAGE = ResourceKey.create(
-            Registries.DAMAGE_TYPE, ResourceLocation.fromNamespaceAndPath(NAMESPACE, "on_fire_damage")
+            Registries.DAMAGE_TYPE, new ResourceLocation(NAMESPACE, "on_fire_damage")
     );
 
     /** 瞬时伤害 */
     public static final ResourceKey<DamageType> INSTANT_DAMAGE = ResourceKey.create(
-            Registries.DAMAGE_TYPE, ResourceLocation.fromNamespaceAndPath(NAMESPACE, "instant_damage")
+            Registries.DAMAGE_TYPE, new ResourceLocation(NAMESPACE, "instant_damage")
     );
 
     /** 协议护盾自伤 */
     public static final ResourceKey<DamageType> PROTOCOL_SHIELD_SELF_DAMAGE = ResourceKey.create(
-            Registries.DAMAGE_TYPE, ResourceLocation.fromNamespaceAndPath(NAMESPACE, "protocol_shield_self_damage")
+            Registries.DAMAGE_TYPE, new ResourceLocation(NAMESPACE, "protocol_shield_self_damage")
     );
 
     /** 协议玩家自伤 */
     public static final ResourceKey<DamageType> PROTOCOL_PLAYER_SELF_DAMAGE = ResourceKey.create(
-            Registries.DAMAGE_TYPE, ResourceLocation.fromNamespaceAndPath(NAMESPACE, "protocol_player_self_damage")
+            Registries.DAMAGE_TYPE, new ResourceLocation(NAMESPACE, "protocol_player_self_damage")
     );
 
     /** 无人机子弹伤害 */
     public static final ResourceKey<DamageType> DRONE_BULLET = ResourceKey.create(
-            Registries.DAMAGE_TYPE, ResourceLocation.fromNamespaceAndPath(NAMESPACE, "drone_bullet")
+            Registries.DAMAGE_TYPE, new ResourceLocation(NAMESPACE, "drone_bullet")
     );
 
     /** 虹吸伤害 */
     public static final ResourceKey<DamageType> SIPHON_DAMAGE = ResourceKey.create(
-            Registries.DAMAGE_TYPE, ResourceLocation.fromNamespaceAndPath(NAMESPACE, "siphon_damage")
+            Registries.DAMAGE_TYPE, new ResourceLocation(NAMESPACE, "siphon_damage")
+    );
+
+    /** 构造体自伤（炉心融解模块） */
+    public static final ResourceKey<DamageType> CONSTRUCT_SELF_DAMAGE = ResourceKey.create(
+            Registries.DAMAGE_TYPE, new ResourceLocation(NAMESPACE, "construct_self_damage")
     );
 
     // ==================== 伤害来源创建方法 ====================
@@ -310,4 +315,14 @@ public class ModDamageTypes {
                 causingEntity
         );
     }
+
+    /**
+     * 创建构造体自伤伤害来源（炉心融解模块，无直接攻击者）
+     */
+    public static DamageSource getConstructSelfDamageSource(Level level) {
+        return new DamageSource(
+                level.registryAccess().registryOrThrow(Registries.DAMAGE_TYPE).getHolderOrThrow(CONSTRUCT_SELF_DAMAGE)
+        );
+    }
 }
+

@@ -24,6 +24,7 @@ public class DroneBulletRenderer extends EntityRenderer<DroneBullet> {
 
     @Override
     public ResourceLocation getTextureLocation(DroneBullet entity) {
-        return ResourceLocation.fromNamespaceAndPath("minecraft", "textures/entity/drone_bullet.png");
+        return new ResourceLocation("textures/entity/drone_bullet.png");
     }
 }
+

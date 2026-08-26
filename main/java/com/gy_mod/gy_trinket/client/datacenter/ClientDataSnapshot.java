@@ -21,10 +21,16 @@ public class ClientDataSnapshot {
     public void loadFromNBT(CompoundTag tag) {
         if (tag.contains("items")) {
             ListTag itemList = tag.getList("items", Tag.TAG_COMPOUND);
-            items = new ItemStack[itemList.size()];
+            items = new ItemStack[27];
+            for (int i = 0; i < 27; i++) {
+                items[i] = ItemStack.EMPTY;
+            }
             for (int i = 0; i < itemList.size(); i++) {
                 CompoundTag itemTag = itemList.getCompound(i);
-                items[i] = itemTag.isEmpty() ? ItemStack.EMPTY : ItemStack.of(itemTag);
+                int slot = itemTag.contains("Slot") ? itemTag.getByte("Slot") : i;
+                if (slot >= 0 && slot < 27) {
+                    items[slot] = ItemStack.of(itemTag);
+                }
             }
         }
 
@@ -83,6 +89,15 @@ public class ClientDataSnapshot {
         return items != null ? items.length : 0;
     }
 
+    /** 光点核心是否已满（所有槽位都有物品，未加载数据时视为未满） */
+    public boolean isCoreFull() {
+        if (items == null || items.length == 0) return false;
+        for (ItemStack stack : items) {
+            if (stack == null || stack.isEmpty()) return false;
+        }
+        return true;
+    }
+
     public double getCurrentShield() {
         return currentShield;
     }
@@ -111,3 +126,4 @@ public class ClientDataSnapshot {
         keyAttributes.clear();
     }
 }
+

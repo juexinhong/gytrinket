@@ -1,5 +1,6 @@
 package com.gy_mod.gy_trinket.core.entity.construct;
 
+import com.gy_mod.gy_trinket.core.entity.construct.drone.ModDamageSources;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.behavior.SelfDestructBehavior;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.behavior.TargetMemory;
 import net.minecraft.core.particles.ParticleTypes;
@@ -37,33 +38,73 @@ import java.util.function.Predicate;
 /**
  * 构造体实体抽象基类
  * <p>
- * 提取无人机构造体、僚机构造体的公共逻辑。
+ * 提取无人机构造体、僚机构造体、蜂群构造体的公共逻辑：
+ * <ul>
+ *   <li>归属者 UUID 管理（字段 + 同步数据 + getOwner）</li>
+ *   <li>攻击冷却计数</li>
+ *   <li>基础属性字段（maxHealth / attackDamage / attackSpeedMultiplier）</li>
+ *   <li>朝向插值控制（facePositionWithInterpolation 等）</li>
+ *   <li>友方构造体判定（isOwnConstruct）</li>
+ *   <li>飞行粒子（addFlightParticles）</li>
+ *   <li>归属者攻击穿透（hurt）</li>
+ *   <li>死亡清理（die + removeFromConstructManager 模板方法）</li>
+ *   <li>管理器注册检查（checkManagerRegistration 模板方法）</li>
+ *   <li>NBT 公共字段序列化（owner + health_ratio + 钩子）</li>
+ *   <li>属性刷新（refreshConstructAttributes 模板方法）</li>
+ *   <li>GeckoLib 动画缓存</li>
+ * </ul>
+ * <p>
  * 子类需实现：
- * - getConstructTypeId() - 返回构造体类型 ID
- * - createConstructDataForRegistration(ServerPlayer) - 创建注册用的构造体数据
- * - applyConstructAttributes(UUID, Map) - 调用类型特定的属性应用方法
+ * <ul>
+ *   <li>{@link #getConstructTypeId()} - 返回构造体类型 ID</li>
+ *   <li>{@link #createConstructDataForRegistration(ServerPlayer)} - 创建注册用的构造体数据</li>
+ *   <li>{@link #applyConstructAttributes(UUID, Map)} - 调用类型特定的属性应用方法</li>
+ * </ul>
  */
-public abstract class AbstractConstructEntity extends PathfinderMob implements GeoEntity, IConstructEntity {
+public abstract class AbstractConstructEntity extends PathfinderMob implements GeoEntity, IConstructEntity, net.minecraft.world.entity.OwnableEntity {
 
-    private final AnimatableInstanceCache animatableInstanceCache = GeckoLibUtil.createInstanceCache(this);
-
-    // 归属者UUID客户端同步
     private static final EntityDataAccessor<Optional<UUID>> DATA_OWNER_UUID =
             SynchedEntityData.defineId(AbstractConstructEntity.class, EntityDataSerializers.OPTIONAL_UUID);
 
+    private final AnimatableInstanceCache animatableInstanceCache = GeckoLibUtil.createInstanceCache(this);
+
+    /** 归属者玩家 UUID */
     @Nullable
     protected UUID ownerUUID;
 
+    /** 攻击冷却（tick） */
     protected int attackCooldown = 0;
 
+    /** 基础最大生命值（不含属性修饰器） */
     protected double baseMaxHealth;
+
+    /** 基础攻击伤害（不含属性修饰器） */
     protected double baseAttackDamage;
+
+    /** 攻速倍率（来自 construct_attack_speed 属性），默认 1.0 */
     protected double attackSpeedMultiplier = 1.0;
+
+    /** 武器攻速倍率（仅影响武器攻击，不影响爆破弹攻速），默认 1.0 */
     protected double weaponAttackSpeedMultiplier = 1.0;
 
-    // 索敌通用参数与状态
+    /** 移动速度倍率（来自 construct_move_speed 属性），默认 1.0 */
+    protected double moveSpeedMultiplier = 1.0;
+
+    /** 环绕/阵列转速倍率（来自 construct_orbit_speed 属性），默认 1.0 */
+    protected double orbitSpeedMultiplier = 1.0;
+
+    /** 自转/朝向旋转速度倍率（来自 construct_rotation_speed 属性），默认 1.0 */
+    protected double rotationSpeedMultiplier = 1.0;
+
+    /** 低血量攻速独立乘区倍率（炉心融解模块），默认 1.0 */
+    protected double lowHpAttackSpeedMultiplier = 1.0;
+
+    // ===== 索敌通用参数与状态 =====
+    /** 玩家最大索敌距离限制：不可选择玩家此范围外的敌人 */
     protected static final float PLAYER_MAX_TARGET_RANGE = 35.0f;
+    /** 目标记忆持续时间（tick），3秒=60tick */
     protected static final long TARGET_MEMORY_DURATION = 60L;
+    /** 目标记忆表：实体UUID -> 记忆条目，避免视野内无目标时立即丢失追击 */
     protected final Map<UUID, TargetMemory> targetMemoryMap = new HashMap<>();
 
     protected AbstractConstructEntity(EntityType<? extends PathfinderMob> type, Level level) {
@@ -76,10 +117,10 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
     @Override
     protected void defineSynchedData() {
         super.defineSynchedData();
-        entityData.define(DATA_OWNER_UUID, Optional.empty());
+        this.entityData.define(DATA_OWNER_UUID, Optional.empty());
     }
 
-    // 归属者管理
+    // ===== 归属者管理 =====
 
     @Nullable
     @Override
@@ -92,17 +133,20 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
 
     public void setOwnerUUID(@Nullable UUID uuid) {
         this.ownerUUID = uuid;
-        entityData.set(DATA_OWNER_UUID, Optional.ofNullable(uuid));
+        this.entityData.set(DATA_OWNER_UUID, Optional.ofNullable(uuid));
     }
 
+    @Override
     @Nullable
-    public Entity getOwner() {
+    public LivingEntity getOwner() {
         UUID uuid = this.getOwnerUUID();
         if (uuid == null) return null;
-        return this.level().getPlayerByUUID(uuid);
+        // 仅按 UUID 查 Player，构造体归属者必为玩家
+        Player player = this.level().getPlayerByUUID(uuid);
+        return player != null ? (LivingEntity) player : null;
     }
 
-    // 攻击冷却
+    // ===== 攻击冷却 =====
 
     public int getAttackCooldown() {
         return this.attackCooldown;
@@ -120,17 +164,19 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
         }
     }
 
-    // 碰撞规则
+    // ===== 碰撞规则 =====
 
+    /**
+     * 构造体不阻挡玩家射线追踪，使玩家可以穿过构造体交互方块/攻击实体。
+     * 弹射物仍可命中构造体（canBeHitByProjectile=true），玩家弹射物穿透由 ConstructPenetrationHandler 处理。
+     */
     @Override
     public boolean isPickable() {
-        // 构造体不阻挡玩家射线追踪，使玩家可以穿过构造体交互方块/实体/攻击
         return false;
     }
 
     @Override
     public boolean canBeHitByProjectile() {
-        // 弹射物仍可命中构造体（敌人箭矢等），玩家弹射物穿透由 ConstructPenetrationHandler 处理
         return true;
     }
 
@@ -139,7 +185,7 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
         return false;
     }
 
-    // 基础属性
+    // ===== 基础属性 =====
 
     @Override
     public double getBaseMaxHealth() {
@@ -161,23 +207,71 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
 
     @Override
     public double getAttackSpeedMultiplier() {
-        return attackSpeedMultiplier;
+        return attackSpeedMultiplier * lowHpAttackSpeedMultiplier;
     }
 
+    @Override
     public void setAttackSpeedMultiplier(double multiplier) {
         this.attackSpeedMultiplier = multiplier;
     }
 
+    @Override
     public double getWeaponAttackSpeedMultiplier() {
         return weaponAttackSpeedMultiplier;
     }
 
+    @Override
     public void setWeaponAttackSpeedMultiplier(double multiplier) {
         this.weaponAttackSpeedMultiplier = multiplier;
     }
 
-    // 朝向控制
+    @Override
+    public double getMoveSpeedMultiplier() {
+        return moveSpeedMultiplier;
+    }
 
+    @Override
+    public void setMoveSpeedMultiplier(double multiplier) {
+        this.moveSpeedMultiplier = multiplier;
+    }
+
+    @Override
+    public double getOrbitSpeedMultiplier() {
+        return orbitSpeedMultiplier;
+    }
+
+    @Override
+    public void setOrbitSpeedMultiplier(double multiplier) {
+        this.orbitSpeedMultiplier = multiplier;
+    }
+
+    @Override
+    public double getRotationSpeedMultiplier() {
+        return rotationSpeedMultiplier;
+    }
+
+    @Override
+    public void setRotationSpeedMultiplier(double multiplier) {
+        this.rotationSpeedMultiplier = multiplier;
+    }
+
+    /** 设置低血量攻速独立乘区倍率（炉心融解模块） */
+    @Override
+    public void setLowHpAttackSpeedMultiplier(double multiplier) {
+        this.lowHpAttackSpeedMultiplier = multiplier;
+    }
+
+    /** 获取低血量攻速独立乘区倍率（炉心融解模块） */
+    @Override
+    public double getLowHpAttackSpeedMultiplier() {
+        return lowHpAttackSpeedMultiplier;
+    }
+
+    // ===== 朝向控制 =====
+
+    /**
+     * 使用插值朝向指定位置（偏航角每刻最多转动 rotationSpeed 度，俯仰角立即调整）
+     */
     public void facePositionWithInterpolation(Vec3 targetPos, float rotationSpeed) {
         Vec3 pos = this.position();
 
@@ -195,7 +289,9 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
         while (deltaYaw > 180.0f) deltaYaw -= 360.0f;
         while (deltaYaw < -180.0f) deltaYaw += 360.0f;
 
-        float yawStep = Math.min(Math.abs(deltaYaw), rotationSpeed);
+        // 自转速度受 rotationSpeedMultiplier 影响（炉心融解等模块）
+        float effectiveSpeed = rotationSpeed * (float) getRotationSpeedMultiplier();
+        float yawStep = Math.min(Math.abs(deltaYaw), effectiveSpeed);
         if (deltaYaw < 0) yawStep = -yawStep;
         float newYaw = currentYaw + yawStep;
 
@@ -206,10 +302,16 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
         this.yHeadRot = newYaw;
     }
 
+    /**
+     * 使用固定插值朝向目标实体（偏航角每刻最多转动20度）
+     */
     public void faceTargetWithInterpolation(LivingEntity target) {
         facePositionWithInterpolation(target.position().add(0, target.getEyeHeight() * 0.5, 0), 20.0f);
     }
 
+    /**
+     * 朝向玩家的朝向方向（用于追击阵列无目标时）
+     */
     public void faceOwnerDirection(LivingEntity owner) {
         float ownerYaw = owner.getYRot();
         float currentYaw = this.getYRot();
@@ -230,8 +332,11 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
         this.yHeadRot = newYaw;
     }
 
-    // 友方构造体判定
+    // ===== 友方构造体判定 =====
 
+    /**
+     * 判断实体是否为归属玩家的构造体（基于 IConstructEntity 接口统一判断，避免友伤）
+     */
     protected boolean isOwnConstruct(LivingEntity entity, UUID ownerUUID) {
         if (entity instanceof IConstructEntity constructEntity) {
             UUID entOwner = constructEntity.getOwnerUUID();
@@ -240,8 +345,20 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
         return false;
     }
 
-    // 索敌模板方法
+    // ===== 索敌模板方法 =====
 
+    /**
+     * 通用索敌流程：在自身周围 searchRange 内查找合法目标，命中则更新目标记忆；
+     * 未命中时尝试沿用未过期的记忆目标（仍需满足玩家距离限制）。
+     * <p>
+     * 子类提供 {@param isValidTarget} 谓词实现类型特定的过滤规则
+     * （如排除傀儡、玩家保护实体、玩家自己的构造体等）。
+     *
+     * @param owner         归属者
+     * @param searchRange   搜索半径（格）
+     * @param isValidTarget 目标合法性谓词
+     * @return 选定的攻击目标，无则 null
+     */
     protected LivingEntity findTarget(LivingEntity owner, float searchRange,
                                       Predicate<LivingEntity> isValidTarget) {
         Level level = this.level();
@@ -286,7 +403,7 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
         return null;
     }
 
-    // 飞行粒子
+    // ===== 飞行粒子 =====
 
     protected void addFlightParticles() {
         Vec3 pos = this.position();
@@ -305,18 +422,19 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
              0.0, 0.0, 0.0);
     }
 
-    // 伤害和死亡
+    // ===== 伤害和死亡 =====
 
+    /**
+     * 近战攻击：使用守卫阵列仇恨集中机制决定伤害归属，并施加击退。
+     */
     @Override
     public boolean doHurtTarget(net.minecraft.world.entity.Entity target) {
-        // 近战攻击使用守卫阵列仇恨集中机制决定伤害归属
         if (target instanceof LivingEntity livingTarget) {
             float damage = (float) this.getAttributeValue(Attributes.ATTACK_DAMAGE);
             net.minecraft.world.damagesource.DamageSource damageSource =
-                    com.gy_mod.gy_trinket.core.entity.construct.drone.ModDamageSources.mobAttackWithGuardAggro(this, livingTarget);
+                    ModDamageSources.mobAttackWithGuardAggro(this, livingTarget);
             boolean hit = livingTarget.hurt(damageSource, damage);
             if (hit) {
-                // 原版 doHurtTarget 的后处理：击退和耐久消耗
                 livingTarget.setLastHurtByMob(this);
                 // 击退
                 livingTarget.knockback(0.4F,
@@ -328,6 +446,11 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
         return super.doHurtTarget(target);
     }
 
+    /**
+     * 归属者攻击穿透自身构造体（不阻挡），其他伤害正常结算。
+     * 免疫窒息、挤压与溺水伤害，60%爆炸伤害减免。
+     * 子类可重写以添加额外逻辑（如无人机的特殊行为触发），但应调用 super.hurt。
+     */
     @Override
     public boolean hurt(DamageSource source, float amount) {
         // 免疫窒息伤害（卡在方块里）
@@ -336,6 +459,10 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
         }
         // 免疫挤压伤害（实体过多导致的伤害）
         if ("cramming".equals(source.getMsgId())) {
+            return false;
+        }
+        // 免疫溺水伤害
+        if ("drown".equals(source.getMsgId())) {
             return false;
         }
         // 60%爆炸伤害减免
@@ -351,6 +478,10 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
         return super.hurt(source, amount);
     }
 
+    /**
+     * 死亡时清理构造体管理器注册。
+     * 子类可重写以添加额外逻辑（如无人机的特殊行为触发），但应调用 super.die。
+     */
     @Override
     public void die(DamageSource source) {
         triggerSelfDestructIfAvailable();
@@ -360,12 +491,12 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
 
     /**
      * 自毁装置：当构造体死亡时触发爆炸。
-     * 爆炸基础伤害为1，基础半径为1。每点最大生命值增加1点爆炸伤害和0.3格爆炸半径。
-     * 仅当玩家光点核心中拥有自毁装置物品时触发。
+     * 爆炸基础伤害为0，基础半径为0。每点最大生命值增加1点爆炸伤害和0.3格爆炸半径。
+     * 仅当玩家光点核心中携有自毁装置物品时触发。
      * <p>
-     * 子类若需在死亡时进行免疫判定（如宽限协议/最终指令），
-     * 应在覆写 die() 时优先检查免疫条件，若免疫则提前返回，
-     * 不调用 super.die()，从而阻止自毁装置触发。
+     * 子类需在死亡时进行额外判定（如宽限协作/最终指令），
+     * 应在重写 die() 时先调用此方法，若返回则提前返回；
+     * 之后再调用 super.die()，从而阻止自毁触发。
      */
     protected void triggerSelfDestructIfAvailable() {
         if (SelfDestructBehavior.hasRequiredItems(this)) {
@@ -373,6 +504,10 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
         }
     }
 
+    /**
+     * 从构造体管理器中移除本实体。
+     * 子类可通过重写 {@link #onRemoveFromConstructManager()} 添加类型特定的清理逻辑。
+     */
     protected void removeFromConstructManager() {
         if (this.ownerUUID != null && !this.level().isClientSide) {
             ConstructManager manager = ConstructManager.getInstance();
@@ -383,10 +518,16 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
         }
     }
 
+    /** 死亡/移除时的类型特定清理钩子 */
     protected void onRemoveFromConstructManager() {}
 
-    // 管理器注册检查
+    // ===== 管理器注册检查 =====
 
+    /**
+     * 定期检查实体是否已在构造体管理器中注册。
+     * 若既不在活跃实体表也不在玩家构造体表中，则移除实体。
+     * 若仅缺失一方，则补全注册。
+     */
     protected void checkManagerRegistration() {
         UUID ownerUUID = this.getOwnerUUID();
         if (ownerUUID == null) {
@@ -442,7 +583,7 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
         }
     }
 
-    // NBT 序列化
+    // ===== NBT 序列化 =====
 
     @Override
     public void addAdditionalSaveData(CompoundTag tag) {
@@ -451,6 +592,7 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
             tag.putUUID("owner", this.ownerUUID);
         }
         addTypeSpecificSaveData(tag);
+        // 保存生命值比例，避免读取时因 maxHealth 未应用修饰符导致 health 被截断
         float maxH = this.getMaxHealth();
         tag.putFloat("health_ratio", maxH > 0 ? this.getHealth() / maxH : 1.0f);
     }
@@ -460,27 +602,31 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
         super.readAdditionalSaveData(tag);
         if (tag.hasUUID("owner")) {
             this.ownerUUID = tag.getUUID("owner");
-            entityData.set(DATA_OWNER_UUID, Optional.of(this.ownerUUID));
+            this.entityData.set(DATA_OWNER_UUID, Optional.of(this.ownerUUID));
         }
         readTypeSpecificSaveData(tag);
         applyAttributeModifiers();
         onAttributesApplied();
 
+        // 属性修饰符应用后，用保存的生命值比例恢复当前生命值
+        // super.readAdditionalSaveData 中 setHealth 会被 maxHealth（此时仅基础值）截断，此处用正确比例覆盖
         if (tag.contains("health_ratio")) {
             float healthRatio = tag.getFloat("health_ratio");
             this.setHealth(this.getMaxHealth() * healthRatio);
         }
     }
 
+    /** 子类保存类型特定字段到 NBT 的钩子 */
     protected void addTypeSpecificSaveData(CompoundTag tag) {}
 
+    /** 子类从 NBT 读取类型特定字段的钩子 */
     protected void readTypeSpecificSaveData(CompoundTag tag) {}
 
+    /** 属性修饰器应用完毕后的钩子（如无人机更新效果数据和刷新尺寸） */
     protected void onAttributesApplied() {}
 
-    // 属性应用
+    // ===== 属性应用 =====
 
-    @Override
     /**
      * 刷新构造体属性：构造体主动获取自身对应的属性。
      * <p>
@@ -492,10 +638,15 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
      * </ol>
      * 通过 {@link ConstructAttributeApplier#fetchAttributesForConstruct} 从属性缓存或实时计算获取属性。
      */
+    @Override
     public void refreshConstructAttributes() {
         ConstructAttributeApplier.fetchAttributesForConstruct(this, this);
     }
 
+    /**
+     * 应用属性修饰器：设置基础生命值并刷新构造体属性。
+     * 子类可重写以添加额外逻辑（如蜂群的等阶倍率）。
+     */
     protected void applyAttributeModifiers() {
         if (this.getAttribute(Attributes.MAX_HEALTH) != null) {
             this.getAttribute(Attributes.MAX_HEALTH).setBaseValue(baseMaxHealth);
@@ -503,26 +654,32 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
         refreshConstructAttributes();
     }
 
+    /** 调用类型特定的属性应用方法（applyAttributesToDrone/Wingman/Swarm） */
     protected abstract void applyConstructAttributes(UUID playerUUID, Map<String, Double> attributes);
 
-    // 抽象方法
+    // ===== 抽象方法 =====
 
+    /** 返回构造体类型 ID（如 "drone"/"wingman"/"swarm"） */
+    @Override
     public abstract String getConstructTypeId();
 
+    /**
+     * 获取实例标签（用于属性目标匹配，如突击/防御/指挥官等）。
+     * 子类可覆写以添加实例特有标签。
+     */
     @Override
     public Set<String> getInstanceTags() {
-        Set<String> tags = new java.util.HashSet<>();
-        // 子类可覆写以添加实例特有标签（如突击/防御/指挥官）
-        return tags;
+        return new java.util.HashSet<>();
     }
 
+    /** 创建注册到构造体管理器用的数据对象（不含 healthRatio，由基类设置） */
     protected abstract ConstructData createConstructDataForRegistration(ServerPlayer ownerPlayer);
 
     /**
-     * 从当前实体状态创建数据快照，用于待机备份或玩家退出保存。
+     * 从当前实体状态创建数据快照，用于待机保存或玩家退出保存。
      * <p>
      * 基类填充通用字段（healthRatio, position, dimension, active），
-     * 子类覆盖 {@link #populateTypeSpecificData(ConstructData)} 填充类型特有字段。
+     * 子类覆写 {@link #populateTypeSpecificData(ConstructData)} 填充类型特有字段。
      *
      * @return 包含当前实体状态的 ConstructData 快照
      */
@@ -546,16 +703,16 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
     }
 
     /**
-     * 子类覆盖此方法以填充类型特有的数据字段。
+     * 子类覆写此方法以填充类型特有的数据字段。
      * 默认实现为空。
      *
-     * @param data 要填充的构造体数据
+     * @param data 待填充的构造体数据
      */
     protected void populateTypeSpecificData(ConstructData data) {
         // 默认无类型特有字段
     }
 
-    // GeckoLib
+    // ===== GeckoLib =====
 
     @Override
     public AnimatableInstanceCache getAnimatableInstanceCache() {
@@ -566,3 +723,4 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
     public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
     }
 }
+

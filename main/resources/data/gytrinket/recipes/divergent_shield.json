@@ -1,4 +1,4 @@
-﻿{
+{
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "pattern": [
@@ -15,7 +15,7 @@
     }
   },
   "result": {
-    "item": "gytrinket:divergent_shield",
+    "id": "gytrinket:divergent_shield",
     "count": 1
   }
 }

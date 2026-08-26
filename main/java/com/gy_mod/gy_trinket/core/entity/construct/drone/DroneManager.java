@@ -1,18 +1,18 @@
 package com.gy_mod.gy_trinket.core.entity.construct.drone;
 
 import com.gy_mod.gy_trinket.config.Config;
-import com.gy_mod.gy_trinket.core.shield.DisableSystem;
-import com.gy_mod.gy_trinket.event.PlayerAttributesCalculatedEvent;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructBuilder;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructManager;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructType;
-import com.gy_mod.gy_trinket.storage.PlayerStore;
-import com.gy_mod.gy_trinket.storage.PlayerStoreManager;
+import com.gy_mod.gy_trinket.core.shield.DisableSystem;
+import com.gy_mod.gy_trinket.event.PlayerAttributesCalculatedEvent;
+import com.gy_mod.gy_trinket.storage.PlayerStoreUtils;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.server.ServerLifecycleHooks;
 
 import java.util.HashSet;
 import java.util.Map;
@@ -59,7 +59,7 @@ public class DroneManager {
      * @return 对应的 DroneConstruct，如果没有找到返回 null
      */
     public DroneConstruct getConstructByEntityUUID(UUID entityUUID) {
-        net.minecraft.server.MinecraftServer server = net.minecraftforge.server.ServerLifecycleHooks.getCurrentServer();
+        net.minecraft.server.MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
         if (server == null) {
             return null;
         }
@@ -141,35 +141,27 @@ public class DroneManager {
     public static void onAttributesCalculated(PlayerAttributesCalculatedEvent event) {
         UUID playerUUID = event.getPlayerUUID();
 
-        PlayerStore store = PlayerStoreManager.getPlayerStore(playerUUID);
-        if (store == null) {
-            clearPlayerCache(playerUUID);
-            return;
-        }
-
         boolean hasDroneModule = false;
         boolean hasAssaultModule = false;
         boolean hasDefenseModule = false;
         boolean hasCommanderModule = false;
 
-        for (int i = 0; i < store.getItemHandler().getSlots(); i++) {
-            ItemStack stack = store.getItemHandler().getStackInSlot(i);
-            if (!stack.isEmpty()) {
-                if (DisableSystem.isItemDisabled(playerUUID, stack)) continue;
-                var item = stack.getItem();
+        // 已装备物品 = 光点核心存储 + Curios 饰品栏（光点核心内容扩展）
+        for (ItemStack stack : PlayerStoreUtils.getEquippedStacks(playerUUID)) {
+            if (DisableSystem.isItemDisabled(playerUUID, stack)) continue;
+            var item = stack.getItem();
 
-                if (Config.isDroneModuleItem(item)) {
-                    hasDroneModule = true;
-                }
-                if (Config.isAssaultDroneModuleItem(item)) {
-                    hasAssaultModule = true;
-                }
-                if (Config.isDefenseDroneModuleItem(item)) {
-                    hasDefenseModule = true;
-                }
-                if (Config.isCommanderItem(item)) {
-                    hasCommanderModule = true;
-                }
+            if (Config.isDroneModuleItem(item)) {
+                hasDroneModule = true;
+            }
+            if (Config.isAssaultDroneModuleItem(item)) {
+                hasAssaultModule = true;
+            }
+            if (Config.isDefenseDroneModuleItem(item)) {
+                hasDefenseModule = true;
+            }
+            if (Config.isCommanderItem(item)) {
+                hasCommanderModule = true;
             }
         }
 
@@ -236,7 +228,7 @@ public class DroneManager {
         Map<UUID, net.minecraft.world.entity.Entity> activeEntities =
             ConstructManager.getInstance().getActiveConstructEntities(player.getUUID(), DroneConstructTypes.DRONE);
 
-        net.minecraft.server.MinecraftServer server = net.minecraftforge.server.ServerLifecycleHooks.getCurrentServer();
+        net.minecraft.server.MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
 
         if (constructDataList != null && !constructDataList.isEmpty() && server != null) {
             for (com.gy_mod.gy_trinket.core.entity.construct.ConstructData data : constructDataList) {

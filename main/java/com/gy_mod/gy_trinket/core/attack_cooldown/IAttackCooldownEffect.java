@@ -15,7 +15,7 @@ import java.util.UUID;
  * public class MyEffect implements IAttackCooldownEffect {
  *     @Override
  *     public String getName() { return "my_effect"; }
- *     
+ *
  *     @Override
  *     public void applyEffect(AttackCooldownContext context) {
  *         // 在攻击冷却期间应用效果
@@ -87,3 +87,4 @@ public interface IAttackCooldownEffect {
      */
     default void onAttackCompleted(UUID playerUUID) {}
 }
+

@@ -149,6 +149,14 @@ public class AuraShieldType implements IShieldType {
 
         AURA_DAMAGING.put(player.getUUID(), hasEnemies);
 
+        // 同步auraDamaging到客户端：光环渲染贴图透明度由客户端damaging状态驱动，
+        // 若不同步，客户端10刻确认超时后会将damaging置false，导致纯光环攻击时贴图不显示。
+        // 光环触发频率默认5刻（< 客户端超时10刻），每次触发同步即可保持贴图可见。
+        if (player instanceof ServerPlayer serverPlayer) {
+            NetworkHandler.sendShieldSyncToPlayer(serverPlayer,
+                ShieldManager.getCurrentShield(uuid), ShieldManager.getMaxShield(uuid));
+        }
+
         IBurnSource burnSource = new AuraBurnSource(player);
         for (Map.Entry<LivingEntity, Float> entry : burnChargeMap.entrySet()) {
             BurnManager.applyBurnCharge(entry.getKey(), entry.getValue(), burnSource);

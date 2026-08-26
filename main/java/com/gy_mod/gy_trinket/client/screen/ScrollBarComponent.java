@@ -90,3 +90,4 @@ public class ScrollBarComponent {
         return isDragging;
     }
 }
+

@@ -66,3 +66,4 @@ public class AdaptiveArmorLastDamageHandler implements LastDamageHandler {
         return PRIORITY;
     }
 }
+

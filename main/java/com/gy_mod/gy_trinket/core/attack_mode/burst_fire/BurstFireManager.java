@@ -1,6 +1,7 @@
 package com.gy_mod.gy_trinket.core.attack_mode.burst_fire;
 
 import com.gy_mod.gy_trinket.core.attack_mode.AttackModeManager;
+import com.gy_mod.gy_trinket.core.attack_mode.PlayerAttackLockManager;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
 import com.gy_mod.gy_trinket.gytrinket;
 import com.gy_mod.gy_trinket.network.NetworkHandler;
@@ -84,6 +85,11 @@ public class BurstFireManager {
         }
 
         UUID playerUUID = player.getUUID();
+
+        // 攻击锁定时禁用点射
+        if (PlayerAttackLockManager.isLocked(playerUUID)) {
+            return;
+        }
 
         // 检查玩家是否处于连击冷却状态
         if (isInComboCooldown(playerUUID)) {
@@ -305,6 +311,11 @@ public class BurstFireManager {
     public static void startBurstFromAssault(ServerPlayer player, LivingEntity target) {
         UUID playerUUID = player.getUUID();
 
+        // 攻击锁定时禁用点射
+        if (PlayerAttackLockManager.isLocked(playerUUID)) {
+            return;
+        }
+
         // 如果已在点射中或冷却中，不重复触发
         if (IS_AUTO_ATTACKING.getOrDefault(playerUUID, false) || isInComboCooldown(playerUUID)) {
             return;
@@ -332,10 +343,13 @@ public class BurstFireManager {
     }
 
     /**
-     * 清理玩家所有状态（不再拥有combo属性时调用）
+     * 清理玩家所有状态
      */
     private static void cleanupPlayerState(UUID playerUUID) {
-        cancelBurstFire(playerUUID);
+        CURRENT_TARGETS.remove(playerUUID);
+        REMAINING_COMBO.remove(playerUUID);
+        IS_AUTO_ATTACKING.remove(playerUUID);
+        AUTO_ATTACK_DELAY.remove(playerUUID);
     }
 
     /**
@@ -371,7 +385,13 @@ public class BurstFireManager {
         if (!(event.getEntity() instanceof ServerPlayer player)) {
             return;
         }
-        cancelBurstFire(player.getUUID());
+
+        UUID playerUUID = player.getUUID();
+        CURRENT_TARGETS.remove(playerUUID);
+        REMAINING_COMBO.remove(playerUUID);
+        IS_AUTO_ATTACKING.remove(playerUUID);
+        AUTO_ATTACK_DELAY.remove(playerUUID);
+        COMBO_COOLDOWN.remove(playerUUID);
     }
 
     /**
@@ -382,7 +402,13 @@ public class BurstFireManager {
         if (!(event.getEntity() instanceof ServerPlayer player)) {
             return;
         }
-        cancelBurstFire(player.getUUID());
+
+        UUID playerUUID = player.getUUID();
+        CURRENT_TARGETS.remove(playerUUID);
+        REMAINING_COMBO.remove(playerUUID);
+        IS_AUTO_ATTACKING.remove(playerUUID);
+        AUTO_ATTACK_DELAY.remove(playerUUID);
+        COMBO_COOLDOWN.remove(playerUUID);
     }
 
     /**

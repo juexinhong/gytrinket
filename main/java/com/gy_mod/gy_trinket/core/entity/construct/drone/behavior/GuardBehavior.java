@@ -36,8 +36,10 @@ public class GuardBehavior implements IDroneBehavior {
     private static final double FAST_VERTICAL_THRESHOLD = 1.5;
     private static final double SPEED_BOOST_DISTANCE = 3.0;
     private static final double SPEED_BOOST_PER_BLOCK = 0.2;
-    // 防御无人机传送移动：每tick最大移动距离（模拟平滑移动，防止跨越大距离）
-    private static final double DEFENSE_MAX_TELEPORT_PER_TICK = 1.0;
+    // 阵列整体旋转角速度限制：每tick最大2度
+    private static final double MAX_ANGULAR_VELOCITY_PER_TICK = Math.toRadians(2.0);
+    // 丢失距离：超出40格自毁
+    private static final double LOST_DISTANCE = 40.0;
 
     private static Field ARROW_IN_GROUND_FIELD;
 
@@ -60,16 +62,7 @@ public class GuardBehavior implements IDroneBehavior {
             return speedSquared < 0.01;
         }
         try {
-            Class<?> fieldType = ARROW_IN_GROUND_FIELD.getType();
-            if (fieldType == boolean.class) {
-                return ARROW_IN_GROUND_FIELD.getBoolean(arrow);
-            } else if (fieldType == int.class) {
-                return ARROW_IN_GROUND_FIELD.getInt(arrow) != 0;
-            } else {
-                Vec3 velocity = arrow.getDeltaMovement();
-                double speedSquared = velocity.x * velocity.x + velocity.y * velocity.y + velocity.z * velocity.z;
-                return speedSquared < 0.01;
-            }
+            return ARROW_IN_GROUND_FIELD.getBoolean(arrow);
         } catch (IllegalAccessException e) {
             Vec3 velocity = arrow.getDeltaMovement();
             double speedSquared = velocity.x * velocity.x + velocity.y * velocity.y + velocity.z * velocity.z;
@@ -159,22 +152,21 @@ public class GuardBehavior implements IDroneBehavior {
 
         droneEntity.getNavigation().stop();
 
+        // 检查与玩家距离，超出40格视为丢失，移除无人机
+        if (drone.distanceTo(owner) > LOST_DISTANCE) {
+            UUID ownerUUID = owner.getUUID();
+            String constructId = droneEntity.getConstructTypeId();
+            UUID entityUUID = droneEntity.getUUID();
+            droneEntity.remove(Entity.RemovalReason.DISCARDED);
+            ConstructManager manager = ConstructManager.getInstance();
+            manager.unregisterConstructEntity(ownerUUID, constructId, entityUUID);
+            manager.removeConstruct(ownerUUID, entityUUID);
+            return Vec3.ZERO;
+        }
+
         if (isDefenseDrone) {
-            // 防御无人机：noPhysics=false，使用传送移动（可穿方块但需限制每tick距离）
-            double newX = drone.getX() + motionX;
-            double newY = drone.getY() + motionY;
-            double newZ = drone.getZ() + motionZ;
-
-            // 限制每tick最大移动距离，模拟平滑移动
-            double totalDist = Math.sqrt(motionX * motionX + motionY * motionY + motionZ * motionZ);
-            if (totalDist > DEFENSE_MAX_TELEPORT_PER_TICK) {
-                double scale = DEFENSE_MAX_TELEPORT_PER_TICK / totalDist;
-                newX = drone.getX() + motionX * scale;
-                newY = drone.getY() + motionY * scale;
-                newZ = drone.getZ() + motionZ * scale;
-            }
-
-            droneEntity.setPos(newX, newY, newZ);
+            // 防御无人机：直接传送到目标位置，无距离限制
+            droneEntity.setPos(targetX, targetY, targetZ);
             droneEntity.setDeltaMovement(0, 0, 0);
         } else {
             droneEntity.setDeltaMovement(motionX, motionY, motionZ);
@@ -194,9 +186,23 @@ public class GuardBehavior implements IDroneBehavior {
             Vec3 threatPos = nearestThreat.get();
             Vec3 ownerPos2D = new Vec3(owner.getX(), 0, owner.getZ());
             Vec3 playerToThreat = threatPos.subtract(ownerPos2D).normalize();
-            double angle = Math.atan2(playerToThreat.z, playerToThreat.x);
-            playerTargetAngles.put(ownerUUID, angle);
-            return angle;
+            double desiredAngle = Math.atan2(playerToThreat.z, playerToThreat.x);
+
+            double currentAngle = playerTargetAngles.getOrDefault(ownerUUID, desiredAngle);
+
+            // 计算角度差，归一化到[-PI, PI]
+            double diff = desiredAngle - currentAngle;
+            while (diff > Math.PI) diff -= 2 * Math.PI;
+            while (diff < -Math.PI) diff += 2 * Math.PI;
+
+            // 限制角速度：每tick最大6度
+            if (Math.abs(diff) > MAX_ANGULAR_VELOCITY_PER_TICK) {
+                diff = Math.signum(diff) * MAX_ANGULAR_VELOCITY_PER_TICK;
+            }
+
+            double newAngle = currentAngle + diff;
+            playerTargetAngles.put(ownerUUID, newAngle);
+            return newAngle;
         }
 
         return playerTargetAngles.getOrDefault(ownerUUID, 0.0);
@@ -205,37 +211,13 @@ public class GuardBehavior implements IDroneBehavior {
     private Optional<Vec3> findNearestThreat(DroneConstructEntity drone, LivingEntity owner) {
         if (!(owner instanceof Player player)) return Optional.empty();
 
-        Vec3 ownerPos = owner.position();
-        double nearestDistance = Double.MAX_VALUE;
-        Vec3 nearestThreatPos = null;
+        LivingEntity nearest = ConstructGroupCache.getInstance().findNearestTarget(
+            owner.getUUID(), owner, owner.position(), THREAT_SEARCH_RANGE);
 
-        AABB searchArea = new AABB(
-                owner.getX() - THREAT_SEARCH_RANGE, owner.getY() - THREAT_SEARCH_RANGE, owner.getZ() - THREAT_SEARCH_RANGE,
-                owner.getX() + THREAT_SEARCH_RANGE, owner.getY() + THREAT_SEARCH_RANGE, owner.getZ() + THREAT_SEARCH_RANGE
-        );
-
-        List<Entity> threats = drone.level().getEntitiesOfClass(Entity.class, searchArea,
-                entity -> HostileTargetManager.shouldAttackPlayer(entity, player));
-
-        for (Entity threat : threats) {
-            if (threat == drone || threat == owner) continue;
-
-            if (threat instanceof Projectile proj) {
-                if (isFriendlyProjectile(proj, drone, player)) continue;
-
-                if (proj instanceof AbstractArrow arrow) {
-                    if (isArrowInGround(arrow)) continue;
-                }
-            }
-
-            double dist = threat.distanceToSqr(ownerPos);
-            if (dist < nearestDistance) {
-                nearestDistance = dist;
-                nearestThreatPos = new Vec3(threat.getX(), 0, threat.getZ());
-            }
+        if (nearest != null) {
+            return Optional.of(new Vec3(nearest.getX(), 0, nearest.getZ()));
         }
-
-        return Optional.ofNullable(nearestThreatPos);
+        return Optional.empty();
     }
 
     private boolean isFriendlyProjectile(Projectile proj, DroneConstructEntity drone, Player player) {
@@ -268,7 +250,6 @@ public class GuardBehavior implements IDroneBehavior {
 
     @Override
     public List<LivingEntity> searchTargets(Entity drone, LivingEntity owner, float range) {
-        // 使用共享缓存索敌，从玩家中心的缓存结果中过滤当前位置附近的敌人
         float searchRange = getConfigAttackRange();
         return ConstructGroupCache.getInstance().findTargetsInRange(
             owner.getUUID(), owner, drone.position(), searchRange);
@@ -329,3 +310,4 @@ public class GuardBehavior implements IDroneBehavior {
         return false;
     }
 }
+

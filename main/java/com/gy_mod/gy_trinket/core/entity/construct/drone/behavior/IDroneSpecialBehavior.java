@@ -47,3 +47,4 @@ public interface IDroneSpecialBehavior {
     default void onSpawned(DroneConstructEntity drone) {
     }
 }
+

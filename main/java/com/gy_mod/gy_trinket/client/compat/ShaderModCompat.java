@@ -1,118 +1,179 @@
 package com.gy_mod.gy_trinket.client.compat;
 
-import java.lang.reflect.Method;
-
+import net.minecraftforge.fml.ModList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.reflect.Method;
+
 /**
- * 光影模组兼容检测（Iris/Oculus）
- * 通过反射检测，无需硬依赖
+ * 光影模组兼容检测（Iris/Oculus/Optifine）
+ * 通过反射检测，无需硬依赖。反射 Method 对象被缓存以避免重复查找。
  */
 public class ShaderModCompat {
 
     private static final Logger LOGGER = LoggerFactory.getLogger("ShaderModCompat");
 
-    private static boolean checked = false;
+    private static boolean initialized = false;
     private static boolean irisLoaded = false;
+    private static boolean optifineLoaded = false;
 
-    // 缓存Method对象避免重复反射查找，但不缓存结果
-    private static Method getInstanceMethod = null;
-    private static Method isShaderPackInUseMethod = null;
-    private static Method isRenderingShadowPassMethod = null;
+    // 缓存 Iris API 反射 Method 对象（避免每次调用都反射查找）
+    private static Method irisGetInstanceMethod = null;
+    private static Method irisIsShaderPackInUseMethod = null;
+    private static Method irisIsRenderingShadowPassMethod = null;
 
-    /**
-     * 初始化反射缓存（仅在首次调用时执行）
-     */
-    private static void ensureChecked() {
-        if (checked) return;
-        checked = true;
+    // ShadowRenderingState 反射 Method（备用阴影检测路径）
+    private static Method shadowRenderingStateMethod = null;
 
-        // 尝试 net.irisshaders.iris.api.v0.IrisApi（新版Oculus/Iris）
+    public static void init() {
+        if (initialized) return;
+
+        irisLoaded = ModList.get().isLoaded("iris") || ModList.get().isLoaded("oculus");
+        optifineLoaded = isOptifinePresent();
+
+        // 缓存 Iris API 反射 Method
+        cacheIrisApiMethods();
+
+        initialized = true;
+    }
+
+    private static boolean isOptifinePresent() {
         try {
-            Class<?> irisApiClass = Class.forName("net.irisshaders.iris.api.v0.IrisApi");
-            irisLoaded = true;
-            getInstanceMethod = irisApiClass.getMethod("getInstance");
-            isShaderPackInUseMethod = irisApiClass.getMethod("isShaderPackInUse");
-            LOGGER.info("Detected Iris/Oculus API: net.irisshaders.iris.api.v0.IrisApi");
-        } catch (Exception e) {
-            LOGGER.debug("Irisshaders API not found, trying coderbot...");
-        }
-
-        // 尝试 net.coderbot.iris.api.v0.IrisApi（旧版Oculus）
-        if (!irisLoaded) {
-            try {
-                Class<?> oculusApiClass = Class.forName("net.coderbot.iris.api.v0.IrisApi");
-                irisLoaded = true;
-                getInstanceMethod = oculusApiClass.getMethod("getInstance");
-                isShaderPackInUseMethod = oculusApiClass.getMethod("isShaderPackInUse");
-                LOGGER.info("Detected Oculus API: net.coderbot.iris.api.v0.IrisApi");
-            } catch (Exception e) {
-                LOGGER.debug("Coderbot API not found either.");
-            }
-        }
-
-        // 检测阴影渲染状态
-        try {
-            Class<?> shadowStateClass = Class.forName("net.irisshaders.iris.pipeline.ShadowRenderingState");
-            isRenderingShadowPassMethod = shadowStateClass.getMethod("areShadowsCurrentlyBeingRendered");
-        } catch (Exception ignored) {
-            try {
-                Class<?> shadowStateClass = Class.forName("net.coderbot.iris.pipeline.ShadowRenderingState");
-                isRenderingShadowPassMethod = shadowStateClass.getMethod("areShadowsCurrentlyBeingRendered");
-            } catch (Exception ignored2) {}
+            Class.forName("net.optifine.Config");
+            return true;
+        } catch (ClassNotFoundException e) {
+            return false;
         }
     }
 
     /**
-     * 是否有光影模组加载
+     * 缓存 Iris/Oculus API 的反射 Method（仅查找，不缓存结果）
      */
+    private static void cacheIrisApiMethods() {
+        // 优先尝试 net.irisshaders.iris.api.v0.IrisApi（新版 Iris/Oculus）
+        try {
+            Class<?> irisApiClass = Class.forName("net.irisshaders.iris.api.v0.IrisApi");
+            irisGetInstanceMethod = irisApiClass.getMethod("getInstance");
+            irisIsShaderPackInUseMethod = irisApiClass.getMethod("isShaderPackInUse");
+            try {
+                irisIsRenderingShadowPassMethod = irisApiClass.getMethod("isRenderingShadowPass");
+            } catch (NoSuchMethodException ignored) {}
+            LOGGER.info("Detected Iris API: net.irisshaders.iris.api.v0.IrisApi");
+            return;
+        } catch (Exception e) {
+            LOGGER.debug("Irisshaders API not found, trying coderbot...");
+        }
+
+        // 尝试 net.coderbot.iris.api.v0.IrisApi（旧版 Oculus）
+        try {
+            Class<?> oculusApiClass = Class.forName("net.coderbot.iris.api.v0.IrisApi");
+            irisGetInstanceMethod = oculusApiClass.getMethod("getInstance");
+            irisIsShaderPackInUseMethod = oculusApiClass.getMethod("isShaderPackInUse");
+            try {
+                irisIsRenderingShadowPassMethod = oculusApiClass.getMethod("isRenderingShadowPass");
+            } catch (NoSuchMethodException ignored) {}
+            LOGGER.info("Detected Oculus API: net.coderbot.iris.api.v0.IrisApi");
+        } catch (Exception e) {
+            LOGGER.debug("Coderbot API not found either.");
+        }
+
+        // 检测阴影渲染状态类（备用路径）
+        try {
+            Class<?> shadowStateClass = Class.forName("net.irisshaders.iris.pipeline.ShadowRenderingState");
+            shadowRenderingStateMethod = shadowStateClass.getMethod("areShadowsCurrentlyBeingRendered");
+        } catch (Exception ignored) {
+            try {
+                Class<?> shadowStateClass = Class.forName("net.coderbot.iris.pipeline.ShadowRenderingState");
+                shadowRenderingStateMethod = shadowStateClass.getMethod("areShadowsCurrentlyBeingRendered");
+            } catch (Exception ignored2) {}
+        }
+    }
+
     public static boolean isShaderModLoaded() {
-        ensureChecked();
+        init();
+        return irisLoaded || optifineLoaded;
+    }
+
+    public static boolean isIrisLoaded() {
+        init();
         return irisLoaded;
+    }
+
+    public static boolean isOptifineLoaded() {
+        init();
+        return optifineLoaded;
     }
 
     /**
      * 是否正在使用光影包（每次都实时查询，不缓存结果）
      */
     public static boolean isShaderPackInUse() {
-        ensureChecked();
-
-        if (!irisLoaded || getInstanceMethod == null || isShaderPackInUseMethod == null) {
+        init();
+        if (!irisLoaded || irisGetInstanceMethod == null || irisIsShaderPackInUseMethod == null) {
             return false;
         }
-
         try {
-            Object instance = getInstanceMethod.invoke(null);
-            return (boolean) isShaderPackInUseMethod.invoke(instance);
+            Object instance = irisGetInstanceMethod.invoke(null);
+            return (boolean) irisIsShaderPackInUseMethod.invoke(instance);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public static boolean isShadersEnabled() {
+        if (!isShaderModLoaded()) return false;
+
+        if (irisLoaded) {
+            return isShaderPackInUse();
+        }
+        if (optifineLoaded) {
+            return isOptifineShadersEnabled();
+        }
+        return false;
+    }
+
+    private static boolean isOptifineShadersEnabled() {
+        try {
+            Class<?> optifineConfig = Class.forName("net.optifine.Config");
+            return (boolean) optifineConfig.getMethod("isShaders").invoke(null);
         } catch (Exception e) {
             return false;
         }
     }
 
     /**
-     * 是否正在渲染阴影pass（阴影贴图阶段）
+     * 是否正在渲染阴影 pass（阴影贴图阶段）
+     * 跳过此阶段的自定义渲染，避免写入阴影贴图。
      */
     public static boolean isRenderingShadows() {
-        ensureChecked();
+        init();
 
-        // 优先使用Iris API
-        if (irisLoaded && getInstanceMethod != null) {
+        // 优先使用 Iris API 的 isRenderingShadowPass
+        if (irisLoaded && irisGetInstanceMethod != null && irisIsRenderingShadowPassMethod != null) {
             try {
-                Class<?> irisApiClass = getInstanceMethod.getDeclaringClass();
-                Method shadowPassMethod = irisApiClass.getMethod("isRenderingShadowPass");
-                Object instance = getInstanceMethod.invoke(null);
-                return (boolean) shadowPassMethod.invoke(instance);
+                Object instance = irisGetInstanceMethod.invoke(null);
+                return (boolean) irisIsRenderingShadowPassMethod.invoke(instance);
             } catch (Exception ignored) {}
         }
 
-        // 备用：ShadowRenderingState
-        if (isRenderingShadowPassMethod != null) {
+        // 备用：ShadowRenderingState.areShadowsCurrentlyBeingRendered
+        if (shadowRenderingStateMethod != null) {
             try {
-                return (boolean) isRenderingShadowPassMethod.invoke(null);
+                return (boolean) shadowRenderingStateMethod.invoke(null);
             } catch (Exception ignored) {}
         }
 
         return false;
+    }
+
+    public static int getMaxDrawBuffers() {
+        if (!isShaderModLoaded()) return 8;
+        if (isShadersEnabled()) return 4;
+        return 8;
+    }
+
+    public static boolean shouldUseAlternateRendering() {
+        return isShaderModLoaded() && isShadersEnabled();
     }
 }

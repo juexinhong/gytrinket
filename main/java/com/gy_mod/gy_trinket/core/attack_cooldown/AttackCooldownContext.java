@@ -108,3 +108,4 @@ public class AttackCooldownContext {
         return 1.0f - attackStrength;
     }
 }
+

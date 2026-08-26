@@ -1,4 +1,4 @@
-﻿{
+{
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "pattern": [
@@ -11,7 +11,7 @@
     "%": { "item": "minecraft:redstone" }
   },
   "result": {
-    "item": "gytrinket:line_formation_part",
+    "id": "gytrinket:line_formation_part",
     "count": 1
   }
 }

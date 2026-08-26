@@ -9,6 +9,7 @@
     "gytrinket:protocol_player_self_damage",
     "gytrinket:final_damage",
     "gytrinket:drone_bullet",
-    "gytrinket:siphon_damage"
+    "gytrinket:siphon_damage",
+    "gytrinket:construct_self_damage"
   ]
 }

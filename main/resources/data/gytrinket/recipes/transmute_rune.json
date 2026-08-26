@@ -1,4 +1,4 @@
-﻿{
+{
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "pattern": [
@@ -13,7 +13,7 @@
     }
   },
   "result": {
-    "item": "gytrinket:transmute_rune",
+    "id": "gytrinket:transmute_rune",
     "count": 1
   }
 }

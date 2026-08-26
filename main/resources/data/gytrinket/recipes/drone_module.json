@@ -13,7 +13,7 @@
     "*": { "item": "minecraft:blue_wool" }
   },
   "result": {
-    "item": "gytrinket:drone_module",
+    "id": "gytrinket:drone_module",
     "count": 1
   }
 }

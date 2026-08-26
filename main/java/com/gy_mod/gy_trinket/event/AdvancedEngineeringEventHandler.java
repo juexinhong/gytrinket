@@ -2,16 +2,14 @@ package com.gy_mod.gy_trinket.event;
 
 import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
+import com.gy_mod.gy_trinket.core.defs.DefsManager;
+import com.gy_mod.gy_trinket.core.level.ModLevelManager;
 import com.gy_mod.gy_trinket.gytrinket;
-import com.gy_mod.gy_trinket.storage.PlayerStore;
-import com.gy_mod.gy_trinket.storage.PlayerStoreManager;
+import com.gy_mod.gy_trinket.storage.PlayerStoreUtils;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.registries.ForgeRegistries;
 
-import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -32,12 +30,14 @@ public class AdvancedEngineeringEventHandler {
         UUID playerUUID = player.getUUID();
 
         if (!hasRequiredItem(playerUUID)) {
+            // 卸下/不满足前置：按比例降低无人机生命值与伤害（移除独立乘区加成）
             AttributeManager.removeDynamicAttribute(playerUUID, NAMESPACE, "construct_drone_health_independent");
             AttributeManager.removeDynamicAttribute(playerUUID, NAMESPACE, "construct_drone_damage_independent");
             return;
         }
 
-        int level = Math.max(0, com.gy_mod.gy_trinket.core.level.ModLevelManager.getModLevel(playerUUID));
+        // 装备时按当前光点等级计算加成：倍率 = 1 + 等级 × 每级加成
+        int level = Math.max(0, ModLevelManager.getModLevel(playerUUID));
         double bonus = level * Config.ADVANCED_ENGINEERING_BONUS_PER_LEVEL.get();
 
         AttributeManager.setDynamicAttribute(playerUUID, NAMESPACE, "construct_drone_health_independent", bonus);
@@ -45,23 +45,13 @@ public class AdvancedEngineeringEventHandler {
     }
 
     private static boolean hasRequiredItem(UUID playerUUID) {
-        List<? extends String> requiredItems = Config.ADVANCED_ENGINEERING_ITEMS.get();
+        Set<String> requiredItems = DefsManager.getItemSet("advanced_engineering_items");
         if (requiredItems.isEmpty()) {
             return false;
         }
 
-        PlayerStore store = PlayerStoreManager.getPlayerStore(playerUUID);
-        if (store == null) {
-            return false;
-        }
-
-        Set<String> ownedItemIds = new HashSet<>();
-        for (int i = 0; i < store.getItemHandler().getSlots(); i++) {
-            net.minecraft.world.item.ItemStack stack = store.getItemHandler().getStackInSlot(i);
-            if (!stack.isEmpty()) {
-                ownedItemIds.add(ForgeRegistries.ITEMS.getKey(stack.getItem()).toString());
-            }
-        }
+        // 已装备物品 = 光点核心存储 + Curios 饰品栏（光点核心内容扩展）
+        Set<String> ownedItemIds = PlayerStoreUtils.getAllEquippedItemIds(playerUUID);
 
         for (String requiredId : requiredItems) {
             if (ownedItemIds.contains(requiredId)) {

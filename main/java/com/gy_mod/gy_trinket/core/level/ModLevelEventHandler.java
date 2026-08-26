@@ -1,7 +1,9 @@
 package com.gy_mod.gy_trinket.core.level;
 
 import com.gy_mod.gy_trinket.gytrinket;
+import com.gy_mod.gy_trinket.network.NetworkHandler;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.entity.player.PlayerXpEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -16,9 +18,19 @@ public class ModLevelEventHandler {
 
     private ModLevelEventHandler() {}
 
+    /** 玩家登录时同步光点等级数据到客户端（HUD 提示等需要初始值） */
+    @SubscribeEvent
+    public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            NetworkHandler.sendModLevelSyncToPlayer(player);
+            com.gy_mod.gy_trinket.core.random_build.RandomBuildManager.clearPlayerData(player.getUUID());
+        }
+    }
+
     /**
      * 监听经验值变化事件
      * 仅在经验增加时（正值）同步增加光点经验
+     * 经验减少时（负值，如附魔、铁砧等）不影响光点经验
      */
     @SubscribeEvent
     public static void onXpChange(PlayerXpEvent.XpChange event) {

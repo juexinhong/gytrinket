@@ -4,11 +4,13 @@ import com.gy_mod.gy_trinket.gytrinket;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
 import com.gy_mod.gy_trinket.core.attribute.ItemAttributeConfig;
 import com.gy_mod.gy_trinket.core.attribute.AttributeType;
+import com.gy_mod.gy_trinket.core.defs.DefsManager;
 import com.gy_mod.gy_trinket.core.shield.DisableSystem;
 import com.gy_mod.gy_trinket.core.shield.type.ShieldTypeManager;
 import com.gy_mod.gy_trinket.core.upgrade.UpgradeManager;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.Items;
 import net.minecraftforge.common.ForgeConfigSpec;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -34,6 +36,10 @@ public class Config {
     // ===== 1. 护盾基础属性 (attributes) =====
     public static final ForgeConfigSpec.ConfigValue<String> ATTRIBUTES_CONFIG;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> ITEM_ATTRIBUTES_CONFIG;
+
+    // ===== 合成禁用 (crafting_disable) =====
+    /** 合成禁用模式：0=不禁用，1=禁用本模组命名空间下注册了实际效果的物品合成，2=禁用所有注册了实际效果的物品合成 */
+    public static final ForgeConfigSpec.IntValue DISABLE_CRAFTING_MODE;
 
     // ===== 护盾类型系统 (shield_types) =====
     public static final ForgeConfigSpec.ConfigValue<String> SHIELD_TYPES_CONFIG;
@@ -72,6 +78,7 @@ public class Config {
     public static final ForgeConfigSpec.DoubleValue AMPLIFICATION_CHECK_RADIUS;
     public static final ForgeConfigSpec.DoubleValue AMPLIFICATION_MAX_AMPLIFICATION;
     public static final ForgeConfigSpec.DoubleValue AMPLIFICATION_MOVEMENT_SPEED_BONUS;
+    public static final ForgeConfigSpec.DoubleValue AMPLIFICATION_HEALTH_AMPLIFICATION_PER_POINT;
 
     // ===== 5. 跃传护盾 (warp_shield) =====
     public static final ForgeConfigSpec.IntValue WARP_SHIELD_INVINCIBLE_DURATION;
@@ -85,6 +92,8 @@ public class Config {
 
     // ===== 7. 反射护盾 (reflect_damage) =====
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> REFLECT_DAMAGE_ITEMS;
+    public static final ForgeConfigSpec.DoubleValue REFLECT_DAMAGE_BASE_DAMAGE;
+    public static final ForgeConfigSpec.DoubleValue REFLECT_DAMAGE_RAY_LENGTH;
 
     // ===== 8. 易爆护盾 (explosive_shield) =====
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> EXPLOSIVE_SHIELD_ITEMS;
@@ -292,6 +301,8 @@ public class Config {
     public static final ForgeConfigSpec.DoubleValue GHOST_FUSELAGE_BASE_MAX_DAMAGE_BONUS;
     public static final ForgeConfigSpec.DoubleValue GHOST_FUSELAGE_MOVE_SPEED_THRESHOLD;
     public static final ForgeConfigSpec.DoubleValue GHOST_FUSELAGE_MOVE_SPEED_REDUCTION;
+    public static final ForgeConfigSpec.DoubleValue GHOST_FUSELAGE_DECAY_RATE;
+    public static final ForgeConfigSpec.DoubleValue GHOST_FUSELAGE_MIN_DECAY;
     public static final ForgeConfigSpec.DoubleValue GHOST_FUSELAGE_DEPLOY_REDUCTION;
     public static final ForgeConfigSpec.DoubleValue GHOST_FUSELAGE_ATTACK_REDUCTION;
     public static final ForgeConfigSpec.DoubleValue GHOST_FUSELAGE_USE_ITEM_REDUCTION_PER_TICK;
@@ -303,6 +314,15 @@ public class Config {
 
     // ===== 33. 快速装备 (quick_equip) =====
     public static final ForgeConfigSpec.IntValue QUICK_EQUIP_UPGRADE_POINTS_COST;
+
+    // ===== 33.5 随机构建系统 (random_build) =====
+    public static final ForgeConfigSpec.BooleanValue RANDOM_BUILD_ENABLED;
+    public static final ForgeConfigSpec.IntValue RANDOM_BUILD_XP_MULTIPLIER;
+    public static final ForgeConfigSpec.BooleanValue SHOW_UPGRADE_REMINDER_HUD;
+    /** 代币机制：启用后随机池兑换消耗背包代币而非升级点 */
+    public static final ForgeConfigSpec.BooleanValue RANDOM_BUILD_TOKEN_ENABLED;
+    /** 代币物品 ID（可替换为其他模组的物品） */
+    public static final ForgeConfigSpec.ConfigValue<String> RANDOM_BUILD_TOKEN_ITEM;
 
     // ===== 33b. 敌对目标 (hostile_target) =====
     public static final ForgeConfigSpec.IntValue HOSTILE_TARGET_MARK_DURATION;
@@ -451,10 +471,10 @@ public class Config {
             "示例：minecraft:diamond|shield_base=10.0|shield_percent=0.1"
         ).defineListAllowEmpty("itemAttributes",
             List.of(
-                "gytrinket:shield_gy|shield_base=8.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
-                "gytrinket:shield_gy1|shield_base=12.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
-                "gytrinket:shield_gy2|shield_base=16.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
-                "gytrinket:shield_gy3|shield_base=20.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
+                "gytrinket:shield_gy|shield_base=6.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
+                "gytrinket:shield_gy1|shield_base=7.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
+                "gytrinket:shield_gy2|shield_base=8.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
+                "gytrinket:shield_gy3|shield_base=9.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
 
                 "gytrinket:shield_aura_ring|shield_base=8.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
                 "gytrinket:shield_aura_ring1|shield_base=12.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
@@ -482,7 +502,7 @@ public class Config {
                 "gytrinket:shield_warp3|shield_base=18.0|shield_cooldown_time=6.0|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
 
                 "gytrinket:shield_amplifier_module|shield_percent=0.2",
-                "gytrinket:barrier_shield_module|shield_percent=0.05",
+                "gytrinket:barrier_shield_module|shield_percent=0.05|shield_cooldown_reduction_percent=-0.05",
                 "gytrinket:reflect_shield_module|shield_percent=0.05",
                 "gytrinket:ultimate_shield_module|shield_base=11.0|shield_damage_reduction=-0.15|shield_effect_percent=0.15|shield_hit_cooldown_extend_final_multiplier=-0.65|player_health_independent=-0.85",
 
@@ -511,7 +531,7 @@ public class Config {
 
                 "gytrinket:thrust_boost_module|movement_speed_percent=0.25",
                 "gytrinket:aerodynamic_framework_module|movement_speed_percent=0.25|player_health_independent=-0.1|player_knockback_percent=-0.2|knockback_resistance=-0.2",
-                
+
                 "gytrinket:precision_construct_module|construct_health_percent=0.25|construct_build_speed_percent=0.10",
                 "gytrinket:shield_transfer_module|shield_damage_reduction=-0.5|player_damage_reduction=-0.1|player_health=2|player_health_percent=0.1",
 
@@ -527,21 +547,33 @@ public class Config {
                 "gytrinket:evolution_module|construct_wingman_explosive_count_base=1",
                 "gytrinket:suppression_module|construct_wingman_weapon_attack_speed_percent=0.5|construct_wingman_explosive_count_base=2",
 
-                "gytrinket:guardian|shield_effect_percent=0.10|shield_effect_radius=0.25|shield_damage_reduction=-0.1|attack_speed_percent=-0.1",
-
+                "gytrinket:self_destruct_module|",
                 "gytrinket:taskmaster_module|construct_standard_non_weapon_count_percent=1|construct_basic_non_weapon_count_percent=1|construct_advanced_count_base=1",
+
+                "gytrinket:guardian|shield_effect_percent=0.10|shield_effect_radius=0.25|shield_damage_reduction=-0.1|attack_speed_percent=-0.1",
 
                 "gytrinket:mothership_body|shield_percent=0.15|player_health_percent=0.15|movement_speed_percent=0.4|knockback_resistance=0.2",
 
+                "gytrinket:engineering_fuselage|construct_standard_count_base=2|construct_advanced_count_base=1|shield_percent=-0.10|player_health=-2",
+
                 "gytrinket:grudge_module|player_health_percent=0.05|attack_damage_percent=0.05|movement_speed_independent=-0.1",
 
-                "gytrinket:quick_reconstruction_module|recovery_efficiency_percent=1.0|player_health=10|coating=2",
+                "gytrinket:apex_apparatus_module|construct_attack_speed_percent=0.30|construct_health_percent=0.30|shield_effect_percent=0.20|construct_build_speed_independent=-0.75",
 
-                "minecraft:command_block|shield_effect_percent=1.0|shield_cooldown_reduction_percent=0.8|shield_damage_reduction=-0.9|shield_self_damage_reduction=-0.9|player_health_percent=1|attack_speed_percent=1|attack_damage_percent=1|knockback_resistance=1|player_knockback_percent=1|movement_speed_percent=0.5|player_damage_reduction=-0.9|player_self_damage_reduction=-0.9|recovery_efficiency=0.5"
+                "gytrinket:furnace_core_module|construct_non_shield_build_speed_percent=0.30|construct_attack_speed_percent=0.30|construct_move_speed_percent=0.30|construct_orbit_speed_percent=0.30|construct_rotation_speed_percent=0.30",
+
+                "gytrinket:quick_reconstruction_module|recovery_efficiency_percent=1.0|player_health=10|coating=2"
             ),
             s -> true
         );
 
+        BUILDER.pop();
+
+        // ===== 合成禁用 (crafting_disable) =====
+        BUILDER.comment("合成禁用模式：0=不禁用合成，1=禁用本模组命名空间下注册了本模组实际效果（属性或特殊机制）的物品的合成，2=禁用所有注册了本模组实际效果的物品的合成")
+            .push("crafting_disable");
+        DISABLE_CRAFTING_MODE = BUILDER.comment("0=不禁用，1=仅本模组物品，2=全部注册物品")
+            .defineInRange("disableCraftingMode", 0, 0, 2);
         BUILDER.pop();
 
         // ===== 护盾类型系统 =====
@@ -718,14 +750,22 @@ public class Config {
         AMPLIFICATION_THREAT_AMPLIFICATION = BUILDER.comment(
             "增幅护盾威胁增幅值",
             "每个危险目标增加的攻击伤害加成（独立乘区）",
-            "例如：0.5 表示每个威胁增加50%"
-        ).defineInRange("amplificationThreatAmplification", 0.5, 0.0, 1.0);
+            "例如：0.2 表示每个威胁增加20%"
+        ).defineInRange("amplificationThreatAmplification", 0.2, 0.0, 1.0);
+
+        AMPLIFICATION_HEALTH_AMPLIFICATION_PER_POINT = BUILDER.comment(
+            "增幅护盾敌人最大生命增幅值",
+            "敌人最大生命每点提供的攻击伤害加成（独立乘区）",
+            "例如：0.01 表示每点最大生命增加1%，僵尸(20生命)提供20%增幅",
+            "该增幅计入每个敌人的贡献，总量不能超出最大增幅限制",
+            "范围：0.0 ~ 0.1"
+        ).defineInRange("amplificationHealthAmplificationPerPoint", 0.02, 0.0, 0.1);
 
         AMPLIFICATION_CHECK_RADIUS = BUILDER.comment(
             "增幅护盾威胁检测半径（格）",
             "检测玩家周围危险目标的基础半径",
             "该值会受护盾效果半径属性影响"
-        ).defineInRange("amplificationCheckRadius", 4.0, 1.0, 20.0);
+        ).defineInRange("amplificationCheckRadius", 5.0, 1.0, 20.0);
 
         AMPLIFICATION_MAX_AMPLIFICATION = BUILDER.comment(
             "增幅护盾最大增幅值",
@@ -802,6 +842,18 @@ public class Config {
             java.util.List.of("gytrinket:reflect_shield_module"),
             s -> true
         );
+
+        REFLECT_DAMAGE_BASE_DAMAGE = BUILDER.comment(
+            "反射护盾基础伤害值",
+            "该伤害会受护盾效果属性影响",
+            "示例：1.0"
+        ).defineInRange("reflectDamageBaseDamage", 0.7, 0.0, 10.0);
+
+        REFLECT_DAMAGE_RAY_LENGTH = BUILDER.comment(
+            "反射护盾射线基础长度（格）",
+            "该长度会受护盾效果半径属性影响",
+            "示例：5.0"
+        ).defineInRange("reflectDamageRayLength", 2.0, 1.0, 20.0);
 
         BUILDER.pop();
 
@@ -1881,6 +1933,18 @@ public class Config {
             "范围：0.0 ~ 1.0"
         ).defineInRange("moveSpeedReduction", 0.2, 0.0, 1.0);
 
+        GHOST_FUSELAGE_DECAY_RATE = BUILDER.comment(
+            "破隐后隐身进度每tick消退的当前值比例",
+            "默认0.3（即每刻消退当前值的30%）",
+            "范围：0.01 ~ 0.99"
+        ).defineInRange("decayRate", 0.3, 0.01, 0.99);
+
+        GHOST_FUSELAGE_MIN_DECAY = BUILDER.comment(
+            "破隐后隐身进度每tick的最低消退量",
+            "默认0.02（即每刻至少消退2%进度）",
+            "范围：0.0 ~ 0.1"
+        ).defineInRange("minDecay", 0.02, 0.0, 0.1);
+
         GHOST_FUSELAGE_DEPLOY_REDUCTION = BUILDER.comment(
             "部署构造体时一次性扣除的隐身进度",
             "默认0.5（即50%）",
@@ -1903,7 +1967,7 @@ public class Config {
             "达到完全隐身（80%进度）所需的tick数",
             "默认40（即2秒）",
             "范围：1 ~ 600（0.05秒 ~ 30秒）"
-        ).defineInRange("fullStealthTicks", 60, 1, 600);
+        ).defineInRange("fullStealthTicks", 40, 1, 600);
 
         BUILDER.pop();
 
@@ -1946,6 +2010,42 @@ public class Config {
             ),
             s -> true
         );
+
+        BUILDER.pop();
+
+        // ===== 33.5 随机构建系统 =====
+        BUILDER.comment("随机构建系统配置").push("random_build");
+
+        RANDOM_BUILD_ENABLED = BUILDER.comment(
+            "是否启用随机构建系统",
+            "启用后：光点等级所需经验翻倍；",
+            "玩家面板经验条上方出现3x3随机池，",
+            "可用升级点兑换随机物品装备到光点核心。"
+        ).define("enabled", true);
+
+        RANDOM_BUILD_XP_MULTIPLIER = BUILDER.comment(
+            "随机构建系统启用时的光点经验倍率",
+            "升到下一级所需经验 = 原版所需经验 × 该倍率",
+            "默认 10，范围 1~100"
+        ).defineInRange("xpMultiplier", 10, 1, 100);
+
+        SHOW_UPGRADE_REMINDER_HUD = BUILDER.comment(
+            "是否显示升级提醒 HUD",
+            "当玩家有未使用的升级点时，在物品栏上方显示按下G键的提示",
+            "光点核心已满时不显示，默认 true"
+        ).define("showUpgradeReminderHud", true);
+
+        RANDOM_BUILD_TOKEN_ENABLED = BUILDER.comment(
+            "是否启用代币机制（归属随机构建）",
+            "启用后：取消随机构建的经验惩罚（升级点不再被随机池消耗）；",
+            "从随机池获取物品改为消耗玩家背包中的代币，而非升级点。"
+        ).define("tokenEnabled", false);
+
+        RANDOM_BUILD_TOKEN_ITEM = BUILDER.comment(
+            "代币物品 ID（可替换为其他模组的物品）",
+            "从随机池获取物品时，会从玩家背包中扣除该物品 1 个",
+            "默认 gytrinket:token（本模组代币物品）"
+        ).define("tokenItem", "gytrinket:token");
 
         BUILDER.pop();
 
@@ -1999,8 +2099,8 @@ public class Config {
         SHIELD_BLOCK_INVULNERABLE_TICKS = BUILDER.comment(
             "护盾格挡时施加的无敌状态持续时间（刻）",
             "当护盾完全吸收伤害时，被攻击者获得短暂无敌帧",
-            "默认6刻（0.3秒）"
-        ).defineInRange("blockInvulnerableTicks", 10, 0, 100);
+            "默认5刻（0.25秒）"
+        ).defineInRange("blockInvulnerableTicks", 5, 0, 100);
 
         BUILDER.comment("点燃系统配置").push("ignite_system");
 
@@ -2042,12 +2142,196 @@ public class Config {
         return SHIELD_TYPE_COMPATIBILITY.getOrDefault(typeName, true);
     }
 
+    /**
+     * 解析禁用类别为实际物品 id 集合
+     * 当前支持的类别：
+     *   shields -- 注册了护盾类型的物品（基础护盾及带"+"强化护盾）
+     */
+    public static Set<String> resolveDisableCategory(String category) {
+        Set<String> result = new HashSet<>();
+        if ("shields".equals(category)) {
+            for (Item item : ForgeRegistries.ITEMS) {
+                ResourceLocation rl = ForgeRegistries.ITEMS.getKey(item);
+                if (rl != null && rl.getNamespace().equals(gytrinket.MODID)
+                        && !getItemShieldTypes(rl).isEmpty()) {
+                    result.add(rl.toString());
+                }
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 解析依赖类别引用（"category:xxx"）为实际物品 id 集合
+     * 当前支持的类别：
+     *   construct_final -- 构造体类所有模块树的终阶模块（由 module_trees 数据定义）
+     */
+    public static Set<String> resolveDependencyCategory(String category) {
+        if ("construct_final".equals(category)) {
+            return DefsManager.getCategoryFinalModules("construct");
+        }
+        return Collections.emptySet();
+    }
+
     public static boolean isBodyItem(Item item) {
         return isModuleItem("body", item);
     }
 
     public static boolean isTaskmasterItem(Item item) {
         return isModuleItem("taskmaster", item);
+    }
+
+    public static boolean isFurnaceCoreItem(Item item) {
+        return isModuleItem("furnace_core", item);
+    }
+
+    /**
+     * 应用 datapack 定义类数据（由 DefsManager 在数据包重载后调用）
+     * 填充物品集合、护盾类型、属性定义、危险实体等，并触发依赖子系统重载
+     */
+    public static void applyDefs() {
+        // 属性定义
+        for (DefsManager.AttributeEntry entry : DefsManager.getAttributeDefs()) {
+            try {
+                AttributeType type = AttributeType.valueOf(entry.combine());
+                String group = entry.group().isEmpty() ? null : entry.group();
+                AttributeManager.registerAttribute(entry.name(), type, group);
+            } catch (IllegalArgumentException e) {
+                gytrinket.LOGGER.warn("无效的属性组合方式：{}，属性：{}", entry.combine(), entry.name());
+            }
+        }
+
+        // 护盾类型兼容性
+        SHIELD_TYPE_COMPATIBILITY.clear();
+        SHIELD_TYPE_COMPATIBILITY.putAll(DefsManager.getShieldTypes());
+
+        // 物品->护盾类型
+        ITEM_SHIELD_TYPES.clear();
+        DefsManager.getItemShieldTypes().forEach((itemId, types) -> {
+            Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(itemId));
+            if (item != null && item != Items.AIR) {
+                ITEM_SHIELD_TYPES.put(item, types);
+                gytrinket.LOGGER.info("注册物品护盾类型: {} -> {}", itemId, types);
+            }
+        });
+
+        // 物品集合（模块名与 registerModuleItems 使用的 key 一致）
+        loadItemSetFromDefs("body", "body_items");
+        loadItemSetFromDefs("adaptive_armor", "adaptive_armor_items");
+        loadItemSetFromDefs("adaptive_armor_shield_effect", "adaptive_armor_shield_effect_items");
+        loadItemSetFromDefs("electric_discharge", "electric_discharge_items");
+        loadItemSetFromDefs("attack_cooldown_efficiency", "attack_cooldown_efficiency_items");
+        loadItemSetFromDefs("barrier", "barrier_items");
+        loadItemSetFromDefs("shield_natural_recovery", "shield_natural_recovery_items");
+        loadItemSetFromDefs("reflect_damage", "reflect_damage_items");
+        loadItemSetFromDefs("explosive_shield", "explosive_shield_items");
+        loadItemSetFromDefs("shield_transfer", "shield_transfer_items");
+        loadItemSetFromDefs("binary_protocol", "binary_protocol_items");
+        loadItemSetFromDefs("weaponized_shield", "weaponized_shield_items");
+        loadItemSetFromDefs("near_death_protection", "near_death_protection_items");
+        loadItemSetFromDefs("near_death_explosion", "near_death_explosion_items");
+        loadItemSetFromDefs("self_destruct", "self_destruct_items");
+        loadItemSetFromDefs("taskmaster", "taskmaster_items");
+        loadItemSetFromDefs("furnace_core", "furnace_core_items");
+        loadItemSetFromDefs("drone_module", "drone_module_items");
+        loadItemSetFromDefs("assault_drone_module", "assault_drone_module_items");
+        loadItemSetFromDefs("commander", "commander_required_items");
+        loadItemSetFromDefs("defense_drone_module", "defense_drone_module_items");
+        loadItemSetFromDefs("wingman_module", "wingman_module_items");
+        loadItemSetFromDefs("interceptor_module", "wingman_interceptor_module_items");
+        loadItemSetFromDefs("evolution_module", "wingman_evolution_module_items");
+        loadItemSetFromDefs("nano_regen_module", "wingman_nano_regen_module_items");
+        loadItemSetFromDefs("shockwave_module", "wingman_shockwave_module_items");
+        loadItemSetFromDefs("swarm_module", "swarm_module_items");
+        loadItemSetFromDefs("arc_barrier", "arc_barrier_items");
+        loadItemSetFromDefs("reshaping", "reshaping_items");
+        loadItemSetFromDefs("counter_pulse", "counter_pulse_items");
+        loadItemSetFromDefs("assault", "assault_items");
+        loadItemSetFromDefs("charged_attack", "charged_attack_items");
+        loadItemSetFromDefs("charged_shield", "charged_shield_items");
+        loadItemSetFromDefs("grudge", "grudge_items");
+        loadItemSetFromDefs("precision_construct", "precision_construct_items");
+        loadItemSetFromDefs("advanced_engineering", "advanced_engineering_items");
+        loadItemSetFromDefs("pursuit_array", "pursuit_array_required_items");
+        loadItemSetFromDefs("formation_array", "formation_array_required_items");
+        loadItemSetFromDefs("guard_array", "guard_array_required_items");
+        loadItemSetFromDefs("ghost_fuselage", "ghost_fuselage_items");
+        loadItemSetFromDefs("conversion", "conversion_items");
+
+        // 危险实体
+        DANGEROUS_ENTITY_SET.clear();
+        DANGEROUS_ENTITY_SET.addAll(DefsManager.getEntitySet("dangerous_entities"));
+
+        // 依赖定义数据的子系统重载
+        DisableSystem.loadConfig();
+        UpgradeManager.loadConfig();
+        ShieldTypeManager.init();
+
+        gytrinket.LOGGER.info("定义类数据已应用：物品集合 {} 项，护盾类型 {} 项，属性定义 {} 项",
+                MODULE_ITEM_SETS.size(), SHIELD_TYPE_COMPATIBILITY.size(), DefsManager.getAttributeDefs().size());
+    }
+
+    /** 从 datapack 物品集合填充指定模块的物品集合（与 registerModuleItems 的模块名一致） */
+    private static void loadItemSetFromDefs(String moduleName, String setName) {
+        Set<Item> itemSet = MODULE_ITEM_SETS.computeIfAbsent(moduleName, k -> new HashSet<>());
+        itemSet.clear();
+        for (String itemId : DefsManager.getItemSet(setName)) {
+            Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(itemId));
+            if (item != null && item != Items.AIR) {
+                itemSet.add(item);
+                gytrinket.LOGGER.info("注册{}物品: {}", moduleName, itemId);
+            }
+        }
+    }
+
+    /**
+     * 按配置名统一取值（供数据驱动的 tooltip 参数引用）
+     * 返回 int 或 double，保留原始类型以匹配语言文件的格式符（%d / %.1f / %s）
+     */
+    public static Object getValue(String name) {
+        return switch (name) {
+            case "shieldNaturalRecoveryPresentHealthModifier" -> getNaturalRecoveryShieldPresentHealthModifier();
+            case "shieldNaturalRecoveryPresentShieldModifier" -> getNaturalRecoveryShieldPresentShieldModifier();
+            case "explosiveShieldDamage" -> EXPLOSIVE_SHIELD_DAMAGE.get();
+            case "shieldTransferEffectPenaltyPerEntity" -> SHIELD_TRANSFER_EFFECT_PENALTY_PER_ENTITY.get();
+            case "weaponizedShieldVulnerability" -> WEAPONIZED_SHIELD_VULNERABILITY.get();
+            case "nearDeathProtectionInvincibleDuration" -> NEAR_DEATH_PROTECTION_INVINCIBLE_DURATION.get();
+            case "nearDeathProtectionCooldown" -> NEAR_DEATH_PROTECTION_COOLDOWN.get();
+            case "nearDeathExplosionInvincibleDuration" -> NEAR_DEATH_EXPLOSION_INVINCIBLE_DURATION.get();
+            case "nearDeathExplosionCoefficient" -> NEAR_DEATH_EXPLOSION_COEFFICIENT.get();
+            case "nearDeathExplosionRadius" -> NEAR_DEATH_EXPLOSION_RADIUS.get();
+            case "conversionRatio" -> CONVERSION_RATIO.get();
+            case "coatingReductionPerLayer" -> getCoatingReductionPerLayer();
+            case "arcBarrierPositionDeviationThreshold" -> ARC_BARRIER_POSITION_DEVIATION_THRESHOLD.get();
+            case "reshapingHealRate" -> RESHAPING_HEAL_RATE.get();
+            case "reshapingBaseDamageReduction" -> RESHAPING_BASE_DAMAGE_REDUCTION.get();
+            case "reshapingDamageReductionDuration" -> RESHAPING_DAMAGE_REDUCTION_DURATION.get();
+            case "counterPulseCooldown" -> COUNTER_PULSE_COOLDOWN.get();
+            case "counterPulseBaseExplosionRadius" -> COUNTER_PULSE_BASE_EXPLOSION_RADIUS.get();
+            case "counterPulseBaseExplosionDamage" -> COUNTER_PULSE_BASE_EXPLOSION_DAMAGE.get();
+            case "counterPulseChargeInterval" -> COUNTER_PULSE_CHARGE_INTERVAL.get();
+            case "counterPulseMaxChargeLevel" -> COUNTER_PULSE_MAX_CHARGE_LEVEL.get();
+            case "precisionConstructBonusPerLevel" -> PRECISION_CONSTRUCT_BONUS_PER_LEVEL.get();
+            case "advancedEngineeringBonusPerLevel" -> ADVANCED_ENGINEERING_BONUS_PER_LEVEL.get();
+            case "commanderMaxCount" -> COMMANDER_MAX_COUNT.get();
+            case "commanderAppointDelay" -> COMMANDER_APPOINT_DELAY.get();
+            case "chargedShieldChargeRatio" -> getChargedShieldChargeRatio();
+            case "chargedShieldMaxBonus" -> getChargedShieldMaxBonus();
+            case "chargedShieldMovementSpeedPenalty" -> getChargedShieldMovementSpeedPenalty();
+            case "grudgeConversionRatio" -> getGrudgeConversionRatio();
+            case "grudgeFadePercent" -> getGrudgeFadePercent();
+            case "grudgeFadeBase" -> getGrudgeFadeBase();
+            case "grudgeMovementSpeedPenalty" -> getGrudgeMovementSpeedPenalty();
+            case "wingmanShockwaveDamageMultiplier" -> getWingmanShockwaveDamageMultiplier();
+            case "wingmanShockwaveSplashLengthMultiplier" -> getWingmanShockwaveSplashLengthMultiplier();
+            case "wingmanEvolutionBonusPerLevel" -> getWingmanEvolutionBonusPerLevel();
+            case "ghostFuselageFullStealthTicks" -> getGhostFuselageFullStealthTicks();
+            case "ghostFuselageBaseMaxDamageBonus" -> getGhostFuselageBaseMaxDamageBonus();
+            case "ghostFuselageDecayRate" -> getGhostFuselageDecayRate();
+            case "ghostFuselageMinDecay" -> getGhostFuselageMinDecay();
+            case "ghostFuselageStealthSpeedBonusPerLevel" -> getGhostFuselageStealthSpeedBonusPerLevel();
+            default -> 0;
+        };
     }
 
     public static void saveItemAttributesConfig() {
@@ -2576,6 +2860,10 @@ public class Config {
     public static double getAmplificationMovementSpeedBonus() {
         return AMPLIFICATION_MOVEMENT_SPEED_BONUS.get();
     }
+
+    public static double getAmplificationHealthAmplificationPerPoint() {
+        return AMPLIFICATION_HEALTH_AMPLIFICATION_PER_POINT.get();
+    }
     
     public static double getWarpShieldExplosionDamage() {
         return WARP_SHIELD_EXPLOSION_DAMAGE.get();
@@ -2681,6 +2969,28 @@ public class Config {
         return QUICK_EQUIP_UPGRADE_POINTS_COST.get();
     }
 
+    public static boolean isRandomBuildEnabled() {
+        return RANDOM_BUILD_ENABLED.get();
+    }
+
+    public static int getRandomBuildXpMultiplier() {
+        return RANDOM_BUILD_XP_MULTIPLIER.get();
+    }
+
+    public static boolean isShowUpgradeReminderHud() {
+        return SHOW_UPGRADE_REMINDER_HUD.get();
+    }
+
+    /** 是否启用代币机制（随机构建消耗背包代币而非升级点） */
+    public static boolean isRandomBuildTokenEnabled() {
+        return RANDOM_BUILD_TOKEN_ENABLED.get();
+    }
+
+    /** 代币物品 ID */
+    public static String getRandomBuildTokenItemId() {
+        return RANDOM_BUILD_TOKEN_ITEM.get();
+    }
+
     public static int getHostileTargetMarkDuration() {
         return HOSTILE_TARGET_MARK_DURATION.get();
     }
@@ -2739,6 +3049,14 @@ public class Config {
         return GHOST_FUSELAGE_MOVE_SPEED_REDUCTION.get();
     }
 
+    public static double getGhostFuselageDecayRate() {
+        return GHOST_FUSELAGE_DECAY_RATE.get();
+    }
+
+    public static double getGhostFuselageMinDecay() {
+        return GHOST_FUSELAGE_MIN_DECAY.get();
+    }
+
     public static double getGhostFuselageDeployReduction() {
         return GHOST_FUSELAGE_DEPLOY_REDUCTION.get();
     }
@@ -2755,3 +3073,4 @@ public class Config {
         return GHOST_FUSELAGE_FULL_STEALTH_TICKS.get();
     }
 }
+

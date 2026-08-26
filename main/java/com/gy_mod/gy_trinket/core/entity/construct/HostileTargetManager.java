@@ -10,6 +10,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.event.entity.player.AttackEntityEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.server.ServerLifecycleHooks;
 
 import java.util.Map;
 import java.util.UUID;
@@ -26,7 +27,7 @@ import java.util.concurrent.ConcurrentHashMap;
  *   <li>敌对实体：MONSTER类别的生物（如僵尸、骷髅）</li>
  *   <li>仇恨实体：以玩家为攻击目标的生物</li>
  *   <li>危险实体：配置文件中定义的危险实体（如箭矢、烈焰弹）</li>
- *   <li>玩家标记实体：被玩家攻击过的实体（持续5秒）</li>
+ *   <li>玩家标记实体：被玩家攻击过的实体（持续时间由配置决定）</li>
  * </ul>
  */
 @Mod.EventBusSubscriber(modid = com.gy_mod.gy_trinket.gytrinket.MODID)
@@ -73,7 +74,7 @@ public class HostileTargetManager {
     }
 
     private static long getCurrentTick() {
-        var server = net.minecraftforge.server.ServerLifecycleHooks.getCurrentServer();
+        var server = ServerLifecycleHooks.getCurrentServer();
         return server != null ? server.getTickCount() : 0;
     }
 
@@ -160,7 +161,7 @@ public class HostileTargetManager {
      * @return 是否为危险实体
      */
     public static boolean isDangerousEntity(Entity entity) {
-        var key = net.minecraftforge.registries.ForgeRegistries.ENTITY_TYPES.getKey(entity.getType());
+        var key = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType());
         return key != null && Config.isDangerousEntity(key.toString());
     }
 
@@ -172,7 +173,7 @@ public class HostileTargetManager {
      *   <li>对玩家或玩家保护的实体有仇恨（最高优先级）</li>
      *   <li>是敌对实体（MONSTER类别）</li>
      *   <li>是配置中的危险实体</li>
-     *   <li>被玩家攻击过的实体（持续5秒）</li>
+     *   <li>被玩家攻击过的实体（持续时间由配置决定）</li>
      * </ol>
      * 
      * @param entity 待判断的实体

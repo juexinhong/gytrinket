@@ -1,0 +1,1 @@
+{"itemSet":"reshaping_items","titleKey":"reshaping","descKey":"reshaping_effect","color":"green","params":[{"type":"percent","source":"reshapingHealRate"},{"type":"value","source":"reshapingBaseDamageReduction"},{"type":"seconds","source":"reshapingDamageReductionDuration"}]}

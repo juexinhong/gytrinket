@@ -20,7 +20,7 @@ import net.minecraftforge.fml.common.Mod;
  * 近战攻击实体的检测由服务端 AttackEntityEvent 处理，
  * 此处仅处理空挥（攻击空气/无目标）的情况。
  */
-@Mod.EventBusSubscriber(modid = gytrinket.MODID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.FORGE)
+@Mod.EventBusSubscriber(modid = gytrinket.MODID, value = Dist.CLIENT)
 public class GhostFuselageAttackHandler {
 
     @SubscribeEvent

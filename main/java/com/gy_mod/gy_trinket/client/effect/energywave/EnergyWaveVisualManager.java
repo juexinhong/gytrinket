@@ -6,6 +6,7 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.client.event.RenderLevelStageEvent;
 import org.joml.Matrix4f;
@@ -72,6 +73,27 @@ public class EnergyWaveVisualManager {
     private static final double EXPLOSION_LENGTH_CAP = 15.0;
     /** 爆炸能量波膨胀阶段最终倍率（蜂群用3.5因为基础尺寸很小，爆炸基础尺寸大所以用1.2） */
     private static final float EXPLOSION_END_SCALE = 1.2f;
+
+    // ===== 能量波统一机制 =====
+    /** 所有能量波的长度极限（格），同时也是攻击范围极限 */
+    public static final double WAVE_LENGTH_CAP = 20.0;
+
+    /**
+     * 能量波前移量（格），随长度增加而增加：0长度对应0，长度极限20格对应1。
+     * 抵消波后泛光后移感，并避免短波时相机处于波内外中间态产生视觉错误。
+     * 伤害范围长度需加上该前移量（与能量波使用同一长度计算）以对齐能量波尖端。
+     */
+    public static double computeForwardShift(double length) {
+        return Math.min(length, WAVE_LENGTH_CAP) / WAVE_LENGTH_CAP;
+    }
+
+    /**
+     * 能量波宽度 = 长度/20（长宽比 1:20），宽度极限 = 长度/12。
+     * 宽度跟随能量波机制动态变化。
+     */
+    public static double waveWidth(double length) {
+        return Math.min(length / 20.0, length / 12.0);
+    }
 
     private static final List<WaveVisualData> waves = new CopyOnWriteArrayList<>();
 
@@ -271,6 +293,56 @@ public class EnergyWaveVisualManager {
     }
 
     /**
+     * 动态波客户端变换：锚定到归属玩家实体，用 xOld/x、yRotO/yRot 线性插值
+     * （与光环渲染贴图同款防抖），位置为身高一半处朝向前 1 格。
+     * 若归属实体不可用，回退到上一 tick 与当前 tick 的插值。
+     */
+    public static WaveTransform resolveDynamicTransform(WaveVisualData wave, float partialTick) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level != null && wave.isDynamic() && wave.positionSyncEntityId >= 0) {
+            Entity entity = mc.level.getEntity(wave.positionSyncEntityId);
+            if (entity instanceof LivingEntity living) {
+                double px = Mth.lerp(partialTick, entity.xOld, entity.getX());
+                double py = Mth.lerp(partialTick, entity.yOld, entity.getY()) + entity.getBbHeight() * 0.5;
+                double pz = Mth.lerp(partialTick, entity.zOld, entity.getZ());
+
+                float yaw = Mth.lerp(partialTick, entity.yRotO, entity.getYRot());
+                float pitch = Mth.lerp(partialTick, entity.xRotO, entity.getXRot());
+                float yawRad = yaw * (float) Math.PI / 180.0f;
+                float pitchRad = pitch * (float) Math.PI / 180.0f;
+                Vec3 dir = new Vec3(
+                        -Math.sin(yawRad) * Math.cos(pitchRad),
+                        -Math.sin(pitchRad),
+                        Math.cos(yawRad) * Math.cos(pitchRad)
+                ).normalize();
+
+                Vec3 pos = new Vec3(px, py, pz).add(dir.scale(1.0));
+                return new WaveTransform(pos, dir);
+            }
+        }
+        if (wave.isDynamic() && wave.hasPrev) {
+            Vec3 pos = new Vec3(
+                    Mth.lerp(partialTick, wave.prevX, wave.x),
+                    Mth.lerp(partialTick, wave.prevY, wave.y),
+                    Mth.lerp(partialTick, wave.prevZ, wave.z)
+            );
+            Vec3 dir = new Vec3(
+                    Mth.lerp(partialTick, wave.prevDirX, wave.dirX),
+                    Mth.lerp(partialTick, wave.prevDirY, wave.dirY),
+                    Mth.lerp(partialTick, wave.prevDirZ, wave.dirZ)
+            );
+            if (dir.lengthSqr() < 1e-8) {
+                dir = new Vec3(wave.dirX, wave.dirY, wave.dirZ);
+            }
+            dir = dir.normalize();
+            return new WaveTransform(pos, dir);
+        }
+        Vec3 pos = new Vec3(wave.x, wave.y, wave.z);
+        Vec3 dir = new Vec3(wave.dirX, wave.dirY, wave.dirZ).normalize();
+        return new WaveTransform(pos, dir);
+    }
+
+    /**
      * 计算动画进度
      */
     public static float getProgress(WaveVisualData wave, long currentTime, float partialTick) {
@@ -348,6 +420,21 @@ public class EnergyWaveVisualManager {
         // 位置同步时的沿方向偏移距离（格）
         public final float offsetDistance;
 
+        /** 动态能量波：可随时更新长度/宽度/朝向，不随时间消退 */
+        public boolean dynamic = false;
+
+        // 动态波插值：上一 tick 的位置/朝向（客户端线性插值，消除旋转卡顿）
+        public double prevX, prevY, prevZ;
+        public double prevDirX, prevDirY, prevDirZ;
+        public boolean hasPrev = false;
+
+        // 动态波长度/宽度（当前与上一 tick），用于渲染时平滑尺寸变化
+        public float len, width;
+        public float prevLen, prevWidth;
+        // 客户端显示长度/宽度（向目标缓动，消除充能/消退时的长度抖动）
+        public float displayLen, displayWidth;
+        public boolean displayInitialized = false;
+
         public WaveVisualData(int entityId, int positionSyncEntityId, double x, double y, double z,
                               double dirX, double dirY, double dirZ,
                               boolean isRepair, long startTime,
@@ -379,6 +466,10 @@ public class EnergyWaveVisualManager {
 
         public boolean isExpired(long currentTime) {
             return currentTime - startTime >= durationTicks;
+        }
+
+        public boolean isDynamic() {
+            return dynamic;
         }
     }
 }

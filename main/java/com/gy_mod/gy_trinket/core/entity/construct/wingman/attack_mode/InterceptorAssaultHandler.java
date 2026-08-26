@@ -112,3 +112,4 @@ public class InterceptorAssaultHandler implements InterceptorAttackModeHandler {
         wingman.getPersistentData().remove(ASSAULT_STACKS_KEY);
     }
 }
+

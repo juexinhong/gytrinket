@@ -40,16 +40,11 @@ public class SwarmConstructData extends ConstructData {
         double maxHealth = tag.getDouble("maxHealth");
 
         SwarmConstructData data = new SwarmConstructData(constructId, entityUUID, maxHealth);
-        // 手动加载公共字段（ConstructData 无 loadCommonFields）
-        data.setHealth(tag.getDouble("health"));
-        data.setActive(tag.getBoolean("active"));
-        if (tag.contains("dimension")) {
-            data.setSavedPos(tag.getDouble("posX"), tag.getDouble("posY"), tag.getDouble("posZ"));
-            data.setDimension(tag.getString("dimension"));
-        }
+        loadCommonFields(data, tag);
         if (tag.contains("tier")) {
             data.setTier(tag.getInt("tier"));
         }
         return data;
     }
 }
+

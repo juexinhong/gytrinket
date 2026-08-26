@@ -95,3 +95,4 @@ public class BinaryProtocolHandler implements DamageHandler {
         return PRIORITY;
     }
 }
+

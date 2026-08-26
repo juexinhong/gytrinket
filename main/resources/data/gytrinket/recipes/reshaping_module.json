@@ -13,7 +13,7 @@
     "@": { "item": "minecraft:blue_wool" }
   },
   "result": {
-    "item": "gytrinket:reshaping_module",
+    "id": "gytrinket:reshaping_module",
     "count": 1
   }
 }

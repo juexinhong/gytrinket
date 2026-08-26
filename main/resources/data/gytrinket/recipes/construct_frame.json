@@ -1,4 +1,4 @@
-﻿{
+{
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
@@ -21,7 +21,7 @@
     "CBC"
   ],
   "result": {
-    "item": "gytrinket:construct_frame",
+    "id": "gytrinket:construct_frame",
     "count": 1
   }
 }

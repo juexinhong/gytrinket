@@ -1,0 +1,1 @@
+{"itemSet":"wingman_shockwave_module_items","titleKey":"shockwave_module","descKey":"shockwave_module_desc","color":"gold","params":[{"type":"minusOnePercentInt","source":"wingmanShockwaveDamageMultiplier"},{"type":"minusOnePercentInt","source":"wingmanShockwaveSplashLengthMultiplier"}]}

@@ -2,7 +2,6 @@ package com.gy_mod.gy_trinket.client.screen;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -10,7 +9,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.core.registries.BuiltInRegistries;
 
 public class UpgradeTargetScreen extends AbstractPanelScreen {
 
@@ -31,10 +30,10 @@ public class UpgradeTargetScreen extends AbstractPanelScreen {
 
         int btnX = panelX + panelWidth / 2 - 40;
         int btnY = panelY + panelHeight + 5;
-        this.addRenderableWidget(Button.builder(
+        this.addRenderableWidget(SciFiButton.create(
                 Component.translatable("screen.gytrinket.back"),
                 button -> Minecraft.getInstance().setScreen(parentScreen)
-        ).bounds(btnX, btnY, 80, 16).build());
+        ).bounds(btnX, btnY, 80, 16).renderer(renderer).build());
     }
 
     @Override
@@ -44,7 +43,8 @@ public class UpgradeTargetScreen extends AbstractPanelScreen {
 
     @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        renderPanelBackground(guiGraphics);
+        this.renderBackground(guiGraphics);
+        renderPanelBackground(guiGraphics, mouseX, mouseY, partialTick);
 
         guiGraphics.drawString(font, Component.translatable("screen.gytrinket.upgrade_target_title").getString(),
                 panelX + 8, panelY + 6, renderer.getAccentColor());
@@ -69,8 +69,8 @@ public class UpgradeTargetScreen extends AbstractPanelScreen {
             String baseItemKey = targetTag.getString("baseItemKey");
             String upgradedItemKey = targetTag.getString("upgradedItemKey");
 
-            Item baseItem = ForgeRegistries.ITEMS.getValue(new ResourceLocation(baseItemKey));
-            Item upgradedItem = ForgeRegistries.ITEMS.getValue(new ResourceLocation(upgradedItemKey));
+            Item baseItem = BuiltInRegistries.ITEM.get(new ResourceLocation(baseItemKey));
+            Item upgradedItem = BuiltInRegistries.ITEM.get(new ResourceLocation(upgradedItemKey));
             if (baseItem == null || upgradedItem == null) continue;
 
             int rowY = contentTopY + i * rowHeight - scrollOffset;
@@ -98,7 +98,7 @@ public class UpgradeTargetScreen extends AbstractPanelScreen {
                 totalCollected += ing.getInt("collected");
             }
             String progress = totalCollected + "/" + totalRequired;
-            int progressColor = totalCollected >= totalRequired ? renderer.getValueColor() : 0xFFAAAAAA;
+            int progressColor = totalCollected >= totalRequired ? renderer.getValueColor() : renderer.getHintColor();
             guiGraphics.drawString(font, progress, panelX + panelWidth - 15 - font.width(progress), rowY + 4, progressColor);
 
             StringBuilder ingSummary = new StringBuilder();
@@ -107,7 +107,7 @@ public class UpgradeTargetScreen extends AbstractPanelScreen {
                 String itemKey = ing.getString("itemKey");
                 int required = ing.getInt("required");
                 int collected = ing.getInt("collected");
-                Item ingItem = ForgeRegistries.ITEMS.getValue(new ResourceLocation(itemKey));
+                Item ingItem = BuiltInRegistries.ITEM.get(new ResourceLocation(itemKey));
                 String ingName = ingItem != null ? new ItemStack(ingItem).getHoverName().getString() : itemKey;
                 if (j > 0) ingSummary.append(" ");
                 ingSummary.append(ingName).append(":").append(collected).append("/").append(required);
@@ -129,7 +129,9 @@ public class UpgradeTargetScreen extends AbstractPanelScreen {
         int scrollBarX = panelX + panelWidth - 4;
         scrollBar.render(guiGraphics, renderer, scrollBarX, contentTopY, contentBottomY - contentTopY, visibleHeight, totalContentHeight);
 
-        super.render(guiGraphics, mouseX, mouseY, partialTick);
+        for (var renderable : this.renderables) {
+            renderable.render(guiGraphics, mouseX, mouseY, partialTick);
+        }
     }
 
     @Override
@@ -177,3 +179,4 @@ public class UpgradeTargetScreen extends AbstractPanelScreen {
         return super.mouseReleased(mouseX, mouseY, button);
     }
 }
+

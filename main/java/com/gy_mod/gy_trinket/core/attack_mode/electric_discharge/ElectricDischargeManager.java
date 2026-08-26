@@ -36,8 +36,7 @@ import java.util.stream.Collectors;
  * </ul>
  */
 public class ElectricDischargeManager {
-    /** 搜索敌对目标的半径 */
-    private static final double SEARCH_RADIUS = 6.0;
+
     /** 最大目标数量 */
     private static final int MAX_TARGETS = 6;
 
@@ -110,9 +109,6 @@ public class ElectricDischargeManager {
         double shieldEffectRadius = AttributeManager.getGroupAttribute(player.getUUID(), "shield_effect_radius");
         double lightningLength = baseLength * shieldEffectRadius;
 
-        Random random = new Random();
-        boolean generateSecondLightning = random.nextDouble() < 0.5;
-
         if (ShieldTransferManager.hasTransferredShield(player.getUUID())) {
             // 护盾移植时：在每个被保护实体位置触发
             List<LivingEntity> protectedEntities = ShieldTransferManager.getProtectedEntities(player.getUUID(), player.level());
@@ -123,52 +119,30 @@ public class ElectricDischargeManager {
                 }
 
                 Vec3 entityPos = entity.position().add(0, 0.6 * entity.getBbHeight(), 0);
-                // 使用闪电长度作为索敌半径
-                List<LivingEntity> targets = findHostileTargets(player, entityPos, lightningLength);
+                // 使用闪电长度的 2/3 作为索敌半径
+                List<LivingEntity> targets = findHostileTargets(player, entityPos, lightningLength * 2.0 / 3.0);
 
                 // 选择距离实体最近的危险目标作为朝向点
                 Vec3 targetPoint = calculateTargetPoint(player, entityPos, targets, lightningLength);
 
-                generateAndSendLightning(player, entityPos, targetPoint, true, attackSpeed);
-
-                if (generateSecondLightning) {
-                    generateAndSendLightning(player, entityPos, targetPoint, false, attackSpeed);
-                }
+                generateAndSendLightning(player, entityPos, targetPoint, attackSpeed);
             }
         } else {
             // 未移植时：在玩家位置触发
             Vec3 playerPos = player.position().add(0, 0.6 * player.getBbHeight(), 0);
-            // 使用闪电长度作为索敌半径
-            List<LivingEntity> targets = findHostileTargets(player, playerPos, lightningLength);
+            // 使用闪电长度的 2/3 作为索敌半径
+            List<LivingEntity> targets = findHostileTargets(player, playerPos, lightningLength * 2.0 / 3.0);
             Vec3 targetPoint = calculateTargetPoint(player, playerPos, targets, lightningLength);
 
-            generateAndSendLightning(player, playerPos, targetPoint, true, attackSpeed);
-
-            if (generateSecondLightning) {
-                generateAndSendLightning(player, playerPos, targetPoint, false, attackSpeed);
-            }
+            generateAndSendLightning(player, playerPos, targetPoint, attackSpeed);
         }
     }
 
     /**
      * 生成并发送闪电
-     * <p>
-     * 主要步骤：
-     * <ol>
-     *   <li>生成分形闪电线段</li>
-     *   <li>检测命中的目标</li>
-     *   <li>记录目标进行持续灼烧</li>
-     *   <li>发送闪电数据到客户端</li>
-     * </ol>
-     *
-     * @param player          释放闪电的玩家
-     * @param playerPos       闪电起点位置
-     * @param targetPoint     闪电朝向点
-     * @param enableBranches  是否生成分支
-     * @param attackSpeed     玩家攻击速度
      */
-    private static void generateAndSendLightning(Player player, Vec3 playerPos, Vec3 targetPoint, boolean enableBranches, double attackSpeed) {
-        List<LightningSegment> lightningSegments = generateFractalLightning(player, playerPos, targetPoint, enableBranches, attackSpeed);
+    private static void generateAndSendLightning(Player player, Vec3 playerPos, Vec3 targetPoint, double attackSpeed) {
+        List<LightningSegment> lightningSegments = generateFractalLightning(player, playerPos, targetPoint, attackSpeed);
         Set<LivingEntity> hitEntities = findTargetsFromBendPoints(player, lightningSegments);
 
         UUID lightningUuid = UUID.randomUUID();
@@ -185,13 +159,6 @@ public class ElectricDischargeManager {
 
     /**
      * 每 tick 更新
-     * <p>
-     * 主要功能：
-     * <ul>
-     *   <li>对命中目标施加灼烧</li>
-     *   <li>对命中目标施加点燃</li>
-     *   <li>清理已完成的闪电效果</li>
-     * </ul>
      */
     public static void tick() {
         if (LIGHTNING_TARGETS.isEmpty()) {
@@ -270,12 +237,6 @@ public class ElectricDischargeManager {
 
     /**
      * 从闪电线段的折点处查找目标
-     * <p>
-     * 在每个折点周围创建搜索区域，检测范围内的敌对目标
-     *
-     * @param player   释放闪电的玩家
-     * @param segments 闪电线段列表
-     * @return 命中的目标集合
      */
     private static Set<LivingEntity> findTargetsFromBendPoints(Player player, List<LightningSegment> segments) {
         Set<LivingEntity> hitEntities = new HashSet<>();
@@ -327,11 +288,6 @@ public class ElectricDischargeManager {
 
     /**
      * 查找附近的敌对目标
-     *
-     * @param player       玩家
-     * @param playerPos    搜索中心位置
-     * @param searchRadius 搜索半径（跟随闪电长度）
-     * @return 敌对目标列表（按距离排序）
      */
     private static List<LivingEntity> findHostileTargets(Player player, Vec3 playerPos, double searchRadius) {
         ServerLevel level = (ServerLevel) player.level();
@@ -359,10 +315,6 @@ public class ElectricDischargeManager {
 
     /**
      * 检查是否为有效目标
-     *
-     * @param entity 待检查实体
-     * @param player 玩家
-     * @return 是否为有效目标
      */
     private static boolean isValidTarget(LivingEntity entity, Player player) {
         return HostileTargetManager.shouldAttackPlayer(entity, player);
@@ -370,14 +322,6 @@ public class ElectricDischargeManager {
 
     /**
      * 计算闪电朝向点
-     * <p>
-     * 如果有目标，朝向最近的目标；如果没有目标，朝向玩家视线方向（使用闪电长度作为默认距离）
-     *
-     * @param player         玩家
-     * @param playerPos      玩家位置
-     * @param targets        目标列表
-     * @param lightningLength 闪电长度（用于无目标时的默认搜索距离）
-     * @return 闪电朝向点
      */
     private static Vec3 calculateTargetPoint(Player player, Vec3 playerPos, List<LivingEntity> targets, double lightningLength) {
         if (targets.isEmpty()) {
@@ -386,31 +330,22 @@ public class ElectricDischargeManager {
         }
 
         LivingEntity nearestTarget = targets.get(0);
-        return nearestTarget.position().add(0, 0.6 * nearestTarget.getBbHeight(), 0);
+        // 目标点 = 目标身高一半处（碰撞中心）
+        return nearestTarget.position().add(0, nearestTarget.getBbHeight() * 0.5, 0);
     }
 
     /**
      * 生成分形闪电
      * <p>
-     * 主要步骤：
-     * <ol>
-     *   <li>计算闪电长度（受攻击速度和护盾效果半径属性影响）</li>
-     *   <li>生成主闪电路径</li>
-     *   <li>在主路径上生成分支</li>
-     * </ol>
-     *
-     * @param player             释放闪电的玩家
-     * @param start              起点位置
-     * @param targetDirectionPoint 朝向点
-     * @param enableBranches     是否生成分支
-     * @param attackSpeed        玩家攻击速度
-     * @return 闪电线段列表
+     * 主路径必定经过目标点：先以目标方向生成到目标（长度=目标距离，期间可任意弯曲），
+     * 经过目标后继续延伸剩余长度（之后可任意旋转）。
+     * 段长度规则：先生成的段（根部）长，末端短。
+     * 分支规则：0~5之间随机数量，闪电越长分支概率越高；分支可在任意节点分叉。
      */
-    private static List<LightningSegment> generateFractalLightning(Player player, Vec3 start, Vec3 targetDirectionPoint, boolean enableBranches, double attackSpeed) {
+    private static List<LightningSegment> generateFractalLightning(Player player, Vec3 start, Vec3 targetPoint, double attackSpeed) {
         List<LightningSegment> segments = new ArrayList<>();
         Random random = new Random();
 
-        Vec3 direction = targetDirectionPoint.subtract(start).normalize();
         double speedRatio = 1 + (attackSpeed - 1) * 0.5;
         double baseLength = (5.0 + random.nextDouble() * 2.0) / speedRatio;
 
@@ -418,31 +353,83 @@ public class ElectricDischargeManager {
         double shieldEffectRadius = AttributeManager.getGroupAttribute(player.getUUID(), "shield_effect_radius");
         double totalLength = baseLength * shieldEffectRadius;
 
-        List<Vec3> mainPath = generateLightningPath(start, direction, totalLength, random, true);
+        List<Vec3> mainPath = new ArrayList<>();
+
+        double targetDist = start.distanceTo(targetPoint);
+        Vec3 dirToTarget = targetDist > 1e-4 ? targetPoint.subtract(start).normalize() : new Vec3(0, 0, 1);
+
+        if (targetDist > 0.3) {
+            // 第一段：从起点到目标点（长度=目标距离），期间可任意弯曲
+            List<Vec3> toTarget = generateLightningPath(start, dirToTarget, targetDist, random, true);
+            if (!toTarget.isEmpty()) {
+                // 强制末端节点为目标点，保证闪电必定经过索敌位置
+                toTarget.set(toTarget.size() - 1, targetPoint);
+            }
+            mainPath.addAll(toTarget);
+        } else {
+            mainPath.add(start);
+            mainPath.add(targetPoint);
+        }
+
+        // 第二段：经过目标点后继续延伸剩余长度，之后可任意旋转
+        double remaining = totalLength - targetDist;
+        if (remaining > 0.3) {
+            Vec3 lastNode = mainPath.get(mainPath.size() - 1);
+            Vec3 prevNode = mainPath.size() >= 2 ? mainPath.get(mainPath.size() - 2) : null;
+
+            Vec3 continueDir;
+            if (prevNode != null) {
+                Vec3 forward = lastNode.subtract(prevNode).normalize();
+                Vec3 randomDir = new Vec3(
+                    random.nextDouble() * 2 - 1,
+                    random.nextDouble() * 2 - 1,
+                    random.nextDouble() * 2 - 1
+                ).normalize();
+                // 允许任意旋转，但仍略偏向原前进方向，避免明显回头
+                continueDir = forward.scale(0.4).add(randomDir.scale(0.6)).normalize();
+            } else {
+                continueDir = new Vec3(
+                    random.nextDouble() * 2 - 1,
+                    random.nextDouble() * 2 - 1,
+                    random.nextDouble() * 2 - 1
+                ).normalize();
+            }
+
+            List<Vec3> after = generateLightningPath(lastNode, continueDir, remaining, random, true);
+            // 跳过第一个节点（= lastNode，已存在）
+            for (int i = 1; i < after.size(); i++) {
+                mainPath.add(after.get(i));
+            }
+        }
 
         // 添加主路径到闪电线段
         for (int i = 0; i < mainPath.size() - 1; i++) {
             segments.add(new LightningSegment(mainPath.get(i), mainPath.get(i + 1)));
         }
 
-        // 生成分支
-        if (enableBranches) {
+        // 分支：0~5之间随机数量，闪电越长分支概率越高；分支可在任意节点分叉
+        int maxBranches = Math.min(5, Math.max(0, (int) Math.floor(totalLength / 2.0)));
+        int branchCount = maxBranches > 0 ? random.nextInt(maxBranches + 1) : 0;
+
+        if (branchCount > 0 && mainPath.size() > 1) {
+            // 从主路径节点中随机选取分支点（跳过根部）
+            List<Integer> forkIndexes = new ArrayList<>();
             for (int i = 1; i < mainPath.size(); i++) {
-                Vec3 point = mainPath.get(i);
-                double distanceFromStart = point.distanceTo(start);
+                forkIndexes.add(i);
+            }
+            Collections.shuffle(forkIndexes, random);
 
-                // 起始部分不生成分支
-                if (distanceFromStart < 1.5) {
-                    continue;
+            int generated = 0;
+            for (Integer idx : forkIndexes) {
+                if (generated >= branchCount) {
+                    break;
                 }
-
-                double branchChance = calculateBranchChance(distanceFromStart, totalLength);
-
-                if (random.nextDouble() < branchChance) {
-                    double branchLength = totalLength * (0.1 + random.nextDouble() * 0.2);
-                    double branchBranchProb = 0.2;
-                    generateBranches(point, branchLength, distanceFromStart, segments, random, 0, branchBranchProb, direction);
-                }
+                // 分支点处主路径的局部方向
+                Vec3 prev = idx > 0 ? mainPath.get(idx - 1) : mainPath.get(idx + 1);
+                Vec3 next = idx < mainPath.size() - 1 ? mainPath.get(idx + 1) : mainPath.get(idx - 1);
+                Vec3 forkDir = next.subtract(prev).normalize();
+                generateBranch(mainPath.get(idx), totalLength, segments, random, forkDir);
+                generated++;
             }
         }
 
@@ -450,31 +437,11 @@ public class ElectricDischargeManager {
     }
 
     /**
-     * 计算在指定距离处的分支概率
-     * <p>
-     * 分支概率随距离增加而增大
-     *
-     * @param distanceFromStart 距离起点的距离
-     * @param totalLength       总长度
-     * @return 分支概率 (0-1)
-     */
-    private static double calculateBranchChance(double distanceFromStart, double totalLength) {
-        double progress = distanceFromStart / totalLength;
-        double baseChance = Math.pow(progress, 1.5) * 0.9;
-        return Math.max(baseChance, 0.5) * 0.5;
-    }
-
-    /**
      * 生成闪电路径
      * <p>
-     * 使用分形算法生成一条带有随机偏移的路径，主路径和分支路径共用此方法。
-     *
-     * @param start       起点
-     * @param direction   主方向
-     * @param totalLength 总长度
-     * @param random      随机数生成器
-     * @param isMain      是否为主路径（影响线段长度和弯曲参数）
-     * @return 路径点列表
+     * 段长度按生成顺序递减：先生成的段（根部）长，末端短；
+     * 闪电总长度增加时，所需段数随之增加（平均段长不变）。
+     * 段与段之间朝向偏转较大，但整体保持朝向前进方向。
      */
     private static List<Vec3> generateLightningPath(Vec3 start, Vec3 direction, double totalLength, Random random, boolean isMain) {
         List<Vec3> path = new ArrayList<>();
@@ -482,34 +449,38 @@ public class ElectricDischargeManager {
 
         Vec3 current = start;
         double distanceTraveled = 0;
-        double defaultLength = 5.0;
-        double scaleRatio = totalLength / defaultLength;
-        if (scaleRatio < 1) scaleRatio = 1;
 
         while (distanceTraveled < totalLength) {
             double progress = distanceTraveled / totalLength;
 
-            double baseMinLength, baseMaxLength, bendBase, bendProgress, angleXFactor, angleYFactor;
+            // 段长度轮廓：根部段长，末端段短
+            double maxLen, minLen;
             if (isMain) {
-                baseMinLength = (0.4 - progress * 0.3) * scaleRatio;
-                baseMaxLength = (0.8 - progress * 0.5) * (1 + (scaleRatio - 1) * 0.5);
-                bendBase = 0.4;
-                bendProgress = 0.8;
-                angleXFactor = 1.4;
-                angleYFactor = 1.1;
+                maxLen = 1.7 - progress * 1.3;   // 1.7 -> 0.4
+                minLen = 1.1 - progress * 0.8;   // 1.1 -> 0.3
             } else {
-                baseMinLength = (0.2 - progress * 0.1) * scaleRatio;
-                baseMaxLength = (0.5 - progress * 0.4) * (1 + (scaleRatio - 1) * 0.5);
-                bendBase = 0.5;
-                bendProgress = 0.5;
-                angleXFactor = 1.2;
-                angleYFactor = 1.0;
+                maxLen = 1.2 - progress * 0.8;   // 1.2 -> 0.4
+                minLen = 0.7 - progress * 0.45;  // 0.7 -> 0.25
             }
 
-            double segmentLength = baseMinLength + random.nextDouble() * (baseMaxLength - baseMinLength);
+            double segmentLength = minLen + random.nextDouble() * (maxLen - minLen);
 
             if (distanceTraveled + segmentLength > totalLength) {
                 segmentLength = totalLength - distanceTraveled;
+            }
+
+            // 朝向偏转：段间方向差异大，但整体保持朝向
+            double bendBase, bendProgress, angleXFactor, angleYFactor;
+            if (isMain) {
+                bendBase = 0.6;
+                bendProgress = 0.7;
+                angleXFactor = 2.0;
+                angleYFactor = 1.6;
+            } else {
+                bendBase = 0.5;
+                bendProgress = 0.6;
+                angleXFactor = 1.7;
+                angleYFactor = 1.4;
             }
 
             double bendFactor = bendBase + progress * bendProgress;
@@ -536,82 +507,34 @@ public class ElectricDischargeManager {
     }
 
     /**
-     * 生成分支
-     * <p>
-     * 递归生成子分支，具有以下特点：
-     * <ul>
-     *   <li>有最大深度限制</li>
-     *   <li>有最小长度限制</li>
-     *   <li>分支概率随深度递减</li>
-     * </ul>
-     *
-     * @param start              起点
-     * @param maxLength          最大长度
-     * @param distanceFromOrigin 距离起点的距离
-     * @param segments           闪电线段列表
-     * @param random             随机数生成器
-     * @param depth              当前深度
-     * @param branchProbability  分支概率
-     * @param mainDirection      主方向（可选）
+     * 从指定节点生成一条分支（单级分支，无子分支）。
+     * 分支长度约为闪电总长度的一半（随机），朝向偏向主方向但偏转较大。
      */
-    private static void generateBranches(Vec3 start, double maxLength, double distanceFromOrigin, List<LightningSegment> segments, Random random, int depth, double branchProbability, Vec3 mainDirection) {
-        if (depth >= 6 || maxLength < 0.35) {
-            return;
-        }
+    private static void generateBranch(Vec3 forkPoint, double totalLength, List<LightningSegment> segments, Random random, Vec3 mainDirection) {
+        // 分支长度：约为闪电总长度的一半（0.35~0.65 随机）
+        double branchLength = totalLength * (0.35 + random.nextDouble() * 0.3);
 
-        int branchCount = depth == 0 ? 1 : 1 + random.nextInt(2);
+        // 分支朝向：偏向主方向，带大偏转
+        double theta = random.nextDouble() * Math.PI * 2;
+        double phi = Math.acos(2 * random.nextDouble() - 1);
 
-        for (int i = 0; i < branchCount; i++) {
-            double branchLength = maxLength * (0.35 + random.nextDouble() * 0.5);
+        Vec3 randomDir = new Vec3(
+            Math.sin(phi) * Math.cos(theta),
+            Math.sin(phi) * Math.sin(theta),
+            Math.cos(phi)
+        );
 
-            Vec3 branchDir;
-            if (mainDirection != null) {
-                // 有主方向时，偏向主方向
-                double theta = random.nextDouble() * Math.PI * 2;
-                double phi = Math.acos(2 * random.nextDouble() - 1);
+        Vec3 branchDir = mainDirection.scale(0.6).add(randomDir.scale(0.4)).normalize();
 
-                Vec3 randomDir = new Vec3(
-                    Math.sin(phi) * Math.cos(theta),
-                    Math.sin(phi) * Math.sin(theta),
-                    Math.cos(phi)
-                );
+        List<Vec3> branchPath = generateLightningPath(forkPoint, branchDir, branchLength, random, false);
 
-                branchDir = mainDirection.scale(0.7).add(randomDir.scale(0.3)).normalize();
-            } else {
-                // 无主方向时，完全随机
-                double theta = random.nextDouble() * Math.PI * 2;
-                double phi = Math.acos(2 * random.nextDouble() - 1);
-
-                branchDir = new Vec3(
-                    Math.sin(phi) * Math.cos(theta),
-                    Math.sin(phi) * Math.sin(theta),
-                    Math.cos(phi)
-                );
-            }
-
-            List<Vec3> branchPath = generateLightningPath(start, branchDir, branchLength, random, false);
-
-            // 添加分支到闪电线段
-            for (int j = 0; j < branchPath.size() - 1; j++) {
-                segments.add(new LightningSegment(branchPath.get(j), branchPath.get(j + 1)));
-            }
-
-            // 递归生成子分支
-            double newBranchProb = branchProbability * (0.85 + random.nextDouble() * 0.1);
-            if (random.nextDouble() < newBranchProb) {
-                Vec3 endPoint = branchPath.get(branchPath.size() - 1);
-                Vec3 branchDirection = branchPath.get(branchPath.size() - 1)
-                    .subtract(branchPath.get(0)).normalize();
-                generateBranches(endPoint, branchLength * 0.6, distanceFromOrigin + maxLength, segments, random, depth + 1, newBranchProb, branchDirection);
-            }
+        for (int j = 0; j < branchPath.size() - 1; j++) {
+            segments.add(new LightningSegment(branchPath.get(j), branchPath.get(j + 1)));
         }
     }
 
     /**
      * 发送闪电线段到所有客户端
-     *
-     * @param level    服务器世界
-     * @param segments 闪电线段列表
      */
     private static void sendLightningToClients(ServerLevel level, List<LightningSegment> segments) {
         NetworkHandler.sendLightningToAll(level, segments);
@@ -651,3 +574,4 @@ public class ElectricDischargeManager {
         }
     }
 }
+

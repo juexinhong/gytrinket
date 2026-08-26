@@ -45,3 +45,4 @@ public class CooldownSlowdownEffect implements IAttackCooldownEffect {
         }
     }
 }
+

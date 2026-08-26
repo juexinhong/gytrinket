@@ -9,6 +9,7 @@ import com.gy_mod.gy_trinket.core.entity.construct.drone.behavior.IDroneSpecialB
 import com.gy_mod.gy_trinket.core.entity.construct.drone.behavior.DroneSpecialBehaviorManager;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.behavior.PursuitBehavior;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.behavior.FormationBehavior;
+import com.gy_mod.gy_trinket.core.entity.construct.drone.behavior.SelfDestructBehavior;
 import com.gy_mod.gy_trinket.core.explosion.SimulatedExplosion;
 import com.gy_mod.gy_trinket.core.entity.construct.HostileTargetManager;
 import net.minecraft.core.particles.ParticleTypes;
@@ -87,8 +88,6 @@ public class DroneConstructEntity extends AbstractConstructEntity {
         super(type, level);
         this.baseMaxHealth = Config.getDroneBaseHealth();
         this.baseAttackDamage = Config.getDroneBaseDamage();
-        // 攻击冷却错峰：创建时随机偏移初始冷却，避免所有无人机同一帧攻击
-        this.attackCooldown = level.random.nextInt(40);
     }
 
     /**
@@ -98,6 +97,8 @@ public class DroneConstructEntity extends AbstractConstructEntity {
         this(ModEntities.DRONE_CONSTRUCT.get(), level);
         setOwnerUUID(ownerUUID);
         this.droneConstruct = droneConstruct;
+        // 攻击冷却错峰：随机偏移0-40 tick，避免所有无人机同时开火
+        this.attackCooldown = level.random.nextInt(40);
     }
 
     // ===== 同步数据 =====
@@ -105,8 +106,8 @@ public class DroneConstructEntity extends AbstractConstructEntity {
     @Override
     protected void defineSynchedData() {
         super.defineSynchedData();
-        entityData.define(DATA_ARRAY_TYPE, 0);
-        entityData.define(DATA_EFFECT_TAGS, 0);
+        this.entityData.define(DATA_ARRAY_TYPE, 0);
+        this.entityData.define(DATA_EFFECT_TAGS, 0);
     }
 
     @Override
@@ -192,6 +193,7 @@ public class DroneConstructEntity extends AbstractConstructEntity {
 
     /**
      * 防御无人机使用扩大的碰撞箱以拦截弹射物。
+     * 在1.21.1中 getDimensions(Pose) 是 final 的，无法重写。
      * 通过重写 makeBoundingBox() 返回扩大的碰撞箱来实现防御无人机的弹射物拦截。
      */
     @Override
@@ -202,13 +204,6 @@ public class DroneConstructEntity extends AbstractConstructEntity {
             return AABB.ofSize(this.getEyePosition(), (double) width, (double) height, (double) width);
         }
         return super.makeBoundingBox();
-    }
-
-    @Override
-    public boolean displayFireAnimation() {
-        // 防御无人机不显示着火效果，其他无人机保持默认行为
-        if (isDefenseDrone()) return false;
-        return super.displayFireAnimation();
     }
 
     // ===== 效果标签管理 =====
@@ -242,6 +237,13 @@ public class DroneConstructEntity extends AbstractConstructEntity {
         updateEffectData();
         applyAttributeModifiers();
         this.refreshDimensions();
+    }
+
+    @Override
+    public boolean displayFireAnimation() {
+        // 防御无人机客户端不显示着火（其他正常）
+        if (isDefenseDrone()) return false;
+        return super.displayFireAnimation();
     }
 
     public boolean hasEffectTag(DroneEffectTag tag) {
@@ -318,7 +320,9 @@ public class DroneConstructEntity extends AbstractConstructEntity {
         if (this.level().isClientSide) return;
 
         // 最终指令的自爆视为死亡判定，可以触发自毁装置
-        triggerSelfDestructIfAvailable();
+        if (SelfDestructBehavior.hasRequiredItems(this)) {
+            SelfDestructBehavior.triggerSelfDestructExplosion(this);
+        }
 
         float maxHealth = this.getMaxHealth();
         float speed = (float) this.explosionSpeed;
@@ -369,20 +373,10 @@ public class DroneConstructEntity extends AbstractConstructEntity {
     }
 
     @Override
-    public Set<String> getInstanceTags() {
-        java.util.Set<String> tags = super.getInstanceTags();
-        if (droneConstruct != null) {
-            tags.addAll(droneConstruct.getCurrentTags());
-        }
-        if (isCommander) {
-            tags.add("commander");
-        }
-        return tags;
-    }
-
-    @Override
     protected ConstructData createConstructDataForRegistration(ServerPlayer ownerPlayer) {
-        DroneArrayType currentArrayType = DroneArrayManager.getInstance().getPlayerArrayType(ownerPlayer);
+        DroneArrayType currentArrayType = ownerPlayer != null
+                ? DroneArrayManager.getInstance().getPlayerArrayType(ownerPlayer)
+                : DroneArrayType.Types.ORBIT;
         if (currentArrayType == null) {
             currentArrayType = DroneArrayType.Types.ORBIT;
         }
@@ -398,7 +392,7 @@ public class DroneConstructEntity extends AbstractConstructEntity {
 
     @Override
     protected void applyConstructAttributes(UUID playerUUID, Map<String, Double> attributes) {
-        ConstructAttributeApplier.applyAttributesToConstruct(playerUUID, this, this, attributes);
+        ConstructAttributeApplier.applyAttributesToDrone(playerUUID, this, attributes);
     }
 
     // ===== 类型特定 NBT 钩子 =====
@@ -584,7 +578,6 @@ public class DroneConstructEntity extends AbstractConstructEntity {
                         if (targetToAttack != null) {
                             boolean canAttack = this.distanceTo(targetToAttack) <= behavior.getAttackRange();
 
-                            // 始终转向目标（无论是否在攻击范围内）
                             faceTargetWithInterpolation(targetToAttack);
 
                             behavior.executeAttack(this, (LivingEntity) owner, targetToAttack, canAttack);
@@ -869,3 +862,4 @@ public class DroneConstructEntity extends AbstractConstructEntity {
         this.isCommander = commander;
     }
 }
+

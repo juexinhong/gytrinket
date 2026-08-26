@@ -1,4 +1,4 @@
-﻿{
+{
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "pattern": [
@@ -16,7 +16,7 @@
     }
   },
   "result": {
-    "item": "gytrinket:bond",
+    "id": "gytrinket:bond",
     "count": 1
   }
 }

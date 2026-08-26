@@ -1,0 +1,1 @@
+{"itemSet":"near_death_protection_items","titleKey":"near_death_protection","descKey":"near_death_protection_effect","color":"green","params":[{"type":"seconds","source":"nearDeathProtectionInvincibleDuration"},{"type":"seconds","source":"nearDeathProtectionCooldown"}]}

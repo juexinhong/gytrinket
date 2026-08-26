@@ -8,13 +8,13 @@ import net.minecraftforge.network.NetworkEvent;
 import java.util.function.Supplier;
 
 public class ShieldParticlePacket {
-    
+
     private final int entityId;
     private final double originOffsetX, originOffsetY, originOffsetZ;
     private final double offsetX, offsetY, offsetZ;
     private final double dirX, dirY, dirZ;
     private final int delayTicks;
-    
+
     public ShieldParticlePacket(int entityId,
                                double originOffsetX, double originOffsetY, double originOffsetZ,
                                double offsetX, double offsetY, double offsetZ,
@@ -32,7 +32,7 @@ public class ShieldParticlePacket {
         this.dirZ = dirZ;
         this.delayTicks = delayTicks;
     }
-    
+
     public ShieldParticlePacket(FriendlyByteBuf buf) {
         this.entityId = buf.readInt();
         this.originOffsetX = buf.readDouble();
@@ -46,7 +46,7 @@ public class ShieldParticlePacket {
         this.dirZ = buf.readDouble();
         this.delayTicks = buf.readVarInt();
     }
-    
+
     public void toBytes(FriendlyByteBuf buf) {
         buf.writeInt(entityId);
         buf.writeDouble(originOffsetX);
@@ -60,9 +60,10 @@ public class ShieldParticlePacket {
         buf.writeDouble(dirZ);
         buf.writeVarInt(delayTicks);
     }
-    
-    public void handle(Supplier<NetworkEvent.Context> context) {
-        context.get().enqueueWork(() -> {
+
+    public void handle(Supplier<NetworkEvent.Context> contextSupplier) {
+        NetworkEvent.Context context = contextSupplier.get();
+        context.enqueueWork(() -> {
             DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> {
                 if (delayTicks > 0) {
                     com.gy_mod.gy_trinket.client.effect.particle.ShieldParticleTimerManager.getInstance()
@@ -73,6 +74,6 @@ public class ShieldParticlePacket {
                 }
             });
         });
-        context.get().setPacketHandled(true);
+        context.setPacketHandled(true);
     }
 }

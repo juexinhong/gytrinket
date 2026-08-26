@@ -1,17 +1,11 @@
 package com.gy_mod.gy_trinket.core.entity.construct.swarm;
 
+import com.gy_mod.gy_trinket.core.entity.construct.AbstractConstruct;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructData;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructManager;
-import com.gy_mod.gy_trinket.core.entity.construct.ConstructType;
-import com.gy_mod.gy_trinket.core.entity.construct.IConstruct;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 
-import java.util.HashSet;
-import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -22,24 +16,13 @@ import java.util.UUID;
  * 玩家护盾受损时部分蜂群转为修复模式；护盾破裂时全员获得攻速/移速增益。
  * 单实例构建时有小概率提升等阶（标准/高阶），获得属性加成。
  */
-public class SwarmConstruct implements IConstruct {
-
-    private final String constructId;
-    private final LivingEntity owner;
-    private final double maxHealth;
-    private double health;
-    private boolean active;
-    private UUID entityUUID;
+public class SwarmConstruct extends AbstractConstruct {
 
     /** 单实例等阶：0=基础 1=标准 2=高阶 */
     private final int tier;
 
-    public SwarmConstruct(String constructId, LivingEntity owner, double maxHealth, int tier) {
-        this.constructId = constructId;
-        this.owner = owner;
-        this.maxHealth = maxHealth;
-        this.health = maxHealth;
-        this.active = true;
+    public SwarmConstruct(String constructId, net.minecraft.world.entity.LivingEntity owner, double maxHealth, int tier) {
+        super(constructId, owner, maxHealth);
         this.tier = tier;
     }
 
@@ -60,105 +43,6 @@ public class SwarmConstruct implements IConstruct {
     }
 
     @Override
-    public String getConstructId() {
-        return constructId;
-    }
-
-    @Override
-    public ConstructType getConstructType() {
-        return ConstructManager.getInstance().getConstructType(constructId);
-    }
-
-    @Override
-    public Entity getEntity() {
-        if (entityUUID == null || owner == null) return null;
-        Level level = owner.level();
-        if (!(level instanceof ServerLevel serverLevel)) return null;
-        return serverLevel.getEntity(entityUUID);
-    }
-
-    @Override
-    public double getHealth() {
-        return health;
-    }
-
-    @Override
-    public void setHealth(double health) {
-        this.health = Math.max(0, Math.min(health, maxHealth));
-    }
-
-    @Override
-    public double getMaxHealth() {
-        return maxHealth;
-    }
-
-    @Override
-    public boolean isActive() {
-        return active;
-    }
-
-    @Override
-    public void activate() {
-        this.active = true;
-    }
-
-    @Override
-    public void deactivate() {
-        this.active = false;
-    }
-
-    @Override
-    public void tick() {
-        // 行为逻辑已在 SwarmConstructEntity 中实现
-    }
-
-    @Override
-    public void onCreated() {
-        spawnEntity();
-    }
-
-    private void spawnEntity() {
-        Level level = owner.level();
-        if (level.isClientSide) return;
-
-        SwarmConstructEntity swarm = new SwarmConstructEntity(level, owner.getUUID(), this);
-
-        Vec3 spawnPos = owner.position().add(0, 2, 0);
-        swarm.setPos(spawnPos.x, spawnPos.y, spawnPos.z);
-
-        // 主动获取构造体属性（进化/母舰等动态属性需在实体创建后应用）
-        swarm.refreshConstructAttributes();
-
-        // 属性应用后再设置满血（此时maxHealth已包含动态加成）
-        swarm.setHealth(swarm.getMaxHealth());
-
-        level.addFreshEntity(swarm);
-        entityUUID = swarm.getUUID();
-
-        ConstructManager.getInstance().registerConstructEntity(owner.getUUID(), constructId, swarm);
-    }
-
-    @Override
-    public void onDestroyed() {
-        if (entityUUID == null || owner == null) return;
-        Level level = owner.level();
-        if (!(level instanceof ServerLevel serverLevel)) return;
-        Entity entity = serverLevel.getEntity(entityUUID);
-        if (entity != null) {
-            entity.discard();
-        }
-    }
-
-    @Override
-    public boolean canBeCreated() {
-        return owner != null && owner.isAlive();
-    }
-
-    @Override
-    public void onBuildProgress(int progress, int total) {
-    }
-
-    @Override
     public ConstructData createData(UUID entityUUID) {
         SwarmConstructData data = new SwarmConstructData(constructId, entityUUID, maxHealth);
         data.setTier(tier);
@@ -166,21 +50,20 @@ public class SwarmConstruct implements IConstruct {
     }
 
     @Override
-    public UUID getEntityUUID() {
-        return entityUUID;
-    }
+    protected void spawnEntity() {
+        Level level = owner.level();
+        if (level.isClientSide) return;
 
-    public LivingEntity getOwner() {
-        return owner;
-    }
+        SwarmConstructEntity swarm = new SwarmConstructEntity(level, owner.getUUID(), this);
 
-    @Override
-    public Set<String> getCurrentTags() {
-        Set<String> allTags = new HashSet<>();
-        ConstructType type = getConstructType();
-        if (type != null) {
-            allTags.addAll(type.getTags());
-        }
-        return allTags;
+        Vec3 spawnPos = owner.position().add(0, 2, 0);
+        swarm.setPos(spawnPos.x, spawnPos.y, spawnPos.z);
+        swarm.setHealth(swarm.getMaxHealth());
+
+        level.addFreshEntity(swarm);
+        entityUUID = swarm.getUUID();
+
+        ConstructManager.getInstance().registerConstructEntity(owner.getUUID(), constructId, swarm);
     }
 }
+

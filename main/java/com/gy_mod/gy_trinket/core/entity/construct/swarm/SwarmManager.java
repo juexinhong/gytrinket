@@ -1,17 +1,17 @@
 package com.gy_mod.gy_trinket.core.entity.construct.swarm;
 
 import com.gy_mod.gy_trinket.config.Config;
-import com.gy_mod.gy_trinket.core.shield.DisableSystem;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructManager;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructType;
+import com.gy_mod.gy_trinket.core.shield.DisableSystem;
 import com.gy_mod.gy_trinket.event.PlayerAttributesCalculatedEvent;
-import com.gy_mod.gy_trinket.storage.PlayerStore;
-import com.gy_mod.gy_trinket.storage.PlayerStoreManager;
+import com.gy_mod.gy_trinket.storage.PlayerStoreUtils;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.server.ServerLifecycleHooks;
 
 import java.util.HashSet;
 import java.util.Map;
@@ -32,7 +32,12 @@ public class SwarmManager {
     /** 玩家构建条件缓存 */
     private static final Set<UUID> PLAYER_CAN_BUILD_SWARM = new HashSet<>();
 
-    private SwarmManager() {}
+    private SwarmManager() {
+        ConstructManager.getInstance().registerBuildConditionChecker(
+                SwarmConstructTypes.SWARM,
+                player -> PLAYER_CAN_BUILD_SWARM.contains(player.getUUID())
+        );
+    }
 
     public static SwarmManager getInstance() {
         return INSTANCE;
@@ -83,22 +88,14 @@ public class SwarmManager {
     public static void onAttributesCalculated(PlayerAttributesCalculatedEvent event) {
         UUID playerUUID = event.getPlayerUUID();
 
-        PlayerStore store = PlayerStoreManager.getPlayerStore(playerUUID);
-        if (store == null) {
-            clearPlayerCache(playerUUID);
-            return;
-        }
-
         boolean hasSwarmModule = false;
 
-        for (int i = 0; i < store.getItemHandler().getSlots(); i++) {
-            ItemStack stack = store.getItemHandler().getStackInSlot(i);
-            if (!stack.isEmpty()) {
-                if (DisableSystem.isItemDisabled(playerUUID, stack)) continue;
-                var item = stack.getItem();
-                if (Config.isSwarmModuleItem(item)) {
-                    hasSwarmModule = true;
-                }
+        // 已装备物品 = 光点核心存储 + Curios 饰品栏（光点核心内容扩展）
+        for (ItemStack stack : PlayerStoreUtils.getEquippedStacks(playerUUID)) {
+            if (DisableSystem.isItemDisabled(playerUUID, stack)) continue;
+            var item = stack.getItem();
+            if (Config.isSwarmModuleItem(item)) {
+                hasSwarmModule = true;
             }
         }
 
@@ -139,7 +136,7 @@ public class SwarmManager {
         Map<UUID, net.minecraft.world.entity.Entity> activeEntities =
             ConstructManager.getInstance().getActiveConstructEntities(player.getUUID(), SwarmConstructTypes.SWARM);
 
-        net.minecraft.server.MinecraftServer server = net.minecraftforge.server.ServerLifecycleHooks.getCurrentServer();
+        net.minecraft.server.MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
 
         if (constructDataList != null && !constructDataList.isEmpty() && server != null) {
             for (com.gy_mod.gy_trinket.core.entity.construct.ConstructData data : constructDataList) {

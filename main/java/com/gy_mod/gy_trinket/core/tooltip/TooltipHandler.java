@@ -1,12 +1,17 @@
 package com.gy_mod.gy_trinket.core.tooltip;
 
 import com.gy_mod.gy_trinket.config.Config;
+import com.gy_mod.gy_trinket.core.attribute.AttributeDefinition;
+import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
+import com.gy_mod.gy_trinket.core.attribute.AttributeType;
+import com.gy_mod.gy_trinket.core.defs.DefsManager;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructManager;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructType;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneBullet;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneConstructTypes;
 import com.gy_mod.gy_trinket.core.entity.construct.swarm.SwarmConstructTypes;
 import com.gy_mod.gy_trinket.core.entity.construct.wingman.WingmanConstructTypes;
+import com.gy_mod.gy_trinket.gytrinket;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
@@ -24,267 +29,20 @@ public class TooltipHandler {
 
     private static final String TOOLTIP_PREFIX = "tooltip.gytrinket.";
 
-    // 配置驱动的工具提示规则列表
-    private static final List<TooltipConfig> TOOLTIP_RULES = createTooltipRules();
+    // 数据驱动的工具提示规则列表（从 datapack tooltip_rules 惰性加载）
+    private static List<TooltipConfig> tooltipRules = null;
 
-    private static List<TooltipConfig> createTooltipRules() {
-        List<TooltipConfig> rules = new ArrayList<>();
-
-        // 电气放电
-        rules.add(new TooltipConfig(
-            Config.ELECTRIC_DISCHARGE_ITEMS,
-            "electric_discharge", "electric_discharge_effect",
-            ChatFormatting.AQUA
-        ));
-
-        // 攻击冷却效率
-        rules.add(new TooltipConfig(
-            Config.ATTACK_COOLDOWN_EFFICIENCY_ITEMS,
-            "efficiency", "efficiency_effect",
-            ChatFormatting.GOLD,
-            () -> new Object[]{"20"}
-        ));
-
-        // 护盾自然恢复
-        rules.add(new TooltipConfig(
-            Config.SHIELD_NATURAL_RECOVERY_ITEMS,
-            "regen_shield", "regen_shield_effect",
-            ChatFormatting.GREEN,
-            () -> new Object[]{
-                (int)(Config.getNaturalRecoveryShieldPresentHealthModifier() * 100),
-                (int)(Config.getNaturalRecoveryShieldPresentShieldModifier() * 100)
-            }
-        ));
-
-        // 反射伤害
-        rules.add(new TooltipConfig(
-            Config.REFLECT_DAMAGE_ITEMS,
-            "reflect_damage", "reflect_damage_effect",
-            ChatFormatting.RED
-        ));
-
-        // 爆炸护盾
-        rules.add(new TooltipConfig(
-            Config.EXPLOSIVE_SHIELD_ITEMS,
-            "explosive_shield", "explosive_shield_effect",
-            ChatFormatting.DARK_RED,
-            () -> new Object[]{Config.EXPLOSIVE_SHIELD_DAMAGE.get()}
-        ));
-
-        // 护盾转移
-        rules.add(new TooltipConfig(
-            Config.SHIELD_TRANSFER_ITEMS,
-            "shield_transfer", "shield_transfer_effect",
-            ChatFormatting.LIGHT_PURPLE,
-            () -> new Object[]{Config.SHIELD_TRANSFER_EFFECT_PENALTY_PER_ENTITY.get() * 100}
-        ));
-
-        // 二进制协议
-        rules.add(new TooltipConfig(
-            Config.BINARY_PROTOCOL_ITEMS,
-            "binary_protocol", "binary_protocol_effect",
-            ChatFormatting.DARK_GREEN,
-            () -> new Object[]{50}
-        ));
-
-        // 武装护盾
-        rules.add(new TooltipConfig(
-            Config.WEAPONIZED_SHIELD_ITEMS,
-            "weaponized_shield", "weaponized_shield_effect",
-            ChatFormatting.RED,
-            () -> new Object[]{(int)(Config.WEAPONIZED_SHIELD_VULNERABILITY.get() * 100)}
-        ));
-
-        // 濒死保护
-        rules.add(new TooltipConfig(
-            Config.NEAR_DEATH_PROTECTION_ITEMS,
-            "near_death_protection", "near_death_protection_effect",
-            ChatFormatting.GREEN,
-            () -> new Object[]{
-                Config.NEAR_DEATH_PROTECTION_INVINCIBLE_DURATION.get() / 20.0,
-                Config.NEAR_DEATH_PROTECTION_COOLDOWN.get() / 20.0
-            }
-        ));
-
-        // 濒死爆炸
-        rules.add(new TooltipConfig(
-            Config.NEAR_DEATH_EXPLOSION_ITEMS,
-            "near_death_explosion", "near_death_explosion_effect",
-            ChatFormatting.RED,
-            () -> new Object[]{
-                Config.NEAR_DEATH_EXPLOSION_INVINCIBLE_DURATION.get() / 20.0,
-                Config.NEAR_DEATH_EXPLOSION_COEFFICIENT.get(),
-                Config.NEAR_DEATH_EXPLOSION_RADIUS.get()
-            }
-        ));
-
-        // 自毁装置
-        rules.add(new TooltipConfig(
-            Config.SELF_DESTRUCT_ITEMS,
-            "self_destruct", "self_destruct_effect",
-            ChatFormatting.RED
-        ));
-
-        // 督战者
-        rules.add(new TooltipConfig(
-            Config.TASKMASTER_ITEMS,
-            "taskmaster", "taskmaster_effect",
-            ChatFormatting.GOLD
-        ));
-
-        // 追击阵列
-        rules.add(new TooltipConfig(
-            Config.PURSUIT_ARRAY_REQUIRED_ITEMS,
-            "pursuit_array", "pursuit_array_effect",
-            ChatFormatting.GOLD
-        ));
-
-        // 编队阵列
-        rules.add(new TooltipConfig(
-            Config.FORMATION_ARRAY_REQUIRED_ITEMS,
-            "formation_array", "formation_array_effect",
-            ChatFormatting.AQUA
-        ));
-
-        // 守卫阵列
-        rules.add(new TooltipConfig(
-            Config.GUARD_ARRAY_REQUIRED_ITEMS,
-            "guard_array", "guard_array_effect",
-            ChatFormatting.BLUE
-        ));
-
-        // 弧形屏障
-        rules.add(new TooltipConfig(
-            Config.ARC_BARRIER_ITEMS,
-            "arc_barrier", "arc_barrier_effect",
-            ChatFormatting.DARK_AQUA,
-            () -> new Object[]{Config.ARC_BARRIER_POSITION_DEVIATION_THRESHOLD.get()}
-        ));
-
-        // 重塑
-        rules.add(new TooltipConfig(
-            Config.RESHAPING_ITEMS,
-            "reshaping", "reshaping_effect",
-            ChatFormatting.GREEN,
-            () -> new Object[]{
-                Config.RESHAPING_HEAL_RATE.get() * 100,
-                Config.RESHAPING_BASE_DAMAGE_REDUCTION.get(),
-                Config.RESHAPING_DAMAGE_REDUCTION_DURATION.get() / 20.0
-            }
-        ));
-
-        // 反击脉冲
-        rules.add(new TooltipConfig(
-            Config.COUNTER_PULSE_ITEMS,
-            "counter_pulse", "counter_pulse_effect",
-            ChatFormatting.RED,
-            () -> new Object[]{
-                Config.COUNTER_PULSE_COOLDOWN.get() / 20.0,
-                Config.COUNTER_PULSE_BASE_EXPLOSION_RADIUS.get(),
-                Config.COUNTER_PULSE_BASE_EXPLOSION_DAMAGE.get(),
-                Config.COUNTER_PULSE_CHARGE_INTERVAL.get(),
-                Config.COUNTER_PULSE_MAX_CHARGE_LEVEL.get()
-            }
-        ));
-
-        // 精密构造
-        rules.add(new TooltipConfig(
-            Config.PRECISION_CONSTRUCT_ITEMS,
-            "precision_construct", "precision_construct_effect",
-            ChatFormatting.AQUA,
-            () -> new Object[]{Config.PRECISION_CONSTRUCT_BONUS_PER_LEVEL.get() * 100}
-        ));
-
-        // 高级工程
-        rules.add(new TooltipConfig(
-            Config.ADVANCED_ENGINEERING_ITEMS,
-            "advanced_engineering", "advanced_engineering_effect",
-            ChatFormatting.GOLD,
-            () -> new Object[]{Config.ADVANCED_ENGINEERING_BONUS_PER_LEVEL.get() * 100}
-        ));
-
-        // 指挥官
-        rules.add(new TooltipConfig(
-            Config.COMMANDER_REQUIRED_ITEMS,
-            "commander", "commander_effect",
-            ChatFormatting.LIGHT_PURPLE,
-            () -> new Object[]{
-                Config.COMMANDER_MAX_COUNT.get(),
-                Config.COMMANDER_APPOINT_DELAY.get() / 20.0
-            }
-        ));
-
-        // 强袭
-        rules.add(new TooltipConfig(
-            Config.ASSAULT_ITEMS,
-            "assault", "assault_effect",
-            ChatFormatting.RED
-        ));
-
-        // 充能攻击
-        rules.add(new TooltipConfig(
-            Config.CHARGED_ATTACK_ITEMS,
-            "charged_attack", "charged_attack_effect",
-            ChatFormatting.GOLD
-        ));
-
-        // 充能护盾
-        rules.add(new TooltipConfig(
-            Config.CHARGED_SHIELD_ITEMS,
-            "charged_shield", "charged_shield_effect",
-            ChatFormatting.AQUA,
-            () -> new Object[]{
-                (int)(Config.getChargedShieldChargeRatio() * 100),
-                (int)(Config.getChargedShieldMaxBonus() * 100),
-                (int)(Math.abs(Config.getChargedShieldMovementSpeedPenalty()) * 100)
-            }
-        ));
-
-        // 积怨
-        rules.add(new TooltipConfig(
-            Config.GRUDGE_ITEMS,
-            "grudge", "grudge_effect",
-            ChatFormatting.RED,
-            () -> new Object[]{
-                Config.getGrudgeConversionRatio(),
-                (int)(Config.getGrudgeFadePercent() * 100),
-                Config.getGrudgeFadeBase(),
-                (int)(Math.abs(Config.getGrudgeMovementSpeedPenalty()) * 100)
-            }
-        ));
-
-        // 震撼弹
-        rules.add(new TooltipConfig(
-            Config.WINGMAN_SHOCKWAVE_MODULE_ITEMS,
-            "shockwave_module", "shockwave_module_desc",
-            ChatFormatting.GOLD,
-            () -> new Object[]{
-                (int)((Config.getWingmanShockwaveDamageMultiplier() - 1) * 100),
-                (int)((Config.getWingmanShockwaveSplashLengthMultiplier() - 1) * 100)
-            }
-        ));
-
-        // 进化
-        rules.add(new TooltipConfig(
-            Config.WINGMAN_EVOLUTION_MODULE_ITEMS,
-            "evolution_module", "evolution_module_desc",
-            ChatFormatting.LIGHT_PURPLE,
-            () -> new Object[]{
-                Config.getWingmanEvolutionBonusPerLevel() * 100
-            }
-        ));
-
-        // 幽灵机身
-        rules.add(new TooltipConfig(
-            Config.GHOST_FUSELAGE_MODULE_ITEMS,
-            "ghost_fuselage", "ghost_fuselage_desc",
-            ChatFormatting.DARK_PURPLE,
-            () -> new Object[]{
-                (int)(Config.getGhostFuselageBaseMaxDamageBonus() * 100)
-            }
-        ));
-
-        return rules;
+    private static void ensureTooltipRules() {
+        List<DefsManager.TooltipRuleDef> rules = DefsManager.clientTooltipRules();
+        // 数据源数量变化时重建缓存（datapack 可能晚于首次查询加载完成或 /reload 刷新）
+        if (tooltipRules != null && tooltipRules.size() == rules.size()) {
+            return;
+        }
+        tooltipRules = new ArrayList<>();
+        for (DefsManager.TooltipRuleDef def : rules) {
+            tooltipRules.add(new TooltipConfig(def));
+        }
+        gytrinket.LOGGER.info("工具提示规则已加载：{} 条", tooltipRules.size());
     }
 
     @SubscribeEvent
@@ -303,8 +61,9 @@ public class TooltipHandler {
         addModuleTooltips(event, itemId);
         addAdaptiveArmorTooltip(event, itemId);
 
-        // 配置驱动的通用工具提示
-        for (TooltipConfig config : TOOLTIP_RULES) {
+        // 数据驱动的通用工具提示
+        ensureTooltipRules();
+        for (TooltipConfig config : tooltipRules) {
             addConfiguredTooltip(event, itemId, config);
         }
     }
@@ -358,7 +117,7 @@ public class TooltipHandler {
                         event.getToolTip().add(Component.literal("  +").withStyle(ChatFormatting.GREEN)
                             .append(attrTooltip)
                             .append(Component.literal(" ").withStyle(ChatFormatting.GRAY))
-                            .append(Component.literal(attrValue).withStyle(ChatFormatting.YELLOW)));
+                            .append(Component.literal(formatAttributeValue(attrName, attrValue)).withStyle(ChatFormatting.YELLOW)));
                     }
                 }
                 break;
@@ -366,32 +125,79 @@ public class TooltipHandler {
         }
     }
 
-    private static void addShieldTypesTooltip(ItemTooltipEvent event, String itemId) {
-        List<? extends String> itemShieldTypesConfig = Config.ITEM_SHIELD_TYPES_CONFIG.get();
+    /**
+     * 格式化属性值显示
+     * - 百分比/独立乘区属性：值×100，显示为百分数（最多保留两位小数，四舍五入）
+     * - 常规属性（BASE）：最多保留两位小数，四舍五入
+     */
+    private static String formatAttributeValue(String attrName, String rawValue) {
+        try {
+            double value = Double.parseDouble(rawValue);
+            AttributeType type = getAttributeType(attrName);
 
-        for (String configLine : itemShieldTypesConfig) {
-            if (configLine.startsWith(itemId + "|")) {
-                String shieldTypes = configLine.substring(itemId.length() + 1);
-
-                event.getToolTip().add(Component.literal("").withStyle(ChatFormatting.GRAY));
-                event.getToolTip().add(Component.literal("护盾类型:").withStyle(ChatFormatting.GOLD));
-
-                String[] types = shieldTypes.split(",");
-                for (String type : types) {
-                    Component typeTooltip = Component.translatable(TOOLTIP_PREFIX + "shield_type." + type)
-                        .withStyle(ChatFormatting.WHITE);
-
-                    if (isDefaultTranslation(typeTooltip, TOOLTIP_PREFIX + "shield_type." + type)) {
-                        typeTooltip = Component.literal(type).withStyle(ChatFormatting.WHITE);
-                    }
-
-                    event.getToolTip().add(Component.literal("  +").withStyle(ChatFormatting.GREEN)
-                        .append(typeTooltip));
-
-                    addShieldTypeDescriptionTooltip(event, type);
-                }
-                break;
+            if (type == AttributeType.PERCENT || type == AttributeType.INDEPENDENT_MULTIPLY) {
+                // 百分比显示：值×100，最多保留两位小数
+                return formatDecimal(value * 100) + "%";
+            } else {
+                // 常规小数：最多保留两位小数
+                return formatDecimal(value);
             }
+        } catch (NumberFormatException e) {
+            return rawValue;
+        }
+    }
+
+    /**
+     * 四舍五入到两位小数，并去掉末尾多余的0和小数点
+     * 示例：8.00->"8", 8.50->"8.5", 16.6666->"16.67", 20.01->"20.01"
+     */
+    private static String formatDecimal(double value) {
+        String formatted = String.format("%.2f", value);
+        if (formatted.contains(".")) {
+            formatted = formatted.replaceAll("0+$", "").replaceAll("\\.$", "");
+        }
+        return formatted;
+    }
+
+    /**
+     * 查询属性类型
+     * 优先从AttributeManager查询，后备从属性名后缀推断
+     */
+    private static AttributeType getAttributeType(String attrName) {
+        AttributeDefinition def = AttributeManager.getAttributeDefinition(attrName);
+        if (def != null) {
+            return def.getType();
+        }
+        AttributeType clientType = DefsManager.clientAttributeType(attrName);
+        if (clientType != null) {
+            return clientType;
+        }
+        if (attrName.endsWith("_percent")) return AttributeType.PERCENT;
+        if (attrName.endsWith("_independent")) return AttributeType.INDEPENDENT_MULTIPLY;
+        return AttributeType.BASE;
+    }
+
+    private static void addShieldTypesTooltip(ItemTooltipEvent event, String itemId) {
+        List<String> shieldTypes = DefsManager.clientItemShieldTypes(itemId);
+        if (shieldTypes.isEmpty()) {
+            return;
+        }
+
+        event.getToolTip().add(Component.literal("").withStyle(ChatFormatting.GRAY));
+        event.getToolTip().add(Component.literal("护盾类型:").withStyle(ChatFormatting.GOLD));
+
+        for (String type : shieldTypes) {
+            Component typeTooltip = Component.translatable(TOOLTIP_PREFIX + "shield_type." + type)
+                .withStyle(ChatFormatting.WHITE);
+
+            if (isDefaultTranslation(typeTooltip, TOOLTIP_PREFIX + "shield_type." + type)) {
+                typeTooltip = Component.literal(type).withStyle(ChatFormatting.WHITE);
+            }
+
+            event.getToolTip().add(Component.literal("  +").withStyle(ChatFormatting.GREEN)
+                .append(typeTooltip));
+
+            addShieldTypeDescriptionTooltip(event, type);
         }
     }
 
@@ -433,17 +239,17 @@ public class TooltipHandler {
     }
 
     private static void addModuleTooltips(ItemTooltipEvent event, String itemId) {
-        if (Config.DRONE_MODULE_ITEMS.get().contains(itemId)) {
+        if (DefsManager.itemSetContains("drone_module_items", itemId)) {
             addTooltip(event, "drone_module", ChatFormatting.GRAY);
             addDroneModuleDescTooltip(event);
         }
 
-        if (Config.ASSAULT_DRONE_MODULE_ITEMS.get().contains(itemId)) {
+        if (DefsManager.itemSetContains("assault_drone_module_items", itemId)) {
             addTooltip(event, "assault_drone_module", ChatFormatting.GOLD);
             addTooltip(event, "assault_drone_module_desc", ChatFormatting.RED);
         }
 
-        if (Config.DEFENSE_DRONE_MODULE_ITEMS.get().contains(itemId)) {
+        if (DefsManager.itemSetContains("defense_drone_module_items", itemId)) {
             addTooltip(event, "defense_drone_module", ChatFormatting.BLUE);
             addTooltip(event, "defense_drone_module_desc", ChatFormatting.RED);
         }
@@ -453,27 +259,27 @@ public class TooltipHandler {
             addTooltip(event, "quick_reconstruction_module_desc", ChatFormatting.RED);
         }
 
-        if (Config.WINGMAN_MODULE_ITEMS.get().contains(itemId)) {
+        if (DefsManager.itemSetContains("wingman_module_items", itemId)) {
             addTooltip(event, "wingman_module", ChatFormatting.GRAY);
             addWingmanModuleDescTooltip(event);
         }
 
-        if (Config.WINGMAN_INTERCEPTOR_MODULE_ITEMS.get().contains(itemId)) {
+        if (DefsManager.itemSetContains("wingman_interceptor_module_items", itemId)) {
             addTooltip(event, "interceptor_module", ChatFormatting.GRAY);
             addInterceptorModuleDescTooltip(event);
         }
 
-        if (Config.WINGMAN_NANO_REGEN_MODULE_ITEMS.get().contains(itemId)) {
+        if (DefsManager.itemSetContains("wingman_nano_regen_module_items", itemId)) {
             addTooltip(event, "nano_regen_module", ChatFormatting.GREEN);
             addNanoRegenModuleDescTooltip(event);
         }
 
-        if (Config.SWARM_MODULE_ITEMS.get().contains(itemId)) {
+        if (DefsManager.itemSetContains("swarm_module_items", itemId)) {
             addTooltip(event, "mothership_body", ChatFormatting.GRAY);
             addMothershipBodyDescTooltip(event);
         }
 
-        if (Config.BARRIER_ITEMS.get().contains(itemId)) {
+        if (DefsManager.itemSetContains("barrier_items", itemId)) {
             addTooltip(event, "barrier", ChatFormatting.DARK_PURPLE);
             addFormattedTooltip(event, "barrier_effect", ChatFormatting.DARK_PURPLE,
                 () -> new Object[]{5, 5});
@@ -495,7 +301,7 @@ public class TooltipHandler {
                 double maxHealth = droneType != null ? droneType.getMaxHealth() : Config.getDroneBaseHealth();
                 double attackSpeed = 1.0 / Config.ORBIT_ATTACK_INTERVAL.get();
                 formattedText = String.format(formattedText,
-                    maxCount, (int) maxHealth, DroneBullet.getBaseDamage(), attackSpeed);
+                    maxCount, (int) maxHealth, DroneBullet.getBaseDamage(), formatDecimal(attackSpeed));
                 event.getToolTip().add(Component.literal(formattedText).withStyle(ChatFormatting.GRAY));
             } catch (Exception e) {
                 event.getToolTip().add(tooltip.withStyle(ChatFormatting.GRAY));
@@ -523,7 +329,7 @@ public class TooltipHandler {
                 double attackSpeed = 1.0 / Config.getWingmanAttackInterval();
                 formattedText = String.format(formattedText,
                     maxCount, (int) maxHealth, explosiveCount, explosiveDamage,
-                    explosionDamage, explosionRadius, attackSpeed);
+                    explosionDamage, explosionRadius, formatDecimal(attackSpeed));
                 event.getToolTip().add(Component.literal(formattedText).withStyle(ChatFormatting.GRAY));
             } catch (Exception e) {
                 event.getToolTip().add(tooltip.withStyle(ChatFormatting.GRAY));
@@ -564,7 +370,7 @@ public class TooltipHandler {
                 double attackSpeed = 1.0 / Config.getSwarmAttackInterval();
                 double attackRange = Config.getSwarmAttackRange();
                 formattedText = String.format(formattedText,
-                    maxCount, maxHealth, damage, attackSpeed, attackRange);
+                    maxCount, maxHealth, damage, formatDecimal(attackSpeed), attackRange);
                 event.getToolTip().add(Component.literal(formattedText).withStyle(ChatFormatting.GRAY));
             } catch (Exception e) {
                 event.getToolTip().add(tooltip.withStyle(ChatFormatting.GRAY));
@@ -573,8 +379,8 @@ public class TooltipHandler {
     }
 
     private static void addAdaptiveArmorTooltip(ItemTooltipEvent event, String itemId) {
-        boolean isAdaptiveArmorItem = Config.ADAPTIVE_ARMOR_ITEMS.get().contains(itemId);
-        boolean isBondItem = Config.ADAPTIVE_ARMOR_SHIELD_EFFECT_ITEMS.get().contains(itemId);
+        boolean isAdaptiveArmorItem = DefsManager.itemSetContains("adaptive_armor_items", itemId);
+        boolean isBondItem = DefsManager.itemSetContains("adaptive_armor_shield_effect_items", itemId);
 
         if (isAdaptiveArmorItem) {
             event.getToolTip().add(Component.literal("").withStyle(ChatFormatting.GRAY));

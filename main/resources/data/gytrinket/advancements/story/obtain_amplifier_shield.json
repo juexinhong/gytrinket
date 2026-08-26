@@ -5,7 +5,7 @@
       "conditions": {
         "items": [
           {
-            "items": "gytrinket:shield_amplifier"
+            "items": ["gytrinket:shield_amplifier"]
           }
         ]
       },
@@ -18,7 +18,7 @@
     },
     "icon": {
       "count": 1,
-      "id": "gytrinket:shield_amplifier"
+      "item": "gytrinket:shield_amplifier"
     },
     "title": {
       "translate": "advancements.gytrinket.story.obtain_amplifier_shield.title"

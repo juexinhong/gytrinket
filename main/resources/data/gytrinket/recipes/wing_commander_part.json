@@ -12,7 +12,7 @@
     "@": { "item": "gytrinket:drone_part" }
   },
   "result": {
-    "id": "gytrinket:wing_commander_part",
+    "item": "gytrinket:wing_commander_part",
     "count": 1
   }
 }

@@ -1,4 +1,4 @@
-﻿{
+{
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "pattern": [
@@ -12,7 +12,7 @@
     "R": { "item": "minecraft:redstone" }
   },
   "result": {
-    "id": "gytrinket:nano_regen_part",
+    "item": "gytrinket:nano_regen_part",
     "count": 1
   }
 }

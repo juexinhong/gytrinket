@@ -5,7 +5,7 @@
       "conditions": {
         "items": [
           {
-            "items": "gytrinket:shield_reflect"
+            "items": ["gytrinket:shield_reflect"]
           }
         ]
       },
@@ -18,7 +18,7 @@
     },
     "icon": {
       "count": 1,
-      "id": "gytrinket:shield_reflect"
+      "item": "gytrinket:shield_reflect"
     },
     "title": {
       "translate": "advancements.gytrinket.story.obtain_reflect_shield.title"

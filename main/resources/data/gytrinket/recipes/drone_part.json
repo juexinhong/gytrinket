@@ -9,7 +9,7 @@
     "$": { "item": "minecraft:redstone" }
   },
   "result": {
-    "id": "gytrinket:drone_part",
+    "item": "gytrinket:drone_part",
     "count": 1
   }
 }

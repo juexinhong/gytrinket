@@ -421,13 +421,23 @@ public class RandomBuildManager {
     }
 
     /** 判断 inventory_changed 条件的物品谓词列表是否匹配该物品（忽略 count/slots 约束）
-     *  1.20.1 的 TriggerInstance 无公共 items() 访问器，通过反射读取私有字段 */
+     *  1.20.1 的 TriggerInstance 无公共访问器，通过反射读取私有字段 predicates
+     *  （双名回退：开发环境 Mojang 名 predicates / 正式发布 SRG 名 f_43179_） */
     private static boolean matchesInventoryTrigger(InventoryChangeTrigger.TriggerInstance t, ItemStack stack) {
         try {
-            java.lang.reflect.Field field = InventoryChangeTrigger.TriggerInstance.class.getDeclaredField("items");
-            field.setAccessible(true);
-            net.minecraft.advancements.critereon.ItemPredicate[] items =
-                    (net.minecraft.advancements.critereon.ItemPredicate[]) field.get(t);
+            net.minecraft.advancements.critereon.ItemPredicate[] items = null;
+            for (String fieldName : new String[]{"predicates", "f_43179_"}) {
+                try {
+                    java.lang.reflect.Field field = InventoryChangeTrigger.TriggerInstance.class.getDeclaredField(fieldName);
+                    field.setAccessible(true);
+                    items = (net.minecraft.advancements.critereon.ItemPredicate[]) field.get(t);
+                    break;
+                } catch (NoSuchFieldException ignored) {
+                }
+            }
+            if (items == null) {
+                return false;
+            }
             for (net.minecraft.advancements.critereon.ItemPredicate p : items) {
                 if (p.matches(stack)) {
                     return true;

@@ -21,7 +21,7 @@
     }
   },
   "result": {
-    "id": "gytrinket:health_boost_module",
+    "item": "gytrinket:health_boost_module",
     "count": 1
   }
 }

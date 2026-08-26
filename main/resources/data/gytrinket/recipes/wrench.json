@@ -1,4 +1,4 @@
-﻿{
+{
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "pattern": [
@@ -10,7 +10,7 @@
     "C": { "item": "minecraft:copper_ingot" }
   },
   "result": {
-    "id": "gytrinket:wrench",
+    "item": "gytrinket:wrench",
     "count": 1
   }
 }

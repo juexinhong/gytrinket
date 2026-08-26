@@ -5,7 +5,7 @@
       "conditions": {
         "items": [
           {
-            "items": "gytrinket:shield_gy"
+            "items": ["gytrinket:shield_gy"]
           }
         ]
       },

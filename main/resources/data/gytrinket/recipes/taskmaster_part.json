@@ -11,7 +11,7 @@
     "B": { "item": "minecraft:ender_eye" }
   },
   "result": {
-    "id": "gytrinket:taskmaster_part",
+    "item": "gytrinket:taskmaster_part",
     "count": 1
   }
 }

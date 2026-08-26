@@ -11,7 +11,7 @@
     "B": { "item": "minecraft:copper_block" }
   },
   "result": {
-    "id": "gytrinket:mothership_body",
+    "item": "gytrinket:mothership_body",
     "count": 1
   }
 }

@@ -11,7 +11,7 @@
     "%": { "item": "minecraft:redstone" }
   },
   "result": {
-    "id": "gytrinket:line_formation_part",
+    "item": "gytrinket:line_formation_part",
     "count": 1
   }
 }

@@ -1,4 +1,4 @@
-﻿{
+{
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "pattern": [
@@ -13,7 +13,7 @@
     "@": { "item": "minecraft:blue_wool" }
   },
   "result": {
-    "id": "gytrinket:evolution_module",
+    "item": "gytrinket:evolution_module",
     "count": 1
   }
 }

@@ -5,7 +5,7 @@
       "conditions": {
         "items": [
           {
-            "items": "gytrinket:defense_drone_module"
+            "items": ["gytrinket:defense_drone_module"]
           }
         ]
       },
@@ -18,7 +18,7 @@
     },
     "icon": {
       "count": 1,
-      "id": "gytrinket:defense_drone_module"
+      "item": "gytrinket:defense_drone_module"
     },
     "title": {
       "translate": "advancements.gytrinket.story.obtain_defense_drone_module.title"

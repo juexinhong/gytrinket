@@ -21,7 +21,7 @@
     }
   },
   "result": {
-    "id": "gytrinket:regen_shield_module",
+    "item": "gytrinket:regen_shield_module",
     "count": 1
   }
 }

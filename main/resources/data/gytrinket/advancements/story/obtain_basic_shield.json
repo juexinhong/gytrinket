@@ -5,7 +5,7 @@
       "conditions": {
         "items": [
           {
-            "items": "gytrinket:shield_gy"
+            "items": ["gytrinket:shield_gy"]
           }
         ]
       },
@@ -25,7 +25,7 @@
     "frame": "task",
     "hidden": false,
     "icon": {
-      "id": "gytrinket:shield_gy"
+      "item": "gytrinket:shield_gy"
     },
     "show_toast": true,
     "title": {

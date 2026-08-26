@@ -1,4 +1,4 @@
-﻿{
+{
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "pattern": [
@@ -11,7 +11,7 @@
     "G": { "item": "minecraft:glowstone" }
   },
   "result": {
-    "id": "gytrinket:wingman_part",
+    "item": "gytrinket:wingman_part",
     "count": 1
   }
 }

@@ -1,5 +1,6 @@
 package com.gytrinket.gytrinket.client.screen;
 
+import com.gytrinket.gytrinket.core.defs.DefsManager;
 import com.gytrinket.gytrinket.network.NetworkHandler;
 import com.gytrinket.gytrinket.network.packet.*;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -20,6 +21,14 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
 
     private static final int BASE_ROW_HEIGHT = 18;
     private static final int ATTR_LINE_HEIGHT = 12;
+
+    /** 特殊机制选择器 overlay 布局常量 */
+    private static final int MECHANIC_OVERLAY_W = 220;
+    private static final int MECHANIC_OVERLAY_H = 170;
+    private static final int MECHANIC_LIST_TOP = 18;
+    /** 列表底边距 overlay 底边的距离（给底部提示文本留空间，避免重叠） */
+    private static final int MECHANIC_LIST_BOTTOM_MARGIN = 18;
+    private static final int MECHANIC_ROW_HEIGHT = 11;
 
     private final ListTag itemConfigData;
     private final List<String> allAttributeNames;
@@ -46,8 +55,27 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
 
     private boolean isAddingItem = false;
     private String addingItemId = "";
-    /** 添加物品输入框的光标位置（0..addingItemId.length()） */
-    private int addingCursorIndex = 0;
+    /** 添加物品输入框（复用原版 EditBox：光标/选择/粘贴/IME） */
+    private net.minecraft.client.gui.components.EditBox addingItemEditBox = null;
+    /** 添加物品输入补全建议列表（物品注册名实时匹配） */
+    private final List<String> addingSuggestions = new ArrayList<>();
+    /** 当前高亮的建议项索引 */
+    private int addingSuggestionIndex = 0;
+
+    /** 护盾类型选择器 overlay 状态 */
+    private boolean isSelectingShieldTypes = false;
+    private final List<String> shieldTypeSelection = new ArrayList<>();
+    /** 选中行状态行上的护盾类型文本悬停标记 */
+    private boolean hoveredShieldTypeBtn = false;
+    /** 特殊机制选择器 overlay 状态（true=添加列表，false=移除列表） */
+    private boolean isSelectingMechanic = false;
+    private boolean selectingMechanicAdd = true;
+    private final List<String> mechanicPickList = new ArrayList<>();
+    private final List<String> mechanicPickNames = new ArrayList<>();
+    /** 特殊机制选择器滚轮偏移（行数） */
+    private int mechanicScrollOffset = 0;
+    /** 特殊机制选择器滑块（像素单位，与 mechanicScrollOffset 同步） */
+    private final ScrollBarComponent mechanicScrollBar = new ScrollBarComponent();
 
     private boolean isDraggingItem = false;
     private int dragFromIndex = -1;
@@ -76,11 +104,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
         int btnY = panelY + panelHeight + 5;
         this.addRenderableWidget(SciFiButton.create(
                 Component.translatable("screen.gytrinket.add_item"),
-                button -> {
-                    isAddingItem = true;
-                    addingItemId = "";
-                    addingCursorIndex = 0;
-                }
+                button -> openAddItemInput()
         ).bounds(panelX + 5, btnY, 80, 16).renderer(renderer).build());
 
         this.addRenderableWidget(SciFiButton.create(
@@ -94,57 +118,88 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
         ).bounds(panelX + panelWidth - 85, btnY, 80, 16).renderer(renderer).build());
     }
 
+    /** 打开护盾类型选择器：以当前物品的护盾类型为初始选择 */
+    private void openShieldTypeSelector() {
+        if (selectedItemIndex < 0 || selectedItemIndex >= itemConfigData.size()) {
+            return;
+        }
+        String itemId = itemConfigData.getCompound(selectedItemIndex).getString("itemId");
+        shieldTypeSelection.clear();
+        shieldTypeSelection.addAll(DefsManager.clientItemShieldTypes(getClientRegistryAccess(), itemId));
+        isSelectingShieldTypes = true;
+    }
+
+    private net.minecraft.core.RegistryAccess getClientRegistryAccess() {
+        Minecraft mc = Minecraft.getInstance();
+        return mc.level != null ? mc.level.registryAccess() : null;
+    }
+
+    /** 打开特殊机制选择器：add=true 列出可添加的机制，add=false 列出该物品当前的机制 */
+    private void openMechanicSelector(boolean add) {
+        if (selectedItemIndex < 0 || selectedItemIndex >= itemConfigData.size()) {
+            return;
+        }
+        String itemId = itemConfigData.getCompound(selectedItemIndex).getString("itemId");
+        var access = getClientRegistryAccess();
+        mechanicPickList.clear();
+        mechanicPickNames.clear();
+        if (add) {
+            List<String> currentSets = DefsManager.clientSpecialMechanicSets(access, itemId);
+            for (String set : DefsManager.clientAllMechanicSets(access)) {
+                if (!currentSets.contains(set)) {
+                    mechanicPickList.add(set);
+                    mechanicPickNames.add(DefsManager.clientMechanicDisplayName(access, set));
+                }
+            }
+        } else {
+            for (String set : DefsManager.clientSpecialMechanicSets(access, itemId)) {
+                mechanicPickList.add(set);
+                mechanicPickNames.add(DefsManager.clientMechanicDisplayName(access, set));
+            }
+        }
+        selectingMechanicAdd = add;
+        mechanicScrollOffset = 0;
+        mechanicScrollBar.setScrollOffset(0);
+        isSelectingMechanic = true;
+    }
+
+    /** 特殊机制选择器一屏可见行数 */
+    private int mechanicVisibleRows() {
+        int listBottom = MECHANIC_OVERLAY_H - MECHANIC_LIST_BOTTOM_MARGIN;
+        return Math.max(1, (listBottom - MECHANIC_LIST_TOP) / MECHANIC_ROW_HEIGHT);
+    }
+
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (isAddingItem) {
-            if (keyCode == 257 || keyCode == 335) {
+            if (keyCode == 257 || keyCode == 335) { // Enter：确认添加
                 finishAddingItem();
                 return true;
-            } else if (keyCode == 256) {
-                isAddingItem = false;
-                addingItemId = "";
-                addingCursorIndex = 0;
+            } else if (keyCode == 256) { // Esc：取消
+                closeAddItemInput();
                 return true;
-            } else if (keyCode == 259) { // Backspace：删除光标前一字符
-                if (addingCursorIndex > 0) {
-                    addingItemId = addingItemId.substring(0, addingCursorIndex - 1)
-                            + addingItemId.substring(addingCursorIndex);
-                    addingCursorIndex--;
+            } else if (keyCode == 258) { // Tab：补全当前高亮建议
+                if (!addingSuggestions.isEmpty() && addingSuggestionIndex < addingSuggestions.size()) {
+                    addingItemId = addingSuggestions.get(addingSuggestionIndex);
+                    addingItemEditBox.setValue(addingItemId);
+                    addingItemEditBox.moveCursorToEnd(false);
+                    updateAddingSuggestions();
                 }
                 return true;
-            } else if (keyCode == 261) { // Delete：删除光标后一字符
-                if (addingCursorIndex < addingItemId.length()) {
-                    addingItemId = addingItemId.substring(0, addingCursorIndex)
-                            + addingItemId.substring(addingCursorIndex + 1);
+            } else if (keyCode == 264) { // 下箭头：下一个建议
+                if (!addingSuggestions.isEmpty()) {
+                    addingSuggestionIndex = Math.min(addingSuggestions.size() - 1, addingSuggestionIndex + 1);
                 }
                 return true;
-            } else if (keyCode == 263) { // 左箭头：光标左移
-                if (addingCursorIndex > 0) {
-                    addingCursorIndex--;
+            } else if (keyCode == 265) { // 上箭头：上一个建议
+                if (!addingSuggestions.isEmpty()) {
+                    addingSuggestionIndex = Math.max(0, addingSuggestionIndex - 1);
                 }
                 return true;
-            } else if (keyCode == 262) { // 右箭头：光标右移
-                if (addingCursorIndex < addingItemId.length()) {
-                    addingCursorIndex++;
-                }
-                return true;
-            } else if (keyCode == 268) { // Home：光标移到开头
-                addingCursorIndex = 0;
-                return true;
-            } else if (keyCode == 269) { // End：光标移到末尾
-                addingCursorIndex = addingItemId.length();
-                return true;
-            } else if (keyCode == 86 && hasControlDown()) {
-                String clip = Minecraft.getInstance().keyboardHandler.getClipboard();
-                if (clip != null) {
-                    clip = clip.replaceAll("[\\s\\n\\r]", "");
-                    if (!clip.isEmpty()) {
-                        addingItemId = addingItemId.substring(0, addingCursorIndex)
-                                + clip + addingItemId.substring(addingCursorIndex);
-                        addingCursorIndex += clip.length();
-                    }
-                }
-                return true;
+            }
+            // 其余键（字符/Backspace/Delete/方向/Home/End/Ctrl+V 等）交给原版 EditBox 处理
+            if (addingItemEditBox != null) {
+                addingItemEditBox.keyPressed(keyCode, scanCode, modifiers);
             }
             return true;
         }
@@ -177,16 +232,42 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
             }
             return true;
         }
+        if (isSelectingShieldTypes) {
+            if (keyCode == 256) { // Esc：取消
+                isSelectingShieldTypes = false;
+                shieldTypeSelection.clear();
+                return true;
+            } else if (keyCode == 257 || keyCode == 335) { // Enter：应用
+                applyShieldTypeSelection();
+                return true;
+            }
+            return true;
+        }
+        if (isSelectingMechanic) {
+            if (keyCode == 256) { // Esc：取消
+                isSelectingMechanic = false;
+                return true;
+            }
+            return true;
+        }
         return super.keyPressed(keyCode, scanCode, modifiers);
+    }
+
+    /** 应用护盾类型选择并发送到服务端 */
+    private void applyShieldTypeSelection() {
+        if (selectedItemIndex >= 0 && selectedItemIndex < itemConfigData.size()) {
+            String itemId = itemConfigData.getCompound(selectedItemIndex).getString("itemId");
+            PacketDistributor.sendToServer(new ConfigShieldTypesPayload(itemId, new ArrayList<>(shieldTypeSelection)));
+        }
+        isSelectingShieldTypes = false;
+        shieldTypeSelection.clear();
     }
 
     @Override
     public boolean charTyped(char codePoint, int modifiers) {
         if (isAddingItem) {
-            if (codePoint != ' ' && codePoint >= 33) {
-                addingItemId = addingItemId.substring(0, addingCursorIndex)
-                        + codePoint + addingItemId.substring(addingCursorIndex);
-                addingCursorIndex++;
+            if (addingItemEditBox != null) {
+                addingItemEditBox.charTyped(codePoint, modifiers);
             }
             return true;
         }
@@ -218,8 +299,58 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
                     new ConfigAddItemPayload(addingItemId));
             }
         }
+        closeAddItemInput();
+    }
+
+    /** 打开添加物品输入框（复用原版 EditBox，实时匹配物品注册名补全） */
+    private void openAddItemInput() {
+        isAddingItem = true;
+        addingItemId = "";
+        int overlayW = 240;
+        int overlayH = 150;
+        int overlayX = panelX + panelWidth / 2 - overlayW / 2;
+        int overlayY = panelY + panelHeight / 2 - overlayH / 2;
+        addingItemEditBox = new net.minecraft.client.gui.components.EditBox(font,
+                overlayX + 8, overlayY + 26, overlayW - 16, 14,
+                Component.translatable("screen.gytrinket.add_item_prompt"));
+        addingItemEditBox.setMaxLength(64);
+        // 物品注册名不含空格，阻止空格输入
+        addingItemEditBox.setFilter(text -> !text.contains(" "));
+        addingItemEditBox.setResponder(text -> {
+            addingItemId = text.trim();
+            updateAddingSuggestions();
+        });
+        addingItemEditBox.setValue("");
+        addingItemEditBox.setFocused(true);
+        updateAddingSuggestions();
+    }
+
+    /** 关闭添加物品输入框 */
+    private void closeAddItemInput() {
         isAddingItem = false;
         addingItemId = "";
+        if (addingItemEditBox != null) {
+            addingItemEditBox.setFocused(false);
+        }
+        addingItemEditBox = null;
+        addingSuggestions.clear();
+        addingSuggestionIndex = 0;
+    }
+
+    /** 根据当前输入实时匹配物品注册名（BuiltInRegistries 原版物品表） */
+    private void updateAddingSuggestions() {
+        addingSuggestions.clear();
+        String input = addingItemId.toLowerCase(java.util.Locale.ROOT);
+        for (net.minecraft.resources.ResourceLocation key : BuiltInRegistries.ITEM.keySet()) {
+            String id = key.toString();
+            if (input.isEmpty() || id.toLowerCase(java.util.Locale.ROOT).contains(input)) {
+                addingSuggestions.add(id);
+                if (addingSuggestions.size() >= 10) {
+                    break;
+                }
+            }
+        }
+        addingSuggestionIndex = 0;
     }
 
     private void finishEditing() {
@@ -265,7 +396,12 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double horizontalScroll, double verticalScroll) {
-        if (isSelectingAttr) {
+        if (isSelectingMechanic) {
+            int step = (int) (verticalScroll * 8);
+            int maxOffset = Math.max(0, mechanicPickList.size() - mechanicVisibleRows());
+            mechanicScrollOffset = Math.max(0, Math.min(mechanicScrollOffset - step, maxOffset));
+            mechanicScrollBar.setScrollOffset(mechanicScrollOffset * MECHANIC_ROW_HEIGHT);
+        } else if (isSelectingAttr) {
             int step = (int) (verticalScroll * 8);
             selectAttrScrollOffset = Math.max(0, Math.min(selectAttrScrollOffset - step, Math.max(0, allAttributeNames.size() - 10)));
         } else {
@@ -285,6 +421,54 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
         return existing;
     }
 
+    /** 状态行特殊机制文本（多个机制名排列；未声明时返回"未声明"文案） */
+    private String buildStatusMechanicText(String itemId) {
+        List<String> mechanicNames = DefsManager.clientSpecialMechanicNames(getClientRegistryAccess(), itemId);
+        boolean isMechanic = DefsManager.clientIsSpecialMechanic(getClientRegistryAccess(), itemId);
+        if (isMechanic && !mechanicNames.isEmpty()) {
+            return String.join("  ", mechanicNames);
+        } else if (isMechanic) {
+            return Component.translatable("screen.gytrinket.status_mechanic_declared").getString();
+        } else {
+            return Component.translatable("screen.gytrinket.status_mechanic_undeclared").getString();
+        }
+    }
+
+    /** 状态行护盾类型文本（"护盾类型:xxx,yyy"） */
+    private String buildShieldTypeText(String itemId) {
+        String text = Component.translatable("screen.gytrinket.shield_types").getString();
+        List<String> currentShieldTypes = DefsManager.clientItemShieldTypes(getClientRegistryAccess(), itemId);
+        if (!currentShieldTypes.isEmpty()) {
+            StringBuilder sb = new StringBuilder();
+            for (String t : currentShieldTypes) {
+                if (sb.length() > 0) sb.append(",");
+                sb.append(getShieldTypeDisplayName(t));
+            }
+            text += ":" + sb;
+        }
+        return text;
+    }
+
+    /** 状态行可用右边界（面板右边距 - 滑块占位，滚动条显示时预留放大 4 倍） */
+    private int statusLineAvailX() {
+        return panelX + panelWidth - 8 - (scrollBar.needsScrollbar() ? 28 : 0);
+    }
+
+    /** 状态行是否换行：特殊机制文本 + 护盾类型按钮超出面板可用宽度（含右侧滑块预留）时，护盾类型按钮换到下一行 */
+    private boolean isStatusWrap(String statusText, String shieldTypeText) {
+        int attrX = panelX + 28;
+        return attrX + font.width(statusText) + 12 + font.width(shieldTypeText) > statusLineAvailX();
+    }
+
+    /** 文本超宽时按宽度截断并追加省略号（防止机制文本自身溢出到滑块区域） */
+    private String truncateToWidth(String text, int maxWidth) {
+        if (font.width(text) <= maxWidth) {
+            return text;
+        }
+        String trimmed = font.plainSubstrByWidth(text, Math.max(1, maxWidth - font.width("…")));
+        return trimmed + "…";
+    }
+
     private int calcRowHeight(int itemIndex) {
         if (itemIndex < 0 || itemIndex >= itemConfigData.size()) return BASE_ROW_HEIGHT;
         boolean isSelected = (itemIndex == selectedItemIndex);
@@ -294,8 +478,13 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
         CompoundTag itemTag = itemConfigData.getCompound(itemIndex);
         ListTag attrs = itemTag.getList("attributes", 10);
 
+        // 状态行可能换行：特殊机制 + 护盾类型超宽时占 2 行
+        String itemId = itemTag.getString("itemId");
+        int statusLines = isStatusWrap(buildStatusMechanicText(itemId), buildShieldTypeText(itemId)) ? 2 : 1;
+
+        // 选中行额外显示：特殊机制/护盾类型状态行 + 属性编辑区
         if (attrs.isEmpty()) {
-            return BASE_ROW_HEIGHT + ATTR_LINE_HEIGHT + ATTR_LINE_HEIGHT;
+            return BASE_ROW_HEIGHT + statusLines * ATTR_LINE_HEIGHT + ATTR_LINE_HEIGHT + ATTR_LINE_HEIGHT;
         }
 
         int attrCellMaxWidth = panelWidth - 55;
@@ -315,7 +504,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
                 attrX += textWidth;
             }
         }
-        return BASE_ROW_HEIGHT + attrLines * ATTR_LINE_HEIGHT + ATTR_LINE_HEIGHT;
+        return BASE_ROW_HEIGHT + statusLines * ATTR_LINE_HEIGHT + attrLines * ATTR_LINE_HEIGHT + ATTR_LINE_HEIGHT;
     }
 
     private int calcTotalHeight() {
@@ -344,7 +533,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
                     panelX + panelWidth / 2 + 5, panelY + 6, renderer.getAccentColor());
         }
 
-        boolean hasOverlay = isSelectingAttr || isAddingItem;
+        boolean hasOverlay = isSelectingAttr || isAddingItem || isSelectingShieldTypes || isSelectingMechanic;
 
         if (!hasOverlay) {
             renderContent(guiGraphics, mouseX, mouseY);
@@ -360,6 +549,14 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
 
         if (isAddingItem) {
             renderAddItemOverlay(guiGraphics);
+        }
+
+        if (isSelectingShieldTypes) {
+            renderShieldTypeOverlay(guiGraphics, mouseX, mouseY);
+        }
+
+        if (isSelectingMechanic) {
+            renderMechanicOverlay(guiGraphics, mouseX, mouseY);
         }
 
         if (!hoveredItemStack.isEmpty() && !hasOverlay) {
@@ -379,6 +576,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
         hoveredDelete = false;
         hoveredAddBtn = false;
         hoveredRemoveBtn = false;
+        hoveredShieldTypeBtn = false;
         hoveredItemStack = ItemStack.EMPTY;
 
         lastMouseY = mouseY;
@@ -451,13 +649,55 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
                 int attrY = y + BASE_ROW_HEIGHT;
                 int attrCellMaxWidth = panelWidth - 55;
 
+                // 状态行：左侧特殊机制名称（多个排列），右侧护盾类型按钮（显示当前类型，可点击编辑）
+                // 超宽时自动换行：护盾类型按钮移到状态行下一行
+                String itemIdForStatus = itemTag.getString("itemId");
+                boolean isMechanic = DefsManager.clientIsSpecialMechanic(getClientRegistryAccess(), itemIdForStatus);
+                String statusText = buildStatusMechanicText(itemIdForStatus);
+                int statusColor = isMechanic ? renderer.getValueColor() : renderer.getHintColor();
+                String shieldTypeText = buildShieldTypeText(itemIdForStatus);
+                int shieldTextW = font.width(shieldTypeText);
+                int statusW = font.width(statusText);
+
+                boolean statusWrap = isStatusWrap(statusText, shieldTypeText);
+                int shieldTypeX;
+                int shieldTypeY = attrY;
+                if (statusWrap) {
+                    shieldTypeX = attrX;
+                    shieldTypeY = attrY + ATTR_LINE_HEIGHT;
+                } else {
+                    shieldTypeX = attrX + statusW + 12;
+                }
+
+                // 换行时机制文本可能仍超宽（单独顶到滑块），按可用宽度截断加省略号
+                String displayStatus = statusWrap
+                        ? truncateToWidth(statusText, Math.max(10, statusLineAvailX() - attrX))
+                        : statusText;
+
+                guiGraphics.drawString(font, displayStatus, attrX, attrY + 2, statusColor);
+
+                // 护盾类型文本（悬停可点击打开选择器，无按钮样式）
+                int btnH = ATTR_LINE_HEIGHT - 1;
+                boolean typeBtnHovered = mouseX >= shieldTypeX - 2 && mouseX < shieldTypeX + shieldTextW + 2
+                        && mouseY >= shieldTypeY && mouseY < shieldTypeY + btnH;
+                guiGraphics.drawString(font, shieldTypeText, shieldTypeX, shieldTypeY + 2,
+                        typeBtnHovered ? renderer.getAccentColor() : renderer.getHintColor());
+                if (typeBtnHovered) {
+                    hoveredShieldTypeBtn = true;
+                    hoveredItemIndex = i;
+                }
+
+                // 状态行占位：换行时占 2 行（护盾类型按钮在下一行），后续属性区从状态行之后开始
+                attrY += statusWrap ? 2 * ATTR_LINE_HEIGHT : ATTR_LINE_HEIGHT;
+
                 if (attrs.isEmpty()) {
                     if (!isSelectingAttr && !isEditing && !isDeletingAttr) {
                         guiGraphics.drawString(font,
                                 Component.translatable("screen.gytrinket.no_attributes").getString(),
                                 attrX, attrY + 2, renderer.getHintColor());
 
-                        String addText = "[+]";
+                        String addText = hasShiftDown()
+                                ? Component.translatable("screen.gytrinket.add_mechanic").getString() : "[+]";
                         int hintWidth = font.width(Component.translatable("screen.gytrinket.no_attributes").getString());
                         int btnX = attrX + hintWidth + 8;
                         int btnY = attrY;
@@ -471,7 +711,8 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
                             }
                         }
 
-                        String removeText = "[-]";
+                        String removeText = hasShiftDown()
+                                ? Component.translatable("screen.gytrinket.remove_mechanic").getString() : "[-]";
                         int remBtnX = btnX + font.width(addText) + 8;
                         int remBtnY = attrY;
                         if (remBtnY < contentBottom) {
@@ -534,7 +775,8 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
                     }
 
                     if (!isSelectingAttr && !isEditing && !isDeletingAttr) {
-                        String addText = "[+]";
+                        String addText = hasShiftDown()
+                                ? Component.translatable("screen.gytrinket.add_mechanic").getString() : "[+]";
                         int btnX = attrX + 2;
                         int btnY = attrY;
                         if (btnX + font.width(addText) + 6 > panelX + panelWidth - 25) {
@@ -551,7 +793,8 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
                             }
                         }
 
-                        String removeText = "[-]";
+                        String removeText = hasShiftDown()
+                                ? Component.translatable("screen.gytrinket.remove_mechanic").getString() : "[-]";
                         int remBtnX = btnX + font.width(addText) + 8;
                         int remBtnY = btnY;
                         if (remBtnX + font.width(removeText) + 6 > panelX + panelWidth - 25) {
@@ -679,7 +922,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
 
     private void renderAddItemOverlay(GuiGraphics guiGraphics) {
         int overlayW = 240;
-        int overlayH = 60;
+        int overlayH = 150;
         int overlayX = panelX + panelWidth / 2 - overlayW / 2;
         int overlayY = panelY + panelHeight / 2 - overlayH / 2;
 
@@ -688,30 +931,139 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
 
         guiGraphics.drawString(font, Component.translatable("screen.gytrinket.add_item_prompt").getString(),
                 overlayX + 8, overlayY + 8, renderer.getAccentColor());
+        guiGraphics.drawString(font, Component.translatable("screen.gytrinket.add_item_hint").getString(),
+                overlayX + 8, overlayY + overlayH - 10, renderer.getHintColor());
 
-        int textX = overlayX + 8;
-        int textY = overlayY + 28;
-        guiGraphics.drawString(font, addingItemId, textX, textY, renderer.getValueColor());
+        if (addingItemEditBox != null) {
+            addingItemEditBox.render(guiGraphics, 0, 0, 0);
+        }
 
-        // 光标竖线
-        int caretX = textX + font.width(addingItemId.substring(0, addingCursorIndex));
-        guiGraphics.fill(caretX, textY, caretX + 1, textY + 9, renderer.getAccentColor());
+        // 物品注册名实时匹配建议列表（参考原版命令补全交互：Tab/↑↓/点击）
+        int listX = overlayX + 8;
+        int listY = overlayY + 44;
+        for (int i = 0; i < addingSuggestions.size(); i++) {
+            boolean selected = i == addingSuggestionIndex;
+            guiGraphics.fill(listX - 2, listY + i * 9 - 1, listX + overlayW - 18, listY + i * 9 + 8,
+                    selected ? 0xFF2A4A8A : 0x80121A2E);
+            guiGraphics.drawString(font, addingSuggestions.get(i), listX, listY + i * 9,
+                    selected ? renderer.getValueColor() : renderer.getTextColor());
+        }
     }
 
-    /**
-     * 根据鼠标点击的 X 坐标计算输入框光标位置（最近字符边界）。
-     */
-    private int calcCursorIndexFromClick(double mouseX, int textX) {
-        int cursor = addingItemId.length();
-        for (int i = 0; i < addingItemId.length(); i++) {
-            int charStart = textX + font.width(addingItemId.substring(0, i));
-            int charHalf = font.width(String.valueOf(addingItemId.charAt(i))) / 2;
-            if (mouseX < charStart + charHalf) {
-                cursor = i;
-                break;
-            }
+    /** 护盾类型选择器 overlay：多选，兼容类型可共存，不兼容类型独占（选中时清空其他选择） */
+    private void renderShieldTypeOverlay(GuiGraphics guiGraphics, int mouseX, int mouseY) {
+        int overlayW = 250;
+        int overlayH = 160;
+        int overlayX = panelX + panelWidth / 2 - overlayW / 2;
+        int overlayY = panelY + panelHeight / 2 - overlayH / 2;
+
+        renderer.drawOverlayBackground(guiGraphics, overlayX, overlayY, overlayW, overlayH);
+        renderer.drawOverlayBorder(guiGraphics, overlayX, overlayY, overlayW, overlayH);
+
+        guiGraphics.drawString(font, Component.translatable("screen.gytrinket.select_shield_types").getString(),
+                overlayX + 5, overlayY + 5, renderer.getAccentColor());
+
+        Map<String, Boolean> allTypes = DefsManager.clientShieldTypes(getClientRegistryAccess());
+        int listY = overlayY + 18;
+        int listBottom = overlayY + overlayH - 14;
+        for (Map.Entry<String, Boolean> e : allTypes.entrySet()) {
+            if (listY + 10 > listBottom) break;
+            String typeName = e.getKey();
+            boolean compatible = e.getValue();
+            boolean selected = shieldTypeSelection.contains(typeName);
+            boolean hovered = mouseX >= overlayX + 5 && mouseX < overlayX + overlayW - 5
+                    && mouseY >= listY && mouseY < listY + 10;
+
+            String displayName = getShieldTypeDisplayName(typeName);
+            String text = (selected ? "[√] " : "[ ] ") + displayName
+                    + (compatible ? "" : Component.translatable("screen.gytrinket.shield_type_exclusive").getString());
+
+            guiGraphics.drawString(font, text, overlayX + 8, listY,
+                    hovered ? renderer.getValueColor() : (selected ? renderer.getValueColor() : renderer.getTextColor()));
+            listY += 11;
         }
-        return cursor;
+        if (allTypes.isEmpty()) {
+            guiGraphics.drawString(font, Component.translatable("screen.gytrinket.no_shield_types").getString(),
+                    overlayX + 8, listY, renderer.getHintColor());
+        }
+
+        guiGraphics.drawString(font, Component.translatable("screen.gytrinket.shield_types_hint").getString(),
+                overlayX + 8, overlayY + overlayH - 12, renderer.getHintColor());
+    }
+
+    private String getShieldTypeDisplayName(String typeName) {
+        String key = "tooltip.gytrinket.shield_type." + typeName;
+        String translated = Component.translatable(key).getString();
+        return translated.equals(key) ? typeName : translated;
+    }
+
+    /** 切换护盾类型选择：兼容类型可共存；不兼容类型独占（清空其他选择）；加入兼容类型时移除独占类型 */
+    private void toggleShieldType(String typeName, boolean compatible) {
+        if (compatible) {
+            if (shieldTypeSelection.contains(typeName)) {
+                shieldTypeSelection.remove(typeName);
+                return;
+            }
+            // 保持"不兼容类型独占"不变量：选择兼容类型时，先移除当前独占的不兼容类型
+            Map<String, Boolean> allTypes = DefsManager.clientShieldTypes(getClientRegistryAccess());
+            shieldTypeSelection.removeIf(t -> Boolean.FALSE.equals(allTypes.get(t)));
+            shieldTypeSelection.add(typeName);
+        } else {
+            shieldTypeSelection.clear();
+            shieldTypeSelection.add(typeName);
+        }
+    }
+
+    /** 特殊机制选择器 overlay：单击选择即发送（添加/移除指定机制），支持鼠标滚轮 */
+    private void renderMechanicOverlay(GuiGraphics guiGraphics, int mouseX, int mouseY) {
+        int overlayX = panelX + panelWidth / 2 - MECHANIC_OVERLAY_W / 2;
+        int overlayY = panelY + panelHeight / 2 - MECHANIC_OVERLAY_H / 2;
+
+        renderer.drawOverlayBackground(guiGraphics, overlayX, overlayY, MECHANIC_OVERLAY_W, MECHANIC_OVERLAY_H);
+        renderer.drawOverlayBorder(guiGraphics, overlayX, overlayY, MECHANIC_OVERLAY_W, MECHANIC_OVERLAY_H);
+
+        String titleKey = selectingMechanicAdd
+                ? "screen.gytrinket.select_mechanic_add" : "screen.gytrinket.select_mechanic_remove";
+        guiGraphics.drawString(font, Component.translatable(titleKey).getString(),
+                overlayX + 5, overlayY + 5, renderer.getAccentColor());
+
+        int listY = overlayY + MECHANIC_LIST_TOP;
+        int listBottom = overlayY + MECHANIC_OVERLAY_H - MECHANIC_LIST_BOTTOM_MARGIN;
+
+        // 右侧滑块（像素单位，与 mechanicScrollOffset 同步；可拖动滚动列表）
+        int visibleRows = mechanicVisibleRows();
+        int listHeight = listBottom - listY;
+        int totalPx = mechanicPickNames.size() * MECHANIC_ROW_HEIGHT;
+        int visiblePx = visibleRows * MECHANIC_ROW_HEIGHT;
+        mechanicScrollBar.setScrollOffset(mechanicScrollOffset * MECHANIC_ROW_HEIGHT);
+        mechanicScrollBar.updateMaxScroll(totalPx, visiblePx);
+        mechanicScrollBar.render(guiGraphics, renderer,
+                overlayX + MECHANIC_OVERLAY_W - 6, listY, listHeight, visiblePx, totalPx);
+
+        int drawn = 0;
+        for (int i = mechanicScrollOffset; i < mechanicPickNames.size(); i++) {
+            if (listY + MECHANIC_ROW_HEIGHT > listBottom) break;
+            boolean hovered = mouseX >= overlayX + 5 && mouseX < overlayX + MECHANIC_OVERLAY_W - 5
+                    && mouseY >= listY && mouseY < listY + 10;
+            guiGraphics.drawString(font, mechanicPickNames.get(i), overlayX + 8, listY,
+                    hovered ? renderer.getValueColor() : renderer.getTextColor());
+            listY += MECHANIC_ROW_HEIGHT;
+            drawn++;
+        }
+
+        if (mechanicPickNames.isEmpty()) {
+            String emptyKey = selectingMechanicAdd
+                    ? "screen.gytrinket.no_mechanic_to_add" : "screen.gytrinket.no_mechanic_to_remove";
+            guiGraphics.drawString(font, Component.translatable(emptyKey).getString(),
+                    overlayX + 8, overlayY + MECHANIC_LIST_TOP, renderer.getHintColor());
+        } else if (mechanicPickNames.size() > mechanicScrollOffset + drawn) {
+            // 下方还有未显示的条目：提示可用滚轮
+            guiGraphics.drawString(font, "▼ " + (mechanicPickNames.size() - (mechanicScrollOffset + drawn)) + " ▼",
+                    overlayX + 8, listY + 2, renderer.getHintColor());
+        }
+
+        guiGraphics.drawString(font, Component.translatable("screen.gytrinket.mechanic_pick_hint").getString(),
+                overlayX + 8, overlayY + MECHANIC_OVERLAY_H - 12, renderer.getHintColor());
     }
 
     @Override
@@ -732,20 +1084,30 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
 
         if (isAddingItem) {
             int overlayW = 240;
-            int overlayH = 60;
+            int overlayH = 150;
             int overlayX = panelX + panelWidth / 2 - overlayW / 2;
             int overlayY = panelY + panelHeight / 2 - overlayH / 2;
-            // 点击输入文本：将光标定位到点击位置
-            int textX = overlayX + 8;
-            int textY = overlayY + 28;
-            if (mouseX >= textX && mouseY >= textY && mouseY < textY + 9) {
-                addingCursorIndex = calcCursorIndexFromClick(mouseX, textX);
-                return true;
+            // 点击建议项：填入该物品注册名
+            int listX = overlayX + 8;
+            int listY = overlayY + 44;
+            for (int i = 0; i < addingSuggestions.size(); i++) {
+                if (mouseX >= listX - 2 && mouseX < listX + overlayW - 16
+                        && mouseY >= listY + i * 9 - 1 && mouseY < listY + i * 9 + 8) {
+                    addingItemId = addingSuggestions.get(i);
+                    if (addingItemEditBox != null) {
+                        addingItemEditBox.setValue(addingItemId);
+                    }
+                    updateAddingSuggestions();
+                    return true;
+                }
             }
+            // 点击输入框：EditBox 处理光标定位/焦点
+            if (addingItemEditBox != null) {
+                addingItemEditBox.mouseClicked(mouseX, mouseY, button);
+            }
+            // 点击 overlay 外部：取消
             if (mouseX < overlayX || mouseX >= overlayX + overlayW || mouseY < overlayY || mouseY >= overlayY + overlayH) {
-                isAddingItem = false;
-                addingItemId = "";
-                addingCursorIndex = 0;
+                closeAddItemInput();
             }
             return true;
         }
@@ -810,6 +1172,75 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
             return true;
         }
 
+        if (isSelectingShieldTypes) {
+            int overlayW = 250;
+            int overlayH = 160;
+            int overlayX = panelX + panelWidth / 2 - overlayW / 2;
+            int overlayY = panelY + panelHeight / 2 - overlayH / 2;
+            int listY = overlayY + 18;
+            int listBottom = overlayY + overlayH - 14;
+            Map<String, Boolean> allTypes = DefsManager.clientShieldTypes(getClientRegistryAccess());
+            for (Map.Entry<String, Boolean> e : allTypes.entrySet()) {
+                if (listY + 10 > listBottom) break;
+                if (mouseX >= overlayX + 5 && mouseX < overlayX + overlayW - 5
+                        && mouseY >= listY && mouseY < listY + 10) {
+                    toggleShieldType(e.getKey(), e.getValue());
+                    return true;
+                }
+                listY += 11;
+            }
+            // 点击 overlay 外部：取消
+            if (mouseX < overlayX || mouseX >= overlayX + overlayW || mouseY < overlayY || mouseY >= overlayY + overlayH) {
+                isSelectingShieldTypes = false;
+                shieldTypeSelection.clear();
+            }
+            return true;
+        }
+
+        if (isSelectingMechanic) {
+            int overlayX = panelX + panelWidth / 2 - MECHANIC_OVERLAY_W / 2;
+            int overlayY = panelY + panelHeight / 2 - MECHANIC_OVERLAY_H / 2;
+            int listY = overlayY + MECHANIC_LIST_TOP;
+            int listBottom = overlayY + MECHANIC_OVERLAY_H - MECHANIC_LIST_BOTTOM_MARGIN;
+            int visibleRows = mechanicVisibleRows();
+            int listHeight = listBottom - listY;
+            int totalPx = mechanicPickList.size() * MECHANIC_ROW_HEIGHT;
+            int visiblePx = visibleRows * MECHANIC_ROW_HEIGHT;
+            // 点击滑块：开始拖动
+            mechanicScrollBar.setScrollOffset(mechanicScrollOffset * MECHANIC_ROW_HEIGHT);
+            mechanicScrollBar.updateMaxScroll(totalPx, visiblePx);
+            if (mechanicScrollBar.mouseClicked(mouseX, mouseY,
+                    overlayX + MECHANIC_OVERLAY_W - 6, listY, listHeight, visiblePx, totalPx)) {
+                return true;
+            }
+            for (int i = mechanicScrollOffset; i < mechanicPickList.size(); i++) {
+                if (listY + MECHANIC_ROW_HEIGHT > listBottom) break;
+                if (mouseX >= overlayX + 5 && mouseX < overlayX + MECHANIC_OVERLAY_W - 5
+                        && mouseY >= listY && mouseY < listY + 10) {
+                    // 单击选择：发送添加/移除该机制
+                    if (selectedItemIndex >= 0 && selectedItemIndex < itemConfigData.size()) {
+                        String itemId = itemConfigData.getCompound(selectedItemIndex).getString("itemId");
+                        PacketDistributor.sendToServer(new ConfigSpecialMechanicPayload(
+                                itemId, mechanicPickList.get(i), !selectingMechanicAdd));
+                    }
+                    isSelectingMechanic = false;
+                    return true;
+                }
+                listY += MECHANIC_ROW_HEIGHT;
+            }
+            // 点击 overlay 外部：取消
+            if (mouseX < overlayX || mouseX >= overlayX + MECHANIC_OVERLAY_W || mouseY < overlayY || mouseY >= overlayY + MECHANIC_OVERLAY_H) {
+                isSelectingMechanic = false;
+            }
+            return true;
+        }
+
+        // 状态行右侧护盾类型按钮（在列表内点击，不会脱离选中）
+        if (hoveredShieldTypeBtn && selectedItemIndex >= 0) {
+            openShieldTypeSelector();
+            return true;
+        }
+
         if (hoveredDelete && hoveredItemIndex >= 0) {
             CompoundTag itemTag = itemConfigData.getCompound(hoveredItemIndex);
             String itemId = itemTag.getString("itemId");
@@ -820,10 +1251,24 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
             return true;
         }
 
+        // Shift+[+]：打开特殊机制添加选择器
+        if (hoveredAddBtn && hoveredItemIndex >= 0 && hasShiftDown()) {
+            selectedItemIndex = hoveredItemIndex;
+            openMechanicSelector(true);
+            return true;
+        }
+
         if (hoveredAddBtn && hoveredItemIndex >= 0) {
             selectedItemIndex = hoveredItemIndex;
             isSelectingAttr = true;
             selectAttrScrollOffset = 0;
+            return true;
+        }
+
+        // Shift+[-]：打开特殊机制移除选择器
+        if (hoveredRemoveBtn && hoveredItemIndex >= 0 && hasShiftDown()) {
+            selectedItemIndex = hoveredItemIndex;
+            openMechanicSelector(false);
             return true;
         }
 
@@ -856,7 +1301,11 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
             return true;
         }
 
-        selectedItemIndex = -1;
+        // 仅在点击面板内部空白处时清除选中（点击面板外/底部按钮不清除，避免按钮回调时已无选中）
+        if (mouseX >= panelX && mouseX < panelX + panelWidth
+                && mouseY >= panelY && mouseY < panelY + panelHeight) {
+            selectedItemIndex = -1;
+        }
         return super.mouseClicked(mouseX, mouseY, button);
     }
 
@@ -882,12 +1331,24 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
             dragTargetIndex = -1;
             return true;
         }
+        mechanicScrollBar.mouseReleased();
         scrollBar.mouseReleased();
         return super.mouseReleased(mouseX, mouseY, button);
     }
 
     @Override
     public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+        if (mechanicScrollBar.isDraggingScrollbar() && isSelectingMechanic) {
+            int overlayY = panelY + panelHeight / 2 - MECHANIC_OVERLAY_H / 2;
+            int listY = overlayY + MECHANIC_LIST_TOP;
+            int listBottom = overlayY + MECHANIC_OVERLAY_H - MECHANIC_LIST_BOTTOM_MARGIN;
+            int visibleRows = mechanicVisibleRows();
+            int listHeight = listBottom - listY;
+            mechanicScrollBar.mouseDragged(mouseY, listY, listHeight,
+                    visibleRows * MECHANIC_ROW_HEIGHT, mechanicPickList.size() * MECHANIC_ROW_HEIGHT);
+            mechanicScrollOffset = mechanicScrollBar.getScrollOffset() / MECHANIC_ROW_HEIGHT;
+            return true;
+        }
         if (scrollBar.isDraggingScrollbar()) {
             int contentY = panelY + 20;
             int contentBottom = panelY + panelHeight - 6;
@@ -942,6 +1403,9 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
             editingValue = "";
             isSelectingAttr = false;
             isDeletingAttr = false;
+            isSelectingShieldTypes = false;
+            shieldTypeSelection.clear();
+            isSelectingMechanic = false;
         }
         if (isEditing && editingAttrName != null && selectedItemIndex >= 0 && selectedItemIndex < itemConfigData.size()) {
             CompoundTag itemTag = itemConfigData.getCompound(selectedItemIndex);

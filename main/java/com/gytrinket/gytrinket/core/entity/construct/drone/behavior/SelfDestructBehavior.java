@@ -4,22 +4,22 @@ import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
 import com.gytrinket.gytrinket.core.burn.BurnManager;
 import com.gytrinket.gytrinket.core.burn.IBurnSource;
+import com.gytrinket.gytrinket.core.defs.DefsManager;
 import com.gytrinket.gytrinket.core.entity.construct.IConstructEntity;
 import com.gytrinket.gytrinket.core.entity.construct.drone.DroneConstructEntity;
 import com.gytrinket.gytrinket.core.entity.construct.HostileTargetManager;
 import com.gytrinket.gytrinket.core.explosion.SimulatedExplosion;
 import com.gytrinket.gytrinket.core.ignite.IIgniteSource;
 import com.gytrinket.gytrinket.core.ignite.IgniteManager;
-import com.gytrinket.gytrinket.core.shield.DisableSystem;
 import com.gytrinket.gytrinket.storage.PlayerStoreUtils;
 import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
@@ -157,26 +157,17 @@ public class SelfDestructBehavior implements IDroneSpecialBehavior {
     }
 
     /**
-     * 检查玩家光点核心中是否有自毁装置所需物品
-     */
-    public static boolean hasRequiredItems(DroneConstructEntity drone) {
-        return hasRequiredItems((LivingEntity) drone);
-    }
-
-    /**
-     * 检查玩家光点核心中是否有自毁装置所需物品（通用版本）
+     * 检查玩家是否装备了声明「自毁装置」特殊机制的物品（数据驱动/覆盖层优先）
      */
     public static boolean hasRequiredItems(LivingEntity construct) {
         UUID ownerUUID = construct instanceof IConstructEntity cEntity ? cEntity.getOwnerUUID() : null;
         if (ownerUUID == null) {
             return false;
         }
-        // 已装备物品 = 光点核心存储 + Curios 饰品栏（光点核心内容扩展）
-        for (ItemStack stack : PlayerStoreUtils.getEquippedStacks(ownerUUID)) {
-            if (!stack.isEmpty() && !DisableSystem.isItemDisabled(ownerUUID, stack) && Config.isSelfDestructItem(stack.getItem())) {
-                return true;
-            }
+        MinecraftServer server = construct.level().getServer();
+        if (server == null) {
+            return false;
         }
-        return false;
+        return DefsManager.playerHasEquippedMechanic(server, ownerUUID, "self_destruct_items");
     }
 }

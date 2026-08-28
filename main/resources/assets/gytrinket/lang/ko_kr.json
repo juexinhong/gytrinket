@@ -104,7 +104,7 @@
 
   "tooltip.gytrinket.adaptive_armor_enabled": "적응 아머 활성화",
   "tooltip.gytrinket.adaptive_armor_effect": "피해를 받으면 아머 중첩이 생성됩니다. 각 아머 중첩은 피해 감소를 제공합니다",
-  "tooltip.gytrinket.adaptive_armor_bond": "결속",
+  "tooltip.gytrinket.adaptive_armor_shield_effect": "결속",
   "tooltip.gytrinket.adaptive_armor_bond_effect": "아머 중첩이 실드 효과와 회복 효율 속성을 추가로 제공합니다",
 
   "tooltip.gytrinket.electric_discharge": "전기 방전",

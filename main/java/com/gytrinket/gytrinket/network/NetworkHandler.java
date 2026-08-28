@@ -4,6 +4,7 @@ import com.gytrinket.gytrinket.compat.CuriosCompat;
 import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
 import com.gytrinket.gytrinket.core.attribute.ItemAttributeConfig;
+import com.gytrinket.gytrinket.core.defs.DefsManager;
 import com.gytrinket.gytrinket.core.shield.cooldown.ShieldCooldownManager;
 import com.gytrinket.gytrinket.core.shield.ShieldManager;
 import com.gytrinket.gytrinket.core.level.ModLevelManager;
@@ -53,6 +54,8 @@ public class NetworkHandler {
         registrar.playToServer(ConfigAddItemPayload.TYPE, ConfigAddItemPayload.STREAM_CODEC, ConfigAddItemPayload::handle);
         registrar.playToServer(ConfigRemoveAttrPayload.TYPE, ConfigRemoveAttrPayload.STREAM_CODEC, ConfigRemoveAttrPayload::handle);
         registrar.playToServer(ConfigReorderPayload.TYPE, ConfigReorderPayload.STREAM_CODEC, ConfigReorderPayload::handle);
+        registrar.playToServer(ConfigSpecialMechanicPayload.TYPE, ConfigSpecialMechanicPayload.STREAM_CODEC, ConfigSpecialMechanicPayload::handle);
+        registrar.playToServer(ConfigShieldTypesPayload.TYPE, ConfigShieldTypesPayload.STREAM_CODEC, ConfigShieldTypesPayload::handle);
         registrar.playToServer(AttackStatePayload.TYPE, AttackStatePayload.STREAM_CODEC, AttackStatePayload::handle);
         registrar.playToServer(ChargedAttackPayload.TYPE, ChargedAttackPayload.STREAM_CODEC, ChargedAttackPayload::handle);
 
@@ -90,6 +93,7 @@ public class NetworkHandler {
         registrar.playToClient(SyncInterceptorWeaponPayload.TYPE, SyncInterceptorWeaponPayload.STREAM_CODEC, SyncInterceptorWeaponPayload::handle);
         registrar.playToServer(SetInterceptorAttackModePayload.TYPE, SetInterceptorAttackModePayload.STREAM_CODEC, SetInterceptorAttackModePayload::handle);
         registrar.playToClient(SyncInterceptorAttackModePayload.TYPE, SyncInterceptorAttackModePayload.STREAM_CODEC, SyncInterceptorAttackModePayload::handle);
+        registrar.playToClient(ConfigDefsSyncPayload.TYPE, ConfigDefsSyncPayload.STREAM_CODEC, ConfigDefsSyncPayload::handle);
         registrar.playToServer(SetInterceptorAmmoPayload.TYPE, SetInterceptorAmmoPayload.STREAM_CODEC, SetInterceptorAmmoPayload::handle);
         registrar.playToServer(GhostFuselageAttackPayload.TYPE, GhostFuselageAttackPayload.STREAM_CODEC, GhostFuselageAttackPayload::handle);
         registrar.playToServer(RequestRandomBuildPayload.TYPE, RequestRandomBuildPayload.STREAM_CODEC, RequestRandomBuildPayload::handle);
@@ -357,6 +361,16 @@ public class NetworkHandler {
 
     public static void sendConfigDataToAllPlayers(ServerPlayer source) {
         ResponseConfigDataPayload msg = buildConfigDataMessage(false);
+        for (var p : source.server.getPlayerList().getPlayers()) {
+            PacketDistributor.sendToPlayer(p, msg);
+        }
+    }
+
+    /** 「应用」后把运行时定义覆盖数据同步给所有客户端（面板/提示实时显示生效状态） */
+    public static void sendDefsOverridesToAllPlayers(ServerPlayer source) {
+        ConfigDefsSyncPayload msg = new ConfigDefsSyncPayload(
+                DefsManager.getServerSpecialMechanicOverrides(),
+                DefsManager.getServerShieldTypeOverrides());
         for (var p : source.server.getPlayerList().getPlayers()) {
             PacketDistributor.sendToPlayer(p, msg);
         }

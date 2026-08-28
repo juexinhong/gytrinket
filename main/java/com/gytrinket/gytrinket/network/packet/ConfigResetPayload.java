@@ -2,6 +2,7 @@ package com.gytrinket.gytrinket.network.packet;
 
 import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
+import com.gytrinket.gytrinket.core.defs.DefsManager;
 import com.gytrinket.gytrinket.network.NetworkHandler;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
@@ -24,6 +25,9 @@ public record ConfigResetPayload() implements CustomPacketPayload {
             if (!(context.player() instanceof ServerPlayer player)) return;
             if (!player.hasPermissions(2)) return;
 
+            // 重置运行时覆盖（特殊机制/护盾类型），恢复数据包默认定义
+            DefsManager.resetOverrides(player.server);
+
             AttributeManager.resetToDefaults();
             Config.resetItemAttributesConfig();
 
@@ -32,6 +36,8 @@ public record ConfigResetPayload() implements CustomPacketPayload {
             }
 
             NetworkHandler.sendConfigDataToAllPlayers(player);
+            // 同步空覆盖层到所有客户端，面板/提示恢复默认显示
+            NetworkHandler.sendDefsOverridesToAllPlayers(player);
         });
     }
 }

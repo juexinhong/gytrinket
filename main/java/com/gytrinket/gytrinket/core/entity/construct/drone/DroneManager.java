@@ -261,10 +261,10 @@ public class DroneManager {
     }
 
     private static void validateCurrentArray(ServerPlayer player) {
+        // 阵列按对应特殊机制检查：玩家不再装备声明该阵列特殊机制（覆盖层优先）的物品时切回环绕
         DroneArrayManager arrayManager = DroneArrayManager.getInstance();
         DroneArrayType currentArray = arrayManager.getPlayerArrayType(player);
-
-        if (currentArray != null && !currentArray.hasRequiredItems(player.getUUID())) {
+        if (currentArray != null && !arrayManager.canUseArray(player, currentArray)) {
             arrayManager.switchToArray(player, DroneArrayType.Types.ORBIT);
         }
     }

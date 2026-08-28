@@ -1,12 +1,11 @@
 package com.gytrinket.gytrinket.core.entity.construct.drone;
 
 import com.gytrinket.gytrinket.config.Config;
-import com.gytrinket.gytrinket.core.shield.DisableSystem;
+import com.gytrinket.gytrinket.core.defs.DefsManager;
 import com.gytrinket.gytrinket.core.entity.construct.ConstructManager;
-import com.gytrinket.gytrinket.storage.PlayerStoreUtils;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.ItemStack;
 
 import java.util.*;
 
@@ -27,7 +26,7 @@ public class CommanderManager {
 
         UUID playerUUID = player.getUUID();
 
-        if (!hasRequiredItems(playerUUID)) {
+        if (!hasRequiredItems(player)) {
             removeAllCommanders(playerUUID);
             playerAppointTimers.remove(playerUUID);
             return;
@@ -125,13 +124,10 @@ public class CommanderManager {
         }
     }
 
-    private boolean hasRequiredItems(UUID playerUUID) {
-        // 已装备物品 = 光点核心存储 + Curios 饰品栏（光点核心内容扩展）
-        for (ItemStack stack : PlayerStoreUtils.getEquippedStacks(playerUUID)) {
-            if (!stack.isEmpty() && !DisableSystem.isItemDisabled(playerUUID, stack) && Config.isCommanderItem(stack.getItem())) {
-                return true;
-            }
-        }
-        return false;
+    /** 检查玩家是否装备了声明「指挥官」特殊机制的物品（数据驱动/覆盖层优先） */
+    private boolean hasRequiredItems(Player player) {
+        MinecraftServer server = player.level().getServer();
+        if (server == null) return false;
+        return DefsManager.playerHasEquippedMechanic(server, player.getUUID(), "commander_required_items");
     }
 }

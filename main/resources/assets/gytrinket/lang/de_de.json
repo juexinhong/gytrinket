@@ -104,7 +104,7 @@
 
   "tooltip.gytrinket.adaptive_armor_enabled": "Adaptive Rüstung aktiviert",
   "tooltip.gytrinket.adaptive_armor_effect": "Schadennehmen erzeugt Rüstungsstapel. Jeder Rüstungsstapel gewährt Schadensreduktion",
-  "tooltip.gytrinket.adaptive_armor_bond": "Bindung",
+  "tooltip.gytrinket.adaptive_armor_shield_effect": "Bindung",
   "tooltip.gytrinket.adaptive_armor_bond_effect": "Rüstungsstapel gewähren zusätzlich Schildeffekt und Erholungseffizienz",
 
   "tooltip.gytrinket.electric_discharge": "Elektrische Entladung",

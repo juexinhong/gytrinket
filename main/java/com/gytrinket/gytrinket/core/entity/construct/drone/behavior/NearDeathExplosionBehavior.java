@@ -2,18 +2,17 @@ package com.gytrinket.gytrinket.core.entity.construct.drone.behavior;
 
 import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.damage.InvincibilityMarkerManager;
-import com.gytrinket.gytrinket.core.shield.DisableSystem;
+import com.gytrinket.gytrinket.core.defs.DefsManager;
 import com.gytrinket.gytrinket.core.entity.construct.drone.DroneConstructEntity;
 import com.gytrinket.gytrinket.core.entity.construct.HostileTargetManager;
-import com.gytrinket.gytrinket.storage.PlayerStoreUtils;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -169,12 +168,11 @@ public class NearDeathExplosionBehavior implements IDroneSpecialBehavior {
         if (ownerUUID == null) {
             return false;
         }
-        // 已装备物品 = 光点核心存储 + Curios 饰品栏（光点核心内容扩展）
-        for (ItemStack stack : PlayerStoreUtils.getEquippedStacks(ownerUUID)) {
-            if (!stack.isEmpty() && !DisableSystem.isItemDisabled(ownerUUID, stack) && Config.isNearDeathExplosionItem(stack.getItem())) {
-                return true;
-            }
+        MinecraftServer server = drone.level().getServer();
+        if (server == null) {
+            return false;
         }
-        return false;
+        // 检查玩家装备的物品是否声明了「最终指令」特殊机制（数据驱动/覆盖层优先）
+        return DefsManager.playerHasEquippedMechanic(server, ownerUUID, "near_death_explosion_items");
     }
 }

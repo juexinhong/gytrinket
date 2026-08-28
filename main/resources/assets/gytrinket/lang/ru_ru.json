@@ -104,7 +104,7 @@
 
   "tooltip.gytrinket.adaptive_armor_enabled": "Адаптивная броня включена",
   "tooltip.gytrinket.adaptive_armor_effect": "Получение урона создаёт стаки брони. Каждый стак брони снижает получаемый урон",
-  "tooltip.gytrinket.adaptive_armor_bond": "Связь",
+  "tooltip.gytrinket.adaptive_armor_shield_effect": "Связь",
   "tooltip.gytrinket.adaptive_armor_bond_effect": "Стаки брони дополнительно дают эффект щита и эффективность восстановления",
 
   "tooltip.gytrinket.electric_discharge": "Электрический разряд",

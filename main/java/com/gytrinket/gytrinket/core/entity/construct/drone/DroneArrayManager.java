@@ -1,5 +1,6 @@
 package com.gytrinket.gytrinket.core.entity.construct.drone;
 
+import com.gytrinket.gytrinket.core.defs.DefsManager;
 import com.gytrinket.gytrinket.core.entity.construct.AbstractConstructEntity;
 import com.gytrinket.gytrinket.core.entity.construct.ConstructData;
 import com.gytrinket.gytrinket.core.entity.construct.ConstructManager;
@@ -12,6 +13,7 @@ import com.gytrinket.gytrinket.core.entity.construct.wingman.WingmanManager;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
@@ -138,7 +140,7 @@ public class DroneArrayManager {
 
         do {
             DroneArrayType candidate = DRONE_ARRAY_TYPES[nextIndex];
-            if (candidate.hasRequiredItems(player.getUUID())) {
+            if (canUseArray(player, candidate)) {
                 newArray = candidate;
                 break;
             }
@@ -156,6 +158,22 @@ public class DroneArrayManager {
                 Component.literal("阵列: " + newArray.getName()).withStyle(ChatFormatting.GRAY),
                 true
         );
+    }
+
+    /**
+     * 检查玩家是否可启用该阵列（数据驱动/覆盖层优先）。
+     * 追击/列队/守卫阵列要求玩家装备的物品声明了对应阵列特殊机制集合；环绕/待机始终可用。
+     */
+    boolean canUseArray(Player player, DroneArrayType arrayType) {
+        MinecraftServer server = player.level().getServer();
+        if (server == null) return true;
+        UUID uuid = player.getUUID();
+        return switch (arrayType.getId()) {
+            case "pursuit" -> DefsManager.playerHasEquippedMechanic(server, uuid, "pursuit_array_required_items");
+            case "formation" -> DefsManager.playerHasEquippedMechanic(server, uuid, "formation_array_required_items");
+            case "guard" -> DefsManager.playerHasEquippedMechanic(server, uuid, "guard_array_required_items");
+            default -> true;
+        };
     }
 
     public void switchToArray(Player player, DroneArrayType newArray) {

@@ -62,10 +62,11 @@ public class DroneConstructEntity extends AbstractConstructEntity {
 
     private static final EntityDataAccessor<Integer> DATA_ARRAY_TYPE = SynchedEntityData.defineId(DroneConstructEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> DATA_EFFECT_TAGS = SynchedEntityData.defineId(DroneConstructEntity.class, EntityDataSerializers.INT);
+    /** 最终指令自爆状态（同步到客户端，客户端 tick 同样跳过阵列位置更新，避免模型渲染位置与实体脱节） */
+    private static final EntityDataAccessor<Boolean> DATA_EXPLODING = SynchedEntityData.defineId(DroneConstructEntity.class, EntityDataSerializers.BOOLEAN);
 
     private final Set<DroneEffectTag> effectTags = new HashSet<>();
 
-    private boolean isExploding = false;
     private double explosionSpeed = 0;
     private int explosionTimer = 0;
 
@@ -108,6 +109,7 @@ public class DroneConstructEntity extends AbstractConstructEntity {
         super.defineSynchedData(builder);
         builder.define(DATA_ARRAY_TYPE, 0);
         builder.define(DATA_EFFECT_TAGS, 0);
+        builder.define(DATA_EXPLODING, false);
     }
 
     @Override
@@ -287,11 +289,11 @@ public class DroneConstructEntity extends AbstractConstructEntity {
     }
 
     public boolean isExploding() {
-        return isExploding;
+        return this.entityData.get(DATA_EXPLODING);
     }
 
     public void setExploding(boolean exploding) {
-        isExploding = exploding;
+        this.entityData.set(DATA_EXPLODING, exploding);
     }
 
     public double getExplosionSpeed() {
@@ -403,6 +405,7 @@ public class DroneConstructEntity extends AbstractConstructEntity {
     protected void addTypeSpecificSaveData(CompoundTag tag) {
         tag.putInt("array_type", this.entityData.get(DATA_ARRAY_TYPE));
         tag.putInt("effects", this.entityData.get(DATA_EFFECT_TAGS));
+        tag.putBoolean("is_exploding", this.entityData.get(DATA_EXPLODING));
         tag.putInt("drone_index", this.droneIndex);
         tag.putInt("total_drones", this.totalDrones);
         tag.putBoolean("is_left_side", this.isLeftSide);
@@ -415,6 +418,9 @@ public class DroneConstructEntity extends AbstractConstructEntity {
     protected void readTypeSpecificSaveData(CompoundTag tag) {
         if (tag.contains("array_type")) {
             this.entityData.set(DATA_ARRAY_TYPE, tag.getInt("array_type"));
+        }
+        if (tag.contains("is_exploding")) {
+            this.entityData.set(DATA_EXPLODING, tag.getBoolean("is_exploding"));
         }
         if (tag.contains("effects")) {
             int effectData = tag.getInt("effects");
@@ -541,7 +547,7 @@ public class DroneConstructEntity extends AbstractConstructEntity {
 
         tickSpecialBehaviors();
 
-        if (isExploding) {
+        if (this.isExploding()) {
             return;
         }
 

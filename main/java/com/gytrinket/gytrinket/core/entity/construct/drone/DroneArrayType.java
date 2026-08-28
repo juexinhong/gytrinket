@@ -1,15 +1,11 @@
 package com.gytrinket.gytrinket.core.entity.construct.drone;
 
-import com.gytrinket.gytrinket.config.Config;
-import com.gytrinket.gytrinket.core.defs.DefsManager;
-import com.gytrinket.gytrinket.core.shield.DisableSystem;
 import com.gytrinket.gytrinket.core.entity.construct.drone.behavior.IDroneBehavior;
 import com.gytrinket.gytrinket.core.entity.construct.drone.behavior.OrbitBehavior;
 import com.gytrinket.gytrinket.core.entity.construct.drone.behavior.PursuitBehavior;
 import com.gytrinket.gytrinket.core.entity.construct.drone.behavior.StandbyBehavior;
 import com.gytrinket.gytrinket.core.entity.construct.drone.behavior.FormationBehavior;
 import com.gytrinket.gytrinket.core.entity.construct.drone.behavior.GuardBehavior;
-import com.gytrinket.gytrinket.storage.PlayerStoreUtils;
 
 import java.util.*;
 
@@ -50,33 +46,6 @@ public class DroneArrayType {
 
     public IDroneBehavior getBehavior() {
         return behavior;
-    }
-
-    public Set<String> getRequiredItemIds() {
-        return getRequiredItemIdsFromConfig();
-    }
-
-    private Set<String> getRequiredItemIdsFromConfig() {
-        return switch (id) {
-            case "pursuit" -> new HashSet<>(DefsManager.getItemSet("pursuit_array_required_items"));
-            case "formation" -> new HashSet<>(DefsManager.getItemSet("formation_array_required_items"));
-            case "guard" -> new HashSet<>(DefsManager.getItemSet("guard_array_required_items"));
-            default -> Collections.emptySet();
-        };
-    }
-
-    public boolean hasRequiredItems(java.util.UUID playerUUID) {
-        Set<String> required = getRequiredItemIdsFromConfig();
-        if (required.isEmpty()) {
-            return true;
-        }
-        // 已装备物品 = 光点核心存储 + Curios 饰品栏（光点核心内容扩展）
-        Set<String> ownedItemIds = new HashSet<>();
-        for (net.minecraft.world.item.ItemStack stack : PlayerStoreUtils.getEquippedStacks(playerUUID)) {
-            if (DisableSystem.isItemDisabled(playerUUID, stack)) continue;
-            ownedItemIds.add(net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()).toString());
-        }
-        return ownedItemIds.containsAll(required);
     }
 
     /** 检查是否具有指定标签 */

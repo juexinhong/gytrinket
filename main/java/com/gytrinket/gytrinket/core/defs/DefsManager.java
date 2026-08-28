@@ -2,29 +2,42 @@ package com.gytrinket.gytrinket.core.defs;
 
 import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.attribute.AttributeType;
+import com.gytrinket.gytrinket.core.shield.DisableSystem;
 import com.gytrinket.gytrinket.gytrinket;
+import com.gytrinket.gytrinket.storage.PlayerStoreUtils;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.packs.repository.PackRepository;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimplePreparableReloadListener;
 import net.minecraft.util.profiling.ProfilerFiller;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.storage.LevelResource;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.AddReloadListenerEvent;
 import net.neoforged.neoforge.registries.DataPackRegistryEvent;
 
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 
 /**
  * 定义类数据管理器（datapack 数据驱动）
@@ -49,6 +62,23 @@ import java.util.Set;
 public class DefsManager {
 
     private static final String REGISTRY_NAMESPACE = gytrinket.MODID;
+
+    // ===== 运行时覆盖层（绕过数据包验证：编辑写入独立 JSON，玩家手动「应用」生效） =====
+
+    /** 覆盖文件（<世界>/gytrinket_ui_overrides.json，位于数据包目录之外，不触发数据包校验/安全模式） */
+    private static final String OVERRIDES_FILE_NAME = "gytrinket_ui_overrides.json";
+
+    /** 服务端：特殊机制覆盖（itemId -> 声明），removed=true 表示撤销声明 */
+    public record SpecialMechanicOverride(List<String> sets, boolean removed) {
+        public static SpecialMechanicOverride removedState() { return new SpecialMechanicOverride(List.of(), true); }
+        public static SpecialMechanicOverride declared(List<String> sets) { return new SpecialMechanicOverride(sets, false); }
+    }
+
+    private static final Map<String, SpecialMechanicOverride> SERVER_SPECIAL_MECHANIC_OVERRIDES = new HashMap<>();
+    private static final Map<String, List<String>> SERVER_SHIELD_TYPE_OVERRIDES = new HashMap<>();
+    /** 客户端：从服务端同步的覆盖数据（面板显示用） */
+    private static final Map<String, SpecialMechanicOverride> CLIENT_SPECIAL_MECHANIC_OVERRIDES = new HashMap<>();
+    private static final Map<String, List<String>> CLIENT_SHIELD_TYPE_OVERRIDES = new HashMap<>();
 
     // ===== registry 键 =====
     public static final ResourceKey<Registry<ItemSetDef>> ITEM_SETS_KEY =
@@ -136,10 +166,12 @@ public class DefsManager {
      * 条目 id（文件名）= 物品 id，文件存在即声明该物品为特殊机制（快速装备只检查文件名）。
      * 文件内容 {"sets":[...]} 声明该物品所属的机制分类，用于替代对应的 item_sets 文件；
      * 内容可省略为 {}（仅声明特殊机制，不参与任何分类）。
+     * 文件内容 {"removed":true} 表示撤销声明（用于世界数据包覆盖 JAR 内声明，实现运行时删除）。
      */
-    public record SpecialMechanicDef(List<String> sets) {
+    public record SpecialMechanicDef(List<String> sets, boolean removed) {
         static final Codec<SpecialMechanicDef> CODEC = RecordCodecBuilder.create(inst -> inst.group(
-                Codec.STRING.listOf().optionalFieldOf("sets", List.of()).forGetter(SpecialMechanicDef::sets)
+                Codec.STRING.listOf().optionalFieldOf("sets", List.of()).forGetter(SpecialMechanicDef::sets),
+                Codec.BOOL.optionalFieldOf("removed", false).forGetter(SpecialMechanicDef::removed)
         ).apply(inst, SpecialMechanicDef::new));
     }
 
@@ -249,6 +281,12 @@ public class DefsManager {
     }
 
     private static void loadFrom(RegistryAccess access) {
+        // 每次定义加载（世界启动/重载/手动应用）先读入运行时覆盖文件，保证持久化与优先级
+        MinecraftServer server = net.neoforged.neoforge.server.ServerLifecycleHooks.getCurrentServer();
+        if (server != null) {
+            loadOverridesFromFile(server);
+        }
+
         ITEM_SETS.clear();
         ENTITY_SETS.clear();
         SPECIAL_MECHANIC_ITEMS.clear();
@@ -276,13 +314,43 @@ public class DefsManager {
         });
 
         // 特殊机制（路径定义 + 分类声明）：文件名 = 物品 id（快速装备判定）；内容 sets 并入 ITEM_SETS 分类
+        // 运行时覆盖（SERVER_SPECIAL_MECHANIC_OVERRIDES）优先：removed 撤销声明，sets 覆盖分类
         access.registry(SPECIAL_MECHANICS_KEY).ifPresent(reg -> {
+            Set<String> seen = new HashSet<>();
             for (Map.Entry<ResourceKey<SpecialMechanicDef>, SpecialMechanicDef> e : reg.entrySet()) {
                 String itemId = e.getKey().location().toString();
+                seen.add(itemId);
+                SpecialMechanicOverride ov = SERVER_SPECIAL_MECHANIC_OVERRIDES.get(itemId);
+                if (ov != null) {
+                    if (ov.removed()) {
+                        continue;
+                    }
+                    SPECIAL_MECHANIC_ITEMS.add(itemId);
+                    for (String setName : ov.sets()) {
+                        if (setName == null || setName.isEmpty()) continue;
+                        ITEM_SETS.computeIfAbsent(setName, k -> new HashSet<>()).add(itemId);
+                    }
+                    continue;
+                }
+                if (e.getValue().removed()) {
+                    // 世界数据包覆盖：撤销 JAR 内声明（removed:true），不参与特殊机制与分类
+                    continue;
+                }
                 SPECIAL_MECHANIC_ITEMS.add(itemId);
                 for (String setName : e.getValue().sets()) {
                     if (setName == null || setName.isEmpty()) continue;
                     ITEM_SETS.computeIfAbsent(setName, k -> new HashSet<>()).add(itemId);
+                }
+            }
+            // 覆盖：新增 JAR 中不存在的条目
+            for (var e : SERVER_SPECIAL_MECHANIC_OVERRIDES.entrySet()) {
+                if (seen.contains(e.getKey()) || e.getValue().removed()) {
+                    continue;
+                }
+                SPECIAL_MECHANIC_ITEMS.add(e.getKey());
+                for (String setName : e.getValue().sets()) {
+                    if (setName == null || setName.isEmpty()) continue;
+                    ITEM_SETS.computeIfAbsent(setName, k -> new HashSet<>()).add(e.getKey());
                 }
             }
         });
@@ -298,6 +366,11 @@ public class DefsManager {
                 ITEM_SHIELD_TYPES.put(def.item(), new ArrayList<>(def.types()));
             }
         });
+
+        // 运行时覆盖：护盾类型以覆盖为准（空列表 = 移除全部类型）
+        for (var e : SERVER_SHIELD_TYPE_OVERRIDES.entrySet()) {
+            ITEM_SHIELD_TYPES.put(e.getKey(), new ArrayList<>(e.getValue()));
+        }
 
         access.registry(ATTRIBUTE_DEFS_KEY).ifPresent(reg -> {
             for (AttributeDefs defs : reg) {
@@ -349,6 +422,180 @@ public class DefsManager {
     }
 
     // ===== 服务端查询（供 Config.applyDefs 与各子系统使用） =====
+
+    // ===== 运行时覆盖层：文件读写与生效 =====
+
+    private static Path getOverridesFile(MinecraftServer server) {
+        return server.getWorldPath(LevelResource.ROOT).resolve(OVERRIDES_FILE_NAME);
+    }
+
+    /** 读取覆盖文件到服务端内存（不存在时忽略） */
+    private static void loadOverridesFromFile(MinecraftServer server) {
+        SERVER_SPECIAL_MECHANIC_OVERRIDES.clear();
+        SERVER_SHIELD_TYPE_OVERRIDES.clear();
+        Path file = getOverridesFile(server);
+        if (!Files.exists(file)) {
+            return;
+        }
+        try {
+            com.google.gson.JsonObject root = com.google.gson.JsonParser.parseString(Files.readString(file, StandardCharsets.UTF_8)).getAsJsonObject();
+            if (root.has("specialMechanics")) {
+                for (var e : root.getAsJsonObject("specialMechanics").entrySet()) {
+                    String itemId = e.getKey();
+                    com.google.gson.JsonObject def = e.getValue().getAsJsonObject();
+                    boolean removed = def.has("removed") && def.get("removed").getAsBoolean();
+                    List<String> sets = new ArrayList<>();
+                    if (def.has("sets") && def.get("sets").isJsonArray()) {
+                        def.getAsJsonArray("sets").forEach(el -> sets.add(el.getAsString()));
+                    }
+                    SERVER_SPECIAL_MECHANIC_OVERRIDES.put(itemId,
+                            removed ? SpecialMechanicOverride.removedState() : SpecialMechanicOverride.declared(sets));
+                }
+            }
+            if (root.has("shieldTypes")) {
+                for (var e : root.getAsJsonObject("shieldTypes").entrySet()) {
+                    List<String> types = new ArrayList<>();
+                    e.getValue().getAsJsonArray().forEach(el -> types.add(el.getAsString()));
+                    SERVER_SHIELD_TYPE_OVERRIDES.put(e.getKey(), types);
+                }
+            }
+            gytrinket.LOGGER.info("已读取定义覆盖文件：特殊机制 {} 项，护盾类型 {} 项",
+                    SERVER_SPECIAL_MECHANIC_OVERRIDES.size(), SERVER_SHIELD_TYPE_OVERRIDES.size());
+        } catch (Exception e) {
+            gytrinket.LOGGER.error("读取定义覆盖文件失败: {}", file, e);
+        }
+    }
+
+    /** 将服务端内存中的覆盖数据写入覆盖文件（编辑操作持久化，不触发重载） */
+    private static void saveOverridesToFile(MinecraftServer server) {
+        try {
+            com.google.gson.JsonObject root = new com.google.gson.JsonObject();
+            com.google.gson.JsonObject sm = new com.google.gson.JsonObject();
+            for (var e : SERVER_SPECIAL_MECHANIC_OVERRIDES.entrySet()) {
+                com.google.gson.JsonObject def = new com.google.gson.JsonObject();
+                def.addProperty("removed", e.getValue().removed());
+                com.google.gson.JsonArray sets = new com.google.gson.JsonArray();
+                e.getValue().sets().forEach(sets::add);
+                def.add("sets", sets);
+                sm.add(e.getKey(), def);
+            }
+            root.add("specialMechanics", sm);
+            com.google.gson.JsonObject st = new com.google.gson.JsonObject();
+            for (var e : SERVER_SHIELD_TYPE_OVERRIDES.entrySet()) {
+                com.google.gson.JsonArray types = new com.google.gson.JsonArray();
+                e.getValue().forEach(types::add);
+                st.add(e.getKey(), types);
+            }
+            root.add("shieldTypes", st);
+            Path file = getOverridesFile(server);
+            Files.createDirectories(file.getParent());
+            Files.writeString(file, new com.google.gson.GsonBuilder().setPrettyPrinting().create().toJson(root), StandardCharsets.UTF_8);
+            gytrinket.LOGGER.info("已保存定义覆盖文件: {}", file);
+        } catch (Exception e) {
+            gytrinket.LOGGER.error("保存定义覆盖文件失败", e);
+        }
+    }
+
+    /** 编辑操作：更新特殊机制声明（写入内存 + 覆盖文件，立即重新加载生效，不重载数据包） */
+    public static void updateSpecialMechanicOverride(MinecraftServer server, String itemId, boolean removed) {
+        if (removed) {
+            SERVER_SPECIAL_MECHANIC_OVERRIDES.put(itemId, SpecialMechanicOverride.removedState());
+        } else {
+            SERVER_SPECIAL_MECHANIC_OVERRIDES.put(itemId, SpecialMechanicOverride.declared(List.of()));
+        }
+        saveOverridesToFile(server);
+        applyOverrides(server);
+    }
+
+    /** 服务端：物品当前生效的特殊机制集合（覆盖优先，其次数据驱动声明） */
+    public static List<String> getEffectiveSpecialMechanicSets(MinecraftServer server, String itemId) {
+        SpecialMechanicOverride ov = SERVER_SPECIAL_MECHANIC_OVERRIDES.get(itemId);
+        if (ov != null) {
+            return new ArrayList<>(ov.removed() ? List.of() : ov.sets());
+        }
+        var reg = server.registryAccess().registry(SPECIAL_MECHANICS_KEY).orElse(null);
+        if (reg != null) {
+            for (var e : reg.entrySet()) {
+                if (e.getKey().location().toString().equals(itemId)) {
+                    return new ArrayList<>(e.getValue().removed() ? List.of() : e.getValue().sets());
+                }
+            }
+        }
+        return new ArrayList<>();
+    }
+
+    /**
+     * 服务端：玩家是否装备了声明指定特殊机制集合的物品（覆盖层优先）。
+     * <p>
+     * 用于替代硬性物品检查（Config.isXxxItem），使配置面板添加/移除的特殊机制同样生效：
+     * 只要装备物品通过 special_mechanics 数据驱动或运行时覆盖声明了该集合即视为满足。
+     */
+    public static boolean playerHasEquippedMechanic(MinecraftServer server, UUID playerUUID, String mechanicSet) {
+        for (ItemStack stack : PlayerStoreUtils.getEquippedStacks(playerUUID)) {
+            if (stack.isEmpty()) continue;
+            if (DisableSystem.isItemDisabled(playerUUID, stack)) continue;
+            String itemId = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
+            if (getEffectiveSpecialMechanicSets(server, itemId).contains(mechanicSet)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 编辑操作：为物品添加/移除指定特殊机制（set）。
+     * 添加 = 当前集合 ∪ {set}；移除 = 当前集合 − {set}，移除后为空则整体撤销声明。
+     * 写入内存 + 覆盖文件后立即重新加载生效（不重载数据包）。
+     */
+    public static void updateSpecialMechanicSet(MinecraftServer server, String itemId, String mechanicSet, boolean remove) {
+        List<String> current = getEffectiveSpecialMechanicSets(server, itemId);
+        List<String> updated = new ArrayList<>();
+        if (remove) {
+            for (String s : current) {
+                if (!s.equals(mechanicSet)) {
+                    updated.add(s);
+                }
+            }
+            if (updated.isEmpty()) {
+                SERVER_SPECIAL_MECHANIC_OVERRIDES.put(itemId, SpecialMechanicOverride.removedState());
+            } else {
+                SERVER_SPECIAL_MECHANIC_OVERRIDES.put(itemId, SpecialMechanicOverride.declared(updated));
+            }
+        } else {
+            updated.addAll(current);
+            if (!updated.contains(mechanicSet)) {
+                updated.add(mechanicSet);
+            }
+            SERVER_SPECIAL_MECHANIC_OVERRIDES.put(itemId, SpecialMechanicOverride.declared(updated));
+        }
+        saveOverridesToFile(server);
+        applyOverrides(server);
+    }
+
+    /** 编辑操作：更新物品护盾类型（写入内存 + 覆盖文件，立即重新加载生效，不重载数据包） */
+    public static void updateShieldTypeOverride(MinecraftServer server, String itemId, List<String> types) {
+        SERVER_SHIELD_TYPE_OVERRIDES.put(itemId, new ArrayList<>(types));
+        saveOverridesToFile(server);
+        applyOverrides(server);
+    }
+
+    /** 应用运行时覆盖：读取覆盖文件 -> 重新加载定义（含覆盖合并）-> 触发 Config.applyDefs 及各子系统刷新（编辑后立即调用） */
+    public static void applyOverrides(MinecraftServer server) {
+        loadOverridesFromFile(server);
+        loadFrom(server.registryAccess());
+    }
+
+    /** 重置运行时覆盖：清空内存覆盖 + 删除覆盖文件，恢复数据包默认定义（「恢复默认」按钮使用） */
+    public static void resetOverrides(MinecraftServer server) {
+        SERVER_SPECIAL_MECHANIC_OVERRIDES.clear();
+        SERVER_SHIELD_TYPE_OVERRIDES.clear();
+        try {
+            Files.deleteIfExists(getOverridesFile(server));
+        } catch (Exception e) {
+            gytrinket.LOGGER.error("删除定义覆盖文件失败", e);
+        }
+        applyOverrides(server);
+    }
 
     public static Set<String> getItemSet(String setName) {
         return ITEM_SETS.getOrDefault(setName, Set.of());
@@ -417,6 +664,7 @@ public class DefsManager {
     /** 判断指定物品是否属于某个物品集合（客户端 tooltip 使用）：item_sets 文件夹 + 特殊机制路径 sets 声明 */
     public static boolean itemSetContains(RegistryAccess access, String setName, String itemId) {
         if (access == null) return false;
+        // 1. item_sets 显式集合（不受覆盖层影响）
         Optional<Registry<ItemSetDef>> reg = access.registry(ITEM_SETS_KEY);
         if (reg.isPresent()) {
             for (Map.Entry<ResourceKey<ItemSetDef>, ItemSetDef> e : reg.get().entrySet()) {
@@ -425,10 +673,17 @@ public class DefsManager {
                 }
             }
         }
-        // 特殊机制路径：条目 id（文件名）= 物品 id，内容 sets 声明分类
+        // 2. 特殊机制声明（客户端覆盖层优先：面板编辑的机制立即反映到集合判定，tooltip 详细描述兼容覆写物品）
+        SpecialMechanicOverride ov = CLIENT_SPECIAL_MECHANIC_OVERRIDES.get(itemId);
+        if (ov != null) {
+            return !ov.removed() && ov.sets().contains(setName);
+        }
         Optional<Registry<SpecialMechanicDef>> smReg = access.registry(SPECIAL_MECHANICS_KEY);
         if (smReg.isPresent()) {
             for (Map.Entry<ResourceKey<SpecialMechanicDef>, SpecialMechanicDef> e : smReg.get().entrySet()) {
+                if (e.getValue().removed()) {
+                    continue;
+                }
                 if (e.getKey().location().toString().equals(itemId) && e.getValue().sets().contains(setName)) {
                     return true;
                 }
@@ -437,8 +692,158 @@ public class DefsManager {
         return false;
     }
 
-    /** 获取物品的护盾类型列表（客户端 tooltip 使用） */
+    /** 客户端查询：物品是否声明为特殊机制（special_mechanics 路径定义 + 客户端覆盖层） */
+    public static boolean clientIsSpecialMechanic(RegistryAccess access, String itemId) {
+        SpecialMechanicOverride ov = CLIENT_SPECIAL_MECHANIC_OVERRIDES.get(itemId);
+        if (ov != null) {
+            return !ov.removed();
+        }
+        if (access == null) return false;
+        Optional<Registry<SpecialMechanicDef>> reg = access.registry(SPECIAL_MECHANICS_KEY);
+        if (reg.isEmpty()) return false;
+        for (Map.Entry<ResourceKey<SpecialMechanicDef>, SpecialMechanicDef> e : reg.get().entrySet()) {
+            if (e.getValue().removed()) {
+                continue;
+            }
+            if (e.getKey().location().toString().equals(itemId)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 客户端查询：物品声明为特殊机制时的机制名称列表。
+     * <p>
+     * 由该物品 special_mechanics 条目声明的 sets（客户端覆盖层优先），映射 tooltip_rules 的 titleKey 翻译得出；
+     * 多个机制（多个 sets 均有标题）按顺序排列。未声明或无标题集合时返回空列表。
+     */
+    public static List<String> clientSpecialMechanicNames(RegistryAccess access, String itemId) {
+        // 1. 取该物品声明的 sets（客户端覆盖层优先）
+        List<String> sets = new ArrayList<>();
+        SpecialMechanicOverride ov = CLIENT_SPECIAL_MECHANIC_OVERRIDES.get(itemId);
+        if (ov != null) {
+            if (ov.removed()) {
+                return List.of();
+            }
+            sets.addAll(ov.sets());
+        } else if (access != null) {
+            Optional<Registry<SpecialMechanicDef>> smReg = access.registry(SPECIAL_MECHANICS_KEY);
+            if (smReg.isPresent()) {
+                for (Map.Entry<ResourceKey<SpecialMechanicDef>, SpecialMechanicDef> e : smReg.get().entrySet()) {
+                    if (e.getValue().removed()) {
+                        continue;
+                    }
+                    if (e.getKey().location().toString().equals(itemId)) {
+                        sets.addAll(e.getValue().sets());
+                        break;
+                    }
+                }
+            }
+        }
+        if (sets.isEmpty()) {
+            return List.of();
+        }
+        // 2. 逐集合解析显示名（tooltip_rules 标题键优先，无条目则回退翻译集合名）
+        List<String> names = new ArrayList<>();
+        for (String set : sets) {
+            names.add(clientMechanicDisplayName(access, set));
+        }
+        return names;
+    }
+
+    /** 客户端查询：所有可选的特殊机制集合名（tooltip_rules itemSet + special_mechanics 声明集合） */
+    public static List<String> clientAllMechanicSets(RegistryAccess access) {
+        if (access == null) return List.of();
+        Set<String> sets = new LinkedHashSet<>();
+        Optional<Registry<TooltipRuleDef>> trReg = access.registry(TOOLTIP_RULES_KEY);
+        if (trReg.isPresent()) {
+            for (TooltipRuleDef rule : trReg.get()) {
+                if (rule.itemSet() != null && !rule.itemSet().isEmpty()) {
+                    sets.add(rule.itemSet());
+                }
+            }
+        }
+        // 补充 special_mechanics 声明的集合（如 barrier_items 无 tooltip_rules 条目也能被选择）
+        Optional<Registry<SpecialMechanicDef>> smReg = access.registry(SPECIAL_MECHANICS_KEY);
+        if (smReg.isPresent()) {
+            for (Map.Entry<ResourceKey<SpecialMechanicDef>, SpecialMechanicDef> e : smReg.get().entrySet()) {
+                if (!e.getValue().removed()) {
+                    sets.addAll(e.getValue().sets());
+                }
+            }
+        }
+        return new ArrayList<>(sets);
+    }
+
+    /** 客户端查询：机制集合显示名（tooltip_rules titleKey 翻译；无条目则回退：去掉 _items 后缀按集合名翻译，再回退原集合名） */
+    public static String clientMechanicDisplayName(RegistryAccess access, String mechanicSet) {
+        if (mechanicSet == null || mechanicSet.isEmpty()) {
+            return mechanicSet;
+        }
+        if (access != null) {
+            Optional<Registry<TooltipRuleDef>> trReg = access.registry(TOOLTIP_RULES_KEY);
+            if (trReg.isPresent()) {
+                for (TooltipRuleDef rule : trReg.get()) {
+                    if (mechanicSet.equals(rule.itemSet()) && rule.titleKey() != null && !rule.titleKey().isEmpty()) {
+                        return translateMechanicTitle(rule.titleKey());
+                    }
+                }
+            }
+        }
+        // 回退：去掉 _items 后缀按集合名翻译（无 tooltip_rules 条目的机制在 lang 中补充对应翻译键）
+        String base = mechanicSet.endsWith("_items")
+                ? mechanicSet.substring(0, mechanicSet.length() - "_items".length()) : mechanicSet;
+        String key = "tooltip.gytrinket." + base;
+        String translated = Component.translatable(key).getString();
+        return translated.equals(key) ? mechanicSet : translated;
+    }
+
+    /** 翻译机制标题键（tooltip.gytrinket.<titleKey>，缺翻译时回退原键名） */
+    private static String translateMechanicTitle(String titleKey) {
+        String key = "tooltip.gytrinket." + titleKey;
+        String translated = Component.translatable(key).getString();
+        return translated.equals(key) ? titleKey : translated;
+    }
+
+    /** 客户端查询：物品当前生效的特殊机制集合（覆盖层优先，其次数据驱动声明） */
+    public static List<String> clientSpecialMechanicSets(RegistryAccess access, String itemId) {
+        SpecialMechanicOverride ov = CLIENT_SPECIAL_MECHANIC_OVERRIDES.get(itemId);
+        if (ov != null) {
+            return ov.removed() ? List.of() : List.copyOf(ov.sets());
+        }
+        if (access == null) return List.of();
+        Optional<Registry<SpecialMechanicDef>> smReg = access.registry(SPECIAL_MECHANICS_KEY);
+        if (smReg.isPresent()) {
+            for (Map.Entry<ResourceKey<SpecialMechanicDef>, SpecialMechanicDef> e : smReg.get().entrySet()) {
+                if (e.getValue().removed()) {
+                    continue;
+                }
+                if (e.getKey().location().toString().equals(itemId)) {
+                    return List.copyOf(e.getValue().sets());
+                }
+            }
+        }
+        return List.of();
+    }
+
+    /** 客户端查询：护盾类型名 -> 是否兼容（shield_types 定义） */
+    public static Map<String, Boolean> clientShieldTypes(RegistryAccess access) {
+        if (access == null) return Map.of();
+        Optional<Registry<ShieldTypeDef>> reg = access.registry(SHIELD_TYPES_KEY);
+        if (reg.isEmpty()) return Map.of();
+        Map<String, Boolean> result = new HashMap<>();
+        for (Map.Entry<ResourceKey<ShieldTypeDef>, ShieldTypeDef> e : reg.get().entrySet()) {
+            result.put(e.getKey().location().getPath(), e.getValue().compatible());
+        }
+        return result;
+    }
+
+    /** 获取物品的护盾类型列表（客户端 tooltip 使用，覆盖层优先） */
     public static List<String> clientItemShieldTypes(RegistryAccess access, String itemId) {
+        if (CLIENT_SHIELD_TYPE_OVERRIDES.containsKey(itemId)) {
+            return List.copyOf(CLIENT_SHIELD_TYPE_OVERRIDES.get(itemId));
+        }
         if (access == null) return List.of();
         Optional<Registry<ItemShieldTypeDef>> reg = access.registry(ITEM_SHIELD_TYPES_KEY);
         if (reg.isEmpty()) return List.of();
@@ -448,6 +853,24 @@ public class DefsManager {
             }
         }
         return List.of();
+    }
+
+    /** 客户端：从服务端同步的覆盖数据更新本地覆盖层（面板显示实时生效） */
+    public static void setClientOverrides(Map<String, SpecialMechanicOverride> specialMechanics, Map<String, List<String>> shieldTypes) {
+        CLIENT_SPECIAL_MECHANIC_OVERRIDES.clear();
+        CLIENT_SPECIAL_MECHANIC_OVERRIDES.putAll(specialMechanics);
+        CLIENT_SHIELD_TYPE_OVERRIDES.clear();
+        CLIENT_SHIELD_TYPE_OVERRIDES.putAll(shieldTypes);
+    }
+
+    /** 服务端：获取当前覆盖数据（供同步到客户端） */
+    public static Map<String, SpecialMechanicOverride> getServerSpecialMechanicOverrides() {
+        return SERVER_SPECIAL_MECHANIC_OVERRIDES;
+    }
+
+    /** 服务端：获取当前覆盖数据（供同步到客户端） */
+    public static Map<String, List<String>> getServerShieldTypeOverrides() {
+        return SERVER_SHIELD_TYPE_OVERRIDES;
     }
 
     /** 查询属性的组合方式（客户端 tooltip 格式化使用），未找到返回 null */

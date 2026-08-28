@@ -790,7 +790,7 @@ public class Config {
             "战意持续时间（刻）",
             "叠加时刷新持续时间到满值，期间层数保持不变",
             "默认40tick（2秒）"
-        ).defineInRange("durationTicks", 60, 1, 600);
+        ).defineInRange("durationTicks", 100, 1, 600);
 
         JOURNEY_MAX_STACKS = BUILDER.comment(
             "战意最大叠层数",

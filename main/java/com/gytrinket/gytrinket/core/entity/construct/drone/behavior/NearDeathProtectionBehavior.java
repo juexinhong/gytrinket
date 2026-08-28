@@ -2,12 +2,11 @@ package com.gytrinket.gytrinket.core.entity.construct.drone.behavior;
 
 import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.damage.InvincibilityMarkerManager;
-import com.gytrinket.gytrinket.core.shield.DisableSystem;
+import com.gytrinket.gytrinket.core.defs.DefsManager;
 import com.gytrinket.gytrinket.core.entity.construct.drone.DroneConstructEntity;
-import com.gytrinket.gytrinket.storage.PlayerStoreUtils;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.damagesource.DamageSource;
-import net.minecraft.world.item.ItemStack;
 
 import java.util.Set;
 import java.util.UUID;
@@ -90,12 +89,11 @@ public class NearDeathProtectionBehavior implements IDroneSpecialBehavior {
         if (ownerUUID == null) {
             return false;
         }
-        // 已装备物品 = 光点核心存储 + Curios 饰品栏（光点核心内容扩展）
-        for (ItemStack stack : PlayerStoreUtils.getEquippedStacks(ownerUUID)) {
-            if (!stack.isEmpty() && !DisableSystem.isItemDisabled(ownerUUID, stack) && Config.isNearDeathProtectionItem(stack.getItem())) {
-                return true;
-            }
+        MinecraftServer server = drone.level().getServer();
+        if (server == null) {
+            return false;
         }
-        return false;
+        // 检查玩家装备的物品是否声明了「宽限协议」特殊机制（数据驱动/覆盖层优先）
+        return DefsManager.playerHasEquippedMechanic(server, ownerUUID, "near_death_protection_items");
     }
 }

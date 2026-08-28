@@ -59,19 +59,34 @@ public class TooltipHandler {
         addModuleTooltips(event, itemId);
         addAdaptiveArmorTooltip(event, itemId);
 
-        // 数据驱动的通用工具提示
+        // 数据驱动的通用工具提示（机制详细描述：超过 1 个机制时折叠只剩标题，按 Shift 展开）
         ensureTooltipRules();
+        List<TooltipConfig> matchedRules = new ArrayList<>();
         for (TooltipConfig config : tooltipRules) {
-            addConfiguredTooltip(event, itemId, config);
+            if (config.matchesItem(itemId)) {
+                matchedRules.add(config);
+            }
+        }
+        boolean collapse = matchedRules.size() > 1 && !net.minecraft.client.gui.screens.Screen.hasShiftDown();
+        for (TooltipConfig config : matchedRules) {
+            addConfiguredTooltip(event, itemId, config, collapse);
         }
     }
 
     /**
      * 通用的配置驱动工具提示处理方法
      * 替代所有重复的 add*Tooltip 方法
+     * @param collapse 多个特殊机制时折叠：只显示标题行（详细描述在按住 Shift 时展开）
      */
-    private static void addConfiguredTooltip(ItemTooltipEvent event, String itemId, TooltipConfig config) {
+    private static void addConfiguredTooltip(ItemTooltipEvent event, String itemId, TooltipConfig config, boolean collapse) {
         if (!config.matchesItem(itemId)) {
+            return;
+        }
+
+        if (collapse) {
+            if (config.hasTitle()) {
+                addTooltip(event, config.getTitleKey(), config.getTitleColor());
+            }
             return;
         }
 
@@ -271,17 +286,17 @@ public class TooltipHandler {
         }
 
         if (DefsManager.itemSetContains(getClientRegistryAccess(), "wingman_interceptor_module_items", itemId)) {
-            addTooltip(event, "interceptor_module", ChatFormatting.GRAY);
+            addTooltip(event, "wingman_interceptor_module", ChatFormatting.GRAY);
             addInterceptorModuleDescTooltip(event);
         }
 
         if (DefsManager.itemSetContains(getClientRegistryAccess(), "wingman_nano_regen_module_items", itemId)) {
-            addTooltip(event, "nano_regen_module", ChatFormatting.GREEN);
+            addTooltip(event, "wingman_nano_regen_module", ChatFormatting.GREEN);
             addNanoRegenModuleDescTooltip(event);
         }
 
         if (DefsManager.itemSetContains(getClientRegistryAccess(), "swarm_module_items", itemId)) {
-            addTooltip(event, "mothership_body", ChatFormatting.GRAY);
+            addTooltip(event, "swarm_module", ChatFormatting.GRAY);
             addMothershipBodyDescTooltip(event);
         }
 
@@ -417,7 +432,7 @@ public class TooltipHandler {
 
         if (isBondItem) {
             event.getToolTip().add(Component.literal("").withStyle(ChatFormatting.GRAY));
-            addTooltip(event, "adaptive_armor_bond", ChatFormatting.LIGHT_PURPLE);
+            addTooltip(event, "adaptive_armor_shield_effect", ChatFormatting.LIGHT_PURPLE);
             addTooltip(event, "adaptive_armor_bond_effect", ChatFormatting.GRAY);
         }
     }

@@ -104,7 +104,7 @@
 
   "tooltip.gytrinket.adaptive_armor_enabled": "アダプティブアーマー有効",
   "tooltip.gytrinket.adaptive_armor_effect": "ダメージを受けるとアーマースタックを生成します。各アーマースタックはダメージ軽減を提供します",
-  "tooltip.gytrinket.adaptive_armor_bond": "ボンド",
+  "tooltip.gytrinket.adaptive_armor_shield_effect": "ボンド",
   "tooltip.gytrinket.adaptive_armor_bond_effect": "アーマースタックがシールド効果と回復効率の属性を追加で提供します",
 
   "tooltip.gytrinket.electric_discharge": "エレクトリックディスチャージ",

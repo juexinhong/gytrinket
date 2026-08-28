@@ -27,7 +27,14 @@ public class AdaptiveArmorManager {
     /** 玩家是否启用适应性装甲护盾效果的缓存 */
     private static final Set<UUID> PLAYER_HAS_ADAPTIVE_ARMOR_SHIELD_EFFECT = new java.util.concurrent.CopyOnWriteArraySet<>();
 
-    /** 玩家的装甲叠层数据 */
+    /**
+     * 玩家的装甲叠层数据（每批独立到期时间戳）
+     * <p>
+     * 线程安全约定：该结构仅允许在服务端主线程访问（伤害链、PlayerTickEvent、
+     * 服务端发包均运行于服务端主线程；客户端 tick 已通过 isClientSide() 拦截）。
+     * 因此内部使用普通 ArrayList 而非 CopyOnWriteArrayList，避免每刻 removeIf 整列表复制；
+     * 若未来新增客户端/渲染线程访问路径，需重新引入并发安全容器。
+     */
     private static final Map<UUID, List<ArmorLayerBatch>> PLAYER_ARMOR_LAYERS = new java.util.concurrent.ConcurrentHashMap<>();
 
     private AdaptiveArmorManager() {}
@@ -80,7 +87,7 @@ public class AdaptiveArmorManager {
         finalDuration = Math.max(finalDuration, 1); // 最少1刻
 
         PLAYER_ARMOR_LAYERS.computeIfAbsent(uuid, k -> new ArrayList<>())
-                .add(new ArmorLayerBatch(actualLayers, finalDuration));
+                .add(new ArmorLayerBatch(actualLayers, player.level().getGameTime() + finalDuration));
 
         // 更新动态属性（当玩家有护盾效果物品时）
         updateShieldEffectAttribute(player);
@@ -115,7 +122,11 @@ public class AdaptiveArmorManager {
         List<ArmorLayerBatch> batches = PLAYER_ARMOR_LAYERS.get(player.getUUID());
         if (batches == null) return 0;
 
-        return new ArrayList<>(batches).stream().mapToDouble(batch -> batch.layers).sum();
+        double total = 0;
+        for (ArmorLayerBatch batch : batches) {
+            total += batch.layers;
+        }
+        return total;
     }
 
     /**
@@ -158,7 +169,7 @@ public class AdaptiveArmorManager {
     }
 
     /**
-     * 每刻更新装甲叠层的剩余时间，移除过期的批次
+     * 每刻检查装甲叠层到期时间戳，移除过期的批次
      */
     @SubscribeEvent
     public static void onPlayerTick(PlayerTickEvent.Post event) {
@@ -178,11 +189,9 @@ public class AdaptiveArmorManager {
         // 记录更新前的总层数
         double previousTotal = getTotalArmorLayers(player);
 
-        // 移除过期的批次
-        batches.removeIf(batch -> {
-            batch.remainingTicks--;
-            return batch.remainingTicks <= 0;
-        });
+        // 时间戳比较：移除到期的批次（绝对到期游戏时间，无递减开销）
+        long now = player.level().getGameTime();
+        batches.removeIf(batch -> batch.expireTick <= now);
 
         // 如果没有剩余批次，清除映射
         if (batches.isEmpty()) {
@@ -237,15 +246,15 @@ public class AdaptiveArmorManager {
 
     /**
      * 装甲叠层批次类
-     * 记录单次伤害产生的装甲叠层数量和剩余时间
+     * 记录单次伤害产生的装甲叠层数量和到期游戏时间（绝对时间戳，每批独立计时）
      */
     private static class ArmorLayerBatch {
         double layers;
-        int remainingTicks;
+        long expireTick;
 
-        ArmorLayerBatch(double layers, int duration) {
+        ArmorLayerBatch(double layers, long expireTick) {
             this.layers = layers;
-            this.remainingTicks = duration;
+            this.expireTick = expireTick;
         }
     }
 }

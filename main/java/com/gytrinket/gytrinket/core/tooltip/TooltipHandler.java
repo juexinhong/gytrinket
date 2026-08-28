@@ -290,6 +290,27 @@ public class TooltipHandler {
             addFormattedTooltip(event, "barrier_effect", ChatFormatting.DARK_PURPLE,
                 () -> new Object[]{5, 5});
         }
+
+        if (DefsManager.itemSetContains(getClientRegistryAccess(), "journey_module_items", itemId)) {
+            addTooltip(event, "journey_module", ChatFormatting.GOLD);
+            addJourneyModuleDescTooltip(event);
+        }
+    }
+
+    /**
+     * 征途模块描述工具提示（动态参数：最大层数、持续秒数、消退间隔/数量、攻速/移速每层加成）
+     */
+    private static void addJourneyModuleDescTooltip(ItemTooltipEvent event) {
+        addFormattedTooltip(event, "journey_module_desc", ChatFormatting.GRAY,
+            () -> new Object[]{
+                Config.getJourneyMaxStacks(),
+                Config.getJourneyDurationTicks() / 20.0,
+                Config.getJourneyDecayIntervalTicks(),
+                Config.getJourneyDecayPerInterval(),
+                Config.getJourneyAttackSpeedPerStack() * 100,
+                Config.getJourneyMovementSpeedPerStack() * 100
+            }
+        );
     }
 
     /**

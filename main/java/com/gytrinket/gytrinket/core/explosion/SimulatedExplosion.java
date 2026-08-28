@@ -2,6 +2,7 @@ package com.gytrinket.gytrinket.core.explosion;
 
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
 import com.gytrinket.gytrinket.core.attack_mode.ExecuteToggleManager;
+import com.gytrinket.gytrinket.core.damage.SecondaryDamageMerger;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
@@ -80,6 +81,18 @@ public class SimulatedExplosion {
     public static void execute(Level level, Vec3 center, double radius, float damage,
                                DamageSource damageSource, Predicate<LivingEntity> entityFilter,
                                boolean resetInvulnerable, Player owner, double knockbackMultiplierOverride) {
+        execute(level, center, radius, damage, damageSource, entityFilter, resetInvulnerable, owner, knockbackMultiplierOverride, null);
+    }
+
+    /**
+     * 执行模拟爆炸（带次级伤害合并类型）
+     *
+     * @param mergeType 合并类型 ID（null = 不合并，立即施加；非 null 时同类型伤害在时间窗口内累积合并）
+     */
+    public static void execute(Level level, Vec3 center, double radius, float damage,
+                               DamageSource damageSource, Predicate<LivingEntity> entityFilter,
+                               boolean resetInvulnerable, Player owner, double knockbackMultiplierOverride,
+                               String mergeType) {
         if (level.isClientSide) return;
 
         // 应用玩家爆炸属性增幅
@@ -97,36 +110,55 @@ public class SimulatedExplosion {
 
         List<LivingEntity> entities = level.getEntitiesOfClass(LivingEntity.class, aabb);
 
+        // radius 可能被属性增幅重赋值，lambda 中使用 final 副本
+        final double effectiveRadius = radius;
+
         for (LivingEntity entity : entities) {
             if (!entityFilter.test(entity)) continue;
 
             double distance = entity.position().distanceTo(center);
             if (distance > radius) continue;
 
-            if (resetInvulnerable) {
-                entity.invulnerableTime = 0;
+            if (mergeType == null) {
+                applyExplosionHit(entity, center, radius, distance, damage, damageSource,
+                        owner, resetInvulnerable, knockbackMultiplierOverride);
+            } else {
+                SecondaryDamageMerger.accumulate(entity, mergeType, damage, (target, mergedDamage) ->
+                        applyExplosionHit(target, center, effectiveRadius, distance, mergedDamage, damageSource,
+                                owner, resetInvulnerable, knockbackMultiplierOverride));
             }
-
-            // 斩杀归属逻辑：根据 ExecuteToggleManager 决定是否将击杀归属玩家
-            DamageSource actualSource = damageSource;
-            if (owner != null && damageSource.getEntity() != null) {
-                if (damage >= entity.getHealth() && ExecuteToggleManager.isExecuteEnabled(owner)) {
-                    // 斩杀归属启用 + 足够斩杀：使用带玩家归属的伤害源
-                    actualSource = entity.damageSources().explosion(null, owner);
-                } else {
-                    // 斩杀归属禁用 或 不足以斩杀：使用无攻击者的爆炸伤害源
-                    actualSource = entity.damageSources().explosion(null);
-                }
-            }
-
-            entity.hurt(actualSource, damage);
-
-            if (resetInvulnerable) {
-                entity.invulnerableTime = 0;
-            }
-
-            applyKnockback(entity, center, radius, distance, knockbackMultiplierOverride);
         }
+    }
+
+    /**
+     * 对单个实体施加爆炸命中：重置无敌时间、斩杀归属、伤害、击退
+     */
+    private static void applyExplosionHit(LivingEntity entity, Vec3 center, double radius, double distance,
+                                          float damage, DamageSource damageSource, Player owner,
+                                          boolean resetInvulnerable, double knockbackMultiplierOverride) {
+        if (resetInvulnerable) {
+            entity.invulnerableTime = 0;
+        }
+
+        // 斩杀归属逻辑：根据 ExecuteToggleManager 决定是否将击杀归属玩家
+        DamageSource actualSource = damageSource;
+        if (owner != null && damageSource.getEntity() != null) {
+            if (damage >= entity.getHealth() && ExecuteToggleManager.isExecuteEnabled(owner)) {
+                // 斩杀归属启用 + 足够斩杀：使用带玩家归属的伤害源
+                actualSource = entity.damageSources().explosion(null, owner);
+            } else {
+                // 斩杀归属禁用 或 不足以斩杀：使用无攻击者的爆炸伤害源
+                actualSource = entity.damageSources().explosion(null);
+            }
+        }
+
+        entity.hurt(actualSource, damage);
+
+        if (resetInvulnerable) {
+            entity.invulnerableTime = 0;
+        }
+
+        applyKnockback(entity, center, radius, distance, knockbackMultiplierOverride);
     }
 
     /**

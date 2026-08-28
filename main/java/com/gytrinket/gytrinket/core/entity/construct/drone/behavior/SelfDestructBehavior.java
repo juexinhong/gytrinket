@@ -117,7 +117,9 @@ public class SelfDestructBehavior implements IDroneSpecialBehavior {
                         && entity instanceof net.minecraft.world.entity.Mob
                         && HostileTargetManager.shouldAttackPlayer(entity, playerOwner),
                 true,
-                playerOwner
+                playerOwner,
+                -1.0,
+                "simulated_explosion"
         );
 
         // 炉心融解模块：自毁附带等量灼烧并默认点燃

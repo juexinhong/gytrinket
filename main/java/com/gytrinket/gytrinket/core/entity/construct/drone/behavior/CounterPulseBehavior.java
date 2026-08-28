@@ -118,7 +118,9 @@ public class CounterPulseBehavior implements IDroneSpecialBehavior {
                         && (owner == null || !HostileTargetManager.isEntityProtectedByPlayer(entity, owner))
                         && HostileTargetManager.shouldAttackPlayer(entity, owner),
                 true,
-                owner
+                owner,
+                -1.0,
+                "simulated_explosion"
         );
 
         serverLevel.sendParticles(

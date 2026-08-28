@@ -6,7 +6,9 @@ import com.gytrinket.gytrinket.core.entity.construct.ConstructManager;
 import com.gytrinket.gytrinket.core.entity.construct.ConstructType;
 import com.gytrinket.gytrinket.core.entity.construct.IEntityRestorer;
 import com.gytrinket.gytrinket.core.entity.construct.swarm.SwarmConstructTypes;
+import com.gytrinket.gytrinket.core.entity.construct.swarm.SwarmManager;
 import com.gytrinket.gytrinket.core.entity.construct.wingman.WingmanConstructTypes;
+import com.gytrinket.gytrinket.core.entity.construct.wingman.WingmanManager;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
@@ -301,16 +303,39 @@ public class DroneArrayManager {
         boolean currentHasAssault = DroneManager.getInstance().hasAssaultModule(player);
         boolean currentHasDefense = DroneManager.getInstance().hasDefenseModule(player);
 
-        // 恢复无人机（无备份时回退到更新现有实体阵列类型）
-        if (!restoreConstructs(player, DroneConstructTypes.DRONE, newArray, currentHasAssault, currentHasDefense)) {
-            updateExistingDroneArrayType(player, newArray);
+        // 恢复无人机（无备份时回退到更新现有实体阵列类型）。
+        // 仅当玩家仍具备对应构建能力（仍装备模块）时才恢复，否则丢弃备份，防止卸载模块后无人机重新生成
+        if (DroneManager.getInstance().canBuildDroneInternal(player)) {
+            if (!restoreConstructs(player, DroneConstructTypes.DRONE, newArray, currentHasAssault, currentHasDefense)) {
+                updateExistingDroneArrayType(player, newArray);
+            }
+        } else {
+            discardStandbyBackup(player, DroneConstructTypes.DRONE);
         }
 
-        // 恢复僚机
-        restoreConstructs(player, WingmanConstructTypes.WINGMAN, newArray, currentHasAssault, currentHasDefense);
+        // 恢复僚机（仅当玩家仍具备构建能力时）
+        if (WingmanManager.getInstance().canBuildWingmanInternal(player)) {
+            restoreConstructs(player, WingmanConstructTypes.WINGMAN, newArray, currentHasAssault, currentHasDefense);
+        } else {
+            discardStandbyBackup(player, WingmanConstructTypes.WINGMAN);
+        }
 
-        // 恢复蜂群
-        restoreConstructs(player, SwarmConstructTypes.SWARM, newArray, currentHasAssault, currentHasDefense);
+        // 恢复蜂群（仅当玩家仍具备构建能力时）
+        if (SwarmManager.getInstance().canBuildSwarmInternal(player)) {
+            restoreConstructs(player, SwarmConstructTypes.SWARM, newArray, currentHasAssault, currentHasDefense);
+        } else {
+            discardStandbyBackup(player, SwarmConstructTypes.SWARM);
+        }
+    }
+
+    /**
+     * 丢弃指定类型的待机备份（玩家已失去对应构建能力时不再恢复）
+     */
+    private void discardStandbyBackup(Player player, String typeId) {
+        Map<String, List<ConstructData>> playerBackups = standbyDataBackup.get(player.getUUID());
+        if (playerBackups != null) {
+            playerBackups.remove(typeId);
+        }
     }
 
     /**

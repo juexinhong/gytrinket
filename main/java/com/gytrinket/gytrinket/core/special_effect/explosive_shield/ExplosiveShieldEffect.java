@@ -33,7 +33,8 @@ public class ExplosiveShieldEffect {
         }
 
         List<LivingEntity> effectCenters;
-        if (ShieldTransferManager.hasTransferredShield(player.getUUID())) {
+        if (ShieldTransferManager.isShieldTransferEnabled(player.getUUID())) {
+            // 护盾移植模式：在被保护实体位置触发（无受保护实体时玩家自身不触发）
             effectCenters = ShieldTransferManager.getProtectedEntities(player.getUUID(), player.level());
         } else {
             effectCenters = List.of(player);

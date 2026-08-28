@@ -101,12 +101,18 @@ public class NearDeathExplosionBehavior implements IDroneSpecialBehavior {
         data.putDouble(TAG_EXPLOSION_SPEED, speed);
         drone.setExplosionSpeed(speed);
 
+        // 转向速度随时间提升：基础转向速度 × (1 + 每秒提升比例 × 已过去秒数)
+        int totalDuration = Config.NEAR_DEATH_EXPLOSION_INVINCIBLE_DURATION.get();
+        float elapsedSeconds = (totalDuration - timer) / 20.0f;
+        float turnSpeed = (float) (Config.NEAR_DEATH_EXPLOSION_TURN_SPEED_BASE.get()
+                * (1.0 + Config.NEAR_DEATH_EXPLOSION_TURN_SPEED_GROWTH_PER_SECOND.get() * elapsedSeconds));
+
         double searchRadius = Config.NEAR_DEATH_EXPLOSION_SEARCH_RADIUS.get();
         LivingEntity target = findNearestDangerousEntity(drone, searchRadius);
 
         if (target != null) {
             drone.facePositionWithInterpolation(
-                    target.position().add(0, target.getEyeHeight() * 0.5, 0), 20.0f);
+                    target.position().add(0, target.getEyeHeight() * 0.5, 0), turnSpeed);
 
             if (drone.distanceTo(target) <= 2.0) {
                 drone.explodeAndRemove();
@@ -116,7 +122,7 @@ public class NearDeathExplosionBehavior implements IDroneSpecialBehavior {
             Entity owner = drone.getOwner();
             if (owner != null && owner.isAlive()) {
                 drone.facePositionWithInterpolation(
-                        owner.position().add(0, owner.getEyeHeight() * 0.5, 0), 20.0f);
+                        owner.position().add(0, owner.getEyeHeight() * 0.5, 0), turnSpeed);
             }
         }
 

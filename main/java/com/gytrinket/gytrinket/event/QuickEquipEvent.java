@@ -176,54 +176,24 @@ public class QuickEquipEvent {
         return slots;
     }
 
-    /** 判定物品是否"注册了属性或特殊机制"（可装备类物品：模块/护盾/机身等） */
+    /**
+     * 判定物品是否"注册了属性或特殊机制"（可装备类物品：模块/护盾/机身等）。
+     * <p>
+     * 各路径职责单一：
+     * <ol>
+     *   <li>本模组属性（{@link AttributeManager#isItemAttributeRegistered}）</li>
+     *   <li>护盾类型（item_shield_types）</li>
+     *   <li>特殊机制声明（special_mechanics 路径，文件存在即声明，
+     *       {@link Config#isSpecialMechanicItem}）——快速装备只检查该路径</li>
+     * </ol>
+     */
     public static boolean isQuickEquipItem(String itemId, Item item) {
         if (AttributeManager.isItemAttributeRegistered(itemId)) {
             return true;
         }
 
         return !getItemShieldTypes(item).isEmpty()
-                || Config.isDroneModuleItem(item)
-                || Config.isAssaultDroneModuleItem(item)
-                || Config.isDefenseDroneModuleItem(item)
-                || Config.isAdaptiveArmorItem(item)
-                || Config.isAdaptiveArmorShieldEffectItem(item)
-                || Config.isShieldTransferItem(item)
-                || Config.isBarrierItem(item)
-                || Config.isExplosiveShieldItem(item)
-                || Config.isReflectDamageItem(item)
-                || Config.isElectricDischargeItem(item)
-                || Config.isAttackCooldownEfficiencyItem(item)
-                || Config.isShieldNaturalRecoveryItem(item)
-                || Config.isBinaryProtocolItem(item)
-                || Config.isWeaponizedShieldItem(item)
-                || Config.isConversionItem(item)
-                || Config.isAssaultItem(item)
-                || Config.isChargedAttackItem(item)
-                || Config.isChargedShieldItem(item)
-                || Config.isNearDeathExplosionItem(item)
-                || Config.isNearDeathProtectionItem(item)
-                || Config.isCommanderItem(item)
-                || Config.isArcBarrierItem(item)
-                || Config.isReshapingItem(item)
-                || Config.isCounterPulseItem(item)
-                || Config.isGrudgeItem(item)
-                || Config.isPrecisionConstructItem(item)
-                || Config.isAdvancedEngineeringItem(item)
-                || Config.isPursuitArrayItem(item)
-                || Config.isFormationArrayItem(item)
-                || Config.isGuardArrayItem(item)
-                || Config.isSelfDestructItem(item)
-                || Config.isTaskmasterItem(item)
-                || Config.isWingmanModuleItem(item)
-                || Config.isSwarmModuleItem(item)
-                || Config.isInterceptorModuleItem(item)
-                || Config.isEvolutionModuleItem(item)
-                || Config.isNanoRegenModuleItem(item)
-                || Config.isShockwaveModuleItem(item)
-                || Config.isFurnaceCoreItem(item)
-                || Config.isGhostFuselageItem(item)
-                || Config.isBodyItem(item);
+                || Config.isSpecialMechanicItem(item);
     }
 
     private static boolean hasSameItemInStore(ItemStackHandler handler, Item item) {

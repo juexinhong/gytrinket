@@ -1,6 +1,7 @@
 package com.gytrinket.gytrinket.core.entity.construct.wingman;
 
 import com.gytrinket.gytrinket.config.Config;
+import com.gytrinket.gytrinket.core.damage.SecondaryDamageMerger;
 import com.gytrinket.gytrinket.core.entity.construct.drone.DroneConstructEntity;
 import com.gytrinket.gytrinket.core.entity.construct.drone.ModDamageSources;
 import com.gytrinket.gytrinket.core.entity.construct.drone.ModEntities;
@@ -214,13 +215,18 @@ public class ExplosiveProjectile extends ThrowableItemProjectile {
     }
 
     /**
-     * 对目标造成伤害，并移除无敌时间以确保多枚爆破弹都能命中
+     * 对目标造成伤害，并移除无敌时间以确保多枚爆破弹都能命中。
+     * <p>
+     * 伤害经次级伤害合并系统延迟施加（同类型伤害在时间窗口内累积合并，降低受击频率）
      */
     private void dealDamageToTarget(LivingEntity target) {
-        target.invulnerableTime = 0;
         KnockbackManager.markNoKnockback(target.getUUID());
-        target.hurt(createDamageSourceWithGuardAggro(), damage);
-        target.invulnerableTime = 0;
+        DamageSource source = createDamageSourceWithGuardAggro();
+        SecondaryDamageMerger.accumulate(target, "explosive_shell", damage, (t, mergedDamage) -> {
+            t.invulnerableTime = 0;
+            t.hurt(source, mergedDamage);
+            t.invulnerableTime = 0;
+        });
     }
 
     /**
@@ -266,7 +272,11 @@ public class ExplosiveProjectile extends ThrowableItemProjectile {
                         && !(entity instanceof WingmanConstructEntity)
                         && (ownerPlayer == null || HostileTargetManager.shouldAttackPlayer(entity, ownerPlayer)),
                 true,
-                ownerPlayer
+                ownerPlayer,
+                null,
+                true,
+                0.0,
+                "energy_wave"
             );
         }
 

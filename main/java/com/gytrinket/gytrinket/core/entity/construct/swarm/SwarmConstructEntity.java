@@ -187,21 +187,22 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
 
         if (repairMode) {
             repairMovement(this, owner);
-            // 修复模式：朝向玩家身高一半处
+            // 修复模式：朝向玩家身高一半处（角速度限制为每刻5度）
             Vec3 repairFacePos = owner.position().add(0, owner.getBbHeight() * 0.5, 0);
-            facePositionWithInterpolation(repairFacePos, 20.0f);
+            facePositionWithInterpolation(repairFacePos, 5.0f);
             executeShieldRepair(this, owner);
         } else {
             LivingEntity target = findTarget(owner);
             if (target != null) {
                 pursuitMovement(this, owner, target, speedMult);
-                faceTargetWithInterpolation(target);
+                // 追击朝向目标（角速度限制为每刻5度）
+                facePositionWithInterpolation(target.position().add(0, target.getEyeHeight() * 0.5, 0), 5.0f);
                 executeArcAttack(this, owner, target, attackSpeedMult);
             } else {
                 // 无攻击目标：朝向玩家位置高 STANDBY_HEIGHT 格处，移动方向为朝向方向
                 Vec3 standbyFacePos = owner.position().add(0, STANDBY_HEIGHT, 0);
                 standbyMovement(this, owner, speedMult);
-                facePositionWithInterpolation(standbyFacePos, 20.0f);
+                facePositionWithInterpolation(standbyFacePos, 5.0f);
                 // 高度达到跟随高度（2格容差）时，忽略俯仰角，避免朝向诡异
                 if (Math.abs(this.getY() - standbyFacePos.y) <= 2.0) {
                     this.setXRot(0.0f);

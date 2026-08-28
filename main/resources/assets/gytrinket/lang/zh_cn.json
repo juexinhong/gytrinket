@@ -284,6 +284,7 @@
   
   "item.gytrinket.fast_shooting_module": "快速射击模块",
   "item.gytrinket.burst_fire_module": "点射模块",
+  "item.gytrinket.journey_module": "征途模块",
   "item.gytrinket.assault_module": "强袭模块",
 
   "item.gytrinket.charged_attack_module": "充能攻击模块",
@@ -497,6 +498,8 @@
   "tooltip.gytrinket.evolution_module_desc": "每级光点等级提高僚机%s%%生命值和攻击速度",
   "tooltip.gytrinket.nano_regen_module": "纳米再生",
   "tooltip.gytrinket.nano_regen_module_desc": "僚机每秒恢复%.1f%%最大生命值",
+  "tooltip.gytrinket.journey_module": "征途",
+  "tooltip.gytrinket.journey_module_desc": "每击杀一个实体累积1层战意\n最多%d层，叠加时刷新持续%.1f秒\n持续时间结束后每%d刻消退%d层\n每层+%.2f%%攻击速度、+%.2f%%移动速度（独立乘区）",
   "tooltip.gytrinket.suppression_module": "压制",
   "tooltip.gytrinket.suppression_module_desc": "+50%拦截机武器攻击速度,有问题，属性应该通过文本注入的方式自动获得，你这硬编码是干什么啊，可以删除这个描述，并检查对应的属性是否有翻译名",
   "tooltip.gytrinket.shockwave_module": "震撼弹",
@@ -563,6 +566,7 @@
   "item.gytrinket.shockwave_part": "震撼弹零件",
   "item.gytrinket.nano_regen_part": "纳米再生零件",
   "item.gytrinket.suppression_part": "压制零件",
+  "item.gytrinket.war_soul": "战魂",
   "item.gytrinket.interceptor_module": "拦截机模块",
   "item.gytrinket.evolution_module": "进化模块",
   "item.gytrinket.nano_regen_module": "纳米再生模块",

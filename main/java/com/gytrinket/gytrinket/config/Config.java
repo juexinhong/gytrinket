@@ -138,6 +138,7 @@ public class Config {
     public static final ModConfigSpec.IntValue ASSAULT_DURATION_TICKS;
     public static final ModConfigSpec.DoubleValue ASSAULT_SELF_DAMAGE_PER_STACK;
     public static final ModConfigSpec.DoubleValue ASSAULT_MOVEMENT_SPEED_PENALTY;
+    public static final ModConfigSpec.DoubleValue ASSAULT_OVERFLOW_DAMAGE_EFFICIENCY;
 
     // ===== 18. 充能攻击 (charged_attack) =====
 
@@ -146,6 +147,15 @@ public class Config {
     public static final ModConfigSpec.DoubleValue CHARGED_ATTACK_DRAG_COEFFICIENT;
     public static final ModConfigSpec.DoubleValue CHARGED_ATTACK_DRAG_THRESHOLD_FACTOR;
     public static final ModConfigSpec.DoubleValue CHARGED_ATTACK_MOVEMENT_SPEED_PENALTY;
+
+    // ===== 17.5 征途 (journey) =====
+
+    public static final ModConfigSpec.DoubleValue JOURNEY_ATTACK_SPEED_PER_STACK;
+    public static final ModConfigSpec.DoubleValue JOURNEY_MOVEMENT_SPEED_PER_STACK;
+    public static final ModConfigSpec.IntValue JOURNEY_DURATION_TICKS;
+    public static final ModConfigSpec.IntValue JOURNEY_MAX_STACKS;
+    public static final ModConfigSpec.IntValue JOURNEY_DECAY_INTERVAL_TICKS;
+    public static final ModConfigSpec.IntValue JOURNEY_DECAY_PER_INTERVAL;
 
     // ===== 19. 精密构造 (precision_construct) =====
 
@@ -228,6 +238,8 @@ public class Config {
     public static final ModConfigSpec.DoubleValue NEAR_DEATH_EXPLOSION_SEARCH_RADIUS;
     public static final ModConfigSpec.DoubleValue NEAR_DEATH_EXPLOSION_INITIAL_SPEED;
     public static final ModConfigSpec.DoubleValue NEAR_DEATH_EXPLOSION_SPEED_ACCELERATION;
+    public static final ModConfigSpec.DoubleValue NEAR_DEATH_EXPLOSION_TURN_SPEED_BASE;
+    public static final ModConfigSpec.DoubleValue NEAR_DEATH_EXPLOSION_TURN_SPEED_GROWTH_PER_SECOND;
 
     // ===== 24.5 自毁装置 (self_destruct) =====
 
@@ -235,6 +247,11 @@ public class Config {
     public static final ModConfigSpec.DoubleValue SELF_DESTRUCT_BASE_RADIUS;
     public static final ModConfigSpec.DoubleValue SELF_DESTRUCT_DAMAGE_PER_MAX_HEALTH;
     public static final ModConfigSpec.DoubleValue SELF_DESTRUCT_RADIUS_PER_MAX_HEALTH;
+
+    // ===== 24.5.2 次级攻击伤害合并 (secondary_damage_merge) =====
+
+    public static final ModConfigSpec.BooleanValue SECONDARY_DAMAGE_MERGE_ENABLED;
+    public static final ModConfigSpec.IntValue SECONDARY_DAMAGE_MERGE_WINDOW_TICKS;
 
     // ===== 24.5.1 炉心融解模块 (furnace_core) =====
 
@@ -741,6 +758,58 @@ public class Config {
             "范围：-0.99 ~ 0.0"
         ).defineInRange("movementSpeedPenalty", -0.6, -0.99, 0.0);
 
+        ASSAULT_OVERFLOW_DAMAGE_EFFICIENCY = BUILDER.comment(
+            "强袭攻击速度撞墙转化效率",
+            "攻击频率存在上限（每刻最多攻击一次，即20.0攻击速度），",
+            "当强袭提供的攻击速度溢出该上限时，按比例等价换算为伤害百分比属性：",
+            "溢出伤害% = 溢出攻速 / 20.0 × 效率",
+            "（攻击速度即每秒攻击次数，溢出1.0攻速相对上限为1/20=5%频率提升，等价于+5%基础伤害）",
+            "效率1.0 = 完全等价转化（被上限浪费的频率全额补偿为伤害，DPS不损失），0.5 = 只补偿一半",
+            "默认1.0，范围：0.0 ~ 1.0"
+        ).defineInRange("overflowDamageEfficiency", 1.0, 0.0, 1.0);
+
+        BUILDER.pop();
+
+        // ===== 17.5 征途 =====
+        BUILDER.comment("征途系统配置").push("journey");
+
+        JOURNEY_ATTACK_SPEED_PER_STACK = BUILDER.comment(
+            "每层战意提供的攻击速度独立乘区加成",
+            "默认0.0075（即0.75%），40层满层为+30%",
+            "范围：0.001 ~ 0.1"
+        ).defineInRange("attackSpeedPerStack", 0.0075, 0.001, 0.1);
+
+        JOURNEY_MOVEMENT_SPEED_PER_STACK = BUILDER.comment(
+            "每层战意提供的移动速度独立乘区加成",
+            "默认0.0075（即0.75%），40层满层为+30%",
+            "该加成与增幅护盾一致，带镜头修正",
+            "范围：0.001 ~ 0.1"
+        ).defineInRange("movementSpeedPerStack", 0.0075, 0.001, 0.1);
+
+        JOURNEY_DURATION_TICKS = BUILDER.comment(
+            "战意持续时间（刻）",
+            "叠加时刷新持续时间到满值，期间层数保持不变",
+            "默认40tick（2秒）"
+        ).defineInRange("durationTicks", 60, 1, 600);
+
+        JOURNEY_MAX_STACKS = BUILDER.comment(
+            "战意最大叠层数",
+            "默认40层，达到上限后新击杀不再增加层数（仅刷新持续时间）",
+            "范围：1 ~ 100"
+        ).defineInRange("maxStacks", 40, 1, 100);
+
+        JOURNEY_DECAY_INTERVAL_TICKS = BUILDER.comment(
+            "战意消退间隔（刻）",
+            "持续时间耗尽后，每多少刻消退一批战意层数",
+            "默认3刻"
+        ).defineInRange("decayIntervalTicks", 3, 1, 100);
+
+        JOURNEY_DECAY_PER_INTERVAL = BUILDER.comment(
+            "战意每批消退层数",
+            "持续时间耗尽后，每个消退间隔消退的层数",
+            "默认2层"
+        ).defineInRange("decayPerInterval", 2, 1, 40);
+
         BUILDER.pop();
 
         // ===== 18. 充能攻击 =====
@@ -1079,6 +1148,16 @@ public class Config {
             "每tick增加的速度"
         ).defineInRange("nearDeathExplosionSpeedAcceleration", 0.05, 0.001, 1.0);
 
+        NEAR_DEATH_EXPLOSION_TURN_SPEED_BASE = BUILDER.comment(
+            "最后指令基础转向速度（度/tick）"
+        ).defineInRange("nearDeathExplosionTurnSpeedBase", 20.0, 1.0, 90.0);
+
+        NEAR_DEATH_EXPLOSION_TURN_SPEED_GROWTH_PER_SECOND = BUILDER.comment(
+            "最后指令转向速度每秒提升比例",
+            "实际转向速度 = 基础转向速度 × (1 + 每秒提升比例 × 已过去秒数)",
+            "默认0.1（每秒提升10%）"
+        ).defineInRange("nearDeathExplosionTurnSpeedGrowthPerSecond", 0.1, 0.0, 2.0);
+
         BUILDER.pop();
 
         // ===== 24.5 自毁装置 =====
@@ -1108,8 +1187,26 @@ public class Config {
             "默认0.3"
         ).defineInRange("selfDestructRadiusPerMaxHealth", 0.3, 0.0, 10.0);
 
-        // ===== 24.5.1 炉心融解模块 =====
         BUILDER.pop();
+
+        // ===== 24.5.2 次级攻击伤害合并 =====
+        BUILDER.comment("次级攻击伤害合并系统配置").push("secondary_damage_merge");
+
+        SECONDARY_DAMAGE_MERGE_ENABLED = BUILDER.comment(
+            "启用次级攻击伤害合并",
+            "启用后，无人机子弹/僚机爆破弹/模拟爆炸/能量波爆炸等次级攻击的伤害",
+            "在同一目标的时间窗口内累积合并，时间结束后一次性施加，降低实体受击频率"
+        ).define("secondaryDamageMergeEnabled", true);
+
+        SECONDARY_DAMAGE_MERGE_WINDOW_TICKS = BUILDER.comment(
+            "次级攻击伤害合并时间窗口（tick）",
+            "同一目标在同类型伤害的时间窗口内累积合并",
+            "默认10tick（0.5秒）"
+        ).defineInRange("secondaryDamageMergeWindowTicks", 10, 1, 100);
+
+        BUILDER.pop();
+
+        // ===== 24.5.1 炉心融解模块（配置挂载于自毁装置段，无独立 push） =====
 
         // ===== 25. 列队阵列 =====
         BUILDER.comment("列队阵列配置").push("formation_array");
@@ -1544,6 +1641,9 @@ public class Config {
     private static final Set<Item> COUNTER_PULSE_ITEM_SET = new HashSet<>();
     private static final Set<Item> ASSAULT_ITEM_SET = new HashSet<>();
     private static final Set<Item> CHARGED_ATTACK_ITEM_SET = new HashSet<>();
+    private static final Set<Item> JOURNEY_MODULE_ITEM_SET = new HashSet<>();
+    /** 声明为特殊机制的物品集合（special_mechanics 文件夹声明并集），用于快速装备等统一判定 */
+    private static final Set<Item> SPECIAL_MECHANIC_ITEM_SET = new HashSet<>();
     private static final Set<Item> CHARGED_SHIELD_ITEM_SET = new HashSet<>();
     private static final Set<Item> GHOST_FUSELAGE_ITEM_SET = new HashSet<>();
     private static final Set<Item> GRUDGE_ITEM_SET = new HashSet<>();
@@ -1817,6 +1917,7 @@ public class Config {
         loadItemSetFromDefs(COUNTER_PULSE_ITEM_SET, "counter_pulse_items", "反制脉冲启用");
         loadItemSetFromDefs(ASSAULT_ITEM_SET, "assault_items", "强袭模块");
         loadItemSetFromDefs(CHARGED_ATTACK_ITEM_SET, "charged_attack_items", "充能攻击模块");
+        loadItemSetFromDefs(JOURNEY_MODULE_ITEM_SET, "journey_module_items", "征途模块");
         loadItemSetFromDefs(CHARGED_SHIELD_ITEM_SET, "charged_shield_items", "充能护盾模块");
         loadItemSetFromDefs(GHOST_FUSELAGE_ITEM_SET, "ghost_fuselage_items", "幽灵机身模块");
         loadItemSetFromDefs(GRUDGE_ITEM_SET, "grudge_items", "积怨模块");
@@ -1826,6 +1927,16 @@ public class Config {
         loadItemSetFromDefs(FORMATION_ARRAY_ITEM_SET, "formation_array_required_items", "编队阵列前置");
         loadItemSetFromDefs(GUARD_ARRAY_ITEM_SET, "guard_array_required_items", "守卫阵列前置");
         loadItemSetFromDefs(CONVERSION_ITEM_SET, "conversion_items", "转化效果启用");
+
+        // 特殊机制物品集合（special_mechanics 文件夹声明并集，供快速装备等统一判定）
+        SPECIAL_MECHANIC_ITEM_SET.clear();
+        for (String itemId : DefsManager.getSpecialMechanicItems()) {
+            Item item = BuiltInRegistries.ITEM.get(ResourceLocation.parse(itemId));
+            if (item != null && item != Items.AIR) {
+                SPECIAL_MECHANIC_ITEM_SET.add(item);
+            }
+        }
+        gytrinket.LOGGER.info("注册特殊机制物品集合: {} 项", SPECIAL_MECHANIC_ITEM_SET.size());
 
         // 危险实体
         DANGEROUS_ENTITY_SET.clear();
@@ -1891,6 +2002,10 @@ public class Config {
             case "grudgeMovementSpeedPenalty" -> getGrudgeMovementSpeedPenalty();
             case "wingmanShockwaveDamageMultiplier" -> getWingmanShockwaveDamageMultiplier();
             case "wingmanShockwaveSplashLengthMultiplier" -> getWingmanShockwaveSplashLengthMultiplier();
+            case "journeyAttackSpeedPerStack" -> getJourneyAttackSpeedPerStack();
+            case "journeyMovementSpeedPerStack" -> getJourneyMovementSpeedPerStack();
+            case "journeyDurationTicks" -> getJourneyDurationTicks();
+            case "journeyMaxStacks" -> getJourneyMaxStacks();
             case "wingmanEvolutionBonusPerLevel" -> getWingmanEvolutionBonusPerLevel();
             case "ghostFuselageFullStealthTicks" -> getGhostFuselageFullStealthTicks();
             case "ghostFuselageBaseMaxDamageBonus" -> getGhostFuselageBaseMaxDamageBonus();
@@ -2282,6 +2397,10 @@ public class Config {
         return ASSAULT_MOVEMENT_SPEED_PENALTY.get();
     }
 
+    public static double getAssaultOverflowDamageEfficiency() {
+        return ASSAULT_OVERFLOW_DAMAGE_EFFICIENCY.get();
+    }
+
     public static boolean isChargedAttackItem(Item item) {
         return CHARGED_ATTACK_ITEM_SET.contains(item);
     }
@@ -2304,6 +2423,39 @@ public class Config {
 
     public static double getChargedAttackMovementSpeedPenalty() {
         return CHARGED_ATTACK_MOVEMENT_SPEED_PENALTY.get();
+    }
+
+    public static boolean isJourneyModuleItem(Item item) {
+        return JOURNEY_MODULE_ITEM_SET.contains(item);
+    }
+
+    /** 物品是否声明为特殊机制（special_mechanics 文件夹声明） */
+    public static boolean isSpecialMechanicItem(Item item) {
+        return SPECIAL_MECHANIC_ITEM_SET.contains(item);
+    }
+
+    public static double getJourneyAttackSpeedPerStack() {
+        return JOURNEY_ATTACK_SPEED_PER_STACK.get();
+    }
+
+    public static double getJourneyMovementSpeedPerStack() {
+        return JOURNEY_MOVEMENT_SPEED_PER_STACK.get();
+    }
+
+    public static int getJourneyDurationTicks() {
+        return JOURNEY_DURATION_TICKS.get();
+    }
+
+    public static int getJourneyMaxStacks() {
+        return JOURNEY_MAX_STACKS.get();
+    }
+
+    public static int getJourneyDecayIntervalTicks() {
+        return JOURNEY_DECAY_INTERVAL_TICKS.get();
+    }
+
+    public static int getJourneyDecayPerInterval() {
+        return JOURNEY_DECAY_PER_INTERVAL.get();
     }
 
     public static boolean isChargedShieldItem(Item item) {

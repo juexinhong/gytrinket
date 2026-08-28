@@ -51,6 +51,9 @@ public class AmplificationShieldType implements IShieldType {
     /** 攻击伤害独立乘区属性名（与幽灵机身共用同一属性，按乘区叠加） */
     private static final String ATTR_DAMAGE_INDEPENDENT = "attack_damage_independent";
 
+    /** 移动速度独立乘区属性名（玩家经属性池施加，面板可显示；非玩家实体回退原版修饰符） */
+    private static final String ATTR_MOVEMENT_SPEED_INDEPENDENT = "movement_speed_independent";
+
     /** 追踪的威胁实体：玩家UUID -> 威胁实体集合 */
     private static final Map<UUID, Set<Entity>> TRACKED_THREAT_ENTITIES = new HashMap<>();
     
@@ -113,6 +116,7 @@ public class AmplificationShieldType implements IShieldType {
         UUID playerUUID = player.getUUID();
         AMPLIFICATION_PROGRESS.put(playerUUID, 0.0);
         AttributeManager.removeDynamicAttribute(playerUUID, NAMESPACE, ATTR_DAMAGE_INDEPENDENT);
+        AttributeManager.removeDynamicAttribute(playerUUID, NAMESPACE, ATTR_MOVEMENT_SPEED_INDEPENDENT);
         removeAttackDamageModifier(player);
         removeMovementSpeedModifier(player);
         
@@ -156,11 +160,13 @@ public class AmplificationShieldType implements IShieldType {
             // 无护盾时清理所有动态属性/修饰符
             AMPLIFICATION_PROGRESS.put(playerUUID, 0.0);
             AttributeManager.removeDynamicAttribute(playerUUID, NAMESPACE, ATTR_DAMAGE_INDEPENDENT);
+            AttributeManager.removeDynamicAttribute(playerUUID, NAMESPACE, ATTR_MOVEMENT_SPEED_INDEPENDENT);
             removeAttackDamageModifier(player);
             removeMovementSpeedModifier(player);
             for (LivingEntity protectedEntity : ShieldTransferManager.getProtectedEntities(playerUUID, player.level())) {
                 if (protectedEntity instanceof Player targetPlayer) {
                     AttributeManager.removeDynamicAttribute(targetPlayer.getUUID(), NAMESPACE, ATTR_DAMAGE_INDEPENDENT);
+                    AttributeManager.removeDynamicAttribute(targetPlayer.getUUID(), NAMESPACE, ATTR_MOVEMENT_SPEED_INDEPENDENT);
                 } else {
                     removeAttackDamageModifier(protectedEntity);
                 }
@@ -297,12 +303,17 @@ public class AmplificationShieldType implements IShieldType {
             }
             if (targetEntity instanceof Player targetPlayer) {
                 AttributeManager.setDynamicAttribute(targetPlayer.getUUID(), NAMESPACE, ATTR_DAMAGE_INDEPENDENT, totalBonus);
+                // 玩家移动速度同样走属性池（面板显示 + 统一施加）；移除旧直接修饰符避免叠加
+                removeMovementSpeedModifier(targetPlayer);
+                if (applyMovementSpeed) {
+                    AttributeManager.setDynamicAttribute(targetPlayer.getUUID(), NAMESPACE, ATTR_MOVEMENT_SPEED_INDEPENDENT, movementSpeedBonus);
+                }
             } else {
                 addAttackDamageModifier(targetEntity, totalBonus);
-            }
-            // 移动速度加成与危险物检查同频：仅在检查时刻重新施加
-            if (applyMovementSpeed) {
-                addMovementSpeedModifier(targetEntity, movementSpeedBonus);
+                // 移动速度加成与危险物检查同频：仅在检查时刻重新施加
+                if (applyMovementSpeed) {
+                    addMovementSpeedModifier(targetEntity, movementSpeedBonus);
+                }
             }
         }
     }

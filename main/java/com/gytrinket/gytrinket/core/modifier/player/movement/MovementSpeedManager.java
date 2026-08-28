@@ -3,9 +3,11 @@ package com.gytrinket.gytrinket.core.modifier.player.movement;
 import com.gytrinket.gytrinket.core.attack_mode.AttackSpeedPenaltyManager;
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
 import com.gytrinket.gytrinket.core.modifier.ModifierHelper;
+import com.gytrinket.gytrinket.event.AttributeDynamicChangeEvent;
 import com.gytrinket.gytrinket.event.PlayerAttributesCalculatedEvent;
 import com.gytrinket.gytrinket.gytrinket;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
@@ -13,6 +15,7 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.server.ServerLifecycleHooks;
 
 import java.util.Map;
 import java.util.UUID;
@@ -30,12 +33,9 @@ public class MovementSpeedManager {
     public static void onAttributesCalculated(PlayerAttributesCalculatedEvent event) {
         UUID playerUUID = event.getPlayerUUID();
 
-        double movementSpeedPercent = AttributeManager.getPlayerAttribute(playerUUID, "movement_speed_percent");
-        double movementSpeedIndependent = AttributeManager.getPlayerAttribute(playerUUID, "movement_speed_independent");
-
         ServerPlayer player = event.getPlayer();
         if (player == null) {
-            var server = net.neoforged.neoforge.server.ServerLifecycleHooks.getCurrentServer();
+            var server = ServerLifecycleHooks.getCurrentServer();
             if (server != null) {
                 player = server.getPlayerList().getPlayer(playerUUID);
             }
@@ -43,6 +43,36 @@ public class MovementSpeedManager {
         if (player == null || !player.isAlive()) {
             return;
         }
+
+        applyMovementModifier(player, playerUUID);
+    }
+
+    @SubscribeEvent
+    public static void onAttributeDynamicChange(AttributeDynamicChangeEvent event) {
+        UUID playerUUID = event.getPlayerUUID();
+        String attrName = event.getAttributeName();
+
+        if (!attrName.equals("movement_speed_percent") && !attrName.equals("movement_speed_independent")) {
+            return;
+        }
+
+        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+        if (server == null) {
+            return;
+        }
+
+        ServerPlayer player = server.getPlayerList().getPlayer(playerUUID);
+        if (player == null || !player.isAlive()) {
+            return;
+        }
+
+        applyMovementModifier(player, playerUUID);
+    }
+
+    /** 按当前 movement_speed 属性聚合值重新施加修饰符 */
+    private static void applyMovementModifier(ServerPlayer player, UUID playerUUID) {
+        double movementSpeedPercent = AttributeManager.getPlayerAttribute(playerUUID, "movement_speed_percent");
+        double movementSpeedIndependent = AttributeManager.getPlayerAttribute(playerUUID, "movement_speed_independent");
 
         double totalMultiplier = movementSpeedPercent * movementSpeedIndependent;
 

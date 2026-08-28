@@ -36,10 +36,11 @@ import java.util.Set;
  *   data/&lt;命名空间&gt;/gytrinket/item_shield_types/&lt;物品名&gt;.json      -- 物品-&gt;护盾类型
  *   data/&lt;命名空间&gt;/gytrinket/attribute_definitions/&lt;文件&gt;.json     -- 属性定义（多文件合并）
  *   data/&lt;命名空间&gt;/gytrinket/item_dependencies/&lt;物品名&gt;.json       -- 禁用/依赖关系
+ *   data/&lt;命名空间&gt;/gytrinket/special_mechanics/&lt;物品名&gt;.json       -- 特殊机制声明（路径定义：文件存在即声明）
  *   data/&lt;命名空间&gt;/gytrinket/upgrade_paths/&lt;基础物品名&gt;.json       -- 升级路径
  * </pre>
  *
- * 服务端：注册 6 个 datapack registry（含网络编解码，登录时自动同步到客户端），
+ * 服务端：注册 9 个 datapack registry（含网络编解码，登录时自动同步到客户端），
  * 在 {@link AddReloadListenerEvent} 时读取并填充 {@link Config} 的集合（/reload 生效）。
  * 客户端：Tooltip 等显示逻辑通过 {@link #itemSetContains(RegistryAccess, String, String)} 等
  * 方法从同步后的 registryAccess 实时查询。
@@ -60,6 +61,8 @@ public class DefsManager {
             ResourceKey.createRegistryKey(ResourceLocation.fromNamespaceAndPath(REGISTRY_NAMESPACE, "attribute_definitions"));
     public static final ResourceKey<Registry<ItemDependencyDef>> ITEM_DEPENDENCIES_KEY =
             ResourceKey.createRegistryKey(ResourceLocation.fromNamespaceAndPath(REGISTRY_NAMESPACE, "item_dependencies"));
+    public static final ResourceKey<Registry<SpecialMechanicDef>> SPECIAL_MECHANICS_KEY =
+            ResourceKey.createRegistryKey(ResourceLocation.fromNamespaceAndPath(REGISTRY_NAMESPACE, "special_mechanics"));
     public static final ResourceKey<Registry<ModuleTreeDef>> MODULE_TREES_KEY =
             ResourceKey.createRegistryKey(ResourceLocation.fromNamespaceAndPath(REGISTRY_NAMESPACE, "module_trees"));
     public static final ResourceKey<Registry<UpgradePathDef>> UPGRADE_PATHS_KEY =
@@ -128,6 +131,19 @@ public class DefsManager {
     }
 
     /**
+     * 特殊机制条目（路径定义 + 分类声明二合一）。
+     * <p>
+     * 条目 id（文件名）= 物品 id，文件存在即声明该物品为特殊机制（快速装备只检查文件名）。
+     * 文件内容 {"sets":[...]} 声明该物品所属的机制分类，用于替代对应的 item_sets 文件；
+     * 内容可省略为 {}（仅声明特殊机制，不参与任何分类）。
+     */
+    public record SpecialMechanicDef(List<String> sets) {
+        static final Codec<SpecialMechanicDef> CODEC = RecordCodecBuilder.create(inst -> inst.group(
+                Codec.STRING.listOf().optionalFieldOf("sets", List.of()).forGetter(SpecialMechanicDef::sets)
+        ).apply(inst, SpecialMechanicDef::new));
+    }
+
+    /**
      * 模块树条目：{ "category": "...", "tiers": [[一阶...],[二阶...],[终阶...]] }
      * category -- 树所属类别（如 construct 构造体类）
      * tiers    -- 按阶数排列的模块分组（每层内为并列/抉择模块），最后一层为该树的终阶模块
@@ -182,6 +198,8 @@ public class DefsManager {
     // ===== 服务端加载缓存 =====
     private static final Map<String, Set<String>> ITEM_SETS = new HashMap<>();
     private static final Map<String, Set<String>> ENTITY_SETS = new HashMap<>();
+    /** 声明为"特殊机制"的物品集合（specialMechanic=true 的物品集合条目并集），供快速装备等统一判定 */
+    private static final Set<String> SPECIAL_MECHANIC_ITEMS = new HashSet<>();
     private static final Map<String, Boolean> SHIELD_TYPES = new HashMap<>();
     private static final Map<String, List<String>> ITEM_SHIELD_TYPES = new HashMap<>();
     private static final List<AttributeEntry> ATTRIBUTE_DEFS = new ArrayList<>();
@@ -203,10 +221,11 @@ public class DefsManager {
         event.dataPackRegistry(ITEM_SHIELD_TYPES_KEY, ItemShieldTypeDef.CODEC, ItemShieldTypeDef.CODEC);
         event.dataPackRegistry(ATTRIBUTE_DEFS_KEY, AttributeDefs.CODEC, AttributeDefs.CODEC);
         event.dataPackRegistry(ITEM_DEPENDENCIES_KEY, ItemDependencyDef.CODEC, ItemDependencyDef.CODEC);
+        event.dataPackRegistry(SPECIAL_MECHANICS_KEY, SpecialMechanicDef.CODEC, SpecialMechanicDef.CODEC);
         event.dataPackRegistry(MODULE_TREES_KEY, ModuleTreeDef.CODEC, ModuleTreeDef.CODEC);
         event.dataPackRegistry(UPGRADE_PATHS_KEY, UpgradePathDef.CODEC, UpgradePathDef.CODEC);
         event.dataPackRegistry(TOOLTIP_RULES_KEY, TooltipRuleDef.CODEC, TooltipRuleDef.CODEC);
-        gytrinket.LOGGER.info("已注册 8 个定义类 datapack registry");
+        gytrinket.LOGGER.info("已注册 9 个定义类 datapack registry");
     }
 
     // ===== 服务端加载（forge 总线） =====
@@ -232,6 +251,7 @@ public class DefsManager {
     private static void loadFrom(RegistryAccess access) {
         ITEM_SETS.clear();
         ENTITY_SETS.clear();
+        SPECIAL_MECHANIC_ITEMS.clear();
         SHIELD_TYPES.clear();
         ITEM_SHIELD_TYPES.clear();
         ATTRIBUTE_DEFS.clear();
@@ -251,6 +271,18 @@ public class DefsManager {
                 }
                 if (!def.entities().isEmpty()) {
                     ENTITY_SETS.put(setName, new HashSet<>(def.entities()));
+                }
+            }
+        });
+
+        // 特殊机制（路径定义 + 分类声明）：文件名 = 物品 id（快速装备判定）；内容 sets 并入 ITEM_SETS 分类
+        access.registry(SPECIAL_MECHANICS_KEY).ifPresent(reg -> {
+            for (Map.Entry<ResourceKey<SpecialMechanicDef>, SpecialMechanicDef> e : reg.entrySet()) {
+                String itemId = e.getKey().location().toString();
+                SPECIAL_MECHANIC_ITEMS.add(itemId);
+                for (String setName : e.getValue().sets()) {
+                    if (setName == null || setName.isEmpty()) continue;
+                    ITEM_SETS.computeIfAbsent(setName, k -> new HashSet<>()).add(itemId);
                 }
             }
         });
@@ -326,6 +358,11 @@ public class DefsManager {
         return ENTITY_SETS.getOrDefault(setName, Set.of());
     }
 
+    /** 获取所有声明为特殊机制的物品 id（special_mechanics 文件夹声明并集） */
+    public static Set<String> getSpecialMechanicItems() {
+        return SPECIAL_MECHANIC_ITEMS;
+    }
+
     public static Map<String, Boolean> getShieldTypes() {
         return SHIELD_TYPES;
     }
@@ -377,14 +414,24 @@ public class DefsManager {
 
     // ===== 客户端查询（从同步后的 registryAccess 实时读取） =====
 
-    /** 判断指定物品是否属于某个物品集合（客户端 tooltip 使用） */
+    /** 判断指定物品是否属于某个物品集合（客户端 tooltip 使用）：item_sets 文件夹 + 特殊机制路径 sets 声明 */
     public static boolean itemSetContains(RegistryAccess access, String setName, String itemId) {
         if (access == null) return false;
         Optional<Registry<ItemSetDef>> reg = access.registry(ITEM_SETS_KEY);
-        if (reg.isEmpty()) return false;
-        for (Map.Entry<ResourceKey<ItemSetDef>, ItemSetDef> e : reg.get().entrySet()) {
-            if (e.getKey().location().getPath().equals(setName) && e.getValue().items().contains(itemId)) {
-                return true;
+        if (reg.isPresent()) {
+            for (Map.Entry<ResourceKey<ItemSetDef>, ItemSetDef> e : reg.get().entrySet()) {
+                if (e.getKey().location().getPath().equals(setName) && e.getValue().items().contains(itemId)) {
+                    return true;
+                }
+            }
+        }
+        // 特殊机制路径：条目 id（文件名）= 物品 id，内容 sets 声明分类
+        Optional<Registry<SpecialMechanicDef>> smReg = access.registry(SPECIAL_MECHANICS_KEY);
+        if (smReg.isPresent()) {
+            for (Map.Entry<ResourceKey<SpecialMechanicDef>, SpecialMechanicDef> e : smReg.get().entrySet()) {
+                if (e.getKey().location().toString().equals(itemId) && e.getValue().sets().contains(setName)) {
+                    return true;
+                }
             }
         }
         return false;

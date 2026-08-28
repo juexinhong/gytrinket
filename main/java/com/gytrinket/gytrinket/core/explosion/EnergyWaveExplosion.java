@@ -3,6 +3,7 @@ package com.gytrinket.gytrinket.core.explosion;
 import com.gytrinket.gytrinket.client.effect.energywave.EnergyWaveVisualManager;
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
 import com.gytrinket.gytrinket.core.attack_mode.ExecuteToggleManager;
+import com.gytrinket.gytrinket.core.damage.SecondaryDamageMerger;
 import com.gytrinket.gytrinket.core.modifier.player.knockback.KnockbackManager;
 import com.gytrinket.gytrinket.network.NetworkHandler;
 import net.minecraft.server.level.ServerLevel;
@@ -44,7 +45,7 @@ public class EnergyWaveExplosion {
                                Predicate<LivingEntity> entityFilter,
                                boolean resetInvulnerable) {
         return execute(level, center, splashDirection, splashLength, damage, damageSource,
-                entityFilter, resetInvulnerable, null, null, true, 0.0);
+                entityFilter, resetInvulnerable, null, null, true, 0.0, null);
     }
 
     /**
@@ -65,7 +66,7 @@ public class EnergyWaveExplosion {
                                Predicate<LivingEntity> entityFilter,
                                boolean resetInvulnerable, Player owner) {
         return execute(level, center, splashDirection, splashLength, damage, damageSource,
-                entityFilter, resetInvulnerable, owner, null, true, 0.0);
+                entityFilter, resetInvulnerable, owner, null, true, 0.0, null);
     }
 
     /**
@@ -80,7 +81,7 @@ public class EnergyWaveExplosion {
                                boolean resetInvulnerable, Player owner,
                                Consumer<LivingEntity> postHitCallback) {
         return execute(level, center, splashDirection, splashLength, damage, damageSource,
-                entityFilter, resetInvulnerable, owner, postHitCallback, true, 0.0);
+                entityFilter, resetInvulnerable, owner, postHitCallback, true, 0.0, null);
     }
 
     /**
@@ -95,6 +96,19 @@ public class EnergyWaveExplosion {
                                boolean resetInvulnerable, Player owner,
                                Consumer<LivingEntity> postHitCallback,
                                boolean showVisual, double behindLength) {
+        return execute(level, center, splashDirection, splashLength, damage, damageSource,
+                entityFilter, resetInvulnerable, owner, postHitCallback, showVisual, behindLength, null);
+    }
+
+    /**
+     * 执行能量波爆炸（带合并类型；mergeType 非 null 时同类型伤害在时间窗口内累积合并）
+     */
+    public static boolean execute(Level level, Vec3 center, Vec3 splashDirection, double splashLength,
+                               float damage, DamageSource damageSource,
+                               Predicate<LivingEntity> entityFilter,
+                               boolean resetInvulnerable, Player owner,
+                               Consumer<LivingEntity> postHitCallback,
+                               boolean showVisual, double behindLength, String mergeType) {
         if (level.isClientSide) return false;
 
         // 应用玩家爆炸属性增幅
@@ -131,40 +145,23 @@ public class EnergyWaveExplosion {
 
         List<LivingEntity> entities = new ArrayList<>(level.getEntitiesOfClass(LivingEntity.class, aabb));
 
-        boolean hitAny = false;
+        boolean[] hitAnyRef = {false};
         for (LivingEntity entity : entities) {
             if (!entityFilter.test(entity)) continue;
 
             if (!isInEnergyWave(entity, center, direction, effectiveLength, baseHalfWidth, behindLength)) continue;
 
-            if (resetInvulnerable) {
-                entity.invulnerableTime = 0;
+            if (mergeType == null) {
+                hitAnyRef[0] |= applyWaveHit(entity, center, direction, effectiveLength, baseHalfWidth, behindLength,
+                        damage, damageSource, owner, resetInvulnerable, postHitCallback);
+            } else {
+                SecondaryDamageMerger.accumulate(entity, mergeType, damage, (target, mergedDamage) -> {
+                    if (applyWaveHit(target, center, direction, effectiveLength, baseHalfWidth, behindLength,
+                            mergedDamage, damageSource, owner, resetInvulnerable, postHitCallback)) {
+                        hitAnyRef[0] = true;
+                    }
+                });
             }
-
-            // 伤害归属逻辑：
-            // - 默认：使用原始 damageSource（蜂群攻击时 getEntity()=蜂群 → 仇恨归蜂群）
-            // - 斩杀时（伤害>=生命值 且 斩杀模式开启）：切换为玩家归属（玩家获得击杀判定）
-            DamageSource actualSource = damageSource;
-            if (owner != null && damageSource.getEntity() != null
-                    && damage >= entity.getHealth() && ExecuteToggleManager.isExecuteEnabled(owner)) {
-                actualSource = entity.damageSources().explosion(null, owner);
-            }
-
-            // 能量波爆炸不产生击退（参照灼烧系统实现）
-            KnockbackManager.markNoKnockback(entity.getUUID());
-
-            entity.hurt(actualSource, damage);
-
-            if (resetInvulnerable) {
-                entity.invulnerableTime = 0;
-            }
-
-            if (postHitCallback != null) {
-                postHitCallback.accept(entity);
-            }
-
-            hitAny = true;
-            // 能量波爆炸不产生击退
         }
 
         // 触发能量波爆炸视觉特效
@@ -172,7 +169,45 @@ public class EnergyWaveExplosion {
             NetworkHandler.sendEnergyWaveExplosionToAll(serverLevel, center, direction, splashLength);
         }
 
-        return hitAny;
+        return hitAnyRef[0];
+    }
+
+    /**
+     * 对单个实体施加能量波命中：重置无敌时间、斩杀归属、伤害
+     *
+     * @return 是否造成了伤害
+     */
+    private static boolean applyWaveHit(LivingEntity entity, Vec3 center, Vec3 direction, double effectiveLength,
+                                        double baseHalfWidth, double behindLength,
+                                        float damage, DamageSource damageSource, Player owner,
+                                        boolean resetInvulnerable, Consumer<LivingEntity> postHitCallback) {
+        if (resetInvulnerable) {
+            entity.invulnerableTime = 0;
+        }
+
+        // 伤害归属逻辑：
+        // - 默认：使用原始 damageSource（蜂群攻击时 getEntity()=蜂群 → 仇恨归蜂群）
+        // - 斩杀时（伤害>=生命值 且 斩杀模式开启）：切换为玩家归属（玩家获得击杀判定）
+        DamageSource actualSource = damageSource;
+        if (owner != null && damageSource.getEntity() != null
+                && damage >= entity.getHealth() && ExecuteToggleManager.isExecuteEnabled(owner)) {
+            actualSource = entity.damageSources().explosion(null, owner);
+        }
+
+        // 能量波爆炸不产生击退（参照灼烧系统实现）
+        KnockbackManager.markNoKnockback(entity.getUUID());
+
+        entity.hurt(actualSource, damage);
+
+        if (resetInvulnerable) {
+            entity.invulnerableTime = 0;
+        }
+
+        if (postHitCallback != null) {
+            postHitCallback.accept(entity);
+        }
+
+        return true;
     }
 
     /**

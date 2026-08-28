@@ -111,9 +111,9 @@ public class BurstFireManager {
         boolean isAutoAttack = IS_AUTO_ATTACKING.getOrDefault(playerUUID, false);
 
         if (!isAutoAttack) {
-            // 检查攻击强度是否为100%
+            // 检查攻击强度是否达到90%
             float attackStrength = player.getAttackStrengthScale(0.0F);
-            if (attackStrength < 1.0F) {
+            if (attackStrength < 0.9F) {
                 return;
             }
 

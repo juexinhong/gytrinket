@@ -109,8 +109,8 @@ public class ElectricDischargeManager {
         double shieldEffectRadius = AttributeManager.getGroupAttribute(player.getUUID(), "shield_effect_radius");
         double lightningLength = baseLength * shieldEffectRadius;
 
-        if (ShieldTransferManager.hasTransferredShield(player.getUUID())) {
-            // 护盾移植时：在每个被保护实体位置触发
+        if (ShieldTransferManager.isShieldTransferEnabled(player.getUUID())) {
+            // 护盾移植模式：在被保护实体位置触发（无受保护实体时玩家自身不触发）
             List<LivingEntity> protectedEntities = ShieldTransferManager.getProtectedEntities(player.getUUID(), player.level());
 
             for (LivingEntity entity : protectedEntities) {
@@ -458,6 +458,10 @@ public class ElectricDischargeManager {
             if (isMain) {
                 maxLen = 1.7 - progress * 1.3;   // 1.7 -> 0.4
                 minLen = 1.1 - progress * 0.8;   // 1.1 -> 0.3
+                // 最低段数：主路径至少4段（限制单段长度不超过总长的1/4）
+                double minSegmentLen = totalLength / 4.0;
+                maxLen = Math.min(maxLen, minSegmentLen);
+                minLen = Math.min(minLen, maxLen);
             } else {
                 maxLen = 1.2 - progress * 0.8;   // 1.2 -> 0.4
                 minLen = 0.7 - progress * 0.45;  // 0.7 -> 0.25

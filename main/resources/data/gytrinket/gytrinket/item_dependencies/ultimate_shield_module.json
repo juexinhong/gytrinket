@@ -1,1 +1,1 @@
-{"item":"gytrinket:ultimate_shield_module","dependsOn":["gytrinket:barrier_shield_module","gytrinket:reflect_shield_module"]}
+{"item":"gytrinket:ultimate_shield_module","dependsOn":["gytrinket:barrier_shield_module","gytrinket:reflect_shield_module"],"disables":["gytrinket:quick_reconstruction_module"]}

@@ -1,0 +1,20 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "#",
+    "$"
+  ],
+  "key": {
+    "#": {
+      "item": "minecraft:iron_sword"
+    },
+    "$": {
+      "item": "minecraft:soul_sand"
+    }
+  },
+  "result": {
+    "id": "gytrinket:war_soul",
+    "count": 1
+  }
+}

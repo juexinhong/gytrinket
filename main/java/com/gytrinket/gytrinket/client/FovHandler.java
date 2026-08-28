@@ -1,7 +1,6 @@
 package com.gytrinket.gytrinket.client;
 
 import com.gytrinket.gytrinket.core.modifier.ModifierHelper;
-import com.gytrinket.gytrinket.core.shield.type.AmplificationShieldType;
 import com.gytrinket.gytrinket.gytrinket;
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.Mth;
@@ -40,7 +39,7 @@ public class FovHandler {
         double totalDecayMultiplier = 1.0;
         boolean hasDecay = false;
 
-        // 增幅护盾移动速度加成：抵消其FOV缩放（护盾效果动态变化时不抖动镜头）
+        // 模组移动速度加成总乘积（属性聚合 gytrinket:movement_speed / 增幅护盾等）：抵消其FOV缩放
         double amplificationMultiplier = 1.0;
         boolean hasAmplification = false;
 
@@ -51,8 +50,8 @@ public class FovHandler {
                 if (multiplier < 1.0 && multiplier > 0.0) {
                     totalDecayMultiplier *= multiplier;
                     hasDecay = true;
-                }
-                if (AmplificationShieldType.MOVEMENT_SPEED_MODIFIER_ID.equals(modifier.id()) && multiplier > 1.0) {
+                } else if (multiplier > 1.0) {
+                    // 模组移速加成统一抵消 FOV 缩放（含动态变化如征途战意/增幅护盾，避免镜头抖动）
                     amplificationMultiplier *= multiplier;
                     hasAmplification = true;
                 }

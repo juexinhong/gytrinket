@@ -105,6 +105,7 @@ public class ModItems {
     // 攻击速度物品
     public static final DeferredItem<Item> FAST_SHOOTING_MODULE = ITEMS.registerSimpleItem("fast_shooting_module", new Item.Properties()); // 快速射击模块
     public static final DeferredItem<Item> BURST_FIRE_MODULE = ITEMS.registerSimpleItem("burst_fire_module", new Item.Properties()); // 点射模块
+    public static final DeferredItem<Item> JOURNEY_MODULE = ITEMS.registerSimpleItem("journey_module", new Item.Properties()); // 征途模块
     public static final DeferredItem<Item> ASSAULT_MODULE = ITEMS.registerSimpleItem("assault_module", new Item.Properties()); // 强袭模块
 
     // 攻击伤害物品
@@ -198,6 +199,7 @@ public class ModItems {
     public static final DeferredItem<Item> SHOCKWAVE_PART = ITEMS.registerSimpleItem("shockwave_part", new Item.Properties()); // 震撼弹零件
     public static final DeferredItem<Item> NANO_REGEN_PART = ITEMS.registerSimpleItem("nano_regen_part", new Item.Properties()); // 纳米再生零件
     public static final DeferredItem<Item> SUPPRESSION_PART = ITEMS.registerSimpleItem("suppression_part", new Item.Properties()); // 压制零件
+    public static final DeferredItem<Item> WAR_SOUL = ITEMS.registerSimpleItem("war_soul", new Item.Properties()); // 战魂
 
     // 督战者零件
     public static final DeferredItem<Item> TASKMASTER_PART = ITEMS.registerSimpleItem("taskmaster_part", new Item.Properties()); // 督战者零件

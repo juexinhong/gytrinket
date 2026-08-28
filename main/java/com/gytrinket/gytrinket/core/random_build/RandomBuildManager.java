@@ -198,6 +198,16 @@ public class RandomBuildManager {
         return false;
     }
 
+    /**
+     * 是否为主护盾增幅模块（primary_shield_amplification_items 声明）。
+     * <p>
+     * 护盾类别被禁用时（如装备快速重构模块），这些模块<b>不会主动被禁用</b>
+     * （部分模块仍有非护盾增幅效果），但不再出现在随机构建池中。
+     */
+    private static boolean isPrimaryShieldAmplificationItem(String itemId) {
+        return DefsManager.getItemSet("primary_shield_amplification_items").contains(itemId);
+    }
+
     // ==================== 候选物品收集 ====================
 
     private static List<String> collectItems(ItemFilter filter) {
@@ -262,10 +272,12 @@ public class RandomBuildManager {
                     && !coreIds.contains(id)
                     && !isDisabledByEquipped(player.getUUID(), id, coreIds)));
         } else {
-            // 模块池：排除已有、依赖未满足、被禁用的
+            // 模块池：排除已有、依赖未满足、被禁用的；护盾类别被禁用时排除主护盾增幅模块
+            boolean shieldCategoryDisabled = isShieldCategoryDisabled(coreIds);
             pool.addAll(collectItems((id, item) -> isModuleItem(id, item)
                     && !coreIds.contains(id)
-                    && !isDisabledByEquipped(player.getUUID(), id, coreIds)));
+                    && !isDisabledByEquipped(player.getUUID(), id, coreIds)
+                    && !(shieldCategoryDisabled && isPrimaryShieldAmplificationItem(id))));
         }
 
         // 尽量不与上一轮重复：优先从排除 avoid 的候选中取，不足时再补足
@@ -355,6 +367,8 @@ public class RandomBuildManager {
         }
         if (coreIds.contains(itemId)) return false;
         if (isDisabledByEquipped(uuid, itemId, coreIds)) return false;
+        // 护盾类别被禁用时，主护盾增幅模块不可装备（与池生成一致）
+        if (isShieldCategoryDisabled(coreIds) && isPrimaryShieldAmplificationItem(itemId)) return false;
 
         int emptySlot = -1;
         for (int i = 0; i < handler.getSlots(); i++) {

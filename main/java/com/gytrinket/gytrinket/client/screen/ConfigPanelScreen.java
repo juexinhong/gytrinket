@@ -61,6 +61,8 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
     private final List<String> addingSuggestions = new ArrayList<>();
     /** 当前高亮的建议项索引 */
     private int addingSuggestionIndex = 0;
+    /** 物品注册名缓存（首次使用后构建，避免每次按键全量遍历注册表） */
+    private List<String> cachedItemIds = null;
 
     /** 护盾类型选择器 overlay 状态 */
     private boolean isSelectingShieldTypes = false;
@@ -337,12 +339,22 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
         addingSuggestionIndex = 0;
     }
 
+    /** 全部物品注册名（惰性缓存；注册表在进入世界后稳定） */
+    private List<String> allItemIds() {
+        if (cachedItemIds == null) {
+            cachedItemIds = new ArrayList<>();
+            for (net.minecraft.resources.ResourceLocation key : BuiltInRegistries.ITEM.keySet()) {
+                cachedItemIds.add(key.toString());
+            }
+        }
+        return cachedItemIds;
+    }
+
     /** 根据当前输入实时匹配物品注册名（BuiltInRegistries 原版物品表） */
     private void updateAddingSuggestions() {
         addingSuggestions.clear();
         String input = addingItemId.toLowerCase(java.util.Locale.ROOT);
-        for (net.minecraft.resources.ResourceLocation key : BuiltInRegistries.ITEM.keySet()) {
-            String id = key.toString();
+        for (String id : allItemIds()) {
             if (input.isEmpty() || id.toLowerCase(java.util.Locale.ROOT).contains(input)) {
                 addingSuggestions.add(id);
                 if (addingSuggestions.size() >= 10) {

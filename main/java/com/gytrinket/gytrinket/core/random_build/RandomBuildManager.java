@@ -320,6 +320,47 @@ public class RandomBuildManager {
         return List.of();
     }
 
+    /**
+     * 打开玩家面板时主动检查装备详情：
+     * 若玩家已装备独占类物品（护盾/机身），但当前随机池仍是对应独占类池（护盾池/机身池），
+     * 则重新生成随机池并持久化（解决持久化池在装备变化后不及时更新的问题）。
+     * @return 是否发生了刷新
+     */
+    public static boolean refreshIfExclusiveStale(ServerPlayer player) {
+        List<String> pool = getCurrentPool(player.getUUID());
+        if (pool.isEmpty()) return false;
+
+        boolean hasShield = false;
+        boolean hasBody = false;
+        for (ItemStack stack : PlayerStoreUtils.getAllEquippedStacks(player)) {
+            ResourceLocation rl = BuiltInRegistries.ITEM.getKey(stack.getItem());
+            if (rl == null) continue;
+            Item item = stack.getItem();
+            String id = rl.toString();
+            if (isShieldItem(id, item)) hasShield = true;
+            if (isBodyItem(item)) hasBody = true;
+        }
+
+        boolean allShield = true;
+        boolean allBody = true;
+        for (String id : pool) {
+            Item item = BuiltInRegistries.ITEM.get(ResourceLocation.parse(id));
+            if (item == null) continue;
+            if (!isShieldItem(id, item)) allShield = false;
+            if (!isBodyItem(item)) allBody = false;
+        }
+
+        if (hasShield && allShield) {
+            generatePool(player, new HashSet<>(pool));
+            return true;
+        }
+        if (hasBody && allBody) {
+            generatePool(player, new HashSet<>(pool));
+            return true;
+        }
+        return false;
+    }
+
     /** 玩家登出时清理内存缓存（持久化数据保留，重进后恢复） */
     public static void clearPlayerData(UUID playerUUID) {
         CACHED_POOLS.remove(playerUUID);

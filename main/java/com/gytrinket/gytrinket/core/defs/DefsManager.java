@@ -19,9 +19,9 @@ import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimplePreparableReloadListener;
 import net.minecraft.util.profiling.ProfilerFiller;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.storage.LevelResource;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.fml.loading.FMLPaths;
 import net.neoforged.neoforge.event.AddReloadListenerEvent;
 import net.neoforged.neoforge.registries.DataPackRegistryEvent;
 
@@ -425,8 +425,9 @@ public class DefsManager {
 
     // ===== 运行时覆盖层：文件读写与生效 =====
 
+    /** 覆写定义文件路径：config/gytrinket/gytrinket_ui_overrides.json（全局持久化，所有世界共享） */
     private static Path getOverridesFile(MinecraftServer server) {
-        return server.getWorldPath(LevelResource.ROOT).resolve(OVERRIDES_FILE_NAME);
+        return FMLPaths.CONFIGDIR.get().resolve("gytrinket").resolve(OVERRIDES_FILE_NAME);
     }
 
     /** 读取覆盖文件到服务端内存（不存在时忽略） */
@@ -515,9 +516,11 @@ public class DefsManager {
         }
         var reg = server.registryAccess().registry(SPECIAL_MECHANICS_KEY).orElse(null);
         if (reg != null) {
-            for (var e : reg.entrySet()) {
-                if (e.getKey().location().toString().equals(itemId)) {
-                    return new ArrayList<>(e.getValue().removed() ? List.of() : e.getValue().sets());
+            ResourceLocation loc = ResourceLocation.tryParse(itemId);
+            if (loc != null) {
+                SpecialMechanicDef def = reg.get(loc);
+                if (def != null && !def.removed()) {
+                    return new ArrayList<>(def.sets());
                 }
             }
         }
@@ -680,11 +683,10 @@ public class DefsManager {
         }
         Optional<Registry<SpecialMechanicDef>> smReg = access.registry(SPECIAL_MECHANICS_KEY);
         if (smReg.isPresent()) {
-            for (Map.Entry<ResourceKey<SpecialMechanicDef>, SpecialMechanicDef> e : smReg.get().entrySet()) {
-                if (e.getValue().removed()) {
-                    continue;
-                }
-                if (e.getKey().location().toString().equals(itemId) && e.getValue().sets().contains(setName)) {
+            ResourceLocation loc = ResourceLocation.tryParse(itemId);
+            if (loc != null) {
+                SpecialMechanicDef def = smReg.get().get(loc);
+                if (def != null && !def.removed() && def.sets().contains(setName)) {
                     return true;
                 }
             }
@@ -730,13 +732,11 @@ public class DefsManager {
         } else if (access != null) {
             Optional<Registry<SpecialMechanicDef>> smReg = access.registry(SPECIAL_MECHANICS_KEY);
             if (smReg.isPresent()) {
-                for (Map.Entry<ResourceKey<SpecialMechanicDef>, SpecialMechanicDef> e : smReg.get().entrySet()) {
-                    if (e.getValue().removed()) {
-                        continue;
-                    }
-                    if (e.getKey().location().toString().equals(itemId)) {
-                        sets.addAll(e.getValue().sets());
-                        break;
+                ResourceLocation loc = ResourceLocation.tryParse(itemId);
+                if (loc != null) {
+                    SpecialMechanicDef def = smReg.get().get(loc);
+                    if (def != null && !def.removed()) {
+                        sets.addAll(def.sets());
                     }
                 }
             }
@@ -752,25 +752,22 @@ public class DefsManager {
         return names;
     }
 
-    /** 客户端查询：所有可选的特殊机制集合名（tooltip_rules itemSet + special_mechanics 声明集合） */
+    /** 客户端查询：所有可选的特殊机制集合名（仅 special_mechanics 路径定义声明的集合，覆盖层优先合并） */
     public static List<String> clientAllMechanicSets(RegistryAccess access) {
         if (access == null) return List.of();
         Set<String> sets = new LinkedHashSet<>();
-        Optional<Registry<TooltipRuleDef>> trReg = access.registry(TOOLTIP_RULES_KEY);
-        if (trReg.isPresent()) {
-            for (TooltipRuleDef rule : trReg.get()) {
-                if (rule.itemSet() != null && !rule.itemSet().isEmpty()) {
-                    sets.add(rule.itemSet());
-                }
-            }
-        }
-        // 补充 special_mechanics 声明的集合（如 barrier_items 无 tooltip_rules 条目也能被选择）
         Optional<Registry<SpecialMechanicDef>> smReg = access.registry(SPECIAL_MECHANICS_KEY);
         if (smReg.isPresent()) {
             for (Map.Entry<ResourceKey<SpecialMechanicDef>, SpecialMechanicDef> e : smReg.get().entrySet()) {
                 if (!e.getValue().removed()) {
                     sets.addAll(e.getValue().sets());
                 }
+            }
+        }
+        // 运行时覆盖层：面板添加/移除的机制同步进可选项
+        for (SpecialMechanicOverride ov : CLIENT_SPECIAL_MECHANIC_OVERRIDES.values()) {
+            if (!ov.removed()) {
+                sets.addAll(ov.sets());
             }
         }
         return new ArrayList<>(sets);
@@ -815,12 +812,11 @@ public class DefsManager {
         if (access == null) return List.of();
         Optional<Registry<SpecialMechanicDef>> smReg = access.registry(SPECIAL_MECHANICS_KEY);
         if (smReg.isPresent()) {
-            for (Map.Entry<ResourceKey<SpecialMechanicDef>, SpecialMechanicDef> e : smReg.get().entrySet()) {
-                if (e.getValue().removed()) {
-                    continue;
-                }
-                if (e.getKey().location().toString().equals(itemId)) {
-                    return List.copyOf(e.getValue().sets());
+            ResourceLocation loc = ResourceLocation.tryParse(itemId);
+            if (loc != null) {
+                SpecialMechanicDef def = smReg.get().get(loc);
+                if (def != null && !def.removed()) {
+                    return List.copyOf(def.sets());
                 }
             }
         }

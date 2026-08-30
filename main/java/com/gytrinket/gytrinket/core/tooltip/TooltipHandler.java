@@ -17,6 +17,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.world.item.ItemStack;
+import net.neoforged.api.distmarker.Dist;
 import net.neoforged.neoforge.event.entity.player.ItemTooltipEvent;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -24,7 +25,10 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import java.util.ArrayList;
 import java.util.List;
 
-@EventBusSubscriber(modid = "gytrinket", bus = EventBusSubscriber.Bus.GAME)
+/**
+ * 物品 tooltip 处理器（纯客户端：引用 Screen/Minecraft 客户端类，专用服务器不加载）
+ */
+@EventBusSubscriber(modid = "gytrinket", bus = EventBusSubscriber.Bus.GAME, value = Dist.CLIENT)
 public class TooltipHandler {
 
     private static final String TOOLTIP_PREFIX = "tooltip.gytrinket.";
@@ -56,10 +60,9 @@ public class TooltipHandler {
         // 特殊工具提示（逻辑独特，保持原有方法）
         addItemAttributesTooltip(event, itemId);
         addShieldTypesTooltip(event, itemId);
-        addModuleTooltips(event, itemId);
         addAdaptiveArmorTooltip(event, itemId);
 
-        // 数据驱动的通用工具提示（机制详细描述：超过 1 个机制时折叠只剩标题，按 Shift 展开）
+        // 机制折叠决策：统计 tooltip_rules 匹配项 + 模块硬编码机制命中数，超过 1 个机制时折叠只剩标题
         ensureTooltipRules();
         List<TooltipConfig> matchedRules = new ArrayList<>();
         for (TooltipConfig config : tooltipRules) {
@@ -67,10 +70,32 @@ public class TooltipHandler {
                 matchedRules.add(config);
             }
         }
-        boolean collapse = matchedRules.size() > 1 && !net.minecraft.client.gui.screens.Screen.hasShiftDown();
+        boolean collapse = (matchedRules.size() + countModuleMechanicHits(itemId)) > 1
+                && !net.minecraft.client.gui.screens.Screen.hasShiftDown();
+
+        addModuleTooltips(event, itemId, collapse);
         for (TooltipConfig config : matchedRules) {
             addConfiguredTooltip(event, itemId, config, collapse);
         }
+    }
+
+    /**
+     * 统计模块硬编码机制命中数（与 {@link #addModuleTooltips} 的判定一致，用于折叠决策）
+     */
+    private static int countModuleMechanicHits(String itemId) {
+        int count = 0;
+        var access = getClientRegistryAccess();
+        if (DefsManager.itemSetContains(access, "drone_module_items", itemId)) count++;
+        if (DefsManager.itemSetContains(access, "assault_drone_module_items", itemId)) count++;
+        if (DefsManager.itemSetContains(access, "defense_drone_module_items", itemId)) count++;
+        if (DefsManager.itemSetContains(access, "wingman_module_items", itemId)) count++;
+        if (DefsManager.itemSetContains(access, "wingman_interceptor_module_items", itemId)) count++;
+        if (DefsManager.itemSetContains(access, "wingman_nano_regen_module_items", itemId)) count++;
+        if (DefsManager.itemSetContains(access, "swarm_module_items", itemId)) count++;
+        if (DefsManager.itemSetContains(access, "barrier_items", itemId)) count++;
+        if (DefsManager.itemSetContains(access, "journey_module_items", itemId)) count++;
+        if (itemId.equals("gytrinket:quick_reconstruction_module")) count++;
+        return count;
     }
 
     /**
@@ -259,56 +284,57 @@ public class TooltipHandler {
         }
     }
 
-    private static void addModuleTooltips(ItemTooltipEvent event, String itemId) {
+    /** 模块硬编码机制 tooltip：折叠时只显示机制标题（描述按 Shift 展开） */
+    private static void addModuleTooltips(ItemTooltipEvent event, String itemId, boolean collapse) {
         if (DefsManager.itemSetContains(getClientRegistryAccess(), "drone_module_items", itemId)) {
             addTooltip(event, "drone_module", ChatFormatting.GRAY);
-            addDroneModuleDescTooltip(event);
+            if (!collapse) addDroneModuleDescTooltip(event);
         }
 
         if (DefsManager.itemSetContains(getClientRegistryAccess(), "assault_drone_module_items", itemId)) {
             addTooltip(event, "assault_drone_module", ChatFormatting.GOLD);
-            addTooltip(event, "assault_drone_module_desc", ChatFormatting.RED);
+            if (!collapse) addTooltip(event, "assault_drone_module_desc", ChatFormatting.RED);
         }
 
         if (DefsManager.itemSetContains(getClientRegistryAccess(), "defense_drone_module_items", itemId)) {
             addTooltip(event, "defense_drone_module", ChatFormatting.BLUE);
-            addTooltip(event, "defense_drone_module_desc", ChatFormatting.RED);
+            if (!collapse) addTooltip(event, "defense_drone_module_desc", ChatFormatting.RED);
         }
 
         if (itemId.equals("gytrinket:quick_reconstruction_module")) {
             addTooltip(event, "quick_reconstruction_module", ChatFormatting.GREEN);
-            addTooltip(event, "quick_reconstruction_module_desc", ChatFormatting.RED);
+            if (!collapse) addTooltip(event, "quick_reconstruction_module_desc", ChatFormatting.RED);
         }
 
         if (DefsManager.itemSetContains(getClientRegistryAccess(), "wingman_module_items", itemId)) {
             addTooltip(event, "wingman_module", ChatFormatting.GRAY);
-            addWingmanModuleDescTooltip(event);
+            if (!collapse) addWingmanModuleDescTooltip(event);
         }
 
         if (DefsManager.itemSetContains(getClientRegistryAccess(), "wingman_interceptor_module_items", itemId)) {
             addTooltip(event, "wingman_interceptor_module", ChatFormatting.GRAY);
-            addInterceptorModuleDescTooltip(event);
+            if (!collapse) addInterceptorModuleDescTooltip(event);
         }
 
         if (DefsManager.itemSetContains(getClientRegistryAccess(), "wingman_nano_regen_module_items", itemId)) {
             addTooltip(event, "wingman_nano_regen_module", ChatFormatting.GREEN);
-            addNanoRegenModuleDescTooltip(event);
+            if (!collapse) addNanoRegenModuleDescTooltip(event);
         }
 
         if (DefsManager.itemSetContains(getClientRegistryAccess(), "swarm_module_items", itemId)) {
             addTooltip(event, "swarm_module", ChatFormatting.GRAY);
-            addMothershipBodyDescTooltip(event);
+            if (!collapse) addMothershipBodyDescTooltip(event);
         }
 
         if (DefsManager.itemSetContains(getClientRegistryAccess(), "barrier_items", itemId)) {
             addTooltip(event, "barrier", ChatFormatting.DARK_PURPLE);
-            addFormattedTooltip(event, "barrier_effect", ChatFormatting.DARK_PURPLE,
+            if (!collapse) addFormattedTooltip(event, "barrier_effect", ChatFormatting.DARK_PURPLE,
                 () -> new Object[]{5, 5});
         }
 
         if (DefsManager.itemSetContains(getClientRegistryAccess(), "journey_module_items", itemId)) {
             addTooltip(event, "journey_module", ChatFormatting.GOLD);
-            addJourneyModuleDescTooltip(event);
+            if (!collapse) addJourneyModuleDescTooltip(event);
         }
     }
 

@@ -70,8 +70,8 @@ public class gytrinket {
         // Curios 饰品栏可选联动：未安装 Curios 时不注册事件，扩展机制静默失效
         com.gytrinket.gytrinket.compat.CuriosCompat.init();
 
-        modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
-        modContainer.registerConfig(ModConfig.Type.CLIENT, ClientConfig.SPEC);
+        modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC, "gytrinket/gytrinket-common.toml");
+        modContainer.registerConfig(ModConfig.Type.CLIENT, ClientConfig.SPEC, "gytrinket/gytrinket-client.toml");
 
         modEventBus.addListener(this::setup);
         modEventBus.addListener(this::registerEntityAttributes);

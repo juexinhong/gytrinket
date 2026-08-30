@@ -162,18 +162,16 @@ public class DroneArrayManager {
 
     /**
      * 检查玩家是否可启用该阵列（数据驱动/覆盖层优先）。
-     * 追击/列队/守卫阵列要求玩家装备的物品声明了对应阵列特殊机制集合；环绕/待机始终可用。
+     * 阵列类型定义中声明的 requiredMechanicSet 要求玩家装备的物品声明了对应特殊机制集合；无要求（环绕/待机）始终可用。
      */
     boolean canUseArray(Player player, DroneArrayType arrayType) {
+        String mechanicSet = arrayType.getRequiredMechanicSet();
+        if (mechanicSet == null || mechanicSet.isEmpty()) {
+            return true;
+        }
         MinecraftServer server = player.level().getServer();
         if (server == null) return true;
-        UUID uuid = player.getUUID();
-        return switch (arrayType.getId()) {
-            case "pursuit" -> DefsManager.playerHasEquippedMechanic(server, uuid, "pursuit_array_required_items");
-            case "formation" -> DefsManager.playerHasEquippedMechanic(server, uuid, "formation_array_required_items");
-            case "guard" -> DefsManager.playerHasEquippedMechanic(server, uuid, "guard_array_required_items");
-            default -> true;
-        };
+        return DefsManager.playerHasEquippedMechanic(server, player.getUUID(), mechanicSet);
     }
 
     public void switchToArray(Player player, DroneArrayType newArray) {

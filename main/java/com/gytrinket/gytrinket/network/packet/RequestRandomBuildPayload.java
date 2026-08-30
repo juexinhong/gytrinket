@@ -27,6 +27,8 @@ public record RequestRandomBuildPayload() implements CustomPacketPayload {
     public static void handle(RequestRandomBuildPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> {
             if (!(context.player() instanceof ServerPlayer player)) return;
+            // 打开面板时主动检查：已装备独占类物品（护盾/机身）但池仍是对应独占类池则刷新
+            RandomBuildManager.refreshIfExclusiveStale(player);
             if (RandomBuildManager.hasStoredPool(player.getUUID())) {
                 PacketDistributor.sendToPlayer(player,
                     new ResponseRandomBuildPayload(RandomBuildManager.getCurrentPool(player.getUUID())));

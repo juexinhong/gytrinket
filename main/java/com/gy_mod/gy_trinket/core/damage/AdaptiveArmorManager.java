@@ -80,7 +80,7 @@ public class AdaptiveArmorManager {
         finalDuration = Math.max(finalDuration, 1); // 最少1刻
 
         PLAYER_ARMOR_LAYERS.computeIfAbsent(uuid, k -> new ArrayList<>())
-                .add(new ArmorLayerBatch(actualLayers, finalDuration));
+                .add(new ArmorLayerBatch(actualLayers, player.level().getGameTime() + finalDuration));
 
         // 更新动态属性（当玩家有护盾效果物品时）
         updateShieldEffectAttribute(player);
@@ -115,7 +115,11 @@ public class AdaptiveArmorManager {
         List<ArmorLayerBatch> batches = PLAYER_ARMOR_LAYERS.get(player.getUUID());
         if (batches == null) return 0;
 
-        return new ArrayList<>(batches).stream().mapToDouble(batch -> batch.layers).sum();
+        double total = 0;
+        for (ArmorLayerBatch batch : batches) {
+            total += batch.layers;
+        }
+        return total;
     }
 
     /**
@@ -179,11 +183,9 @@ public class AdaptiveArmorManager {
         // 记录更新前的总层数
         double previousTotal = getTotalArmorLayers(player);
 
-        // 移除过期的批次
-        batches.removeIf(batch -> {
-            batch.remainingTicks--;
-            return batch.remainingTicks <= 0;
-        });
+        // 时间戳比较：移除到期的批次（绝对到期游戏时间，无递减开销）
+        long now = player.level().getGameTime();
+        batches.removeIf(batch -> batch.expireTick <= now);
 
         // 如果没有剩余批次，清除映射
         if (batches.isEmpty()) {
@@ -242,11 +244,11 @@ public class AdaptiveArmorManager {
      */
     private static class ArmorLayerBatch {
         double layers;
-        int remainingTicks;
+        long expireTick;
 
-        ArmorLayerBatch(double layers, int duration) {
+        ArmorLayerBatch(double layers, long expireTick) {
             this.layers = layers;
-            this.remainingTicks = duration;
+            this.expireTick = expireTick;
         }
     }
 }

@@ -1,5 +1,6 @@
 package com.gy_mod.gy_trinket.core.entity.construct.drone;
 
+import com.gy_mod.gy_trinket.core.defs.DefsManager;
 import com.gy_mod.gy_trinket.core.entity.construct.AbstractConstructEntity;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructData;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructManager;
@@ -8,6 +9,7 @@ import com.gy_mod.gy_trinket.core.entity.construct.IEntityRestorer;
 import com.gy_mod.gy_trinket.core.entity.construct.swarm.SwarmConstructTypes;
 import com.gy_mod.gy_trinket.core.entity.construct.wingman.WingmanConstructTypes;
 import net.minecraft.ChatFormatting;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
@@ -136,7 +138,7 @@ public class DroneArrayManager {
 
         do {
             DroneArrayType candidate = DRONE_ARRAY_TYPES[nextIndex];
-            if (candidate.hasRequiredItems(player.getUUID())) {
+            if (canUseArray(player, candidate)) {
                 newArray = candidate;
                 break;
             }
@@ -159,6 +161,21 @@ public class DroneArrayManager {
     public void switchToArray(Player player, DroneArrayType newArray) {
         setPlayerArrayType(player, newArray);
         updatePlayerDronesArray(player, newArray);
+    }
+
+    /**
+     * 检查玩家是否可启用该阵列（数据驱动/覆盖层优先）。
+     * 阵列类型定义中声明的 requiredMechanicSet 要求玩家装备的物品声明了对应特殊机制集合；
+     * 无要求（环绕/待机）始终可用。覆盖层（配置系统）对特殊机制的增删会实时反映到这里。
+     */
+    boolean canUseArray(Player player, DroneArrayType arrayType) {
+        String mechanicSet = arrayType.getRequiredMechanicSet();
+        if (mechanicSet == null || mechanicSet.isEmpty()) {
+            return true;
+        }
+        MinecraftServer server = player.level().getServer();
+        if (server == null) return true;
+        return DefsManager.playerHasEquippedMechanic(server, player.getUUID(), mechanicSet);
     }
 
     public void syncToArrayEntities(Player player) {

@@ -40,6 +40,9 @@ public class ElectricDischargeManager {
     /** 最大目标数量 */
     private static final int MAX_TARGETS = 6;
 
+    /** 蜂群修复闪电的固定段数 */
+    private static final int SWARM_REPAIR_SEGMENT_COUNT = 10;
+
     /** 存储正在进行灼烧的闪电目标 */
     private static final Map<UUID, List<LightningBurnTarget>> LIGHTNING_TARGETS = new HashMap<>();
 
@@ -109,8 +112,8 @@ public class ElectricDischargeManager {
         double shieldEffectRadius = AttributeManager.getGroupAttribute(player.getUUID(), "shield_effect_radius");
         double lightningLength = baseLength * shieldEffectRadius;
 
-        if (ShieldTransferManager.hasTransferredShield(player.getUUID())) {
-            // 护盾移植时：在每个被保护实体位置触发
+        if (ShieldTransferManager.isShieldTransferEnabled(player.getUUID())) {
+            // 护盾移植模式：在被保护实体位置触发（无受保护实体时玩家自身不触发）
             List<LivingEntity> protectedEntities = ShieldTransferManager.getProtectedEntities(player.getUUID(), player.level());
 
             for (LivingEntity entity : protectedEntities) {
@@ -458,6 +461,10 @@ public class ElectricDischargeManager {
             if (isMain) {
                 maxLen = 1.7 - progress * 1.3;   // 1.7 -> 0.4
                 minLen = 1.1 - progress * 0.8;   // 1.1 -> 0.3
+                // 最低段数：主路径至少4段（限制单段长度不超过总长的1/4）
+                double minSegmentLen = totalLength / 4.0;
+                maxLen = Math.min(maxLen, minSegmentLen);
+                minLen = Math.min(minLen, maxLen);
             } else {
                 maxLen = 1.2 - progress * 0.8;   // 1.2 -> 0.4
                 minLen = 0.7 - progress * 0.45;  // 0.7 -> 0.25
@@ -538,6 +545,50 @@ public class ElectricDischargeManager {
      */
     private static void sendLightningToClients(ServerLevel level, List<LightningSegment> segments) {
         NetworkHandler.sendLightningToAll(level, segments);
+    }
+
+    /**
+     * 蜂群修复闪电：生成固定段数的直线分段闪电并发送到所有客户端。
+     * 无后半段、无分支，中间节点沿垂直于起终连线的正交基随机偏移（正弦包络）。
+     *
+     * @param level 服务端世界
+     * @param start 起点（蜂群发射点）
+     * @param end   终点（玩家身高一半处）
+     */
+    public static void generateAndSendSwarmRepairLightning(ServerLevel level, Vec3 start, Vec3 end) {
+        NetworkHandler.sendLightningToAll(level, generateFixedSegmentLightning(start, end, SWARM_REPAIR_SEGMENT_COUNT));
+    }
+
+    /**
+     * 生成固定段数的直线分段闪电线段：端点固定，中间节点带正弦包络随机偏移。
+     */
+    private static List<LightningSegment> generateFixedSegmentLightning(Vec3 start, Vec3 end, int segmentCount) {
+        List<LightningSegment> segments = new ArrayList<>();
+        Vec3 total = end.subtract(start);
+        double length = total.length();
+        Vec3 dir = length > 1e-4 ? total.normalize() : new Vec3(0, 1, 0);
+        Vec3 perpX = dir.cross(new Vec3(0, 1, 0));
+        if (perpX.lengthSqr() < 1e-6) {
+            perpX = dir.cross(new Vec3(1, 0, 0));
+        }
+        perpX = perpX.normalize();
+        Vec3 perpY = dir.cross(perpX).normalize();
+        List<Vec3> path = new ArrayList<>();
+        path.add(start);
+        Random random = new Random();
+        for (int i = 1; i < segmentCount; i++) {
+            double progress = (double) i / segmentCount;
+            double amplitude = length / segmentCount * 0.45 * Math.sin(Math.PI * progress);
+            Vec3 base = start.add(total.scale(progress));
+            path.add(base
+                .add(perpX.scale((random.nextDouble() * 2 - 1) * amplitude))
+                .add(perpY.scale((random.nextDouble() * 2 - 1) * amplitude)));
+        }
+        path.add(end);
+        for (int i = 0; i < path.size() - 1; i++) {
+            segments.add(new LightningSegment(path.get(i), path.get(i + 1)));
+        }
+        return segments;
     }
 
     /**

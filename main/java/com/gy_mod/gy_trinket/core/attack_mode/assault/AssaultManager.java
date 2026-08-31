@@ -2,14 +2,17 @@ package com.gy_mod.gy_trinket.core.attack_mode.assault;
 
 import com.gy_mod.gy_trinket.core.attack_mode.PlayerAttackLockManager;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
+import com.gy_mod.gy_trinket.core.modifier.player.attack.AttackSpeedManager;
 import com.gy_mod.gy_trinket.core.modifier.player.knockback.KnockbackManager;
 import com.gy_mod.gy_trinket.core.damage.ModDamageTypes;
+import com.gy_mod.gy_trinket.event.AttributeDynamicChangeEvent;
 import com.gy_mod.gy_trinket.gytrinket;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.server.ServerLifecycleHooks;
 
 import java.util.Map;
 import java.util.Set;
@@ -29,6 +32,11 @@ public class AssaultManager {
     private static final Map<UUID, AssaultData> PLAYER_ASSAULT_DATA = new ConcurrentHashMap<>();
 
     private static final Set<UUID> PLAYER_HAS_ASSAULT = new java.util.concurrent.CopyOnWriteArraySet<>();
+
+    /** 攻击频率上限：每刻最多攻击一次，对应攻击速度 20.0 */
+    private static final double ATTACK_SPEED_CAP = 20.0;
+    /** 强袭溢出转化伤害的动态属性命名空间 */
+    private static final String OVERFLOW_NAMESPACE = "assault_overflow";
 
     private AssaultManager() {}
 
@@ -72,6 +80,9 @@ public class AssaultManager {
             KnockbackManager.markNoKnockback(uuid);
             player.hurt(ModDamageTypes.getPlayerSelfDamageSource(player.level()), selfDamage);
         }
+
+        // 攻击速度更新后（setDynamicAttribute 已同步触发攻速属性应用），重算溢出伤害转化
+        recalculateOverflowDamage(player);
     }
 
     /**
@@ -82,8 +93,77 @@ public class AssaultManager {
         AssaultData data = PLAYER_ASSAULT_DATA.get(uuid);
         if (data != null && data.stacks > 0) {
             AttributeManager.removeDynamicAttribute(uuid, "assault", "attack_speed_independent");
+            AttributeManager.removeDynamicAttribute(uuid, OVERFLOW_NAMESPACE, "attack_damage_percent");
             PLAYER_ASSAULT_DATA.remove(uuid);
         }
+    }
+
+    /**
+     * 重算强袭攻击速度撞墙后的溢出伤害转化（动态百分比属性）。
+     * <p>
+     * 仅计算强袭越过攻速上限的那部分：最终攻速与「无强袭攻速与上限取较大者」的差值。
+     * 攻击速度即每秒攻击次数，按比例等价换算为伤害：
+     * 溢出伤害% = 溢出攻速 / 攻速上限 × 转化效率（如溢出2.0相对上限20为10%频率，等价+10%伤害）。
+     */
+    private static void recalculateOverflowDamage(Player player) {
+        UUID uuid = player.getUUID();
+        AssaultData data = PLAYER_ASSAULT_DATA.get(uuid);
+        if (data == null || data.stacks < 1) {
+            AttributeManager.removeDynamicAttribute(uuid, OVERFLOW_NAMESPACE, "attack_damage_percent");
+            return;
+        }
+
+        double finalSpeed = AttackSpeedManager.getPlayerAttackSpeed(uuid);
+        double speedPercent = AttributeManager.getPlayerAttribute(uuid, "attack_speed_percent");
+        double speedIndependent = AttributeManager.getPlayerAttribute(uuid, "attack_speed_independent");
+        double speedIndependentNoAssault = AttributeManager.getPlayerAttributeExcludingNamespace(
+                uuid, "attack_speed_independent", "assault:");
+
+        double multiplierWithAssault = speedPercent * speedIndependent;
+        double multiplierWithoutAssault = speedPercent * speedIndependentNoAssault;
+
+        if (multiplierWithAssault <= 0) {
+            AttributeManager.removeDynamicAttribute(uuid, OVERFLOW_NAMESPACE, "attack_damage_percent");
+            return;
+        }
+
+        // 无强袭贡献时的攻速 = 最终攻速 × (无强袭乘数 / 含强袭乘数)
+        double speedWithoutAssault = finalSpeed * (multiplierWithoutAssault / multiplierWithAssault);
+        // 强袭溢出部分：最终攻速超过「无强袭攻速与上限取较大者」的部分
+        double overflow = Math.max(0.0, finalSpeed - Math.max(speedWithoutAssault, ATTACK_SPEED_CAP));
+
+        // 按比例等价换算：溢出攻速相对上限的频率提升 = 溢出攻速 / 上限
+        double damagePercent = (overflow / ATTACK_SPEED_CAP)
+                * com.gy_mod.gy_trinket.config.Config.getAssaultOverflowDamageEfficiency();
+        if (damagePercent > 0) {
+            AttributeManager.setDynamicAttribute(uuid, OVERFLOW_NAMESPACE, "attack_damage_percent", damagePercent);
+        } else {
+            AttributeManager.removeDynamicAttribute(uuid, OVERFLOW_NAMESPACE, "attack_damage_percent");
+        }
+    }
+
+    /**
+     * 攻击速度动态变化时重算强袭溢出伤害（外部攻速来源变化也能正确转化）。
+     */
+    @SubscribeEvent
+    public static void onAttackSpeedChanged(AttributeDynamicChangeEvent event) {
+        String attrName = event.getAttributeName();
+        if (!attrName.equals("attack_speed_percent") && !attrName.equals("attack_speed_independent")) {
+            return;
+        }
+        UUID uuid = event.getPlayerUUID();
+        if (!PLAYER_HAS_ASSAULT.contains(uuid) || !PLAYER_ASSAULT_DATA.containsKey(uuid)) {
+            return;
+        }
+        var server = ServerLifecycleHooks.getCurrentServer();
+        if (server == null) {
+            return;
+        }
+        ServerPlayer player = server.getPlayerList().getPlayer(uuid);
+        if (player == null || !player.isAlive()) {
+            return;
+        }
+        recalculateOverflowDamage(player);
     }
 
     @SubscribeEvent
@@ -103,6 +183,7 @@ public class AssaultManager {
         }
         UUID uuid = player.getUUID();
         AttributeManager.removeDynamicAttribute(uuid, "assault", "attack_speed_independent");
+        AttributeManager.removeDynamicAttribute(uuid, OVERFLOW_NAMESPACE, "attack_damage_percent");
         PLAYER_ASSAULT_DATA.remove(uuid);
     }
 
@@ -112,6 +193,7 @@ public class AssaultManager {
         } else {
             PLAYER_HAS_ASSAULT.remove(playerUUID);
             AttributeManager.removeDynamicAttribute(playerUUID, "assault", "attack_speed_independent");
+            AttributeManager.removeDynamicAttribute(playerUUID, OVERFLOW_NAMESPACE, "attack_damage_percent");
             PLAYER_ASSAULT_DATA.remove(playerUUID);
         }
     }
@@ -119,6 +201,7 @@ public class AssaultManager {
     public static void clearAllData() {
         for (UUID uuid : PLAYER_ASSAULT_DATA.keySet()) {
             AttributeManager.removeDynamicAttribute(uuid, "assault", "attack_speed_independent");
+            AttributeManager.removeDynamicAttribute(uuid, OVERFLOW_NAMESPACE, "attack_damage_percent");
         }
         PLAYER_ASSAULT_DATA.clear();
         PLAYER_HAS_ASSAULT.clear();

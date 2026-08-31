@@ -13,7 +13,7 @@ import net.minecraftforge.network.NetworkEvent;
 import java.util.function.Supplier;
 
 /**
- * 客户端 -> 服务端：装备随机池中的指定物品（消耗 1 个升级点）
+ * 客户端 -> 服务端：装备随机池中的指定物品（代币模式消耗 1 个代币；否则消耗升级点 × 配置倍数）
  */
 public class RandomBuildEquipMessage {
     private String itemId;
@@ -55,7 +55,7 @@ public class RandomBuildEquipMessage {
                 }
             } else {
                 int points = com.gy_mod.gy_trinket.core.level.ModLevelManager.getUpgradePoints(player.getUUID());
-                if (points < RandomBuildManager.EQUIP_COST) {
+                if (points < RandomBuildManager.getEquipUpgradePointCost()) {
                     player.sendSystemMessage(Component.translatable("message.gytrinket.random_build.not_enough_points"));
                 } else {
                     player.sendSystemMessage(Component.translatable("message.gytrinket.random_build.failed"));

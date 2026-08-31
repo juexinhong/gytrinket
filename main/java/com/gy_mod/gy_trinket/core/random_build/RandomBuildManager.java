@@ -50,8 +50,13 @@ import java.util.UUID;
 public class RandomBuildManager {
 
     public static final int POOL_SIZE = 7;
-    /** 兑换一件随机物品消耗的升级点 */
+    /** 兑换一件随机物品消耗的基础升级点（实际消耗 = 该值 × 配置的升级点消耗倍数） */
     public static final int EQUIP_COST = 1;
+
+    /** 从随机池获取 1 件物品实际消耗的升级点（基础 1 点 × 配置倍数，默认 5 点） */
+    public static int getEquipUpgradePointCost() {
+        return EQUIP_COST * Config.getRandomBuildUpgradePointsMultiplier();
+    }
 
     /** 缓存每个玩家最近生成的随机池，用于装备时的合法性校验 */
     private static final Map<UUID, List<String>> CACHED_POOLS = new HashMap<>();
@@ -200,6 +205,16 @@ public class RandomBuildManager {
         return false;
     }
 
+    /**
+     * 是否为主护盾增幅模块（primary_shield_amplification_items 声明）。
+     * <p>
+     * 护盾类别被禁用时（如装备快速重构模块），这些模块不会主动被禁用
+     * （部分模块仍有非护盾增幅效果），但不再出现在随机构建池中。
+     */
+    private static boolean isPrimaryShieldAmplificationItem(String itemId) {
+        return DefsManager.getItemSet("primary_shield_amplification_items").contains(itemId);
+    }
+
     // ==================== 候选物品收集 ====================
 
     private static List<String> collectItems(ItemFilter filter) {
@@ -264,10 +279,12 @@ public class RandomBuildManager {
                     && !coreIds.contains(id)
                     && !isDisabledByEquipped(player.getUUID(), id, coreIds)));
         } else {
-            // 模块池：排除已有、依赖未满足、被禁用的
+            // 模块池：排除已有、依赖未满足、被禁用的；护盾类别被禁用时排除主护盾增幅模块
+            boolean shieldCategoryDisabled = isShieldCategoryDisabled(coreIds);
             pool.addAll(collectItems((id, item) -> isModuleItem(id, item)
                     && !coreIds.contains(id)
-                    && !isDisabledByEquipped(player.getUUID(), id, coreIds)));
+                    && !isDisabledByEquipped(player.getUUID(), id, coreIds)
+                    && !(shieldCategoryDisabled && isPrimaryShieldAmplificationItem(id))));
         }
 
         // 尽量不与上一轮重复：优先从排除 avoid 的候选中取，不足时再补足
@@ -310,6 +327,47 @@ public class RandomBuildManager {
         return List.of();
     }
 
+    /**
+     * 打开玩家面板时主动检查装备详情：
+     * 若玩家已装备独占类物品（护盾/机身），但当前随机池仍是对应独占类池（护盾池/机身池），
+     * 则重新生成随机池并持久化（解决持久化池在装备变化后不及时更新的问题）。
+     * @return 是否发生了刷新
+     */
+    public static boolean refreshIfExclusiveStale(ServerPlayer player) {
+        List<String> pool = getCurrentPool(player.getUUID());
+        if (pool.isEmpty()) return false;
+
+        boolean hasShield = false;
+        boolean hasBody = false;
+        for (ItemStack stack : PlayerStoreUtils.getAllEquippedStacks(player)) {
+            ResourceLocation rl = ForgeRegistries.ITEMS.getKey(stack.getItem());
+            if (rl == null) continue;
+            Item item = stack.getItem();
+            String id = rl.toString();
+            if (isShieldItem(id, item)) hasShield = true;
+            if (isBodyItem(item)) hasBody = true;
+        }
+
+        boolean allShield = true;
+        boolean allBody = true;
+        for (String id : pool) {
+            Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(id));
+            if (item == null) continue;
+            if (!isShieldItem(id, item)) allShield = false;
+            if (!isBodyItem(item)) allBody = false;
+        }
+
+        if (hasShield && allShield) {
+            generatePool(player, new HashSet<>(pool));
+            return true;
+        }
+        if (hasBody && allBody) {
+            generatePool(player, new HashSet<>(pool));
+            return true;
+        }
+        return false;
+    }
+
     /** 玩家登出时清理内存缓存（持久化数据保留，重进后恢复） */
     public static void clearPlayerData(UUID playerUUID) {
         CACHED_POOLS.remove(playerUUID);
@@ -320,19 +378,21 @@ public class RandomBuildManager {
     /**
      * 将随机池中的物品装备到光点核心。
      * <p>
-     * 代币机制启用时消耗玩家背包中的代币（不消耗升级点），否则消耗 1 个升级点。
+     * 代币机制启用时消耗玩家背包中的代币（每次 1 个，不受倍数影响），
+     * 否则消耗升级点（基础 1 点 × 配置的升级点消耗倍数，默认 5 点）。
      * @return 成功返回 true；失败返回 false（调用方负责发送提示消息）
      */
     public static boolean equipItem(ServerPlayer player, String itemId) {
         if (!Config.isRandomBuildEnabled()) return false;
         UUID uuid = player.getUUID();
         boolean tokenMode = Config.isRandomBuildTokenEnabled();
+        int upgradePointCost = getEquipUpgradePointCost();
 
-        // 代币模式：检查背包代币；否则检查升级点
+        // 代币模式：检查背包代币；否则检查升级点（含消耗倍数惩罚）
         if (tokenMode) {
             if (countTokens(player) < EQUIP_COST) return false;
         } else {
-            if (ModLevelManager.getUpgradePoints(uuid) < EQUIP_COST) return false;
+            if (ModLevelManager.getUpgradePoints(uuid) < upgradePointCost) return false;
         }
 
         List<String> pool = CACHED_POOLS.get(uuid);
@@ -357,6 +417,8 @@ public class RandomBuildManager {
         }
         if (coreIds.contains(itemId)) return false;
         if (isDisabledByEquipped(uuid, itemId, coreIds)) return false;
+        // 护盾类别被禁用时，主护盾增幅模块不可装备（与池生成一致）
+        if (isShieldCategoryDisabled(coreIds) && isPrimaryShieldAmplificationItem(itemId)) return false;
 
         int emptySlot = -1;
         for (int i = 0; i < handler.getSlots(); i++) {
@@ -369,14 +431,14 @@ public class RandomBuildManager {
 
         handler.setStackInSlot(emptySlot, new ItemStack(item, 1));
         if (tokenMode) {
-            // 代币模式：消耗背包代币（不消耗升级点）
+            // 代币模式：消耗背包代币 1 个（不消耗升级点，不受倍数影响）
             if (!consumeToken(player)) {
                 handler.setStackInSlot(emptySlot, ItemStack.EMPTY);
                 return false;
             }
         } else {
-            // 常规模式：消耗升级点
-            if (!ModLevelManager.consumeUpgradePoints(uuid, EQUIP_COST)) {
+            // 常规模式：消耗升级点（基础 1 点 × 配置倍数）
+            if (!ModLevelManager.consumeUpgradePoints(uuid, upgradePointCost)) {
                 handler.setStackInSlot(emptySlot, ItemStack.EMPTY);
                 return false;
             }

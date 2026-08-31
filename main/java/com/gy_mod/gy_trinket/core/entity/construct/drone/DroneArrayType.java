@@ -19,13 +19,15 @@ public class DroneArrayType {
     private final Set<String> tags;
     private final int priority;
     private final IDroneBehavior behavior;
+    private final String requiredMechanicSet;
 
-    DroneArrayType(String id, String name, Set<String> tags, int priority, IDroneBehavior behavior) {
+    DroneArrayType(String id, String name, Set<String> tags, int priority, IDroneBehavior behavior, String requiredMechanicSet) {
         this.id = id;
         this.name = name;
         this.tags = tags;
         this.priority = priority;
         this.behavior = behavior;
+        this.requiredMechanicSet = requiredMechanicSet;
     }
 
     /** 获取唯一标识符 */
@@ -50,6 +52,14 @@ public class DroneArrayType {
 
     public IDroneBehavior getBehavior() {
         return behavior;
+    }
+
+    /**
+     * 数据驱动的特殊机制集合名称（来自 special_mechanics 定义）。
+     * 非空时要求玩家装备了声明该集合的物品（覆盖层优先）；为空时始终可用（环绕/待机）。
+     */
+    public String getRequiredMechanicSet() {
+        return requiredMechanicSet;
     }
 
     public Set<String> getRequiredItemIds() {
@@ -140,7 +150,8 @@ public class DroneArrayType {
                 "环绕",
                 Set.of(Tags.ARRAY, Tags.ORBIT),
                 10,
-                ORBIT_BEHAVIOR
+                ORBIT_BEHAVIOR,
+                null
         );
 
         public static final DroneArrayType STANDBY = new DroneArrayType(
@@ -148,7 +159,8 @@ public class DroneArrayType {
                 "待机",
                 Set.of(Tags.ARRAY, Tags.STANDBY),
                 20,
-                STANDBY_BEHAVIOR
+                STANDBY_BEHAVIOR,
+                null
         );
 
         public static final DroneArrayType PURSUIT = new DroneArrayType(
@@ -156,7 +168,8 @@ public class DroneArrayType {
                 "追击",
                 Set.of(Tags.ARRAY, Tags.PURSUIT),
                 15,
-                PURSUIT_BEHAVIOR
+                PURSUIT_BEHAVIOR,
+                "pursuit_array_required_items"
         );
 
         public static final DroneArrayType FORMATION = new DroneArrayType(
@@ -164,7 +177,8 @@ public class DroneArrayType {
                 "列队",
                 Set.of(Tags.ARRAY, Tags.FORMATION),
                 25,
-                FORMATION_BEHAVIOR
+                FORMATION_BEHAVIOR,
+                "formation_array_required_items"
         );
 
         public static final DroneArrayType GUARD = new DroneArrayType(
@@ -172,7 +186,8 @@ public class DroneArrayType {
                 "守卫",
                 Set.of(Tags.ARRAY, Tags.GUARD),
                 30,
-                GUARD_BEHAVIOR
+                GUARD_BEHAVIOR,
+                "guard_array_required_items"
         );
 
         /** 所有阵列类型列表 */

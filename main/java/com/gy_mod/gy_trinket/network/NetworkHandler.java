@@ -2,6 +2,7 @@ package com.gy_mod.gy_trinket.network;
 
 import com.gy_mod.gy_trinket.compat.CuriosCompat;
 import com.gy_mod.gy_trinket.config.Config;
+import com.gy_mod.gy_trinket.core.defs.DefsManager;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
 import com.gy_mod.gy_trinket.core.attribute.ItemAttributeConfig;
 import com.gy_mod.gy_trinket.core.level.ModLevelManager;
@@ -16,6 +17,7 @@ import com.gy_mod.gy_trinket.storage.PlayerStoreManager;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
@@ -48,6 +50,8 @@ public class NetworkHandler {
         INSTANCE.registerMessage(messageId++, RequestPanelDataMessage.class, RequestPanelDataMessage::toBytes, RequestPanelDataMessage::new, RequestPanelDataMessage::handle);
         INSTANCE.registerMessage(messageId++, RequestConfigDataMessage.class, RequestConfigDataMessage::toBytes, RequestConfigDataMessage::new, RequestConfigDataMessage::handle);
         INSTANCE.registerMessage(messageId++, ConfigResetMessage.class, ConfigResetMessage::toBytes, ConfigResetMessage::new, ConfigResetMessage::handle);
+        INSTANCE.registerMessage(messageId++, ConfigSpecialMechanicMessage.class, ConfigSpecialMechanicMessage::toBytes, ConfigSpecialMechanicMessage::new, ConfigSpecialMechanicMessage::handle);
+        INSTANCE.registerMessage(messageId++, ConfigShieldTypesMessage.class, ConfigShieldTypesMessage::toBytes, ConfigShieldTypesMessage::new, ConfigShieldTypesMessage::handle);
         INSTANCE.registerMessage(messageId++, AssaultAttackMessage.class, AssaultAttackMessage::toBytes, AssaultAttackMessage::new, AssaultAttackMessage::handle);
         INSTANCE.registerMessage(messageId++, ToggleExecuteMessage.class, ToggleExecuteMessage::toBytes, ToggleExecuteMessage::new, ToggleExecuteMessage::handle);
 
@@ -77,6 +81,7 @@ public class NetworkHandler {
         INSTANCE.registerMessage(messageId++, SyncPlayerDataSnapshotMessage.class, SyncPlayerDataSnapshotMessage::toBytes, SyncPlayerDataSnapshotMessage::new, SyncPlayerDataSnapshotMessage::handle);
         INSTANCE.registerMessage(messageId++, ResponsePanelDataMessage.class, ResponsePanelDataMessage::toBytes, ResponsePanelDataMessage::new, ResponsePanelDataMessage::handle);
         INSTANCE.registerMessage(messageId++, ResponseConfigDataMessage.class, ResponseConfigDataMessage::toBytes, ResponseConfigDataMessage::new, ResponseConfigDataMessage::handle);
+        INSTANCE.registerMessage(messageId++, ConfigDefsSyncMessage.class, ConfigDefsSyncMessage::toBytes, ConfigDefsSyncMessage::new, ConfigDefsSyncMessage::handle);
         INSTANCE.registerMessage(messageId++, SyncChargedAttackMessage.class, SyncChargedAttackMessage::toBytes, SyncChargedAttackMessage::new, SyncChargedAttackMessage::handle);
         INSTANCE.registerMessage(messageId++, SyncBurstFiringMessage.class, SyncBurstFiringMessage::toBytes, SyncBurstFiringMessage::new, SyncBurstFiringMessage::handle);
         INSTANCE.registerMessage(messageId++, ChargedSweepParticleMessage.class, ChargedSweepParticleMessage::toBytes, ChargedSweepParticleMessage::new, ChargedSweepParticleMessage::handle);
@@ -101,6 +106,7 @@ public class NetworkHandler {
         INSTANCE.registerMessage(messageId++, RequestRandomBuildMessage.class, RequestRandomBuildMessage::toBytes, RequestRandomBuildMessage::new, RequestRandomBuildMessage::handle);
         INSTANCE.registerMessage(messageId++, RandomBuildEquipMessage.class, RandomBuildEquipMessage::toBytes, RandomBuildEquipMessage::new, RandomBuildEquipMessage::handle);
         INSTANCE.registerMessage(messageId++, RequestRefreshRandomPoolMessage.class, RequestRefreshRandomPoolMessage::toBytes, RequestRefreshRandomPoolMessage::new, RequestRefreshRandomPoolMessage::handle);
+        INSTANCE.registerMessage(messageId++, SortLightPointCoreMessage.class, SortLightPointCoreMessage::toBytes, SortLightPointCoreMessage::new, SortLightPointCoreMessage::handle);
     }
 
     // ======================== Helper send methods ========================
@@ -138,6 +144,11 @@ public class NetworkHandler {
 
     public static void sendShieldCooldownRequestToServer() {
         INSTANCE.sendToServer(new RequestShieldCooldownMessage());
+    }
+
+    /** 客户端：请求整理光点核心容器（容器界面内鼠标中键） */
+    public static void sendSortLightPointCore() {
+        INSTANCE.sendToServer(new SortLightPointCoreMessage());
     }
 
     public static void sendAuraParticlesToPlayer(ServerPlayer player, double x, double y, double z, double radius) {
@@ -387,6 +398,37 @@ public class NetworkHandler {
         for (var p : source.server.getPlayerList().getPlayers()) {
             INSTANCE.send(PacketDistributor.PLAYER.with(() -> p), msg);
         }
+    }
+
+    // ======================== 定义（特殊机制/护盾类型）同步 ========================
+
+    private static ConfigDefsSyncMessage buildDefsSyncMessage() {
+        return new ConfigDefsSyncMessage(
+            DefsManager.getServerShieldTypes(),
+            DefsManager.getServerSpecialMechanicItems(),
+            DefsManager.getServerAllEffectiveSets(),
+            DefsManager.getServerTooltipRules(),
+            DefsManager.getServerSpecialMechanicOverrides(),
+            DefsManager.getServerShieldTypeOverrides()
+        );
+    }
+
+    /** 发送完整定义同步给单个玩家（登录/维度切换） */
+    public static void sendDefsSyncToPlayer(ServerPlayer player) {
+        INSTANCE.send(PacketDistributor.PLAYER.with(() -> player), buildDefsSyncMessage());
+    }
+
+    /** 发送完整定义同步给所有在线玩家（编辑生效后广播） */
+    public static void sendDefsSyncToAllPlayers(MinecraftServer server) {
+        ConfigDefsSyncMessage msg = buildDefsSyncMessage();
+        for (var p : server.getPlayerList().getPlayers()) {
+            INSTANCE.send(PacketDistributor.PLAYER.with(() -> p), msg);
+        }
+    }
+
+    /** 发送完整定义同步给来源玩家周边的所有玩家（兼容旧调用名） */
+    public static void sendDefsOverridesToAllPlayers(ServerPlayer source) {
+        sendDefsSyncToAllPlayers(source.server);
     }
 
     private static ResponseConfigDataMessage buildConfigDataMessage(boolean openScreen) {

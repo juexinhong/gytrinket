@@ -84,8 +84,9 @@ public class ReflectDamageHandler implements DamageHandler {
             return;
         }
 
-        // 如果玩家将护盾移植到其他实体，只有被移植保护的实体受到攻击时才触发反射
-        if (ShieldTransferManager.hasTransferredShield(shieldOwnerUUID)) {
+        // 玩家处于护盾移植模式（装备移植物品）时，玩家自身不触发反射；
+        // 只有被移植保护的实体受到攻击时才触发反射（即使当前无受保护实体）
+        if (ShieldTransferManager.isShieldTransferEnabled(shieldOwnerUUID)) {
             if (!ShieldTransferManager.isEntityProtected(shieldOwnerUUID, attackedEntity.getUUID())) {
                 return;
             }

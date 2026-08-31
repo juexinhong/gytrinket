@@ -2,6 +2,7 @@ package com.gy_mod.gy_trinket.core.entity.construct.drone;
 
 import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.core.attack_mode.ExecuteToggleManager;
+import com.gy_mod.gy_trinket.core.damage.SecondaryDamageMerger;
 import com.gy_mod.gy_trinket.core.entity.construct.HostileTargetManager;
 import com.gy_mod.gy_trinket.core.modifier.player.knockback.KnockbackManager;
 import com.gy_mod.gy_trinket.core.vulnerability.VulnerabilityApplyEvent;
@@ -220,27 +221,29 @@ public class DroneBullet extends ThrowableItemProjectile implements GeoEntity {
 
         float damage = getDamage();
         KnockbackManager.markNoKnockback(target.getUUID());
-        if (target.getHealth() < damage) {
-            // 斩杀：伤害源统一为无人机子弹，斩杀归属启用时归属玩家，否则归属无人机
-            LivingEntity cause = ExecuteToggleManager.isExecuteEnabled(ownerPlayer)
-                    ? ownerPlayer
-                    : owner instanceof LivingEntity living ? living : null;
-            DamageSource executeSource = ModDamageSources.droneBullet(target.level(), this, cause);
-            target.hurt(executeSource, damage);
-            if (ExecuteToggleManager.isExecuteEnabled(ownerPlayer)) {
-                target.setLastHurtByMob(ownerPlayer);
+        SecondaryDamageMerger.accumulate(target, "drone_bullet", damage, (t, mergedDamage) -> {
+            if (t.getHealth() < mergedDamage) {
+                // 斩杀：伤害源统一为无人机子弹，斩杀归属启用时归属玩家，否则归属无人机
+                LivingEntity cause = ExecuteToggleManager.isExecuteEnabled(ownerPlayer)
+                        ? ownerPlayer
+                        : owner instanceof LivingEntity living ? living : null;
+                t.hurt(ModDamageSources.droneBullet(t.level(), this, cause), mergedDamage);
+                if (ExecuteToggleManager.isExecuteEnabled(ownerPlayer)) {
+                    t.setLastHurtByMob(ownerPlayer);
+                }
+            } else {
+                // 非斩杀：攻击者恒为无人机
+                t.hurt(ModDamageSources.droneBullet(t.level(), this, owner instanceof LivingEntity living ? living : null), mergedDamage);
             }
-        } else {
-            target.hurt(createDamageSource(), damage);
-        }
 
-        if (owner instanceof DroneConstructEntity droneShooter && droneShooter.isCommanderDrone()) {
-            MinecraftForge.EVENT_BUS.post(
-                new VulnerabilityApplyEvent(
-                    "commander", Config.COMMANDER_VULNERABILITY.get().floatValue(), target, true
-                )
-            );
-        }
+            if (owner instanceof DroneConstructEntity droneShooter && droneShooter.isCommanderDrone()) {
+                MinecraftForge.EVENT_BUS.post(
+                    new VulnerabilityApplyEvent(
+                        "commander", Config.COMMANDER_VULNERABILITY.get().floatValue(), t, true
+                    )
+                );
+            }
+        });
     }
 
     @Override

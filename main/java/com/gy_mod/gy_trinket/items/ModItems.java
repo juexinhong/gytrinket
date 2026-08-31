@@ -102,6 +102,8 @@ public class ModItems {
     // 攻击速度物品
     public static final RegistryObject<Item> FAST_SHOOTING_MODULE = ITEMS.register("fast_shooting_module", () -> new Item(new Item.Properties())); // 快速射击模块
     public static final RegistryObject<Item> BURST_FIRE_MODULE = ITEMS.register("burst_fire_module", () -> new Item(new Item.Properties())); // 点射模块
+    // 征途模块（装备后击杀累积战意，提供攻击速度/移动速度独立乘区加成）
+    public static final RegistryObject<Item> JOURNEY_MODULE = ITEMS.register("journey_module", () -> new Item(new Item.Properties())); // 征途模块
     public static final RegistryObject<Item> ASSAULT_MODULE = ITEMS.register("assault_module", () -> new Item(new Item.Properties())); // 强袭模块
 
     // 攻击伤害物品
@@ -199,5 +201,8 @@ public class ModItems {
 
     // 代币（随机构建代币机制，默认代币；不可合成、无战利品掉落）
     public static final RegistryObject<Item> TOKEN = ITEMS.register("token", () -> new Item(new Item.Properties())); // 代币
+
+    // 战魂（独立物品，暂无装备逻辑，保留数据驱动兼容）
+    public static final RegistryObject<Item> WAR_SOUL = ITEMS.register("war_soul", () -> new Item(new Item.Properties())); // 战魂
 
 }

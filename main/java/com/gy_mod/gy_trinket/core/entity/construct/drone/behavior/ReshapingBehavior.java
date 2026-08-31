@@ -4,7 +4,9 @@ import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.core.shield.DisableSystem;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.ArmorShardEntity;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneConstructEntity;
+import com.gy_mod.gy_trinket.core.defs.DefsManager;
 import com.gy_mod.gy_trinket.storage.PlayerStoreUtils;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.damagesource.DamageSource;
@@ -173,15 +175,9 @@ public class ReshapingBehavior implements IDroneSpecialBehavior {
     private boolean hasRequiredItems(DroneConstructEntity drone) {
         UUID ownerUUID = drone.getOwnerUUID();
         if (ownerUUID == null) return false;
-        // 已装备物品 = 光点核心存储 + Curios 饰品栏（光点核心内容扩展）
-        for (ItemStack stack : PlayerStoreUtils.getEquippedStacks(ownerUUID)) {
-            if (DisableSystem.isItemDisabled(ownerUUID, stack)) continue;
-
-            if (Config.isReshapingItem(stack.getItem())) {
-                return true;
-            }
-        }
-        return false;
+        MinecraftServer server = drone.level().getServer();
+        if (server == null) return false;
+        return DefsManager.playerHasEquippedMechanic(server, ownerUUID, "reshaping_items");
     }
 
     private static class PlayerDamageReductionInfo {

@@ -4,6 +4,7 @@ import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.core.attribute.AttributeDefinition;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
 import com.gy_mod.gy_trinket.core.level.ModLevelData;
+import com.gy_mod.gy_trinket.core.random_build.RandomBuildManager;
 import com.gy_mod.gy_trinket.network.NetworkHandler;
 import com.gy_mod.gy_trinket.network.packet.RandomBuildEquipMessage;
 import com.gy_mod.gy_trinket.network.packet.RequestConfigDataMessage;
@@ -216,8 +217,10 @@ public class PlayerPanelScreen extends AbstractPanelScreen {
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (button != 0) return super.mouseClicked(mouseX, mouseY, button);
 
-        // 随机构建随机池：点击物品 -> 发送装备请求（代币机制消耗代币，否则消耗升级点）
-        boolean canAfford = Config.isRandomBuildTokenEnabled() ? tokenCount > 0 : upgradePoints > 0;
+        // 随机构建随机池：点击物品 -> 发送装备请求（代币机制消耗代币，否则消耗升级点 × 配置倍数）
+        boolean canAfford = Config.isRandomBuildTokenEnabled()
+                ? tokenCount > 0
+                : upgradePoints >= RandomBuildManager.getEquipUpgradePointCost();
         if (Config.isRandomBuildEnabled() && canAfford) {
             int poolIndex = poolIndexAt(mouseX, mouseY);
             if (poolIndex >= 0 && poolIndex < randomPool.size()) {

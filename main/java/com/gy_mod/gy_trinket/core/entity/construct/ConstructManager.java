@@ -229,14 +229,17 @@ public class ConstructManager {
             double effectiveMaxCount = ConstructAttributeApplier.getEffectiveMaxCount(playerUUID, type);
             ResourceKey<Level> playerDim = player.level().dimension();
 
-            // 统计当前维度已有的构造体数量（以活跃实体为准）
+            // 统计当前维度已有的构造体数量（以活跃实体为准，排除本次新构建的实体，
+            // 否则构建第 max 个时会把自身计入而误判溢出，淘汰掉最早的构造体）
             long currentDimCount = 0;
             Map<String, Map<UUID, net.minecraft.world.entity.Entity>> playerEntities = activeConstructEntities.get(playerUUID);
             if (playerEntities != null) {
                 Map<UUID, net.minecraft.world.entity.Entity> entities = playerEntities.get(constructId);
                 if (entities != null) {
+                    UUID newEntityUUID = constructData.getEntityUUID();
                     currentDimCount = entities.values().stream()
                             .filter(e -> !e.isRemoved() && e.level() != null && e.level().dimension().equals(playerDim))
+                            .filter(e -> newEntityUUID == null || !e.getUUID().equals(newEntityUUID))
                             .count();
                 }
             }

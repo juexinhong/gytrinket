@@ -5,7 +5,7 @@
       "conditions": {
         "items": [
           {
-            "items": ["gytrinket:engineering_fuselage"]
+            "items": "gytrinket:engineering_fuselage"
           }
         ]
       },
@@ -20,7 +20,7 @@
     "frame": "task",
     "hidden": false,
     "icon": {
-      "item": "gytrinket:engineering_fuselage"
+      "id": "gytrinket:engineering_fuselage"
     },
     "show_toast": true,
     "title": {

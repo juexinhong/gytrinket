@@ -270,7 +270,7 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
     // ===== 朝向控制 =====
 
     /**
-     * 使用插值朝向指定位置（偏航角每刻最多转动 rotationSpeed 度，俯仰角立即调整）
+     * 使用插值朝向指定位置（偏航角和俯仰角每刻最多转动 rotationSpeed 度）
      */
     public void facePositionWithInterpolation(Vec3 targetPos, float rotationSpeed) {
         Vec3 pos = this.position();
@@ -295,8 +295,15 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
         if (deltaYaw < 0) yawStep = -yawStep;
         float newYaw = currentYaw + yawStep;
 
+        // 俯仰角同样按 effectiveSpeed 插值限制（避免瞬间跳变，与偏航角速度一致）
+        float currentPitch = this.getXRot();
+        float deltaPitch = targetPitch - currentPitch;
+        float pitchStep = Math.min(Math.abs(deltaPitch), effectiveSpeed);
+        if (deltaPitch < 0) pitchStep = -pitchStep;
+        float newPitch = currentPitch + pitchStep;
+
         this.setYRot(newYaw);
-        this.setXRot(targetPitch);
+        this.setXRot(newPitch);
         this.setYHeadRot(newYaw);
         this.yBodyRot = newYaw;
         this.yHeadRot = newYaw;

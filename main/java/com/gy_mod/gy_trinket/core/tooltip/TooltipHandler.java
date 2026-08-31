@@ -58,22 +58,57 @@ public class TooltipHandler {
         // 特殊工具提示（逻辑独特，保持原有方法）
         addItemAttributesTooltip(event, itemId);
         addShieldTypesTooltip(event, itemId);
-        addModuleTooltips(event, itemId);
         addAdaptiveArmorTooltip(event, itemId);
 
-        // 数据驱动的通用工具提示
+        // 机制折叠决策：统计 tooltip_rules 匹配项 + 模块硬编码机制命中数，超过 1 个机制时折叠只剩标题
         ensureTooltipRules();
+        List<TooltipConfig> matchedRules = new ArrayList<>();
         for (TooltipConfig config : tooltipRules) {
-            addConfiguredTooltip(event, itemId, config);
+            if (config.matchesItem(itemId)) {
+                matchedRules.add(config);
+            }
         }
+        boolean collapse = (matchedRules.size() + countModuleMechanicHits(itemId)) > 1
+                && !net.minecraft.client.gui.screens.Screen.hasShiftDown();
+
+        addModuleTooltips(event, itemId, collapse);
+        for (TooltipConfig config : matchedRules) {
+            addConfiguredTooltip(event, itemId, config, collapse);
+        }
+    }
+
+    /**
+     * 统计模块硬编码机制命中数（与 {@link #addModuleTooltips} 的判定一致，用于折叠决策）
+     */
+    private static int countModuleMechanicHits(String itemId) {
+        int count = 0;
+        if (DefsManager.itemSetContains("drone_module_items", itemId)) count++;
+        if (DefsManager.itemSetContains("assault_drone_module_items", itemId)) count++;
+        if (DefsManager.itemSetContains("defense_drone_module_items", itemId)) count++;
+        if (DefsManager.itemSetContains("wingman_module_items", itemId)) count++;
+        if (DefsManager.itemSetContains("wingman_interceptor_module_items", itemId)) count++;
+        if (DefsManager.itemSetContains("wingman_nano_regen_module_items", itemId)) count++;
+        if (DefsManager.itemSetContains("swarm_module_items", itemId)) count++;
+        if (DefsManager.itemSetContains("barrier_items", itemId)) count++;
+        if (DefsManager.itemSetContains("journey_module_items", itemId)) count++;
+        if (itemId.equals("gytrinket:quick_reconstruction_module")) count++;
+        return count;
     }
 
     /**
      * 通用的配置驱动工具提示处理方法
      * 替代所有重复的 add*Tooltip 方法
+     * @param collapse 多个特殊机制时折叠：只显示标题行（详细描述在按住 Shift 时展开）
      */
-    private static void addConfiguredTooltip(ItemTooltipEvent event, String itemId, TooltipConfig config) {
+    private static void addConfiguredTooltip(ItemTooltipEvent event, String itemId, TooltipConfig config, boolean collapse) {
         if (!config.matchesItem(itemId)) {
+            return;
+        }
+
+        if (collapse) {
+            if (config.hasTitle()) {
+                addTooltip(event, config.getTitleKey(), config.getTitleColor());
+            }
             return;
         }
 
@@ -238,52 +273,74 @@ public class TooltipHandler {
         }
     }
 
-    private static void addModuleTooltips(ItemTooltipEvent event, String itemId) {
+    /** 模块硬编码机制 tooltip：折叠时只显示机制标题（描述按 Shift 展开） */
+    private static void addModuleTooltips(ItemTooltipEvent event, String itemId, boolean collapse) {
         if (DefsManager.itemSetContains("drone_module_items", itemId)) {
             addTooltip(event, "drone_module", ChatFormatting.GRAY);
-            addDroneModuleDescTooltip(event);
+            if (!collapse) addDroneModuleDescTooltip(event);
         }
 
         if (DefsManager.itemSetContains("assault_drone_module_items", itemId)) {
             addTooltip(event, "assault_drone_module", ChatFormatting.GOLD);
-            addTooltip(event, "assault_drone_module_desc", ChatFormatting.RED);
+            if (!collapse) addTooltip(event, "assault_drone_module_desc", ChatFormatting.RED);
         }
 
         if (DefsManager.itemSetContains("defense_drone_module_items", itemId)) {
             addTooltip(event, "defense_drone_module", ChatFormatting.BLUE);
-            addTooltip(event, "defense_drone_module_desc", ChatFormatting.RED);
+            if (!collapse) addTooltip(event, "defense_drone_module_desc", ChatFormatting.RED);
         }
 
         if (itemId.equals("gytrinket:quick_reconstruction_module")) {
             addTooltip(event, "quick_reconstruction_module", ChatFormatting.GREEN);
-            addTooltip(event, "quick_reconstruction_module_desc", ChatFormatting.RED);
+            if (!collapse) addTooltip(event, "quick_reconstruction_module_desc", ChatFormatting.RED);
         }
 
         if (DefsManager.itemSetContains("wingman_module_items", itemId)) {
             addTooltip(event, "wingman_module", ChatFormatting.GRAY);
-            addWingmanModuleDescTooltip(event);
+            if (!collapse) addWingmanModuleDescTooltip(event);
         }
 
         if (DefsManager.itemSetContains("wingman_interceptor_module_items", itemId)) {
-            addTooltip(event, "interceptor_module", ChatFormatting.GRAY);
-            addInterceptorModuleDescTooltip(event);
+            addTooltip(event, "wingman_interceptor_module", ChatFormatting.GRAY);
+            if (!collapse) addInterceptorModuleDescTooltip(event);
         }
 
         if (DefsManager.itemSetContains("wingman_nano_regen_module_items", itemId)) {
-            addTooltip(event, "nano_regen_module", ChatFormatting.GREEN);
-            addNanoRegenModuleDescTooltip(event);
+            addTooltip(event, "wingman_nano_regen_module", ChatFormatting.GREEN);
+            if (!collapse) addNanoRegenModuleDescTooltip(event);
         }
 
         if (DefsManager.itemSetContains("swarm_module_items", itemId)) {
-            addTooltip(event, "mothership_body", ChatFormatting.GRAY);
-            addMothershipBodyDescTooltip(event);
+            addTooltip(event, "swarm_module", ChatFormatting.GRAY);
+            if (!collapse) addMothershipBodyDescTooltip(event);
         }
 
         if (DefsManager.itemSetContains("barrier_items", itemId)) {
             addTooltip(event, "barrier", ChatFormatting.DARK_PURPLE);
-            addFormattedTooltip(event, "barrier_effect", ChatFormatting.DARK_PURPLE,
+            if (!collapse) addFormattedTooltip(event, "barrier_effect", ChatFormatting.DARK_PURPLE,
                 () -> new Object[]{5, 5});
         }
+
+        if (DefsManager.itemSetContains("journey_module_items", itemId)) {
+            addTooltip(event, "journey_module", ChatFormatting.GOLD);
+            if (!collapse) addJourneyModuleDescTooltip(event);
+        }
+    }
+
+    /**
+     * 征途模块描述工具提示（动态参数：最大层数、持续秒数、消退间隔/数量、攻速/移速每层加成）
+     */
+    private static void addJourneyModuleDescTooltip(ItemTooltipEvent event) {
+        addFormattedTooltip(event, "journey_module_desc", ChatFormatting.GRAY,
+            () -> new Object[]{
+                Config.getJourneyMaxStacks(),
+                Config.getJourneyDurationTicks() / 20.0,
+                Config.getJourneyDecayIntervalTicks(),
+                Config.getJourneyDecayPerInterval(),
+                Config.getJourneyAttackSpeedPerStack() * 100,
+                Config.getJourneyMovementSpeedPerStack() * 100
+            }
+        );
     }
 
     /**

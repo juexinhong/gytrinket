@@ -85,6 +85,14 @@ public class ChargedAttackInputHandler {
         isCharging = true;
         // 等待 2 tick，确保 AttackStateInputHandler 已将状态更新为 PRESSED/HELD
         chargeStartDelay = 2;
+        // 先补发一次按住状态包再请求启动充能：
+        // startAttack 在输入事件中触发，早于本 tick 的 AttackStateInputHandler 状态同步，
+        // 高延迟下 ChargedAttackMessage(0) 会先于 AttackStateMessage(PRESSED) 到达服务端，
+        // 服务端在状态确认前的 RELEASED 默认态会立即误释放（0 充能值）。
+        // TCP 保序，先发状态包可确保服务端先确认 HELD 再启动充能
+        NetworkHandler.INSTANCE.sendToServer(
+            new com.gy_mod.gy_trinket.network.packet.AttackStateMessage(
+                AttackStateManager.AttackState.PRESSED.ordinal(), 0));
         // 通知服务端开始充能
         NetworkHandler.INSTANCE.sendToServer(new ChargedAttackMessage(0));
     }

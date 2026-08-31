@@ -36,7 +36,9 @@ import java.util.concurrent.ConcurrentHashMap;
 public class MothershipManager {
 
     private static final String NAMESPACE = "mothership";
-    private static final String ATTR_SWARM_COUNT = "swarm_count_mothership";
+    // 必须带 construct_ 前缀且带 _base 后缀，才能被 ConstructAttributeNameParser
+    // 解析为 swarm 类型的 MAX_COUNT + BASE 加成（旧名 swarm_count_mothership 无法被识别，导致加成从不生效）
+    private static final String ATTR_SWARM_COUNT = "construct_swarm_count_mothership_base";
 
     /** 溢出倍率存储：玩家UUID -> 溢出倍率（当蜂群数量超过极限值时，属性和易伤值的放大倍率） */
     private static final Map<UUID, Double> OVERFLOW_MULTIPLIERS = new ConcurrentHashMap<>();

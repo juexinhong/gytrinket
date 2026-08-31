@@ -11,7 +11,9 @@ import com.gy_mod.gy_trinket.core.explosion.SimulatedExplosion;
 import com.gy_mod.gy_trinket.core.ignite.IIgniteSource;
 import com.gy_mod.gy_trinket.core.ignite.IgniteManager;
 import com.gy_mod.gy_trinket.core.shield.DisableSystem;
+import com.gy_mod.gy_trinket.core.defs.DefsManager;
 import com.gy_mod.gy_trinket.storage.PlayerStoreUtils;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.damagesource.DamageSource;
@@ -117,7 +119,9 @@ public class SelfDestructBehavior implements IDroneSpecialBehavior {
                         && entity instanceof net.minecraft.world.entity.Mob
                         && HostileTargetManager.shouldAttackPlayer(entity, playerOwner),
                 true,
-                playerOwner
+                playerOwner,
+                -1.0,
+                "simulated_explosion"
         );
 
         // 炉心融解模块：自毁附带等量灼烧并默认点燃
@@ -162,20 +166,18 @@ public class SelfDestructBehavior implements IDroneSpecialBehavior {
     }
 
     /**
-     * 检查玩家光点核心中是否有自毁装置所需物品（通用版本）
+     * 检查玩家是否装备了声明「自毁装置」特殊机制的物品（数据驱动/覆盖层优先）
      */
     public static boolean hasRequiredItems(LivingEntity construct) {
         UUID ownerUUID = construct instanceof IConstructEntity cEntity ? cEntity.getOwnerUUID() : null;
         if (ownerUUID == null) {
             return false;
         }
-        // 已装备物品 = 光点核心存储 + Curios 饰品栏（光点核心内容扩展）
-        for (ItemStack stack : PlayerStoreUtils.getEquippedStacks(ownerUUID)) {
-            if (!stack.isEmpty() && !DisableSystem.isItemDisabled(ownerUUID, stack) && Config.isSelfDestructItem(stack.getItem())) {
-                return true;
-            }
+        MinecraftServer server = construct.level().getServer();
+        if (server == null) {
+            return false;
         }
-        return false;
+        return DefsManager.playerHasEquippedMechanic(server, ownerUUID, "self_destruct_items");
     }
 }
 

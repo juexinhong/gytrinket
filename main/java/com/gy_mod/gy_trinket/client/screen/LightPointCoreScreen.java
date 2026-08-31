@@ -114,4 +114,23 @@ public class LightPointCoreScreen extends AbstractContainerScreen<LightPointCore
     public int getSlotColor(int index) {
         return 0x00000000;
     }
+
+    /**
+     * 鼠标中键一键整理：仅当鼠标位于光点核心容器槽区（非玩家背包区）且手上无物品时触发
+     */
+    @Override
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (button == 2 && this.menu.getCarried().isEmpty() && isMouseOverContainerArea(mouseX, mouseY)) {
+            com.gy_mod.gy_trinket.network.NetworkHandler.sendSortLightPointCore();
+            return true;
+        }
+        return super.mouseClicked(mouseX, mouseY, button);
+    }
+
+    /** 鼠标是否位于光点核心容器槽区：相对坐标 x ∈ [8, 188)、y ∈ [18, 78)（3 行 9 列，18px 格 / 20px 间隔） */
+    private boolean isMouseOverContainerArea(double mouseX, double mouseY) {
+        double x = mouseX - this.leftPos;
+        double y = mouseY - this.topPos;
+        return x >= 8 && x < 188 && y >= 18 && y < 78;
+    }
 }

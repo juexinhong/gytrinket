@@ -51,7 +51,8 @@ public class ShieldTransferManager {
 
     /** 女仆模组的胶片/魂符等存储物品数据键与神龛标识（仅按注册ID识别，不引用女仆模组类） */
     private static final String MAID_MOD_ID = "touhou_little_maid";
-    private static final String MAID_INFO_COMPONENT = "maid_info";
+    // 1.20.1 Forge：女仆胶片用 NBT 键 "MaidInfo"（1.21.1 是 DataComponent "maid_info"，键名不同）
+    private static final String MAID_INFO_COMPONENT = "MaidInfo";
     private static final String MAID_SHRINE_BLOCK = "shrine";
     private static final String MAID_SHRINE_STORAGE_KEY = "StorageItem";
 
@@ -67,7 +68,7 @@ public class ShieldTransferManager {
     // ===== 实体标签读写 =====
 
     /**
-     * 读取女仆模组存储物品（胶片/魂符等）内 maid_info NBT 中的护盾移植标签owner；
+     * 读取女仆模组存储物品（胶片/魂符等）内 MaidInfo NBT 中的护盾移植标签owner；
      * 无标签返回 null。仅按NBT键读取，不引用女仆模组类。
      */
     private static UUID readMaidInfoTagOwner(ItemStack stack) {

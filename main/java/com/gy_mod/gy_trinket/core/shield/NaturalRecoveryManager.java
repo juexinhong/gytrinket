@@ -2,6 +2,7 @@ package com.gy_mod.gy_trinket.core.shield;
 
 import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
+import com.gy_mod.gy_trinket.core.modifier.player.health.PlayerHealthManager;
 import com.gy_mod.gy_trinket.event.PlayerAttributesCalculatedEvent;
 import com.gy_mod.gy_trinket.gytrinket;
 import net.minecraft.server.level.ServerPlayer;
@@ -16,17 +17,23 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * 自然恢复管理器
+ * 自然恢复管理器（有限资源制）
  * <p>
  * 功能：
- * 1. 玩家生命自然恢复：每3刻恢复基于最大生命值和恢复效率的生命值
- * 2. 护盾自然恢复：每3刻恢复基于最大护盾值和恢复效率的护盾值
+ * 1. 玩家生命自然恢复：以恢复基数为上限资源，按配置比例每秒恢复
+ * 2. 护盾自然恢复：以最大护盾值为上限资源，按配置比例每秒恢复
  * 3. 攻击冷却惩罚：玩家攻击冷却未结束时，降低恢复速度20%
  * 4. 预留持续自伤位置：可通过负面恢复效率实现持续伤害
  * <p>
- * 恢复计算公式：
- * - 玩家生命恢复 = 配置基础恢复 × 恢复效率 × 攻击冷却惩罚
- * - 护盾恢复 = 配置基础恢复 × 恢复效率 × 攻击冷却惩罚
+ * 有限资源制（替代旧的25周期逐段折半制）：
+ * - 生命恢复基数 = 原版最大生命值（高于 20 时限为 20，低于 20 使用低值）
+ *   再叠加本模组生命修改属性（player_health / player_health_percent / player_health_independent），
+ *   其他模组的生命修饰符不计入
+ * - 护盾恢复基数 = 最大护盾值（配置默认 0，仅装备再生护盾机制物品时由模块提供恢复基数）
+ * <p>
+ * 恢复计算公式（每秒）：
+ * - 玩家生命恢复 = 恢复基数 × 配置基础恢复 × 恢复效率 × 攻击冷却惩罚
+ * - 护盾恢复 = 最大护盾值 × 配置基础恢复 × 恢复效率 × 攻击冷却惩罚
  * <p>
  * 攻击冷却检测：使用 getAttackStrengthScale(0.0f)，值>0.5时认为冷却未结束
  */
@@ -42,39 +49,7 @@ public class NaturalRecoveryManager {
     /** 恢复触发间隔：每4刻触发一次（相当于1秒触发5次） */
     private static final int RECOVERY_INTERVAL = 4;
 
-    /**
-     * 自然恢复上限标准（格）：指最大护盾值或最大玩家生命。
-     * 以 25 为周期：第一个 25 正常恢复，每超出一个周期，该周期的部分恢复量再减半。
-     * （25→正常，50→第二段减半，75→第三段1/4，以此类推），防止高最大值导致恢复数值崩坏。
-     */
-    private static final double RECOVERY_BASE_LIMIT = 25.0;
-
-    /**
-     * 最大周期数：超过此周期数后不再计算恢复（阈值限制，防止算力浪费）。
-     * 16 个周期（400 生命/护盾）后恢复效果收敛，后续数值不再提供有效恢复。
-     */
-    private static final int MAX_RECOVERY_CYCLES = 16;
-
     private NaturalRecoveryManager() {}
-
-    /**
-     * 计算有限制的恢复量：以 25 为周期，逐段恢复。
-     * 第 i 个周期的部分按 (0.5)^i 系数恢复，最多计算 MAX_RECOVERY_CYCLES 个周期。
-     */
-    private static double computeLimitedRecovery(double maxValue, double rate) {
-        double total = 0;
-        double remaining = maxValue;
-        double factor = 1.0;
-        int cycle = 0;
-        while (remaining > 0 && cycle < MAX_RECOVERY_CYCLES) {
-            double portion = Math.min(remaining, RECOVERY_BASE_LIMIT);
-            total += portion * rate * factor;
-            remaining -= portion;
-            factor *= 0.5;
-            cycle++;
-        }
-        return total;
-    }
 
     /**
      * 监听属性计算完毕事件
@@ -146,8 +121,9 @@ public class NaturalRecoveryManager {
         data.lastShieldRecovery = shieldRecovery;
 
         if (player.isAlive() && player.getHealth() > 0 && player.getHealth() < player.getMaxHealth()) {
-            // 恢复量限制：最大生命超过25的部分恢复量折半
-            float healAmount = (float) computeLimitedRecovery(player.getMaxHealth(), playerHealthRecovery);
+            // 有限资源制：恢复基数 = 原版最大生命（限20）叠加本模组生命修改属性，其他模组修饰符不计入
+            double recoveryBaseMaxHealth = PlayerHealthManager.getNaturalRecoveryMaxHealth(playerUUID, player);
+            float healAmount = (float) (recoveryBaseMaxHealth * playerHealthRecovery);
             player.heal(healAmount);
         }
 
@@ -155,8 +131,8 @@ public class NaturalRecoveryManager {
             double currentShield = ShieldManager.getCurrentShield(playerUUID);
             double maxShield = ShieldManager.getMaxShield(playerUUID);
             if (currentShield > 0 && currentShield < maxShield) {
-                // 恢复量限制：最大护盾超过25的部分恢复量折半
-                double shieldHealAmount = computeLimitedRecovery(maxShield, shieldRecovery);
+                // 有限资源制：以最大护盾值为基数按比例恢复
+                double shieldHealAmount = maxShield * shieldRecovery;
                 ShieldManager.addShield(playerUUID, shieldHealAmount);
             }
         }

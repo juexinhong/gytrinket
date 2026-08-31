@@ -95,10 +95,10 @@ public class AmplifierRenderer {
             float py = (float) pos[1];
             float pz = (float) pos[2];
 
-            bufferBuilder.vertex(matrix, px - halfSize, py, pz - halfSize).uv(0.0f, 0.0f).color(packedColor);
-            bufferBuilder.vertex(matrix, px - halfSize, py, pz + halfSize).uv(0.0f, 1.0f).color(packedColor);
-            bufferBuilder.vertex(matrix, px + halfSize, py, pz + halfSize).uv(1.0f, 1.0f).color(packedColor);
-            bufferBuilder.vertex(matrix, px + halfSize, py, pz - halfSize).uv(1.0f, 0.0f).color(packedColor);
+            bufferBuilder.vertex(matrix, px - halfSize, py, pz - halfSize).uv(0.0f, 0.0f).color(packedColor).endVertex();
+            bufferBuilder.vertex(matrix, px - halfSize, py, pz + halfSize).uv(0.0f, 1.0f).color(packedColor).endVertex();
+            bufferBuilder.vertex(matrix, px + halfSize, py, pz + halfSize).uv(1.0f, 1.0f).color(packedColor).endVertex();
+            bufferBuilder.vertex(matrix, px + halfSize, py, pz - halfSize).uv(1.0f, 0.0f).color(packedColor).endVertex();
         }
 
         BufferUploader.drawWithShader(bufferBuilder.end());

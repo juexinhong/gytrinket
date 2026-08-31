@@ -55,7 +55,7 @@ public class DroneBulletTrailManager {
             }
 
             // 渲染拖尾
-            trail.render(partialTicks);
+            trail.render(event.getPoseStack(), partialTicks);
 
             // 移除已完成的拖尾
             if (trail.shouldBeRemoved()) {

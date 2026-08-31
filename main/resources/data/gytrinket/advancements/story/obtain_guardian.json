@@ -5,7 +5,7 @@
       "conditions": {
         "items": [
           {
-            "items": ["gytrinket:guardian"]
+            "items": "gytrinket:guardian"
           }
         ]
       },
@@ -20,7 +20,7 @@
     "frame": "task",
     "hidden": false,
     "icon": {
-      "item": "gytrinket:guardian"
+      "id": "gytrinket:guardian"
     },
     "show_toast": true,
     "title": {

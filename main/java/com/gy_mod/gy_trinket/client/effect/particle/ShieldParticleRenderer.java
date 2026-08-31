@@ -50,11 +50,6 @@ public class ShieldParticleRenderer {
         return n * 0.5F + 0.5F;
     }
 
-    /** 将 RGBA 浮点（0~1）打包为 ARGB int，用于 1.21 的 setColor(int) */
-    private static int packColor(float r, float g, float b, float a) {
-        return ((int) (a * 255) << 24) | ((int) (r * 255) << 16) | ((int) (g * 255) << 8) | (int) (b * 255);
-    }
-
     public static void render(PoseStack poseStack,
                               net.minecraft.client.renderer.MultiBufferSource bufferSource,
                               net.minecraft.client.Camera camera,
@@ -65,7 +60,7 @@ public class ShieldParticleRenderer {
         }
 
         if (ClientConfig.SHIELD_PARTICLE_VOLUMETRIC_RENDERING.get()) {
-            // 自定义着色器渲染3D棱柱体（宝石质感）
+            // 始终使用自定义着色器渲染
             renderVolumetric(poseStack, bufferSource, camera, partialTicks);
         } else {
             renderVanilla(poseStack, bufferSource, camera, partialTicks);
@@ -91,6 +86,8 @@ public class ShieldParticleRenderer {
         RenderSystem.depthMask(false);
         RenderSystem.blendFunc(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA);
 
+        BufferBuilder bufferBuilder = Tesselator.getInstance().getBuilder();
+
         poseStack.pushPose();
         poseStack.translate(-cameraPos.x, -cameraPos.y, -cameraPos.z);
 
@@ -112,8 +109,6 @@ public class ShieldParticleRenderer {
             double px = originX + particle.offsetX;
             double py = originY + particle.offsetY;
             double pz = originZ + particle.offsetZ;
-
-            ResourceLocation texture = SHIELD_TEXTURES[textureIndex];
 
             float size = calculateSize(particle.age);
             float alpha = calculateAlpha(particle.age);
@@ -162,30 +157,27 @@ public class ShieldParticleRenderer {
             float glowAlpha = alpha * 0.5F;
 
             RenderSystem.setShader(GameRenderer::getPositionTexColorShader);
-            RenderSystem.setShaderTexture(0, texture);
+            RenderSystem.setShaderTexture(0, SHIELD_TEXTURES[textureIndex]);
 
             // 辉光层
-            Tesselator tessellator = Tesselator.getInstance();
-            BufferBuilder bufferBuilder = tessellator.getBuilder();
             bufferBuilder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
             float[] glowXyz = calculateVertices(px, py, pz, rightX, rightY, rightZ, upX, upY, upZ, glowSize);
-            int glowPackedColor = packColor(0.5F, 0.7F, 1.0F, glowAlpha);
             for (int i = 0; i < 4; i++) {
                 bufferBuilder.vertex(matrix, glowXyz[i * 3], glowXyz[i * 3 + 1], glowXyz[i * 3 + 2])
                              .uv(uvs[i * 2], uvs[i * 2 + 1])
-                             .color(glowPackedColor);
+                             .color(0.5F, 0.7F, 1.0F, glowAlpha)
+                             .endVertex();
             }
             BufferUploader.drawWithShader(bufferBuilder.end());
 
             // 主层
-            bufferBuilder = Tesselator.getInstance().getBuilder();
             bufferBuilder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
             float[] xyz = calculateVertices(px, py, pz, rightX, rightY, rightZ, upX, upY, upZ, size);
-            int packedColor = packColor(1.0F, 1.0F, 1.0F, alpha);
             for (int i = 0; i < 4; i++) {
                 bufferBuilder.vertex(matrix, xyz[i * 3], xyz[i * 3 + 1], xyz[i * 3 + 2])
                              .uv(uvs[i * 2], uvs[i * 2 + 1])
-                             .color(packedColor);
+                             .color(1.0F, 1.0F, 1.0F, alpha)
+                             .endVertex();
             }
             BufferUploader.drawWithShader(bufferBuilder.end());
         }
@@ -239,34 +231,31 @@ public class ShieldParticleRenderer {
                                                 org.joml.Matrix4f savedModelView,
                                                 org.joml.Matrix4f savedPoseStackMat) {
         if (savedProjection == null || savedModelView == null || savedPoseStackMat == null) return;
-
+        
         // 保存当前Iris composite后的矩阵
         org.joml.Matrix4f irisProjection = new org.joml.Matrix4f(RenderSystem.getProjectionMatrix());
-
+        org.joml.Matrix4f irisModelView = new org.joml.Matrix4f(RenderSystem.getModelViewStack().last().pose());
+        
         // 恢复composite之前的正确矩阵
-        RenderSystem.setProjectionMatrix(savedProjection, VertexSorting.DISTANCE_TO_ORIGIN);
+        RenderSystem.setProjectionMatrix(savedProjection, com.mojang.blaze3d.vertex.VertexSorting.DISTANCE_TO_ORIGIN);
         PoseStack modelViewStack = RenderSystem.getModelViewStack();
         modelViewStack.pushPose();
-        // 关键：将 modelViewStack 设为单位矩阵 I，让 ModelViewMat uniform = I
-        // 旋转 R 通过 savedModelView 传入 renderVolumetricWithPoseMatrix，
-        // 在那里构建 vertexMatrix = R × T(-camPos)，与非光影路径完全一致
-        // 这样 shader 的 ModelViewMat = I，InvModelViewMat = I（能量波shader需要）
-        modelViewStack.setIdentity();
-
-        // 传入 savedModelView(R) 作为顶点矩阵的旋转分量
-        renderVolumetricWithPoseMatrix(savedModelView, bufferSource, camera, partialTicks);
-
+        modelViewStack.last().pose().set(savedModelView);
+        
+        // 使用保存的PoseStack矩阵渲染（而非事件的PoseStack）
+        renderVolumetricWithPoseMatrix(savedPoseStackMat, bufferSource, camera, partialTicks);
+        
         // 恢复Iris的矩阵
         modelViewStack.popPose();
-        RenderSystem.setProjectionMatrix(irisProjection, VertexSorting.DISTANCE_TO_ORIGIN);
-
+        RenderSystem.setProjectionMatrix(irisProjection, com.mojang.blaze3d.vertex.VertexSorting.DISTANCE_TO_ORIGIN);
+        
         // 恢复渲染状态
         RenderSystem.depthMask(true);
         RenderSystem.enableCull();
         RenderSystem.disableBlend();
         RenderSystem.defaultBlendFunc();
     }
-
+    
     /**
      * 使用指定的PoseStack矩阵渲染体积护盾（不依赖事件的PoseStack）
      */
@@ -288,11 +277,9 @@ public class ShieldParticleRenderer {
 
         Vec3 cameraPos = mc.gameRenderer.getMainCamera().getPosition();
 
-        // 与非光影路径对齐：vertexMatrix = R(savedModelView) × T(-camPos)
-        // ModelViewMat uniform = I（modelViewStack已设为identity）
-        // shader计算：ProjMat × I × R × (vertex - camPos) = ProjMat × R × (vertex - camPos) ✓
+        // 用保存的摄像机旋转矩阵 + translate(-cameraPos) 构建顶点变换矩阵
         Matrix4f matrix = new Matrix4f(poseStackMat);
-        matrix.translate((float) -cameraPos.x, (float) -cameraPos.y, (float) -cameraPos.z);
+        matrix.translate((float)-cameraPos.x, (float)-cameraPos.y, (float)-cameraPos.z);
 
         RenderSystem.enableBlend();
         RenderSystem.blendFunc(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA);
@@ -303,6 +290,7 @@ public class ShieldParticleRenderer {
             glassShader.getUniform("Brightness").set(BRIGHTNESS);
         }
 
+        BufferBuilder bufferBuilder = Tesselator.getInstance().getBuilder();
         RenderSystem.setShader(() -> glassShader);
 
         for (ShieldParticleData particle : manager.getParticles()) {
@@ -326,10 +314,7 @@ public class ShieldParticleRenderer {
             float toCameraLen = (float) Math.sqrt(toCameraX * toCameraX + toCameraY * toCameraY + toCameraZ * toCameraZ);
             if (toCameraLen > 0.001f) { toCameraX /= toCameraLen; toCameraY /= toCameraLen; toCameraZ /= toCameraLen; }
 
-            BufferBuilder bufferBuilder = Tesselator.getInstance().getBuilder();
-            bufferBuilder.begin(VertexFormat.Mode.TRIANGLES, DefaultVertexFormat.POSITION_TEX_COLOR);
             renderPrism(bufferBuilder, matrix, geo, toCameraX, toCameraY, toCameraZ);
-
             BufferUploader.drawWithShader(bufferBuilder.end());
         }
     }
@@ -369,6 +354,8 @@ public class ShieldParticleRenderer {
             glassShader.getUniform("Brightness").set(BRIGHTNESS);
         }
 
+        BufferBuilder bufferBuilder = Tesselator.getInstance().getBuilder();
+
         RenderSystem.setShader(() -> glassShader);
 
         for (ShieldParticleData particle : manager.getParticles()) {
@@ -392,10 +379,7 @@ public class ShieldParticleRenderer {
             float toCameraLen = (float) Math.sqrt(toCameraX * toCameraX + toCameraY * toCameraY + toCameraZ * toCameraZ);
             if (toCameraLen > 0.001f) { toCameraX /= toCameraLen; toCameraY /= toCameraLen; toCameraZ /= toCameraLen; }
 
-            BufferBuilder bufferBuilder = Tesselator.getInstance().getBuilder();
-            bufferBuilder.begin(VertexFormat.Mode.TRIANGLES, DefaultVertexFormat.POSITION_TEX_COLOR);
             renderPrism(bufferBuilder, matrix, geo, toCameraX, toCameraY, toCameraZ);
-
             BufferUploader.drawWithShader(bufferBuilder.end());
         }
 
@@ -413,7 +397,7 @@ public class ShieldParticleRenderer {
         try {
             ResourceManager rm = Minecraft.getInstance().getResourceManager();
             Optional<Resource> resourceOpt = rm.getResource(SHIELD_TEXTURES[0]);
-            if (resourceOpt.isEmpty()) {
+            if (!resourceOpt.isPresent()) {
                 outlineInitFailed = true;
                 return;
             }
@@ -510,8 +494,7 @@ public class ShieldParticleRenderer {
     }
 
     /**
-     * 渲染3D棱柱粒子（仅添加顶点，begin由调用者完成）
-     *
+     * 渲染3D棱柱粒子
      * @param viewDirX 从粒子中心指向摄像机的方向向量（世界空间，归一化）
      * @param viewDirY
      * @param viewDirZ
@@ -519,6 +502,7 @@ public class ShieldParticleRenderer {
     private static void renderPrism(BufferBuilder buf, Matrix4f matrix, ParticleGeo geo,
                                      float viewDirX, float viewDirY, float viewDirZ) {
         int n = outlinePointCount;
+        buf.begin(VertexFormat.Mode.TRIANGLES, DefaultVertexFormat.POSITION_TEX_COLOR);
 
         float alpha = geo.alpha;
         float nFx = packNormal(geo.dirX), nFy = packNormal(geo.dirY), nFz = packNormal(geo.dirZ);
@@ -529,26 +513,23 @@ public class ShieldParticleRenderer {
         boolean renderFront = facingDot > 0;
         boolean renderBack = facingDot < 0;
 
-        int frontColor = packColor(nFx, nFy, nFz, alpha);
-        int backColor = packColor(nBx, nBy, nBz, alpha);
-
         float fcx = geo.fcx, fcy = geo.fcy, fcz = geo.fcz;
 
         // 仅渲染朝向摄像机的面，避免正反面重叠导致亮度累加过曝
         if (renderFront) {
             for (int i = 0; i < n; i++) {
                 int next = (i + 1) % n;
-                buf.vertex(matrix, fcx, fcy, fcz).uv(outlineCenterU, outlineCenterV).color(frontColor);
+                buf.vertex(matrix, fcx, fcy, fcz).uv(outlineCenterU, outlineCenterV).color(nFx, nFy, nFz, alpha).endVertex();
 
                 float px0 = fcx + outlineDu[i] * geo.size * geo.rightX + outlineDv[i] * geo.size * geo.upX;
                 float py0 = fcy + outlineDu[i] * geo.size * geo.rightY + outlineDv[i] * geo.size * geo.upY;
                 float pz0 = fcz + outlineDu[i] * geo.size * geo.rightZ + outlineDv[i] * geo.size * geo.upZ;
-                buf.vertex(matrix, px0, py0, pz0).uv(outlineUVs[i * 2], outlineUVs[i * 2 + 1]).color(frontColor);
+                buf.vertex(matrix, px0, py0, pz0).uv(outlineUVs[i * 2], outlineUVs[i * 2 + 1]).color(nFx, nFy, nFz, alpha).endVertex();
 
                 float px1 = fcx + outlineDu[next] * geo.size * geo.rightX + outlineDv[next] * geo.size * geo.upX;
                 float py1 = fcy + outlineDu[next] * geo.size * geo.rightY + outlineDv[next] * geo.size * geo.upY;
                 float pz1 = fcz + outlineDu[next] * geo.size * geo.rightZ + outlineDv[next] * geo.size * geo.upZ;
-                buf.vertex(matrix, px1, py1, pz1).uv(outlineUVs[next * 2], outlineUVs[next * 2 + 1]).color(frontColor);
+                buf.vertex(matrix, px1, py1, pz1).uv(outlineUVs[next * 2], outlineUVs[next * 2 + 1]).color(nFx, nFy, nFz, alpha).endVertex();
             }
         }
 
@@ -557,17 +538,17 @@ public class ShieldParticleRenderer {
         if (renderBack) {
             for (int i = 0; i < n; i++) {
                 int next = (i + 1) % n;
-                buf.vertex(matrix, bcx, bcy, bcz).uv(outlineCenterU, outlineCenterV).color(backColor);
+                buf.vertex(matrix, bcx, bcy, bcz).uv(outlineCenterU, outlineCenterV).color(nBx, nBy, nBz, alpha).endVertex();
 
                 float px1 = bcx + outlineDu[next] * geo.size * geo.rightX + outlineDv[next] * geo.size * geo.upX;
                 float py1 = bcy + outlineDu[next] * geo.size * geo.rightY + outlineDv[next] * geo.size * geo.upY;
                 float pz1 = bcz + outlineDu[next] * geo.size * geo.rightZ + outlineDv[next] * geo.size * geo.upZ;
-                buf.vertex(matrix, px1, py1, pz1).uv(outlineUVs[next * 2], outlineUVs[next * 2 + 1]).color(backColor);
+                buf.vertex(matrix, px1, py1, pz1).uv(outlineUVs[next * 2], outlineUVs[next * 2 + 1]).color(nBx, nBy, nBz, alpha).endVertex();
 
                 float px0 = bcx + outlineDu[i] * geo.size * geo.rightX + outlineDv[i] * geo.size * geo.upX;
                 float py0 = bcy + outlineDu[i] * geo.size * geo.rightY + outlineDv[i] * geo.size * geo.upY;
                 float pz0 = bcz + outlineDu[i] * geo.size * geo.rightZ + outlineDv[i] * geo.size * geo.upZ;
-                buf.vertex(matrix, px0, py0, pz0).uv(outlineUVs[i * 2], outlineUVs[i * 2 + 1]).color(backColor);
+                buf.vertex(matrix, px0, py0, pz0).uv(outlineUVs[i * 2], outlineUVs[i * 2 + 1]).color(nBx, nBy, nBz, alpha).endVertex();
             }
         }
 
@@ -601,7 +582,7 @@ public class ShieldParticleRenderer {
             float sideFacingDot = sX * viewDirX + sY * viewDirY + sZ * viewDirZ;
             if (sideFacingDot <= 0) continue;
 
-            int sideColor = packColor(packNormal(sX), packNormal(sY), packNormal(sZ), alpha);
+            float nSx = packNormal(sX), nSy = packNormal(sY), nSz = packNormal(sZ);
 
             // 正面顶点
             float fpx0 = fcx + outlineDu[i] * geo.size * geo.rightX + outlineDv[i] * geo.size * geo.upX;
@@ -622,13 +603,13 @@ public class ShieldParticleRenderer {
             float u1 = outlineUVs[next * 2], v1 = outlineUVs[next * 2 + 1];
 
             // 三角形 1: front[i], front[next], back[i]
-            buf.vertex(matrix, fpx0, fpy0, fpz0).uv(u0, v0).color(sideColor);
-            buf.vertex(matrix, fpx1, fpy1, fpz1).uv(u1, v1).color(sideColor);
-            buf.vertex(matrix, bpx0, bpy0, bpz0).uv(u0, v0).color(sideColor);
+            buf.vertex(matrix, fpx0, fpy0, fpz0).uv(u0, v0).color(nSx, nSy, nSz, alpha).endVertex();
+            buf.vertex(matrix, fpx1, fpy1, fpz1).uv(u1, v1).color(nSx, nSy, nSz, alpha).endVertex();
+            buf.vertex(matrix, bpx0, bpy0, bpz0).uv(u0, v0).color(nSx, nSy, nSz, alpha).endVertex();
             // 三角形 2: front[next], back[next], back[i]
-            buf.vertex(matrix, fpx1, fpy1, fpz1).uv(u1, v1).color(sideColor);
-            buf.vertex(matrix, bpx1, bpy1, bpz1).uv(u1, v1).color(sideColor);
-            buf.vertex(matrix, bpx0, bpy0, bpz0).uv(u0, v0).color(sideColor);
+            buf.vertex(matrix, fpx1, fpy1, fpz1).uv(u1, v1).color(nSx, nSy, nSz, alpha).endVertex();
+            buf.vertex(matrix, bpx1, bpy1, bpz1).uv(u1, v1).color(nSx, nSy, nSz, alpha).endVertex();
+            buf.vertex(matrix, bpx0, bpy0, bpz0).uv(u0, v0).color(nSx, nSy, nSz, alpha).endVertex();
         }
     }
 
@@ -744,4 +725,3 @@ public class ShieldParticleRenderer {
         }
     }
 }
-

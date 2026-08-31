@@ -353,7 +353,9 @@ public class DroneConstructEntity extends AbstractConstructEntity {
                         && entity instanceof net.minecraft.world.entity.Mob
                         && HostileTargetManager.shouldAttackPlayer(entity, playerOwner),
                 false,
-                playerOwner
+                playerOwner,
+                -1.0,
+                "simulated_explosion"
         );
 
         if (this.level() instanceof ServerLevel serverLevel) {

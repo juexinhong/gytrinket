@@ -112,6 +112,7 @@ public class ModCreativeModeTabs {
                         // 攻击速度物品
                         output.accept(ModItems.FAST_SHOOTING_MODULE.get());
                         output.accept(ModItems.BURST_FIRE_MODULE.get());
+                        output.accept(ModItems.JOURNEY_MODULE.get());
                         output.accept(ModItems.ASSAULT_MODULE.get());
 
                         // 攻击伤害物品
@@ -207,6 +208,7 @@ public class ModCreativeModeTabs {
                         output.accept(ModItems.SHOCKWAVE_PART.get());
                         output.accept(ModItems.NANO_REGEN_PART.get());
                         output.accept(ModItems.SUPPRESSION_PART.get());
+                        output.accept(ModItems.WAR_SOUL.get());
 
                         // 代币
                         output.accept(ModItems.TOKEN.get());

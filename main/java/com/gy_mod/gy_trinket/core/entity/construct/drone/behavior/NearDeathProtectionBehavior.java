@@ -4,7 +4,9 @@ import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.core.damage.InvincibilityMarkerManager;
 import com.gy_mod.gy_trinket.core.shield.DisableSystem;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneConstructEntity;
+import com.gy_mod.gy_trinket.core.defs.DefsManager;
 import com.gy_mod.gy_trinket.storage.PlayerStoreUtils;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.item.ItemStack;
@@ -90,13 +92,11 @@ public class NearDeathProtectionBehavior implements IDroneSpecialBehavior {
         if (ownerUUID == null) {
             return false;
         }
-        // 已装备物品 = 光点核心存储 + Curios 饰品栏（光点核心内容扩展）
-        for (ItemStack stack : PlayerStoreUtils.getEquippedStacks(ownerUUID)) {
-            if (!stack.isEmpty() && !DisableSystem.isItemDisabled(ownerUUID, stack) && Config.isNearDeathProtectionItem(stack.getItem())) {
-                return true;
-            }
+        MinecraftServer server = drone.level().getServer();
+        if (server == null) {
+            return false;
         }
-        return false;
+        return DefsManager.playerHasEquippedMechanic(server, ownerUUID, "near_death_protection_items");
     }
 }
 

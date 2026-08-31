@@ -78,6 +78,60 @@ public class LightPointCoreMenu extends AbstractContainerMenu {
         return itemstack;
     }
 
+    /**
+     * 一键整理光点核心容器（鼠标中键触发）：先合并同类可堆叠物品，再按创造物品栏排序
+     * 排序规则 = 物品注册 ID 升序（与创造物品栏一致），同物品按数量降序
+     */
+    public void sortContainer() {
+        // 取出全部非空物品并清空容器
+        java.util.List<ItemStack> items = new java.util.ArrayList<>();
+        for (int i = 0; i < 27; i++) {
+            ItemStack stack = this.container.getItem(i);
+            if (!stack.isEmpty()) {
+                items.add(stack.copy());
+                this.container.setItem(i, ItemStack.EMPTY);
+            }
+        }
+        if (items.isEmpty()) {
+            return;
+        }
+        // 合并同类可堆叠物品（物品 + NBT 一致且目标未满堆）
+        java.util.List<ItemStack> merged = new java.util.ArrayList<>();
+        for (ItemStack stack : items) {
+            boolean placed = false;
+            if (stack.isStackable()) {
+                for (ItemStack target : merged) {
+                    if (target.getCount() < target.getMaxStackSize()
+                            && ItemStack.isSameItemSameTags(target, stack)) {
+                        int canAdd = Math.min(stack.getCount(), target.getMaxStackSize() - target.getCount());
+                        target.grow(canAdd);
+                        stack.shrink(canAdd);
+                        if (stack.isEmpty()) {
+                            placed = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            if (!placed && !stack.isEmpty()) {
+                merged.add(stack);
+            }
+        }
+        // 排序：注册 ID 升序，同 ID 按数量降序
+        merged.sort((a, b) -> {
+            int ia = net.minecraft.core.registries.BuiltInRegistries.ITEM.getId(a.getItem());
+            int ib = net.minecraft.core.registries.BuiltInRegistries.ITEM.getId(b.getItem());
+            if (ia != ib) {
+                return Integer.compare(ia, ib);
+            }
+            return Integer.compare(b.getCount(), a.getCount());
+        });
+        // 写回容器（防越界保护）
+        for (int i = 0; i < merged.size() && i < 27; i++) {
+            this.container.setItem(i, merged.get(i));
+        }
+    }
+
     @Override
     public boolean stillValid(Player player) {
         return container.stillValid(player);

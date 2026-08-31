@@ -18,9 +18,22 @@ import java.util.UUID;
  */
 public interface IConstructEntity {
 
-    /** 获取归属玩家 UUID */
+    /**
+     * 获取归属玩家 UUID。
+     * <p>
+     * 注意：发布 jar（SRG 重映射）下，本方法名 getOwnerUUID 与 Minecraft 接口
+     * {@link net.minecraft.world.entity.OwnableEntity#getOwnerUUID()} 同名，重映射后两者被拆分为
+     * 不同方法名（OwnableEntity 的变为 m_21805_ 等 SRG 名），导致实现类只实现了 SRG 版而本接口
+     * 方法无实现，运行时报 AbstractMethodError。故改为 default 方法并委托给 OwnableEntity，
+     * 保证两种映射环境下都能取到真实归属。
+     */
     @Nullable
-    UUID getOwnerUUID();
+    default UUID getOwnerUUID() {
+        if (this instanceof net.minecraft.world.entity.OwnableEntity ownable) {
+            return ownable.getOwnerUUID();
+        }
+        return null;
+    }
 
     /** 获取基础最大生命值（不含属性修饰器加成） */
     double getBaseMaxHealth();

@@ -3,6 +3,7 @@ package com.gy_mod.gy_trinket.core.modifier.player.movement;
 import com.gy_mod.gy_trinket.core.attack_mode.AttackSpeedPenaltyManager;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
 import com.gy_mod.gy_trinket.core.modifier.ModifierHelper;
+import com.gy_mod.gy_trinket.event.AttributeDynamicChangeEvent;
 import com.gy_mod.gy_trinket.event.PlayerAttributesCalculatedEvent;
 import com.gy_mod.gy_trinket.gytrinket;
 import net.minecraft.server.level.ServerPlayer;
@@ -29,9 +30,6 @@ public class MovementSpeedManager {
     public static void onAttributesCalculated(PlayerAttributesCalculatedEvent event) {
         UUID playerUUID = event.getPlayerUUID();
 
-        double movementSpeedPercent = AttributeManager.getPlayerAttribute(playerUUID, "movement_speed_percent");
-        double movementSpeedIndependent = AttributeManager.getPlayerAttribute(playerUUID, "movement_speed_independent");
-
         ServerPlayer player = event.getPlayer();
         if (player == null) {
             var server = net.minecraftforge.server.ServerLifecycleHooks.getCurrentServer();
@@ -42,6 +40,36 @@ public class MovementSpeedManager {
         if (player == null || !player.isAlive()) {
             return;
         }
+
+        applyMovementModifier(player, playerUUID);
+    }
+
+    @SubscribeEvent
+    public static void onAttributeDynamicChange(AttributeDynamicChangeEvent event) {
+        UUID playerUUID = event.getPlayerUUID();
+        String attrName = event.getAttributeName();
+
+        if (!attrName.equals("movement_speed_percent") && !attrName.equals("movement_speed_independent")) {
+            return;
+        }
+
+        var server = net.minecraftforge.server.ServerLifecycleHooks.getCurrentServer();
+        if (server == null) {
+            return;
+        }
+
+        ServerPlayer player = server.getPlayerList().getPlayer(playerUUID);
+        if (player == null || !player.isAlive()) {
+            return;
+        }
+
+        applyMovementModifier(player, playerUUID);
+    }
+
+    /** 按当前 movement_speed 属性聚合值重新施加修饰符 */
+    private static void applyMovementModifier(ServerPlayer player, UUID playerUUID) {
+        double movementSpeedPercent = AttributeManager.getPlayerAttribute(playerUUID, "movement_speed_percent");
+        double movementSpeedIndependent = AttributeManager.getPlayerAttribute(playerUUID, "movement_speed_independent");
 
         double totalMultiplier = movementSpeedPercent * movementSpeedIndependent;
 

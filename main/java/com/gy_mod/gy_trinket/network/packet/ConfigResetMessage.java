@@ -2,6 +2,7 @@ package com.gy_mod.gy_trinket.network.packet;
 
 import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
+import com.gy_mod.gy_trinket.core.defs.DefsManager;
 import com.gy_mod.gy_trinket.network.NetworkHandler;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
@@ -22,6 +23,9 @@ public class ConfigResetMessage {
             if (player == null) return;
             if (!player.hasPermissions(2)) return;
 
+            // 重置运行时覆盖（特殊机制/护盾类型），恢复数据包默认定义
+            DefsManager.resetOverrides(player.server);
+
             AttributeManager.resetToDefaults();
             Config.resetItemAttributesConfig();
 
@@ -30,6 +34,8 @@ public class ConfigResetMessage {
             }
 
             NetworkHandler.sendConfigDataToAllPlayers(player);
+            // 同步空覆盖层到所有客户端，面板/提示恢复默认显示
+            NetworkHandler.sendDefsOverridesToAllPlayers(player);
         });
         context.setPacketHandled(true);
     }

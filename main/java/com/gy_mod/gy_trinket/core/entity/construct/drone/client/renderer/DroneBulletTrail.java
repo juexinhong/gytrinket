@@ -4,6 +4,7 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.BufferBuilder;
 import com.mojang.blaze3d.vertex.BufferUploader;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
+import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.Tesselator;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.Camera;
@@ -15,6 +16,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.projectile.ThrowableItemProjectile;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import org.joml.Matrix4f;
 
 import java.util.List;
 
@@ -133,7 +135,7 @@ public class DroneBulletTrail {
     /**
      * 每帧调用，更新节点并渲染拖尾。
      */
-    public void render(float partialTicks) {
+    public void render(PoseStack poseStack, float partialTicks) {
         // 计算自上一帧以来的 tick 增量
         long now = System.nanoTime() / 1_000_000L;
         float deltaTicks;
@@ -168,7 +170,7 @@ public class DroneBulletTrail {
             }
         }
 
-        renderNodes(partialTicks);
+        renderNodes(poseStack, partialTicks);
     }
 
     /**
@@ -241,7 +243,7 @@ public class DroneBulletTrail {
         }
     }
 
-    private void renderNodes(float partialTicks) {
+    private void renderNodes(PoseStack poseStack, float partialTicks) {
         Camera camera = Minecraft.getInstance().gameRenderer.getMainCamera();
         Vec3 cameraPos = camera.getPosition();
 
@@ -255,6 +257,11 @@ public class DroneBulletTrail {
         Tesselator tessellator = Tesselator.getInstance();
         BufferBuilder buffer = tessellator.getBuilder();
         buffer.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
+
+        // 与 1.1.1 一致：translate(-camPos) + 世界坐标顶点 + 矩阵预变换（ModelViewMat=I 时正确）
+        poseStack.pushPose();
+        poseStack.translate(-cameraPos.x, -cameraPos.y, -cameraPos.z);
+        Matrix4f matrix = poseStack.last().pose();
 
         final float r = trailType.r;
         final float g = trailType.g;
@@ -287,21 +294,22 @@ public class DroneBulletTrail {
             float scale0 = maxWidth * (1.0F - t0);
             float scale1 = maxWidth * (1.0F - t1);
 
-            Vec3 pos0 = new Vec3(x0 - cameraPos.x, y0 - cameraPos.y, z0 - cameraPos.z);
-            Vec3 pos1 = new Vec3(x1 - cameraPos.x, y1 - cameraPos.y, z1 - cameraPos.z);
+            Vec3 pos0 = new Vec3(x0, y0, z0);
+            Vec3 pos1 = new Vec3(x1, y1, z1);
 
-            int c0 = packColor(r * brightness0, g * brightness0, b * brightness0, alpha0);
-            int c1 = packColor(r * brightness1, g * brightness1, b * brightness1, alpha1);
-
-            addQuad(buffer, pos0, pos1,
+            addQuad(buffer, matrix, pos0, pos1,
                     n0.rx, n0.ry, n0.rz,
                     n1.rx, n1.ry, n1.rz,
-                    scale0, scale1, c0, c1);
-            addQuad(buffer, pos0, pos1,
+                    scale0, scale1, r * brightness0, g * brightness0, b * brightness0, alpha0,
+                                       r * brightness1, g * brightness1, b * brightness1, alpha1);
+            addQuad(buffer, matrix, pos0, pos1,
                     n0.ux, n0.uy, n0.uz,
                     n1.ux, n1.uy, n1.uz,
-                    scale0, scale1, c0, c1);
+                    scale0, scale1, r * brightness0, g * brightness0, b * brightness0, alpha0,
+                                       r * brightness1, g * brightness1, b * brightness1, alpha1);
         }
+
+        poseStack.popPose();
 
         BufferBuilder.RenderedBuffer mesh = buffer.end();
         if (mesh != null) {
@@ -313,37 +321,32 @@ public class DroneBulletTrail {
         RenderSystem.enableCull();
     }
 
-    private void addQuad(BufferBuilder buffer, Vec3 pos0, Vec3 pos1,
+    private void addQuad(BufferBuilder buffer, Matrix4f matrix, Vec3 pos0, Vec3 pos1,
                          float ax0, float ay0, float az0,
                          float ax1, float ay1, float az1,
-                         float scale0, float scale1, int c0, int c1) {
-        buffer.vertex(
+                         float scale0, float scale1,
+                         float r0, float g0, float b0, float alpha0,
+                         float r1, float g1, float b1, float alpha1) {
+        buffer.vertex(matrix,
                 (float) (pos0.x - ax0 * scale0),
                 (float) (pos0.y - ay0 * scale0),
                 (float) (pos0.z - az0 * scale0)
-        ).color(c0);
-        buffer.vertex(
+        ).color(r0, g0, b0, alpha0).endVertex();
+        buffer.vertex(matrix,
                 (float) (pos0.x + ax0 * scale0),
                 (float) (pos0.y + ay0 * scale0),
                 (float) (pos0.z + az0 * scale0)
-        ).color(c0);
-        buffer.vertex(
+        ).color(r0, g0, b0, alpha0).endVertex();
+        buffer.vertex(matrix,
                 (float) (pos1.x + ax1 * scale1),
                 (float) (pos1.y + ay1 * scale1),
                 (float) (pos1.z + az1 * scale1)
-        ).color(c1);
-        buffer.vertex(
+        ).color(r1, g1, b1, alpha1).endVertex();
+        buffer.vertex(matrix,
                 (float) (pos1.x - ax1 * scale1),
                 (float) (pos1.y - ay1 * scale1),
                 (float) (pos1.z - az1 * scale1)
-        ).color(c1);
-    }
-
-    private static int packColor(float r, float g, float b, float a) {
-        return ((int) (a * 255.0F) << 24) |
-                ((int) (r * 255.0F) << 16) |
-                ((int) (g * 255.0F) << 8) |
-                (int) (b * 255.0F);
+        ).color(r1, g1, b1, alpha1).endVertex();
     }
 
     public boolean shouldBeRemoved() {

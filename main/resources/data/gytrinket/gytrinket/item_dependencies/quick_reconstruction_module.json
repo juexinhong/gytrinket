@@ -1,1 +1,1 @@
-{"item":"gytrinket:quick_reconstruction_module","dependsOn":["gytrinket:regen_module"],"disables":["gytrinket:regen_shield_module"],"disablesCategories":["shields"]}
+{"item":"gytrinket:quick_reconstruction_module","dependsOn":["gytrinket:regen_module"],"disables":["gytrinket:regen_shield_module","gytrinket:ultimate_shield_module"],"disablesCategories":["shields"]}

@@ -25,6 +25,8 @@ public class RequestRandomBuildMessage {
         context.enqueueWork(() -> {
             ServerPlayer player = context.getSender();
             if (player == null) return;
+            // 打开面板时主动检查：已装备独占类物品（护盾/机身）但池仍是对应独占类池则刷新
+            RandomBuildManager.refreshIfExclusiveStale(player);
             if (RandomBuildManager.hasStoredPool(player.getUUID())) {
                 NetworkHandler.INSTANCE.send(PacketDistributor.PLAYER.with(() -> player),
                     new ResponseRandomBuildMessage(RandomBuildManager.getCurrentPool(player.getUUID())));

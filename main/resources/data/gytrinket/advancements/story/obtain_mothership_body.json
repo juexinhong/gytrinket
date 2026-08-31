@@ -5,7 +5,7 @@
       "conditions": {
         "items": [
           {
-            "items": ["gytrinket:mothership_body"]
+            "items": "gytrinket:mothership_body"
           }
         ]
       },
@@ -20,7 +20,7 @@
     "frame": "task",
     "hidden": false,
     "icon": {
-      "item": "gytrinket:mothership_body"
+      "id": "gytrinket:mothership_body"
     },
     "show_toast": true,
     "title": {

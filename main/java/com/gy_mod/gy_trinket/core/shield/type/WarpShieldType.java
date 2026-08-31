@@ -124,8 +124,8 @@ public class WarpShieldType implements IShieldType {
         // 获取需要传送的实体（玩家或被保护实体）
         List<LivingEntity> entitiesToWarp;
         
-        if (ShieldTransferManager.hasTransferredShield(playerUUID)) {
-            // 护盾移植时，传送被保护的实体
+        if (ShieldTransferManager.isShieldTransferEnabled(playerUUID)) {
+            // 护盾移植模式：传送被保护的实体（无受保护实体时玩家自身不传送）
             entitiesToWarp = ShieldTransferManager.getProtectedEntities(playerUUID, level);
         } else {
             // 未移植时，传送玩家
@@ -307,8 +307,8 @@ public class WarpShieldType implements IShieldType {
         
         WarpShieldType shieldType = new WarpShieldType();
         
-        if (ShieldTransferManager.hasTransferredShield(playerUUID)) {
-            // 护盾移植时，处理被保护实体
+        if (ShieldTransferManager.isShieldTransferEnabled(playerUUID)) {
+            // 护盾移植模式：处理被保护实体（无受保护实体时玩家自身不触发跃迁）
             List<LivingEntity> protectedEntities = ShieldTransferManager.getProtectedEntities(playerUUID, player.level());
             
             // 在每个被保护实体位置产生第一次爆炸

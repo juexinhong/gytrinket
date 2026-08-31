@@ -18,12 +18,12 @@ public class LightningRenderMessage {
 
     public LightningRenderMessage() {
         this.segments = new ArrayList<>();
-        this.duration = 8;
+        this.duration = 1;
         this.maxWidth = -1.0f;
     }
 
     public LightningRenderMessage(List<ElectricDischargeManager.LightningSegment> segments) {
-        this(segments, 8, -1.0f);
+        this(segments, 6, -1.0f);
     }
 
     public LightningRenderMessage(List<ElectricDischargeManager.LightningSegment> segments, int duration, float maxWidth) {

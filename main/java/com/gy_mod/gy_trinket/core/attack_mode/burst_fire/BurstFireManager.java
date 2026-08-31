@@ -112,9 +112,9 @@ public class BurstFireManager {
         boolean isAutoAttack = IS_AUTO_ATTACKING.getOrDefault(playerUUID, false);
 
         if (!isAutoAttack) {
-            // 检查攻击强度是否为100%
+            // 检查攻击强度是否达90%
             float attackStrength = player.getAttackStrengthScale(0.0F);
-            if (attackStrength < 1.0F) {
+            if (attackStrength < 0.9F) {
                 return;
             }
 
@@ -404,6 +404,16 @@ public class BurstFireManager {
         }
 
         UUID playerUUID = player.getUUID();
+
+        // 死亡时若处于连击冷却/点射中，先通知客户端取消对应状态；
+        // 否则客户端冷却/点射状态残留，重生后攻击强度被永久锁定为 0（攻击永久禁用）
+        if (COMBO_COOLDOWN.containsKey(playerUUID)) {
+            NetworkHandler.sendComboCooldownToPlayer(player, false, 0);
+        }
+        if (IS_AUTO_ATTACKING.getOrDefault(playerUUID, false)) {
+            NetworkHandler.sendBurstFiringToPlayer(player, false);
+        }
+
         CURRENT_TARGETS.remove(playerUUID);
         REMAINING_COMBO.remove(playerUUID);
         IS_AUTO_ATTACKING.remove(playerUUID);

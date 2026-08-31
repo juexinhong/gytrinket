@@ -38,9 +38,12 @@ float sdCapsule(vec3 p, vec3 a, vec3 b, float ra, float rb) {
 }
 
 void main() {
-    // 相机相对坐标（相机在原点）
-    vec3 ro = (InvModelViewMat * vec4(viewPos, 1.0)).xyz;
-    vec3 rd = normalize(ro);
+    // 射线起点 = 像素位置；相机位置由 InvModelViewMat 还原（与能量波着色器同款技巧）。
+    // 两种渲染路径统一：非光影（顶点世界坐标）ro-cam = 相机相对向量；光影（顶点相机相对）cam=0 等价。
+    vec4 ro4 = InvModelViewMat * vec4(viewPos, 1.0);
+    vec4 cam4 = InvModelViewMat * vec4(0.0, 0.0, 0.0, 1.0);
+    vec3 ro = ro4.xyz;
+    vec3 rd = normalize(ro - cam4.xyz);
 
     float maxRadius = max(RadiusStart, RadiusEnd);
     float maxDist = length(SegEnd - SegStart) + BoxRad * 2.0 + 1.0;

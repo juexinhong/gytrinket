@@ -6,6 +6,7 @@ import com.gy_mod.gy_trinket.core.entity.construct.drone.ModDamageSources;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.ModEntities;
 import com.gy_mod.gy_trinket.core.explosion.EnergyWaveExplosion;
 import com.gy_mod.gy_trinket.core.entity.construct.HostileTargetManager;
+import com.gy_mod.gy_trinket.core.damage.SecondaryDamageMerger;
 import com.gy_mod.gy_trinket.core.modifier.player.knockback.KnockbackManager;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.damagesource.DamageSource;
@@ -217,10 +218,12 @@ public class ExplosiveProjectile extends ThrowableItemProjectile {
      * 对目标造成伤害，并移除无敌时间以确保多枚爆破弹都能命中
      */
     private void dealDamageToTarget(LivingEntity target) {
-        target.invulnerableTime = 0;
-        KnockbackManager.markNoKnockback(target.getUUID());
-        target.hurt(createDamageSourceWithGuardAggro(), damage);
-        target.invulnerableTime = 0;
+        DamageSource source = createDamageSourceWithGuardAggro();
+        SecondaryDamageMerger.accumulate(target, "explosive_shell", damage, (t, mergedDamage) -> {
+            t.invulnerableTime = 0;
+            t.hurt(source, mergedDamage);
+            t.invulnerableTime = 0;
+        });
     }
 
     /**
@@ -266,7 +269,11 @@ public class ExplosiveProjectile extends ThrowableItemProjectile {
                         && !(entity instanceof WingmanConstructEntity)
                         && (ownerPlayer == null || HostileTargetManager.shouldAttackPlayer(entity, ownerPlayer)),
                 true,
-                ownerPlayer
+                ownerPlayer,
+                null,
+                true,
+                0.0,
+                "energy_wave"
             );
         }
 

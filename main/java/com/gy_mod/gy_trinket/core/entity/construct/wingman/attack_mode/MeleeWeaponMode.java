@@ -40,6 +40,9 @@ public class MeleeWeaponMode implements InterceptorWeaponMode {
         ItemStack prevMainHand = attacker.getItemBySlot(EquipmentSlot.MAINHAND);
         attacker.setItemSlot(EquipmentSlot.MAINHAND, weaponCopy);
 
+        // 双保险：命中前清除目标无敌帧（LivingIncomingDamageEvent 的清零兜底之外，直接在此保证高频近战不被吞伤）
+        target.invulnerableTime = 0;
+
         boolean hit = attacker.doHurtTarget(target);
         InterceptorDebug.logAttackResult(attacker, "近战结果: hit=" + hit);
 
@@ -106,6 +109,8 @@ public class MeleeWeaponMode implements InterceptorWeaponMode {
                 float posX = Mth.sin(attacker.getYRot() * ((float) Math.PI / 180F));
                 float posY = -Mth.cos(attacker.getYRot() * ((float) Math.PI / 180F));
                 entity.knockback(0.4, posX, posY);
+                // 横扫目标同样清除无敌帧，保证多目标横扫不被原版无敌帧吞伤
+                entity.invulnerableTime = 0;
                 entity.hurt(ModDamageSources.mobAttackWithGuardAggro(attacker, entity), sweepDamage);
             }
         }

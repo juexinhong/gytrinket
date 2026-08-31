@@ -142,25 +142,25 @@ public class ChargedSweepRenderer {
             float x0 = px + (-halfW * rightX - halfH * forwardX);
             float y0 = py + (-halfW * rightY - halfH * forwardY);
             float z0 = pz + (-halfW * rightZ - halfH * forwardZ);
-            bufferBuilder.vertex(matrix, x0, y0, z0).uv(u0, v1).color(packedColor);
+            bufferBuilder.vertex(matrix, x0, y0, z0).uv(u0, v1).color(packedColor).endVertex();
 
             // 右后
             float x1 = px + (halfW * rightX - halfH * forwardX);
             float y1 = py + (halfW * rightY - halfH * forwardY);
             float z1 = pz + (halfW * rightZ - halfH * forwardZ);
-            bufferBuilder.vertex(matrix, x1, y1, z1).uv(u1, v1).color(packedColor);
+            bufferBuilder.vertex(matrix, x1, y1, z1).uv(u1, v1).color(packedColor).endVertex();
 
             // 右前
             float x2 = px + (halfW * rightX + halfH * forwardX);
             float y2 = py + (halfW * rightY + halfH * forwardY);
             float z2 = pz + (halfW * rightZ + halfH * forwardZ);
-            bufferBuilder.vertex(matrix, x2, y2, z2).uv(u1, v0).color(packedColor);
+            bufferBuilder.vertex(matrix, x2, y2, z2).uv(u1, v0).color(packedColor).endVertex();
 
             // 左前
             float x3 = px + (-halfW * rightX + halfH * forwardX);
             float y3 = py + (-halfW * rightY + halfH * forwardY);
             float z3 = pz + (-halfW * rightZ + halfH * forwardZ);
-            bufferBuilder.vertex(matrix, x3, y3, z3).uv(u0, v0).color(packedColor);
+            bufferBuilder.vertex(matrix, x3, y3, z3).uv(u0, v0).color(packedColor).endVertex();
 
             BufferUploader.drawWithShader(bufferBuilder.end());
         }

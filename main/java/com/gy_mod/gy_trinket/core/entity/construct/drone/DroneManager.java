@@ -265,7 +265,7 @@ public class DroneManager {
         DroneArrayManager arrayManager = DroneArrayManager.getInstance();
         DroneArrayType currentArray = arrayManager.getPlayerArrayType(player);
 
-        if (currentArray != null && !currentArray.hasRequiredItems(player.getUUID())) {
+        if (currentArray != null && !DroneArrayManager.getInstance().canUseArray(player, currentArray)) {
             arrayManager.switchToArray(player, DroneArrayType.Types.ORBIT);
         }
     }

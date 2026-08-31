@@ -49,7 +49,7 @@ public record RandomBuildEquipPayload(String itemId) implements CustomPacketPayl
                 }
             } else {
                 int points = com.gytrinket.gytrinket.core.level.ModLevelManager.getUpgradePoints(player.getUUID());
-                if (points < RandomBuildManager.EQUIP_COST) {
+                if (points < RandomBuildManager.getEquipUpgradePointCost()) {
                     player.sendSystemMessage(Component.translatable("message.gytrinket.random_build.not_enough_points"));
                 } else {
                     player.sendSystemMessage(Component.translatable("message.gytrinket.random_build.failed"));

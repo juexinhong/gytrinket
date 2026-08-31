@@ -43,11 +43,14 @@ public class LightningRenderManager {
     private static Matrix4f savedPoseStackMatrix = null;
 
     public static void addLightning(List<ElectricDischargeManager.LightningSegment> segments) {
-        addLightning(segments, 8, -1.0f);
+        addLightning(segments, 6, -1.0f);
     }
 
     /**
      * 添加闪电线段到渲染列表。
+     * <p>
+     * duration 为基础持续时间（tick，默认 6 刻）；主干每增加一段，总时间增加 0.3 刻，
+     * 最后向下取整。分支的段数不计入时间（分支随主干时间分配，不额外延长闪电）。
      */
     public static void addLightning(List<ElectricDischargeManager.LightningSegment> segments, int duration, float maxWidth) {
         long currentTime = Minecraft.getInstance().level != null ? Minecraft.getInstance().level.getGameTime() : 0;
@@ -57,7 +60,22 @@ public class LightningRenderManager {
             totalLength += segment.start().distanceTo(segment.end());
         }
 
-        lightningDataList.add(new LightningRenderData(segments, currentTime, duration, totalLength, maxWidth));
+        // 主干段数：从第一段开始连续相连的段（遇到断点即为主干结束，之后的段为分支）
+        int mainChainSegments = 1;
+        if (!segments.isEmpty()) {
+            for (int i = 1; i < segments.size(); i++) {
+                if (segments.get(i).start().distanceTo(segments.get(i - 1).end()) < 1e-6) {
+                    mainChainSegments++;
+                } else {
+                    break;
+                }
+            }
+        }
+
+        // 总时间 = 基础时间 + 主干每增加一段加 0.3 刻，向下取整
+        double durationD = Math.max(1, duration) + 0.3 * (mainChainSegments - 1);
+        int totalDuration = (int) Math.floor(durationD);
+        lightningDataList.add(new LightningRenderData(segments, currentTime, totalDuration, totalLength, maxWidth));
     }
 
     /**

@@ -17,7 +17,7 @@ public record LightningRenderPayload(List<double[]> segments, int duration, floa
         ResourceLocation.fromNamespaceAndPath("gytrinket", "lightning_render"));
 
     public static LightningRenderPayload fromSegments(List<ElectricDischargeManager.LightningSegment> segments) {
-        return fromSegments(segments, 8, -1.0f);
+        return fromSegments(segments, 6, -1.0f);
     }
 
     public static LightningRenderPayload fromSegments(List<ElectricDischargeManager.LightningSegment> segments, int duration, float maxWidth) {

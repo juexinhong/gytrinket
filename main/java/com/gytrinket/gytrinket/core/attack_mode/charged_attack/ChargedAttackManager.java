@@ -119,6 +119,7 @@ public class ChargedAttackManager {
         }
         data.charging = true;
         data.chargeValue = 0;
+        data.hasSeenHeld = false;
     }
 
     /**
@@ -208,7 +209,8 @@ public class ChargedAttackManager {
         if (data.charging) {
             // 检查玩家是否仍然按住左键
             if (AttackStateManager.isPlayerHeld(player)) {
-                // 持续充能
+                // 持续充能（标记已确认按住状态，供高延迟下松开判定使用）
+                data.hasSeenHeld = true;
                 updateCharging(uuid, player);
 
                 // 发布充能中事件（供幽灵机身等系统使用）
@@ -221,8 +223,12 @@ public class ChargedAttackManager {
                     data.syncTickCounter = 0;
                     com.gytrinket.gytrinket.network.NetworkHandler.sendChargedAttackSyncToPlayer(player, data.chargeValue);
                 }
-            } else if (AttackStateManager.isPlayerReleased(player)) {
+            } else if (data.hasSeenHeld && AttackStateManager.isPlayerReleased(player)) {
                 // 松开左键 - 释放充能攻击
+                // hasSeenHeld 门控：充能启动请求(ChargedAttackPayload)与按住状态包(AttackStatePayload)
+                // 是两个独立数据包，高延迟客户端下状态包可能晚于启动请求到达；
+                // 在确认过"按住"之前服务端状态默认为 RELEASED，此时释放会得到 0 充能值
+                // 并永久终止本次充能（客机充能攻击失灵的根因），因此必须先确认过按住
                 double chargeValue = releaseCharge(uuid);
                 if (chargeValue > 0) {
                     // 发布释放事件（供幽灵机身等系统使用）
@@ -290,12 +296,16 @@ public class ChargedAttackManager {
         double chargeValue;
         // 同步计时器（每3 tick同步一次充能值到客户端）
         int syncTickCounter;
+        // 是否已通过状态包确认过"按住左键"（高延迟下状态包晚于充能启动请求到达，
+        // 确认前不允许按"松开"释放，防止 0 充能值误释放终止充能）
+        boolean hasSeenHeld;
 
         ChargedAttackData() {
             this.charging = false;
             this.releasing = false;
             this.chargeValue = 0;
             this.syncTickCounter = 0;
+            this.hasSeenHeld = false;
         }
     }
 }

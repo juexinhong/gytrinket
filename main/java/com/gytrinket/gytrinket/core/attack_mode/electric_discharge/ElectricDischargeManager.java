@@ -40,6 +40,9 @@ public class ElectricDischargeManager {
     /** 最大目标数量 */
     private static final int MAX_TARGETS = 6;
 
+    /** 蜂群修复闪电的固定段数 */
+    private static final int SWARM_REPAIR_SEGMENT_COUNT = 10;
+
     /** 存储正在进行灼烧的闪电目标 */
     private static final Map<UUID, List<LightningBurnTarget>> LIGHTNING_TARGETS = new HashMap<>();
 
@@ -535,6 +538,55 @@ public class ElectricDischargeManager {
         for (int j = 0; j < branchPath.size() - 1; j++) {
             segments.add(new LightningSegment(branchPath.get(j), branchPath.get(j + 1)));
         }
+    }
+
+    /**
+     * 生成并发送蜂群修复闪电（使用本项目闪电渲染管线）。
+     * <p>
+     * 从起点（蜂群发射点）到终点（玩家身高一半处）：
+     * 固定 10 段、无后半段、无分支；中间节点带随机垂直偏移，呈现闪电折线形态。
+     */
+    public static void generateAndSendSwarmRepairLightning(ServerLevel level, Vec3 start, Vec3 end) {
+        NetworkHandler.sendLightningToAll(level, generateFixedSegmentLightning(start, end, SWARM_REPAIR_SEGMENT_COUNT));
+    }
+
+    /**
+     * 生成固定段数的闪电路径（无后半段、无分支）。
+     * 路径端点固定为 start/end，中间节点沿垂直于 start→end 方向随机偏移：
+     * 偏移幅度与平均段长成正比，且中间大、两端小（正弦包络），保证闪电形态自然。
+     */
+    private static List<LightningSegment> generateFixedSegmentLightning(Vec3 start, Vec3 end, int segmentCount) {
+        List<LightningSegment> segments = new ArrayList<>();
+        Vec3 total = end.subtract(start);
+        double length = total.length();
+        Vec3 dir = length > 1e-4 ? total.normalize() : new Vec3(0, 1, 0);
+
+        // 构造与方向垂直的两个基向量（dir 平行于 Y 轴时回退使用 X 轴）
+        Vec3 perpX = dir.cross(new Vec3(0, 1, 0));
+        if (perpX.lengthSqr() < 1e-6) {
+            perpX = dir.cross(new Vec3(1, 0, 0));
+        }
+        perpX = perpX.normalize();
+        Vec3 perpY = dir.cross(perpX).normalize();
+
+        List<Vec3> path = new ArrayList<>();
+        path.add(start);
+
+        Random random = new Random();
+        for (int i = 1; i < segmentCount; i++) {
+            double progress = (double) i / segmentCount;
+            double amplitude = length / segmentCount * 0.45 * Math.sin(Math.PI * progress);
+            Vec3 base = start.add(total.scale(progress));
+            path.add(base
+                .add(perpX.scale((random.nextDouble() * 2 - 1) * amplitude))
+                .add(perpY.scale((random.nextDouble() * 2 - 1) * amplitude)));
+        }
+        path.add(end);
+
+        for (int i = 0; i < path.size() - 1; i++) {
+            segments.add(new LightningSegment(path.get(i), path.get(i + 1)));
+        }
+        return segments;
     }
 
     /**

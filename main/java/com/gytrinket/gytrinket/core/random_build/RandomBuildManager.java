@@ -51,6 +51,14 @@ public class RandomBuildManager {
     /** 兑换一件随机物品消耗的升级点 */
     public static final int EQUIP_COST = 1;
 
+    /**
+     * 从随机池获取 1 件物品的升级点消耗 = 基础 1 点 × 配置的消耗倍数（升级点惩罚，默认 5）。
+     * 代币模式不消耗升级点，不受此倍数影响。
+     */
+    public static int getEquipUpgradePointCost() {
+        return EQUIP_COST * Config.getRandomBuildUpgradePointsMultiplier();
+    }
+
     /** 缓存每个玩家最近生成的随机池，用于装备时的合法性校验 */
     private static final Map<UUID, List<String>> CACHED_POOLS = new HashMap<>();
 
@@ -379,11 +387,11 @@ public class RandomBuildManager {
         UUID uuid = player.getUUID();
         boolean tokenMode = Config.isRandomBuildTokenEnabled();
 
-        // 代币模式：检查背包代币；否则检查升级点
+        // 代币模式：检查背包代币（每次 1 个）；否则检查升级点（消耗 = 基础 1 点 × 配置倍数）
         if (tokenMode) {
             if (countTokens(player) < EQUIP_COST) return false;
         } else {
-            if (ModLevelManager.getUpgradePoints(uuid) < EQUIP_COST) return false;
+            if (ModLevelManager.getUpgradePoints(uuid) < getEquipUpgradePointCost()) return false;
         }
 
         List<String> pool = CACHED_POOLS.get(uuid);
@@ -428,8 +436,8 @@ public class RandomBuildManager {
                 return false;
             }
         } else {
-            // 常规模式：消耗升级点
-            if (!ModLevelManager.consumeUpgradePoints(uuid, EQUIP_COST)) {
+            // 常规模式：消耗升级点（基础 1 点 × 配置倍数）
+            if (!ModLevelManager.consumeUpgradePoints(uuid, getEquipUpgradePointCost())) {
                 handler.setStackInSlot(emptySlot, ItemStack.EMPTY);
                 return false;
             }

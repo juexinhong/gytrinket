@@ -326,8 +326,9 @@ public class Config {
 
     // ===== 33.5 随机构建系统 (random_build) =====
     public static final ModConfigSpec.BooleanValue RANDOM_BUILD_ENABLED;
-    public static final ModConfigSpec.IntValue RANDOM_BUILD_XP_MULTIPLIER;
     public static final ModConfigSpec.BooleanValue SHOW_UPGRADE_REMINDER_HUD;
+    /** 从随机池获取物品时的升级点消耗倍数（升级点惩罚，默认 5 倍） */
+    public static final ModConfigSpec.IntValue RANDOM_BUILD_UPGRADE_POINTS_MULTIPLIER;
     /** 代币机制：启用后随机池兑换消耗背包代币而非升级点 */
     public static final ModConfigSpec.BooleanValue RANDOM_BUILD_TOKEN_ENABLED;
     /** 代币物品 ID（可替换为其他模组的物品） */
@@ -463,7 +464,7 @@ public class Config {
         BUILDER.comment("合成禁用模式：0=不禁用合成，1=禁用本模组命名空间下注册了本模组实际效果（属性或特殊机制）的物品的合成，2=禁用所有注册了本模组实际效果的物品的合成")
             .push("crafting_disable");
         DISABLE_CRAFTING_MODE = BUILDER.comment("0=不禁用，1=仅本模组物品，2=全部注册物品")
-            .defineInRange("disableCraftingMode", 0, 0, 2);
+            .defineInRange("disableCraftingMode", 1, 0, 2);
         BUILDER.pop();
 
         // ===== 1. 光环护盾 =====
@@ -688,7 +689,7 @@ public class Config {
             "再生护盾基础恢复值（每次恢复的比例，不是每刻）",
             "装备再生护盾模块后，每次自然恢复额外增加的最大护盾比例",
             "恢复频率：每4刻执行一次（每秒5次），每次恢复量 = naturalRecoveryShield/5 + 该值",
-            "实际恢复还会乘恢复效率属性和护盾存在修正系数，并受25上限逐段折半限制",
+            "实际恢复还会乘恢复效率属性和护盾存在修正系数，以最大护盾值为基数（有限资源制）",
             "默认 0.004 = 每次 0.4%（折合每秒 2%）",
             "范围：0.0 ~ 0.1"
         ).defineInRange("naturalRecoveryShieldRecoveryPerTick", 0.004, 0.0, 0.1);
@@ -1478,16 +1479,16 @@ public class Config {
 
         RANDOM_BUILD_ENABLED = BUILDER.comment(
             "是否启用随机构建系统",
-            "启用后：光点等级所需经验翻倍；",
-            "玩家面板经验条上方出现3x3随机池，",
-            "可用升级点兑换随机物品装备到光点核心。"
+            "启用后：玩家面板经验条上方出现3x3随机池，",
+            "可用升级点（× 配置的消耗倍数）兑换随机物品装备到光点核心。"
         ).define("enabled", true);
 
-        RANDOM_BUILD_XP_MULTIPLIER = BUILDER.comment(
-            "随机构建系统启用时的光点经验倍率",
-            "升到下一级所需经验 = 原版所需经验 × 该倍率",
-            "默认 5，范围 1~100"
-        ).defineInRange("xpMultiplier", 10, 1, 100);
+        RANDOM_BUILD_UPGRADE_POINTS_MULTIPLIER = BUILDER.comment(
+            "从随机池获取物品时的升级点消耗倍数（升级点惩罚）",
+            "从随机池获取 1 件物品消耗的升级点 = 基础 1 点 × 该倍数",
+            "默认 5（即每次获取消耗 5 点升级点）；范围 1~100",
+            "代币机制启用时代币消耗不受该倍数影响（每次仍消耗 1 个代币）"
+        ).defineInRange("upgradePointsMultiplier", 5, 1, 100);
 
         SHOW_UPGRADE_REMINDER_HUD = BUILDER.comment(
             "是否显示升级提醒 HUD",
@@ -1497,8 +1498,8 @@ public class Config {
 
         RANDOM_BUILD_TOKEN_ENABLED = BUILDER.comment(
             "是否启用代币机制（归属随机构建）",
-            "启用后：取消随机构建的经验惩罚（升级点不再被随机池消耗）；",
-            "从随机池获取物品改为消耗玩家背包中的代币，而非升级点。"
+            "启用后：从随机池获取物品时改为消耗玩家背包中的代币（每次 1 个），",
+            "升级点消耗倍数惩罚在升级点模式下仍生效，不会因代币启用而取消。"
         ).define("tokenEnabled", false);
 
         RANDOM_BUILD_TOKEN_ITEM = BUILDER.comment(
@@ -1571,16 +1572,17 @@ public class Config {
         ).define("playerHealthEnabled", true);
         NATURAL_RECOVERY_PLAYER_HEALTH = BUILDER.comment(
             "玩家基础生命恢复速度（%/秒）",
-            "恢复频率：每4刻执行一次（每秒5次），每次实际恢复量 = 该值 ÷ 5",
-            "实际恢复量还会乘恢复效率属性与攻击冷却惩罚系数，并受25上限逐段折半限制",
-            "默认 0.02 = 每秒恢复最大生命的 2%（每次 0.4%）",
+            "恢复频率：每4刻执行一次（每秒5次），每次实际恢复量 = 恢复基数 ×（该值 ÷ 5）",
+            "恢复基数采用有限资源制：原版最大生命值（高于20时限为20）叠加本模组生命修改属性，其他模组生命修饰符不计入",
+            "实际恢复量还会乘恢复效率属性与攻击冷却惩罚系数",
+            "默认 0.02 = 每秒恢复恢复基数的 2%（每次 0.4%）",
             "范围：0.0 ~ 10.0"
         ).defineInRange("naturalRecoveryPlayerHealth", 0.02, 0.0, 10.0);
         NATURAL_RECOVERY_SHIELD = BUILDER.comment(
             "护盾基础恢复速度（%/秒，0为禁用）",
-            "恢复频率：每4刻执行一次（每秒5次），每次实际恢复量 = 该值 ÷ 5",
+            "恢复频率：每4刻执行一次（每秒5次），每次实际恢复量 = 最大护盾值 ×（该值 ÷ 5）（有限资源制）",
             "实际恢复量还会乘恢复效率属性与攻击冷却惩罚系数；装备再生护盾模块时与 naturalRecoveryShieldRecoveryPerTick 叠加",
-            "默认 0.0 = 禁用",
+            "默认 0.0 = 每秒恢复最大护盾的 0%",
             "范围：0.0 ~ 10.0"
         ).defineInRange("naturalRecoveryShield", 0.0, 0.0, 10.0);
         NATURAL_RECOVERY_ATTACK_COOLDOWN_PENALTY = BUILDER.comment(
@@ -2564,8 +2566,9 @@ public class Config {
         return RANDOM_BUILD_ENABLED.get();
     }
 
-    public static int getRandomBuildXpMultiplier() {
-        return RANDOM_BUILD_XP_MULTIPLIER.get();
+    /** 从随机池获取物品时的升级点消耗倍数 */
+    public static int getRandomBuildUpgradePointsMultiplier() {
+        return RANDOM_BUILD_UPGRADE_POINTS_MULTIPLIER.get();
     }
 
     public static boolean isShowUpgradeReminderHud() {

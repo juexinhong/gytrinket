@@ -10,6 +10,7 @@ import com.gytrinket.gytrinket.core.entity.construct.drone.ModEntities;
 import com.gytrinket.gytrinket.core.entity.construct.drone.ModDamageSources;
 import com.gytrinket.gytrinket.core.entity.construct.drone.behavior.BoidCalculator;
 import com.gytrinket.gytrinket.core.attack_mode.ExecuteToggleManager;
+import com.gytrinket.gytrinket.core.attack_mode.electric_discharge.ElectricDischargeManager;
 import com.gytrinket.gytrinket.core.modifier.player.knockback.KnockbackManager;
 import com.gytrinket.gytrinket.network.NetworkHandler;
 import com.gytrinket.gytrinket.core.shield.ShieldManager;
@@ -187,22 +188,22 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
 
         if (repairMode) {
             repairMovement(this, owner);
-            // 修复模式：朝向玩家身高一半处（角速度限制为每刻5度）
+            // 修复模式：朝向玩家身高一半处（角速度限制为每刻10度）
             Vec3 repairFacePos = owner.position().add(0, owner.getBbHeight() * 0.5, 0);
-            facePositionWithInterpolation(repairFacePos, 5.0f);
+            facePositionWithInterpolation(repairFacePos, 10.0f);
             executeShieldRepair(this, owner);
         } else {
             LivingEntity target = findTarget(owner);
             if (target != null) {
                 pursuitMovement(this, owner, target, speedMult);
-                // 追击朝向目标（角速度限制为每刻5度）
-                facePositionWithInterpolation(target.position().add(0, target.getEyeHeight() * 0.5, 0), 5.0f);
+                // 追击朝向目标（角速度限制为每刻10度）
+                facePositionWithInterpolation(target.position().add(0, target.getEyeHeight() * 0.5, 0), 10.0f);
                 executeArcAttack(this, owner, target, attackSpeedMult);
             } else {
                 // 无攻击目标：朝向玩家位置高 STANDBY_HEIGHT 格处，移动方向为朝向方向
                 Vec3 standbyFacePos = owner.position().add(0, STANDBY_HEIGHT, 0);
                 standbyMovement(this, owner, speedMult);
-                facePositionWithInterpolation(standbyFacePos, 5.0f);
+                facePositionWithInterpolation(standbyFacePos, 10.0f);
                 // 高度达到跟随高度（2格容差）时，忽略俯仰角，避免朝向诡异
                 if (Math.abs(this.getY() - standbyFacePos.y) <= 2.0) {
                     this.setXRot(0.0f);
@@ -531,12 +532,11 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
 
         ShieldManager.addShield(owner.getUUID(), restore);
 
-        // 修复能量波：从蜂群半身高处朝向玩家半身高处发射
+        // 修复闪电：从蜂群发射点（半身高处）到玩家身高一半处，固定10段、无后半段、无分支
         if (this.level() instanceof ServerLevel serverLevel) {
-            Vec3 swarmMidPos = swarm.position().add(0, swarm.getBbHeight() * 0.5, 0);
+            Vec3 swarmLaunchPos = swarm.position().add(0, swarm.getBbHeight() * 0.5, 0);
             Vec3 ownerMidPos = owner.position().add(0, owner.getBbHeight() * 0.5, 0);
-            Vec3 direction = ownerMidPos.subtract(swarmMidPos).normalize();
-            NetworkHandler.sendSwarmEnergyWaveToAll(serverLevel, swarm.getId(), swarmMidPos, direction, true);
+            ElectricDischargeManager.generateAndSendSwarmRepairLightning(serverLevel, swarmLaunchPos, ownerMidPos);
         }
 
         this.level().playSound(null, owner.blockPosition(), SoundEvents.AMETHYST_BLOCK_CHIME,

@@ -77,6 +77,61 @@ public class LightPointCoreMenu extends AbstractContainerMenu {
         return itemstack;
     }
 
+    /**
+     * 服务端：一键整理容器槽位（0..26）
+     * 按创造物品栏顺序（物品注册顺序）排序，同类可堆叠物品合并；玩家背包区域不受影响
+     */
+    public void sortContainer() {
+        java.util.List<ItemStack> items = new java.util.ArrayList<>();
+        for (int i = 0; i < 27; i++) {
+            ItemStack stack = this.container.getItem(i);
+            if (!stack.isEmpty()) {
+                items.add(stack.copy());
+                this.container.setItem(i, ItemStack.EMPTY);
+            }
+        }
+        if (items.isEmpty()) {
+            return;
+        }
+
+        // 合并同类可堆叠物品（同物品且组件一致，且目标堆未满）
+        java.util.List<ItemStack> merged = new java.util.ArrayList<>();
+        for (ItemStack stack : items) {
+            boolean placed = false;
+            if (stack.isStackable()) {
+                for (ItemStack target : merged) {
+                    if (target.getCount() < target.getMaxStackSize()
+                            && ItemStack.isSameItemSameComponents(target, stack)) {
+                        int canAdd = Math.min(stack.getCount(), target.getMaxStackSize() - target.getCount());
+                        target.grow(canAdd);
+                        stack.shrink(canAdd);
+                        if (stack.isEmpty()) {
+                            placed = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            if (!placed && !stack.isEmpty()) {
+                merged.add(stack);
+            }
+        }
+
+        // 创造物品栏顺序 = 物品注册顺序；同物品按数量降序
+        merged.sort((a, b) -> {
+            int ia = net.minecraft.core.registries.BuiltInRegistries.ITEM.getId(a.getItem());
+            int ib = net.minecraft.core.registries.BuiltInRegistries.ITEM.getId(b.getItem());
+            if (ia != ib) {
+                return Integer.compare(ia, ib);
+            }
+            return Integer.compare(b.getCount(), a.getCount());
+        });
+
+        for (int i = 0; i < merged.size() && i < 27; i++) {
+            this.container.setItem(i, merged.get(i));
+        }
+    }
+
     @Override
     public boolean stillValid(Player player) {
         return container.stillValid(player);

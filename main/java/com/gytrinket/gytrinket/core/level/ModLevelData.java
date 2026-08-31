@@ -49,17 +49,12 @@ public class ModLevelData {
     }
 
     /**
-     * 获取从当前等级升到下一级所需的经验值
-     * 随机构建系统启用时，所需经验乘以配置的倍率；
-     * 代币机制启用时取消该经验惩罚（随机池消耗背包代币而非升级点）
+     * 获取从当前等级升到下一级所需的经验值（原版经验公式，无随机构建经验惩罚）。
+     * <p>
+     * 随机构建的成本由"升级点消耗倍数"（获取随机池物品时）承担，不再翻倍经验需求。
      */
     public static int getXpNeededForNextLevel(int currentLevel) {
-        int base = getTotalXpForLevel(currentLevel + 1) - getTotalXpForLevel(currentLevel);
-        if (com.gytrinket.gytrinket.config.Config.isRandomBuildEnabled()
-                && !com.gytrinket.gytrinket.config.Config.isRandomBuildTokenEnabled()) {
-            return base * com.gytrinket.gytrinket.config.Config.getRandomBuildXpMultiplier();
-        }
-        return base;
+        return getTotalXpForLevel(currentLevel + 1) - getTotalXpForLevel(currentLevel);
     }
 
     /**

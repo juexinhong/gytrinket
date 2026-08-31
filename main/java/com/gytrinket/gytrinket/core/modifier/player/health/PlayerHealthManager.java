@@ -158,6 +158,41 @@ public class PlayerHealthManager {
         return PLAYER_MAX_HEALTH_MAP.getOrDefault(playerUUID, 20.0f);
     }
 
+    /**
+     * 计算自然恢复使用的恢复基数（有限资源制）：
+     * <p>
+     * 1. 取玩家 MAX_HEALTH 属性值并剔除本模组的生命修饰符（其他模组的修饰符保留），
+     *    得到"原版最大生命值"：高于 20 时限为 20，低于 20 则使用低值；
+     * 2. 再叠加本模组的生命修改属性：
+     *    (原版最大生命 + player_health) × player_health_percent × player_health_independent。
+     * <p>
+     * 例：原版最大生命 20（其他模组 +20 不计入，限为 20），本模组 45% 生命提升 -> 20 × 1.45 = 29。
+     */
+    public static double getNaturalRecoveryMaxHealth(UUID playerUUID, ServerPlayer player) {
+        AttributeInstance attribute = player.getAttribute(Attributes.MAX_HEALTH);
+        double vanillaMax = 20.0;
+        if (attribute != null) {
+            double base = attribute.getBaseValue();
+            double multipliedBase = 1.0;
+            double multipliedTotal = 1.0;
+            for (AttributeModifier modifier : attribute.getModifiers()) {
+                if (modifier.id().getNamespace().equals(gytrinket.MODID)) continue;
+                switch (modifier.operation()) {
+                    case ADD_VALUE -> base += modifier.amount();
+                    case ADD_MULTIPLIED_BASE -> multipliedBase *= 1.0 + modifier.amount();
+                    case ADD_MULTIPLIED_TOTAL -> multipliedTotal *= 1.0 + modifier.amount();
+                }
+            }
+            // 原版最大生命值：高于 20 限为 20，低于 20 使用低值
+            vanillaMax = Math.min(base * multipliedBase * multipliedTotal, 20.0);
+        }
+
+        double healthBase = AttributeManager.getPlayerAttribute(playerUUID, "player_health");
+        double percentMultiplier = AttributeManager.getPlayerAttribute(playerUUID, "player_health_percent")
+                * AttributeManager.getPlayerAttribute(playerUUID, "player_health_independent");
+        return (vanillaMax + healthBase) * percentMultiplier;
+    }
+
     public static void clearPlayerData(UUID playerUUID) {
         PLAYER_MAX_HEALTH_MAP.remove(playerUUID);
     }

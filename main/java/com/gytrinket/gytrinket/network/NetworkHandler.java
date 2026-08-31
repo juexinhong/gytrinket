@@ -99,6 +99,7 @@ public class NetworkHandler {
         registrar.playToServer(RequestRandomBuildPayload.TYPE, RequestRandomBuildPayload.STREAM_CODEC, RequestRandomBuildPayload::handle);
         registrar.playToServer(RandomBuildEquipPayload.TYPE, RandomBuildEquipPayload.STREAM_CODEC, RandomBuildEquipPayload::handle);
         registrar.playToServer(RequestRefreshRandomPoolPayload.TYPE, RequestRefreshRandomPoolPayload.STREAM_CODEC, RequestRefreshRandomPoolPayload::handle);
+        registrar.playToServer(SortLightPointCorePayload.TYPE, SortLightPointCorePayload.STREAM_CODEC, SortLightPointCorePayload::handle);
     }
 
     // ======================== Helper send methods ========================
@@ -134,6 +135,11 @@ public class NetworkHandler {
 
     public static void sendShieldCooldownRequestToServer() {
         PacketDistributor.sendToServer(new RequestShieldCooldownPayload());
+    }
+
+    /** 客户端：请求整理光点核心容器（容器界面内鼠标中键） */
+    public static void sendSortLightPointCore() {
+        PacketDistributor.sendToServer(new SortLightPointCorePayload());
     }
 
     public static void sendAuraParticlesToPlayer(ServerPlayer player, double x, double y, double z, double radius) {

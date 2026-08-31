@@ -4,6 +4,7 @@ import com.gytrinket.gytrinket.client.attack_mode.AttackModeClientUtil;
 import com.gytrinket.gytrinket.gytrinket;
 import net.minecraft.world.entity.player.Player;
 import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -56,6 +57,18 @@ public class BurstFireClientHandler {
         if (inCooldown != null && inCooldown) {
             player.resetAttackStrengthTicker();
         }
+    }
+
+    /**
+     * 重新进入游戏时清理本地状态。
+     * 死亡/登出时服务端会清理状态并通知，但客户端静态状态可能因同 UUID 残留
+     * （如冷却/点射中直接登出），导致重进后攻击强度被永久锁定，这里兜底清理。
+     */
+    @SubscribeEvent
+    public static void onClientLoggingIn(ClientPlayerNetworkEvent.LoggingIn event) {
+        COMBO_COOLDOWN_STATE.clear();
+        REMAINING_COOLDOWN_TICKS.clear();
+        BURST_FIRING_STATE.clear();
     }
 
     public static boolean isInComboCooldown(UUID playerUUID) {

@@ -20,6 +20,11 @@ import java.util.Map;
 public final class ClientPacketHandler {
     private ClientPacketHandler() {}
 
+    public static void handleProjectileScale(ProjectileScalePayload msg) {
+        // payload.handle 已在 enqueueWork 主线程执行
+        com.gytrinket.gytrinket.client.projectile.ClientProjectileScaleCache.put(msg.entityId(), msg.scale());
+    }
+
     public static void handleSyncModLevel(SyncModLevelPayload msg) {
         com.gytrinket.gytrinket.client.datacenter.ClientDataCenter.updateModLevel(
             msg.modLevel(), msg.upgradeExp(), msg.upgradePoints(), msg.randomPoints());

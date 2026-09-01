@@ -420,6 +420,12 @@ public class Config {
                 "gytrinket:fast_shooting_module|attack_speed_percent=0.15",
                 "gytrinket:burst_fire_module|attack_speed_percent=0.2|combo=2",
 
+                "gytrinket:explosion_radius_module|explosion_radius_independent=0.1",
+                "gytrinket:high_explosive_module|explosion_radius_independent=0.2",
+                "gytrinket:implosion_module|explosion_damage_percent=0.35|explosion_radius_independent=-0.3",
+                "gytrinket:giant_star_module|attack_damage_percent=0.15|weapon_projectile_size_percent=0.2|explosion_radius_independent=0.05",
+                "gytrinket:overcharge_module|attack_damage_percent=0.3|weapon_projectile_size_percent=0.12|explosion_radius_independent=0.05|attack_speed_percent=-0.12",
+
                 "gytrinket:thrust_boost_module|movement_speed_percent=0.25",
                 "gytrinket:aerodynamic_framework_module|movement_speed_percent=0.25|player_health_independent=-0.1|player_knockback_percent=-0.2|knockback_resistance=-0.2",
 

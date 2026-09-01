@@ -100,6 +100,9 @@ public class NetworkHandler {
         registrar.playToServer(RandomBuildEquipPayload.TYPE, RandomBuildEquipPayload.STREAM_CODEC, RandomBuildEquipPayload::handle);
         registrar.playToServer(RequestRefreshRandomPoolPayload.TYPE, RequestRefreshRandomPoolPayload.STREAM_CODEC, RequestRefreshRandomPoolPayload::handle);
         registrar.playToServer(SortLightPointCorePayload.TYPE, SortLightPointCorePayload.STREAM_CODEC, SortLightPointCorePayload::handle);
+
+        // 弹射物大小同步
+        registrar.playToClient(ProjectileScalePayload.TYPE, ProjectileScalePayload.STREAM_CODEC, ProjectileScalePayload::handle);
     }
 
     // ======================== Helper send methods ========================

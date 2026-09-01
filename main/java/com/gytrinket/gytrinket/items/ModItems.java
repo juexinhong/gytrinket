@@ -109,7 +109,14 @@ public class ModItems {
     public static final DeferredItem<Item> ASSAULT_MODULE = ITEMS.registerSimpleItem("assault_module", new Item.Properties()); // 强袭模块
 
     // 攻击伤害物品
+    public static final DeferredItem<Item> GIANT_STAR_MODULE = ITEMS.registerSimpleItem("giant_star_module", new Item.Properties()); // 巨星弹模块
+    public static final DeferredItem<Item> OVERCHARGE_MODULE = ITEMS.registerSimpleItem("overcharge_module", new Item.Properties()); // 超荷弹模块
     public static final DeferredItem<Item> CHARGED_ATTACK_MODULE = ITEMS.registerSimpleItem("charged_attack_module", new Item.Properties()); // 充能攻击模块
+
+    // 爆炸类物品
+    public static final DeferredItem<Item> EXPLOSION_RADIUS_MODULE = ITEMS.registerSimpleItem("explosion_radius_module", new Item.Properties()); // 爆炸半径模块
+    public static final DeferredItem<Item> HIGH_EXPLOSIVE_MODULE = ITEMS.registerSimpleItem("high_explosive_module", new Item.Properties()); // 高爆模块
+    public static final DeferredItem<Item> IMPLOSION_MODULE = ITEMS.registerSimpleItem("implosion_module", new Item.Properties()); // 聚爆模块
 
     // 速度物品
     public static final DeferredItem<Item> THRUST_BOOST_MODULE = ITEMS.registerSimpleItem("thrust_boost_module", new Item.Properties()); // 推进改良模块

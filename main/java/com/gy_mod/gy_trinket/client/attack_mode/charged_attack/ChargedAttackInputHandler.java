@@ -10,7 +10,6 @@ import com.gy_mod.gy_trinket.network.packet.ChargedAttackMessage;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.api.distmarker.Dist;
@@ -100,13 +99,13 @@ public class ChargedAttackInputHandler {
     private static void releaseAttack(Player player, Minecraft minecraft) {
         resetCharge();
 
-        // 寻找准星对准的目标
+        // 寻找准星对准的目标（含展示框、画等非生物实体）
         Entity target = AttackModeClientUtil.findTargetInCrosshair(player);
-        if (target instanceof LivingEntity) {
+        if (target != null) {
             ItemStack mainHandItem = player.getMainHandItem();
             if (ChargedAttackSweepHandler.isSwordItem(mainHandItem)) {
                 // 剑类充能攻击：发送action=4，服务端执行自定义横扫伤害
-                // 不调用原版attack，服务端处理一切
+                // 生物目标由横扫处理；非生物目标（展示框/画等）由服务端穿透伤害处理
                 NetworkHandler.INSTANCE.sendToServer(new ChargedAttackMessage(4));
                 // 仍需挥动手臂和重置攻击强度
                 player.swing(InteractionHand.MAIN_HAND);

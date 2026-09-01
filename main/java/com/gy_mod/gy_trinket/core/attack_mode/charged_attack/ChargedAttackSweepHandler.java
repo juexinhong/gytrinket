@@ -6,7 +6,10 @@ import com.gy_mod.gy_trinket.network.NetworkHandler;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.ExperienceOrb;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.SwordItem;
@@ -93,7 +96,7 @@ public class ChargedAttackSweepHandler {
             livingTarget.invulnerableTime = 0;
         }
 
-        primaryTarget.hurt(player.damageSources().playerAttack(player), chargedDamage);
+        boolean hitLiving = primaryTarget.hurt(player.damageSources().playerAttack(player), chargedDamage);
 
         // 计算横扫参数
         float rangeMultiplier = getSweepRangeMultiplier(chargeValue);
@@ -157,6 +160,29 @@ public class ChargedAttackSweepHandler {
 
         // 消耗攻击强度
         player.resetAttackStrengthTicker();
+
+        // 耐久破坏：剑类充能释放成功攻击到主目标，对手持物品造成 1+充能值 耐久破坏
+        // （非剑类走原版攻击，原版自带扣1点耐久）
+        if (hitLiving) {
+            damageHeldItemDurability(player, chargeValue);
+        }
+    }
+
+    /**
+     * 剑类充能释放：成功攻击到主目标时对手持物品执行耐久破坏（1 + 充能值）
+     * <p>
+     * 创造模式下hurtAndBreak内部不扣耐久（原版行为）。
+     *
+     * @param player      攻击玩家
+     * @param chargeValue 释放时的充能值
+     */
+    public static void damageHeldItemDurability(Player player, double chargeValue) {
+        ItemStack held = player.getMainHandItem();
+        if (held.isEmpty()) {
+            return;
+        }
+        int breakAmount = Math.max(1, (int) (1.0 + chargeValue));
+        held.hurtAndBreak(breakAmount, player, e -> e.broadcastBreakEvent(EquipmentSlot.MAINHAND));
     }
 
     /**
@@ -216,8 +242,11 @@ public class ChargedAttackSweepHandler {
         Vec3 endPos = eyePos.add(lookVec.scale(reachDistance));
 
         AABB searchBox = player.getBoundingBox().expandTowards(lookVec.scale(reachDistance)).inflate(1.0);
+        // 排除掉落物与经验球：目标死亡瞬间生成的战利品就在射线上，会被穿透伤害销毁（ItemEntity/ExperienceOrb 仅 5 点 HP）
         List<Entity> entities = player.level().getEntities(player, searchBox,
-                e -> e.isAlive() && !(e instanceof LivingEntity) && e != player && !isOwnConstruct(e, player));
+                e -> e.isAlive() && !(e instanceof LivingEntity)
+                        && !(e instanceof ItemEntity) && !(e instanceof ExperienceOrb)
+                        && e != player && !isOwnConstruct(e, player));
 
         float baseDamage = (float) player.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE);
         float chargedDamage = baseDamage * (1.0F + (float) chargeValue);

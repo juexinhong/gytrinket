@@ -5,7 +5,9 @@ import com.gy_mod.gy_trinket.core.shield.type.ShieldTypeManager;
 import com.gy_mod.gy_trinket.core.shield_transfer.ShieldTransferManager;
 import com.gy_mod.gy_trinket.core.damage.ModDamageTypes;
 import com.gy_mod.gy_trinket.gytrinket;
+import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
@@ -52,6 +54,23 @@ public class DamageManager {
 
         LivingEntity attackedEntity = event.getEntity();
         DamageSource source = event.getSource();
+
+        // 【免疫跳过】Forge 在 hurt() 最开头 post LivingAttackEvent（玩家由 Player.hurt 的
+        // onPlayerAttack hook post，其余实体由 LivingEntity.hurt 的 onLivingAttack post），
+        // 均早于原版全部免疫检查：玩家免疫该伤害时原版本会拒绝该伤害，但护盾在事件阶段
+        // 介入会白白消耗护盾值。此处按原版 hurt() 顺序复现事件之后的全部免疫分支：
+        //   isInvulnerableTo（实体类型火免/摔落/冰冻/凋零标签免疫、创造无敌）
+        //   → 创造模式（Player.hurt: getAbilities().invulnerable，事件 hook 早于此检查）
+        //   → isDeadOrDying → 火焰标签伤害 + 抗火药水（原版此条内联在 hurt() 中，无 API）
+        // 免疫时整条伤害处理链不介入（不消耗护盾、不触发受击延长冷却/反射/音效）。
+        if (attackedEntity.isInvulnerableTo(source)
+            || (attackedEntity instanceof Player creativePlayer
+                && creativePlayer.getAbilities().invulnerable
+                && !source.is(DamageTypeTags.BYPASSES_INVULNERABILITY))
+            || attackedEntity.isDeadOrDying()
+            || (source.is(DamageTypeTags.IS_FIRE) && attackedEntity.hasEffect(MobEffects.FIRE_RESISTANCE))) {
+            return;
+        }
 
         var damageTypeKey = source.typeHolder().unwrapKey();
         if (damageTypeKey.orElse(null) == ModDamageTypes.FINAL_DAMAGE) {

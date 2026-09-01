@@ -36,6 +36,11 @@ public class ChargedAttackDamageHandler {
             return;
         }
 
+        // 剑类的充能伤害由 executeChargedSweepAttack 全额处理，此处跳过以避免双重乘算
+        if (ChargedAttackSweepHandler.isSwordItem(player.getMainHandItem())) {
+            return;
+        }
+
         UUID playerUUID = player.getUUID();
 
         if (!ChargedAttackManager.hasChargedAttack(player)) {
@@ -48,12 +53,9 @@ public class ChargedAttackDamageHandler {
             return;
         }
 
-        LivingEntity target = event.getEntity();
-
         // 充能值乘算加成：最终伤害 = 原始伤害 * (1 + 充能值)
-        float newDamage = event.getAmount() * (1.0F + (float) chargeValue);
-
-        // 注意：剑类的充能横扫已由executeChargedSweepAttack处理，此处仅处理非剑类充能加成
-        event.setAmount(newDamage);
+        // 注意：剑类的充能横扫已由executeChargedSweepAttack处理，此处仅处理非剑类充能加成；
+        // 非剑类释放走原版攻击，原版自带成功命中扣1点耐久
+        event.setAmount(event.getAmount() * (1.0F + (float) chargeValue));
     }
 }

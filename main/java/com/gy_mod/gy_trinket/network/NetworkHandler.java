@@ -65,7 +65,7 @@ public class NetworkHandler {
         INSTANCE.registerMessage(messageId++, ConfigReorderMessage.class, ConfigReorderMessage::toBytes, ConfigReorderMessage::new, ConfigReorderMessage::handle);
         INSTANCE.registerMessage(messageId++, AttackStateMessage.class, AttackStateMessage::toBytes, AttackStateMessage::new, AttackStateMessage::handle);
         INSTANCE.registerMessage(messageId++, ChargedAttackMessage.class, ChargedAttackMessage::toBytes, ChargedAttackMessage::new, ChargedAttackMessage::handle);
-
+ 
         // ======================== S->C ========================
         INSTANCE.registerMessage(messageId++, ResponseAttributesMessage.class, ResponseAttributesMessage::toBytes, ResponseAttributesMessage::new, ResponseAttributesMessage::handle);
         INSTANCE.registerMessage(messageId++, SyncShieldMessage.class, SyncShieldMessage::toBytes, SyncShieldMessage::new, SyncShieldMessage::handle);

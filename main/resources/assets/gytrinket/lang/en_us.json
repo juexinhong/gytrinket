@@ -464,6 +464,8 @@
   "screen.gytrinket.light_point_level": "Light Point Level",
   "screen.gytrinket.light_point_exp": "Light Point Exp",
   "screen.gytrinket.upgrade_points": "Upgrade Points",
+  "screen.gytrinket.upgrade_points_real": "Real Upgrade Points: %s",
+  "screen.gytrinket.upgrade_points_cost": "Each pool item costs %s upgrade points",
   "screen.gytrinket.random_pool": "Random Build Pool",
   "screen.gytrinket.random_points": "Refresh Points",
   "screen.gytrinket.token": "Token",

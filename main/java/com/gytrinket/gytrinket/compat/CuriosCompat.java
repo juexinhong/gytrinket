@@ -1,6 +1,7 @@
 package com.gytrinket.gytrinket.compat;
 
 import com.gytrinket.gytrinket.event.PlayerUpdateManager;
+import com.gytrinket.gytrinket.storage.PlayerStoreUtils;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -17,8 +18,10 @@ import top.theillusivec4.curios.api.event.CurioChangeEvent;
 import top.theillusivec4.curios.api.type.capability.ICuriosItemHandler;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -40,6 +43,15 @@ import java.util.UUID;
 public class CuriosCompat {
 
     public static final String CURIOS_MODID = "curios";
+
+    /**
+     * 每个玩家最近一次全量重算时的已装备物品 ID 集合快照（光点核心 + Curios 饰品栏）。
+     * <p>
+     * 用于过滤「仅 NBT 变化」的 {@link CurioChangeEvent}：部分饰品（如极限维生装置）
+     * 每刻改写自身 NBT（Forge Energy 扣电），Curios 按完整 NBT 对比会每刻 post 事件，
+     * 若不过滤将导致每刻全量属性重算，进而使护盾类型的逐刻累积状态被反复清空。
+     */
+    private static final Map<UUID, Set<String>> LAST_EQUIPPED_IDS = new HashMap<>();
 
     private CuriosCompat() {}
 
@@ -110,6 +122,9 @@ public class CuriosCompat {
 
     /**
      * 饰品栏物品变化（装备/卸下）时，触发本模组属性/护盾/禁用系统的全量重算。
+     * <p>
+     * 过滤规则：仅当已装备物品 ID 集合相对上次重算发生变化时才重算。
+     * 纯 NBT 变化（每刻更新类饰品）物品集合不变，直接跳过。
      * 服务端事件，仅由 {@link #init()} 在 Curios 加载时注册。
      */
     @SubscribeEvent
@@ -117,11 +132,18 @@ public class CuriosCompat {
         if (!(event.getEntity() instanceof ServerPlayer player)) {
             return;
         }
+        Set<String> currentIds = PlayerStoreUtils.getAllEquippedItemIds(player);
+        Set<String> lastIds = LAST_EQUIPPED_IDS.get(player.getUUID());
+        if (currentIds.equals(lastIds)) {
+            return;
+        }
+        LAST_EQUIPPED_IDS.put(player.getUUID(), currentIds);
         PlayerUpdateManager.triggerPlayerUpdate(player);
     }
 
     /**
-     * 玩家登录时补一次重算，确保持久化在饰品栏中的物品在重进世界后生效。
+     * 玩家登录时补一次重算，确保持久化在饰品栏中的物品在重进世界后生效，
+     * 并初始化物品集合快照作为后续 CurioChangeEvent 过滤基线。
      */
     @SubscribeEvent
     public static void onPlayerLogin(PlayerEvent.PlayerLoggedInEvent event) {
@@ -129,5 +151,16 @@ public class CuriosCompat {
             return;
         }
         PlayerUpdateManager.triggerPlayerUpdate(player);
+        LAST_EQUIPPED_IDS.put(player.getUUID(), PlayerStoreUtils.getAllEquippedItemIds(player));
+    }
+
+    /**
+     * 玩家登出时清理物品集合快照，防止内存泄漏。
+     */
+    @SubscribeEvent
+    public static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            LAST_EQUIPPED_IDS.remove(player.getUUID());
+        }
     }
 }

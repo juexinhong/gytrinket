@@ -198,9 +198,27 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
                     addingSuggestionIndex = Math.max(0, addingSuggestionIndex - 1);
                 }
                 return true;
+            } else if (keyCode == 86 && Screen.hasControlDown() && !Screen.hasShiftDown() && !Screen.hasAltDown()) {
+                // 【粘贴修复】原版 EditBox 的 filter 是整串语义：insertText 把剪贴板文本拼进
+                // 完整内容后调用 filter.test(整串)，不通过则静默跳过赋值。本界面的 filter 是
+                // 「不允许空格」，剪贴板文本拼入后只要含一个空格（如复制时带尾随空格/换行），
+                // 整个粘贴就被拒绝——表现为「打字正常、Ctrl+V 无效」。
+                // 改为自管粘贴：先清理空格/不可见字符再交给 EditBox，保留「物品ID无空格」的原意。
+                String clipboard = this.minecraft != null ? this.minecraft.keyboardHandler.getClipboard() : "";
+                if (clipboard != null && addingItemEditBox != null) {
+                    String cleaned = clipboard.replace(" ", "").replace("\t", "")
+                            .replace("\n", "").replace("\r", "");
+                    if (!cleaned.isEmpty()) {
+                        addingItemEditBox.insertText(cleaned);
+                    }
+                }
+                return true;
             }
-            // 其余键（字符/Backspace/Delete/方向/Home/End/Ctrl+V 等）交给原版 EditBox 处理
+            // 其余键（字符/Backspace/Delete/方向/Home/End 等）交给原版 EditBox 处理
             if (addingItemEditBox != null) {
+                // 兜底：输入框打开期间强制保持焦点，防止点击 overlay 空白导致 EditBox
+                // 静默失焦后 keyPressed/charTyped 全部拒绝处理（粘贴/打字失效）
+                addingItemEditBox.setFocused(true);
                 addingItemEditBox.keyPressed(keyCode, scanCode, modifiers);
             }
             return true;
@@ -1113,9 +1131,18 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
                     return true;
                 }
             }
-            // 点击输入框：EditBox 处理光标定位/焦点
+            // 仅点击输入框本身时才转发给 EditBox（光标定位）；
+            // 框外点击不转发，避免原版 EditBox 检测到「点击不在自身范围」而静默失焦，
+            // 导致后续键盘输入（含 Ctrl+V 粘贴）全部失效
             if (addingItemEditBox != null) {
-                addingItemEditBox.mouseClicked(mouseX, mouseY, button);
+                boolean inBox = mouseX >= addingItemEditBox.getX()
+                        && mouseX < addingItemEditBox.getX() + addingItemEditBox.getWidth()
+                        && mouseY >= addingItemEditBox.getY()
+                        && mouseY < addingItemEditBox.getY() + addingItemEditBox.getHeight();
+                if (inBox) {
+                    addingItemEditBox.setFocused(true);
+                    addingItemEditBox.mouseClicked(mouseX, mouseY, button);
+                }
             }
             // 点击 overlay 外部：取消
             if (mouseX < overlayX || mouseX >= overlayX + overlayW || mouseY < overlayY || mouseY >= overlayY + overlayH) {

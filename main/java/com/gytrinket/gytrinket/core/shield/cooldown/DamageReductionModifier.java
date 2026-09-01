@@ -37,7 +37,7 @@ public class DamageReductionModifier implements IShieldCooldownModifier {
         }
 
         if (cooldownExtend == 0) {
-            state.reset();
+            // 延长值为0：本次受击不扣除冷却进度（原实现误用 reset()，反而清零整个冷却进度）
             return;
         }
 

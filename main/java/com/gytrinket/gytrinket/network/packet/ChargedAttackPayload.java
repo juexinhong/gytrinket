@@ -72,6 +72,7 @@ public record ChargedAttackPayload(int action) implements CustomPacketPayload {
                     // 发布充能释放事件（供幽灵机身等系统使用）
                     if (chargeValue > 0) {
                         postReleasedEvent(player);
+                        // 非剑类走客户端原版攻击，原版自带成功命中扣1点耐久，无需额外处理
                     }
                     // 对射线上非生命实体施加充能伤害（穿透非生命实体）
                     ChargedAttackSweepHandler.damageNonLivingTargetsAlongRaycast(player, chargeValue);

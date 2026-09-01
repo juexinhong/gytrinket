@@ -491,6 +491,8 @@
   "screen.gytrinket.light_point_level": "光点等级",
   "screen.gytrinket.light_point_exp": "光点经验",
   "screen.gytrinket.upgrade_points": "升级点",
+  "screen.gytrinket.upgrade_points_real": "真实升级点: %s",
+  "screen.gytrinket.upgrade_points_cost": "从构建池获取物品每次消耗 %s 点",
   "screen.gytrinket.random_pool": "随机构建池",
   "screen.gytrinket.random_points": "刷新点",
   "screen.gytrinket.token": "点点光辉",

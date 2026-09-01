@@ -25,7 +25,6 @@ import java.util.List;
 
 public class PlayerPanelScreen extends AbstractPanelScreen {
 
-    private static final int MAX_ITEMS_PER_COLUMN = 10;
     private static final int MAX_ITEMS_COLUMNS = 5;
     private static final int SLOT_SIZE = 18;
     private static final int SLOT_STEP = 20; // 格子间距（18px 格子 + 2px 间隙）
@@ -55,6 +54,10 @@ public class PlayerPanelScreen extends AbstractPanelScreen {
     // 随机构建随机池（3x3）
     private List<String> randomPool = new ArrayList<>();
     private int hoveredPoolIndex = -1;
+
+    /** 升级点文本悬停区域与惩罚标记（renderLevelInfo 更新，renderTooltip 使用） */
+    private int upgradePointsTextX, upgradePointsTextY, upgradePointsTextW;
+    private boolean upgradePointsPenalized;
     private com.gytrinket.gytrinket.client.screen.SciFiButton refreshButton;
 
     public PlayerPanelScreen(Map<String, Double> attributes, ListTag items, int slotCount,
@@ -82,13 +85,18 @@ public class PlayerPanelScreen extends AbstractPanelScreen {
     private int bodyBottom() { return panelY + panelHeight - 6; }
     private int attrListTop() { return bodyTop() + 14; }
 
-    /** 装备实际列数：按「非空物品数量」计算（剔除空位后连续排列，每列 MAX_ITEMS_PER_COLUMN 个，最多 MAX_ITEMS_COLUMNS 列） */
+    /** 装备区每列物品数量：按显示区域高度自适应（尽可能填满显示区域），不再硬编码 */
+    private int itemsPerColumn() {
+        return Math.max(1, (bodyBottom() - bodyTop()) / SLOT_STEP);
+    }
+
+    /** 装备实际列数：按「非空物品数量」计算（剔除空位后连续排列，每列 itemsPerColumn 个，最多 MAX_ITEMS_COLUMNS 列） */
     private int equipColumns() {
         int count = 0;
         for (ItemStack s : equippedItems) {
             if (!s.isEmpty()) count++;
         }
-        return Math.min((count + MAX_ITEMS_PER_COLUMN - 1) / MAX_ITEMS_PER_COLUMN, MAX_ITEMS_COLUMNS);
+        return Math.min((count + itemsPerColumn() - 1) / itemsPerColumn(), MAX_ITEMS_COLUMNS);
     }
 
     private int equipColX() { return panelX + 8; }
@@ -293,8 +301,9 @@ public class PlayerPanelScreen extends AbstractPanelScreen {
         hoveredSlotIndex = -1;
         hoveredRealSlot = -1;
 
-        // 剔除空位，按顺序连续排列（最多 MAX_ITEMS_PER_COLUMN * MAX_ITEMS_COLUMNS 个）
-        int displayLimit = MAX_ITEMS_PER_COLUMN * MAX_ITEMS_COLUMNS;
+        // 剔除空位，按顺序连续排列（最多 itemsPerColumn * MAX_ITEMS_COLUMNS 个）
+        int perColumn = itemsPerColumn();
+        int displayLimit = perColumn * MAX_ITEMS_COLUMNS;
         List<ItemStack> shown = new ArrayList<>();
         List<Integer> shownSlots = new ArrayList<>();
         for (int i = 0; i < equippedItems.size(); i++) {
@@ -307,8 +316,8 @@ public class PlayerPanelScreen extends AbstractPanelScreen {
         }
 
         for (int j = 0; j < shown.size(); j++) {
-            int col = j / MAX_ITEMS_PER_COLUMN;
-            int row = j % MAX_ITEMS_PER_COLUMN;
+            int col = j / perColumn;
+            int row = j % perColumn;
             int sx = x + col * SLOT_STEP;
             int sy = y + row * SLOT_STEP;
 
@@ -465,8 +474,15 @@ public class PlayerPanelScreen extends AbstractPanelScreen {
         float progress = xpNeeded > 0 ? (float) upgradeExp / xpNeeded : 0.0f;
         renderer.drawProgressBar(g, colX + 4, barY, colWidth - 8, 4, progress, renderer.getAccentColor());
 
-        String pointsStr = Component.translatable("screen.gytrinket.upgrade_points").getString() + ": " + upgradePoints;
+        // 升级点：存在构建池消耗惩罚（倍数 > 1 且非代币模式）时，显示"可从构建池获取物品次数"，悬停显示真实值
+        int equipCost = RandomBuildManager.getEquipUpgradePointCost();
+        this.upgradePointsPenalized = !Config.isRandomBuildTokenEnabled() && equipCost > 1;
+        int shownPoints = this.upgradePointsPenalized ? upgradePoints / equipCost : upgradePoints;
+        String pointsStr = Component.translatable("screen.gytrinket.upgrade_points").getString() + ": " + shownPoints;
         drawText(g, pointsStr, colX + 4, barY + 8, renderer.getTextColor());
+        this.upgradePointsTextX = colX + 4;
+        this.upgradePointsTextY = barY + 8;
+        this.upgradePointsTextW = font.width(pointsStr);
 
         // 刷新点（青色数值，放在升级点右侧右对齐，实时读取客户端缓存）
         String randomStr = Component.translatable("screen.gytrinket.random_points").getString() + ": "
@@ -501,6 +517,18 @@ public class PlayerPanelScreen extends AbstractPanelScreen {
             if (item != null && item != net.minecraft.world.item.Items.AIR) {
                 guiGraphics.renderTooltip(font, new ItemStack(item), mouseX, mouseY);
             }
+            return;
+        }
+        // 升级点惩罚：悬停升级点文本时显示真实升级点数值与单次消耗
+        if (this.upgradePointsPenalized
+                && mouseX >= this.upgradePointsTextX && mouseX < this.upgradePointsTextX + this.upgradePointsTextW
+                && mouseY >= this.upgradePointsTextY && mouseY < this.upgradePointsTextY + 9) {
+            int cost = RandomBuildManager.getEquipUpgradePointCost();
+            guiGraphics.renderTooltip(font, java.util.List.of(
+                    Component.translatable("screen.gytrinket.upgrade_points_real", upgradePoints),
+                    Component.translatable("screen.gytrinket.upgrade_points_cost", cost)
+                            .withStyle(net.minecraft.ChatFormatting.GRAY)),
+                    java.util.Optional.empty(), mouseX, mouseY);
         }
     }
 }

@@ -1486,9 +1486,9 @@ public class Config {
         RANDOM_BUILD_UPGRADE_POINTS_MULTIPLIER = BUILDER.comment(
             "从随机池获取物品时的升级点消耗倍数（升级点惩罚）",
             "从随机池获取 1 件物品消耗的升级点 = 基础 1 点 × 该倍数",
-            "默认 5（即每次获取消耗 5 点升级点）；范围 1~100",
+            "默认 8（即每次获取消耗 8 点升级点）；范围 1~100",
             "代币机制启用时代币消耗不受该倍数影响（每次仍消耗 1 个代币）"
-        ).defineInRange("upgradePointsMultiplier", 5, 1, 100);
+        ).defineInRange("upgradePointsMultiplier", 8, 1, 100);
 
         SHOW_UPGRADE_REMINDER_HUD = BUILDER.comment(
             "是否显示升级提醒 HUD",

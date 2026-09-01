@@ -79,8 +79,6 @@
     { "name": "explosion_damage_independent", "combine": "INDEPENDENT_MULTIPLY", "group": "explosion_damage" },
     { "name": "explosion_radius_percent", "combine": "PERCENT", "group": "explosion_radius" },
     { "name": "explosion_radius_independent", "combine": "INDEPENDENT_MULTIPLY", "group": "explosion_radius" },
-    { "name": "weapon_damage_base", "combine": "BASE", "group": "weapon_damage" },
-    { "name": "weapon_attack_speed_percent", "combine": "PERCENT", "group": "weapon_attack_speed" },
     { "name": "weapon_projectile_size_percent", "combine": "PERCENT", "group": "weapon_projectile_size" },
     { "name": "weapon_projectile_speed_percent", "combine": "PERCENT", "group": "weapon_projectile_speed" },
     { "name": "weapon_projectile_count_base", "combine": "BASE", "group": "weapon_projectile_count" },

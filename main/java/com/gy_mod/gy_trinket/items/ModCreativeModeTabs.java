@@ -116,7 +116,14 @@ public class ModCreativeModeTabs {
                         output.accept(ModItems.ASSAULT_MODULE.get());
 
                         // 攻击伤害物品
+                        output.accept(ModItems.GIANT_STAR_MODULE.get());
+                        output.accept(ModItems.OVERCHARGE_MODULE.get());
                         output.accept(ModItems.CHARGED_ATTACK_MODULE.get());
+
+                        // 爆炸类物品
+                        output.accept(ModItems.EXPLOSION_RADIUS_MODULE.get());
+                        output.accept(ModItems.HIGH_EXPLOSIVE_MODULE.get());
+                        output.accept(ModItems.IMPLOSION_MODULE.get());
 
                         // 速度物品
                         output.accept(ModItems.THRUST_BOOST_MODULE.get());

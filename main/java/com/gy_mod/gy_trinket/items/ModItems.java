@@ -107,7 +107,14 @@ public class ModItems {
     public static final RegistryObject<Item> ASSAULT_MODULE = ITEMS.register("assault_module", () -> new Item(new Item.Properties())); // 强袭模块
 
     // 攻击伤害物品
+    public static final RegistryObject<Item> GIANT_STAR_MODULE = ITEMS.register("giant_star_module", () -> new Item(new Item.Properties())); // 巨星弹模块
+    public static final RegistryObject<Item> OVERCHARGE_MODULE = ITEMS.register("overcharge_module", () -> new Item(new Item.Properties())); // 超荷弹模块
     public static final RegistryObject<Item> CHARGED_ATTACK_MODULE = ITEMS.register("charged_attack_module", () -> new Item(new Item.Properties())); // 充能攻击模块
+
+    // 爆炸类物品
+    public static final RegistryObject<Item> EXPLOSION_RADIUS_MODULE = ITEMS.register("explosion_radius_module", () -> new Item(new Item.Properties())); // 爆炸半径模块
+    public static final RegistryObject<Item> HIGH_EXPLOSIVE_MODULE = ITEMS.register("high_explosive_module", () -> new Item(new Item.Properties())); // 高爆模块
+    public static final RegistryObject<Item> IMPLOSION_MODULE = ITEMS.register("implosion_module", () -> new Item(new Item.Properties())); // 聚爆模块
 
     // 速度物品
     public static final RegistryObject<Item> THRUST_BOOST_MODULE = ITEMS.register("thrust_boost_module", () -> new Item(new Item.Properties())); // 推进改良模块

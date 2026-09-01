@@ -107,6 +107,9 @@ public class NetworkHandler {
         INSTANCE.registerMessage(messageId++, RandomBuildEquipMessage.class, RandomBuildEquipMessage::toBytes, RandomBuildEquipMessage::new, RandomBuildEquipMessage::handle);
         INSTANCE.registerMessage(messageId++, RequestRefreshRandomPoolMessage.class, RequestRefreshRandomPoolMessage::toBytes, RequestRefreshRandomPoolMessage::new, RequestRefreshRandomPoolMessage::handle);
         INSTANCE.registerMessage(messageId++, SortLightPointCoreMessage.class, SortLightPointCoreMessage::toBytes, SortLightPointCoreMessage::new, SortLightPointCoreMessage::handle);
+
+        // 弹射物大小同步
+        INSTANCE.registerMessage(messageId++, ProjectileScaleMessage.class, ProjectileScaleMessage::toBytes, ProjectileScaleMessage::new, ProjectileScaleMessage::handle);
     }
 
     // ======================== Helper send methods ========================

@@ -11,6 +11,11 @@ import net.minecraft.nbt.ListTag;
 
 public class ClientNetworkHandler {
 
+    public static void handleProjectileScaleMessage(int entityId, float scale) {
+        // ProjectileScaleMessage.handle 已在 enqueueWork 主线程执行
+        com.gy_mod.gy_trinket.client.projectile.ClientProjectileScaleCache.put(entityId, scale);
+    }
+
     public static void handleSyncLightPointCoreMessage(ListTag itemList, int slotCount) {
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.player == null) {

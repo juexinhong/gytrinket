@@ -12,7 +12,8 @@
     "LivingEntityClientMixin",
     "GameRendererMixin",
     "MinecraftClientMixin",
-    "ParticleEngineAccessor"
+    "ParticleEngineAccessor",
+    "EntityRenderDispatcherMixin"
   ],
   "injectors": {
     "defaultRequire": 1

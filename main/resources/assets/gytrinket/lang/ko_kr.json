@@ -67,6 +67,7 @@
   "tooltip.gytrinket.attr.construct_damage_independent": "컨스트럭트 피해 독립",
   "tooltip.gytrinket.attr.construct_attack_speed_percent": "컨스트럭트 공격 속도 %",
   "tooltip.gytrinket.attr.construct_attack_speed_independent": "컨스트럭트 공격 속도 독립",
+  "tooltip.gytrinket.attr.construct_non_shield_build_speed_percent": "비실드 컨스트럭트 건축 속도 %",
   "tooltip.gytrinket.attr.construct_build_speed_percent": "컨스트럭트 건축 속도 %",
   "tooltip.gytrinket.attr.construct_build_speed_independent": "컨스트럭트 건축 속도 독립",
   "tooltip.gytrinket.attr.drone_health": "드론 체력",

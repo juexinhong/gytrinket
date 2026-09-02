@@ -67,6 +67,7 @@
   "tooltip.gytrinket.attr.construct_damage_independent": "Konstrukt-Schaden unabhängig",
   "tooltip.gytrinket.attr.construct_attack_speed_percent": "Konstrukt-Angriffsgeschwindigkeit %",
   "tooltip.gytrinket.attr.construct_attack_speed_independent": "Konstrukt-Angriffsgeschwindigkeit unabhängig",
+  "tooltip.gytrinket.attr.construct_non_shield_build_speed_percent": "Nicht-Schild-Konstrukt-Baugeschwindigkeit %",
   "tooltip.gytrinket.attr.construct_build_speed_percent": "Konstrukt-Baugeschwindigkeit %",
   "tooltip.gytrinket.attr.construct_build_speed_independent": "Konstrukt-Baugeschwindigkeit unabhängig",
   "tooltip.gytrinket.attr.drone_health": "Drohnen-Gesundheit",

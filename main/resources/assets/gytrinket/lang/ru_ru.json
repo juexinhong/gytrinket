@@ -67,6 +67,7 @@
   "tooltip.gytrinket.attr.construct_damage_independent": "Независимый урон конструкта",
   "tooltip.gytrinket.attr.construct_attack_speed_percent": "Скорость атаки конструкта %",
   "tooltip.gytrinket.attr.construct_attack_speed_independent": "Независимая скорость атаки конструкта",
+  "tooltip.gytrinket.attr.construct_non_shield_build_speed_percent": "Скорость постройки нещитовых конструктов %",
   "tooltip.gytrinket.attr.construct_build_speed_percent": "Скорость постройки конструкта %",
   "tooltip.gytrinket.attr.construct_build_speed_independent": "Независимая скорость постройки конструкта",
   "tooltip.gytrinket.attr.drone_health": "Здоровье дрона",

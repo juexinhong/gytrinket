@@ -2,6 +2,7 @@ package com.gytrinket.gytrinket.client.attack_mode;
 
 import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.client.datacenter.ClientDataCenter;
+import com.gytrinket.gytrinket.core.attack_mode.charged_attack.ChargedAttackSweepHandler;
 import com.gytrinket.gytrinket.gytrinket;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.Entity;
@@ -28,14 +29,17 @@ public class AttackModeClientUtil {
      */
     public static Entity findTargetInCrosshair(Player player) {
         Minecraft mc = Minecraft.getInstance();
+        // 非生物目标（展示框/画等）仍依赖原版准星精确指向；生物目标由下方光束判定覆盖
         if (mc.hitResult instanceof EntityHitResult entityHitResult) {
             Entity entity = entityHitResult.getEntity();
-            if (!shouldSkipEntity(entity)) {
+            if (!(entity instanceof LivingEntity) && !shouldSkipEntity(entity)) {
                 return entity;
             }
         }
 
-        double reachDistance = player.entityInteractionRange();
+        // 光束炮式矩形光束判定（与服务端 ChargedAttackSweepHandler 同一算法）：
+        // 宽/高容差判定柱，长度 = 实体交互距离 + 附加 0.5 格
+        double reachDistance = player.entityInteractionRange() + ChargedAttackSweepHandler.CHARGE_EXTRA_REACH;
         Vec3 eyePos = player.getEyePosition(1.0f);
         Vec3 lookVec = player.getLookAngle();
         Vec3 endPos = eyePos.add(lookVec.scale(reachDistance));
@@ -51,14 +55,15 @@ public class AttackModeClientUtil {
                 continue;
             }
 
-            AABB entityBox = entity.getBoundingBox().inflate(0.5);
-            var clipResult = entityBox.clip(eyePos, endPos);
-            if (clipResult.isPresent()) {
-                double distance = eyePos.distanceTo(clipResult.get());
-                if (distance < closestDistance) {
-                    closestDistance = distance;
-                    closestEntity = entity;
-                }
+            if (!ChargedAttackSweepHandler.isEntityHitByBeam(entity, eyePos, endPos)) {
+                continue;
+            }
+
+            // 距离排序：实体盒中心沿视线轴的投影长度（取最近）
+            double alongAxis = entity.getBoundingBox().getCenter().subtract(eyePos).dot(lookVec);
+            if (alongAxis < closestDistance) {
+                closestDistance = alongAxis;
+                closestEntity = entity;
             }
         }
 

@@ -611,6 +611,10 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
 
         lastMouseY = mouseY;
 
+        // 鼠标是否在内容裁剪区内：列表渲染有 scissor 截断，但 hover/点击判定不会自动裁剪——
+        // 部分可见的展开行会延伸到面板外底部按钮区域（恢复默认等），不裁剪会误触发列表交互
+        boolean mouseInClip = mouseY >= contentY && mouseY < contentBottom;
+
         if (isDraggingItem && dragFromIndex >= 0 && dragFromIndex < itemConfigData.size()) {
             int dragRowHeight = calcRowHeight(dragFromIndex);
             dragTargetIndex = calcDragTargetIndex(mouseY, contentY);
@@ -642,7 +646,8 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
             ListTag attrs = itemTag.getList("attributes", 10);
             boolean isSelected = (i == selectedItemIndex);
 
-            boolean itemHovered = mouseX >= panelX + 5 && mouseX < panelX + panelWidth - 5
+            boolean itemHovered = mouseInClip
+                    && mouseX >= panelX + 5 && mouseX < panelX + panelWidth - 5
                     && mouseY >= y && mouseY < y + rowHeight;
 
             if (isSelected) {
@@ -658,7 +663,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
                 guiGraphics.renderItem(itemStack, panelX + 10, y + 1);
                 String itemName = itemStack.getHoverName().getString();
                 guiGraphics.drawString(font, itemName, panelX + 28, y + 3, renderer.getTextColor());
-                if (mouseX >= panelX + 10 && mouseX < panelX + 26 && mouseY >= y + 1 && mouseY < y + 17) {
+                if (mouseInClip && mouseX >= panelX + 10 && mouseX < panelX + 26 && mouseY >= y + 1 && mouseY < y + 17) {
                     hoveredItemStack = itemStack;
                 }
             } else {
@@ -666,7 +671,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
             }
 
             int delX = panelX + panelWidth - 22;
-            boolean delHovered = mouseX >= delX && mouseX < delX + 16
+            boolean delHovered = mouseInClip && mouseX >= delX && mouseX < delX + 16
                     && mouseY >= y + 1 && mouseY < y + 13;
             if (delHovered && !isDraggingItem) {
                 hoveredDelete = true;
@@ -708,7 +713,8 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
 
                 // 护盾类型文本（悬停可点击打开选择器，无按钮样式）
                 int btnH = ATTR_LINE_HEIGHT - 1;
-                boolean typeBtnHovered = mouseX >= shieldTypeX - 2 && mouseX < shieldTypeX + shieldTextW + 2
+                boolean typeBtnHovered = mouseInClip
+                        && mouseX >= shieldTypeX - 2 && mouseX < shieldTypeX + shieldTextW + 2
                         && mouseY >= shieldTypeY && mouseY < shieldTypeY + btnH;
                 guiGraphics.drawString(font, shieldTypeText, shieldTypeX, shieldTypeY + 2,
                         typeBtnHovered ? renderer.getAccentColor() : renderer.getHintColor());
@@ -732,7 +738,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
                         int btnX = attrX + hintWidth + 8;
                         int btnY = attrY;
                         if (btnY < contentBottom) {
-                            boolean addHovered = mouseX >= btnX && mouseX < btnX + font.width(addText) + 6
+                            boolean addHovered = mouseInClip && mouseX >= btnX && mouseX < btnX + font.width(addText) + 6
                                     && mouseY >= btnY && mouseY < btnY + ATTR_LINE_HEIGHT - 1;
                             guiGraphics.drawString(font, addText, btnX + 3, btnY + 2, addHovered ? renderer.getAccentColor() : renderer.getHintColor());
                             if (addHovered) {
@@ -746,7 +752,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
                         int remBtnX = btnX + font.width(addText) + 8;
                         int remBtnY = attrY;
                         if (remBtnY < contentBottom) {
-                            boolean remHovered = mouseX >= remBtnX && mouseX < remBtnX + font.width(removeText) + 6
+                            boolean remHovered = mouseInClip && mouseX >= remBtnX && mouseX < remBtnX + font.width(removeText) + 6
                                     && mouseY >= remBtnY && mouseY < remBtnY + ATTR_LINE_HEIGHT - 1;
                             guiGraphics.drawString(font, removeText, remBtnX + 3, remBtnY + 2, remHovered ? renderer.getDeleteColor() : renderer.getHintColor());
                             if (remHovered) {
@@ -780,7 +786,8 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
                             if (attrY >= contentBottom) break;
                         }
 
-                        boolean attrHovered = mouseX >= attrX && mouseX < attrX + textWidth
+                        boolean attrHovered = mouseInClip
+                                && mouseX >= attrX && mouseX < attrX + textWidth
                                 && mouseY >= attrY && mouseY < attrY + ATTR_LINE_HEIGHT - 1;
 
                         renderer.drawAttrCell(guiGraphics, attrX, attrY, textWidth, ATTR_LINE_HEIGHT - 1, attrHovered, isDeletingAttr);
@@ -814,7 +821,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
                             btnY += ATTR_LINE_HEIGHT;
                         }
                         if (btnY < contentBottom) {
-                            boolean addHovered = mouseX >= btnX && mouseX < btnX + font.width(addText) + 6
+                            boolean addHovered = mouseInClip && mouseX >= btnX && mouseX < btnX + font.width(addText) + 6
                                     && mouseY >= btnY && mouseY < btnY + ATTR_LINE_HEIGHT - 1;
                             guiGraphics.drawString(font, addText, btnX + 3, btnY + 2, addHovered ? renderer.getAccentColor() : renderer.getHintColor());
                             if (addHovered) {
@@ -832,7 +839,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
                             remBtnY += ATTR_LINE_HEIGHT;
                         }
                         if (remBtnY < contentBottom) {
-                            boolean remHovered = mouseX >= remBtnX && mouseX < remBtnX + font.width(removeText) + 6
+                            boolean remHovered = mouseInClip && mouseX >= remBtnX && mouseX < remBtnX + font.width(removeText) + 6
                                     && mouseY >= remBtnY && mouseY < remBtnY + ATTR_LINE_HEIGHT - 1;
                             guiGraphics.drawString(font, removeText, remBtnX + 3, remBtnY + 2, remHovered ? renderer.getDeleteColor() : renderer.getHintColor());
                             if (remHovered) {

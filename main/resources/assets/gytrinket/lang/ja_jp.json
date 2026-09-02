@@ -66,6 +66,7 @@
     "tooltip.gytrinket.attr.construct_damage_independent":  "コンストラクトダメージ独立",
     "tooltip.gytrinket.attr.construct_attack_speed_percent":  "コンストラクト攻撃速度 %",
     "tooltip.gytrinket.attr.construct_attack_speed_independent":  "コンストラクト攻撃速度独立",
+    "tooltip.gytrinket.attr.construct_non_shield_build_speed_percent":  "非シールドコンストラクト構築速度 %",
     "tooltip.gytrinket.attr.construct_build_speed_percent":  "コンストラクト構築速度 %",
     "tooltip.gytrinket.attr.construct_build_speed_independent":  "コンストラクト構築速度独立",
     "tooltip.gytrinket.attr.drone_health":  "ドローン体力",

@@ -63,6 +63,7 @@
   "tooltip.gytrinket.attr.construct_damage_independent": "Construct Damage Independent",
   "tooltip.gytrinket.attr.construct_attack_speed_percent": "Construct Attack Speed %",
   "tooltip.gytrinket.attr.construct_attack_speed_independent": "Construct Attack Speed Independent",
+  "tooltip.gytrinket.attr.construct_non_shield_build_speed_percent": "Non-Shield Construct Build Speed %",
   "tooltip.gytrinket.attr.construct_build_speed_percent": "Construct Build Speed %",
   "tooltip.gytrinket.attr.construct_move_speed_percent": "Construct Move Speed %",
   "tooltip.gytrinket.attr.construct_orbit_speed_percent": "Construct Orbit Speed %",

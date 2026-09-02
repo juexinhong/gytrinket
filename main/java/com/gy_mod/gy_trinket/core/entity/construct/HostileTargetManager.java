@@ -7,11 +7,15 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.MobCategory;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.projectile.AbstractArrow;
+import net.minecraft.world.entity.projectile.Projectile;
+import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.event.entity.player.AttackEntityEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.server.ServerLifecycleHooks;
 
+import java.lang.reflect.Field;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -204,6 +208,16 @@ public class HostileTargetManager {
         if (isEntityOwnedByPlayer(entity, player)) {
             return false;
         }
+
+        // 玩家（或其构造体）发射的弹射物：即使是配置危险实体也不视为威胁（归属优先于危险物配置）
+        if (isFriendlyProjectile(entity, player)) {
+            return false;
+        }
+
+        // 落地的箭矢：已失去飞行威胁，不再计入危险物
+        if (isArrowGrounded(entity)) {
+            return false;
+        }
         
         // 对玩家有仇恨的实体（最高优先级）
         if (isHostileToPlayer(entity, player)) {
@@ -282,6 +296,58 @@ public class HostileTargetManager {
             return ownerUUID != null && ownerUUID.equals(playerUUID);
         }
         return false;
+    }
+
+    /** AbstractArrow.inGround 为 protected 字段，通过反射读取（兼容混淆名）；读取失败时退化为速度判定 */
+    private static Field ARROW_IN_GROUND_FIELD;
+
+    static {
+        for (String fieldName : new String[]{"f_36704_", "inGround"}) {
+            try {
+                Field f = AbstractArrow.class.getDeclaredField(fieldName);
+                f.setAccessible(true);
+                ARROW_IN_GROUND_FIELD = f;
+                break;
+            } catch (NoSuchFieldException ignored) {
+            }
+        }
+    }
+
+    /**
+     * 判断弹射物是否由玩家（或其所属构造体）发射
+     * <p>
+     * 归属玩家的弹射物即使是配置中的危险实体（箭矢、火球等）也不应视为威胁。
+     */
+    private static boolean isFriendlyProjectile(Entity entity, Player player) {
+        if (player == null || !(entity instanceof Projectile projectile)) {
+            return false;
+        }
+        Entity owner = projectile.getOwner();
+        if (owner == null) {
+            return false;
+        }
+        return owner == player || isEntityOwnedByPlayer(owner, player);
+    }
+
+    /**
+     * 判断箭矢是否处于落地状态（inGround）
+     * <p>
+     * 落地箭矢已失去飞行威胁，不应再计入危险物。
+     * AbstractArrow.inGround 为 protected，通过反射读取；反射不可用时退化为速度近似判定。
+     */
+    private static boolean isArrowGrounded(Entity entity) {
+        if (!(entity instanceof AbstractArrow arrow)) {
+            return false;
+        }
+        if (ARROW_IN_GROUND_FIELD != null) {
+            try {
+                return ARROW_IN_GROUND_FIELD.getBoolean(arrow);
+            } catch (IllegalAccessException ignored) {
+            }
+        }
+        Vec3 velocity = arrow.getDeltaMovement();
+        double speedSquared = velocity.x * velocity.x + velocity.y * velocity.y + velocity.z * velocity.z;
+        return speedSquared < 0.01;
     }
 
     /**

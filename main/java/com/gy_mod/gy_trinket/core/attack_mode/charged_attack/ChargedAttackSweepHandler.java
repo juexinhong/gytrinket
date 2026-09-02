@@ -35,6 +35,13 @@ public class ChargedAttackSweepHandler {
 
     private ChargedAttackSweepHandler() {}
 
+    /** 充能攻击光束判定：在实体交互距离基础上额外增加的长度（格） */
+    public static final double CHARGE_EXTRA_REACH = 0.5D;
+    /** 充能攻击光束判定宽度（格）：以视线为轴 ±半宽，容差优于原「实体盒膨胀 0.5 + 中心线裁剪」 */
+    public static final double CHARGE_BEAM_WIDTH = 1.5D;
+    /** 充能攻击光束判定高度（格）：以视线为轴 ±半高 */
+    public static final double CHARGE_BEAM_HEIGHT = 1.5D;
+
     /**
      * 判断物品是否支持横扫动作（剑类）
      */
@@ -186,14 +193,18 @@ public class ChargedAttackSweepHandler {
     }
 
     /**
-     * 查找玩家准星对准的目标
+     * 查找玩家准星对准的目标（光束炮式矩形光束判定）
+     * <p>
+     * 判定方法与无人机光束炮一致：以视线线段为轴构造宽 {@link #CHARGE_BEAM_WIDTH} ×
+     * 高 {@link #CHARGE_BEAM_HEIGHT} 的判定柱，长度 = 实体交互距离 + {@link #CHARGE_EXTRA_REACH}。
+     * 多个命中时返回沿视线轴投影最近的一个。
      *
      * @param player     玩家
      * @param livingOnly true=仅LivingEntity（原版攻击过滤用），false=任意实体（含无生命实体，用于即时结算）
      * @return 准星对准的最近实体，或null
      */
     public static Entity findTargetInCrosshair(ServerPlayer player, boolean livingOnly) {
-        double reachDistance = 3.0; // 1.20.1 无实体交互距离属性，使用原版固定值
+        double reachDistance = 3.0 + CHARGE_EXTRA_REACH; // 1.20.1 无实体交互距离属性，使用原版固定值 + 附加长度
         Vec3 eyePos = player.getEyePosition(1.0f);
         Vec3 lookVec = player.getLookAngle();
         Vec3 endPos = eyePos.add(lookVec.scale(reachDistance));
@@ -208,18 +219,133 @@ public class ChargedAttackSweepHandler {
         double closestDistance = reachDistance;
 
         for (Entity entity : entities) {
-            AABB entityBox = entity.getBoundingBox().inflate(0.5);
-            var clipResult = entityBox.clip(eyePos, endPos);
-            if (clipResult.isPresent()) {
-                double distance = eyePos.distanceTo(clipResult.get());
-                if (distance < closestDistance) {
-                    closestDistance = distance;
-                    closestEntity = entity;
-                }
+            if (!isEntityHitByBeam(entity, eyePos, endPos)) {
+                continue;
+            }
+            // 距离排序：实体盒中心沿视线轴的投影长度（取最近）
+            double alongAxis = entity.getBoundingBox().getCenter().subtract(eyePos).dot(lookVec);
+            if (alongAxis < closestDistance) {
+                closestDistance = alongAxis;
+                closestEntity = entity;
             }
         }
 
         return closestEntity;
+    }
+
+    /**
+     * 光束炮式矩形光束判定（判定方法同无人机光束炮 DroneBeamProjectile）
+     * <p>
+     * 命中条件（任一）：
+     * 1. 判定柱 12 条棱边线段与实体 AABB 相交
+     * 2. 实体 AABB 中心位于判定柱内
+     */
+    public static boolean isEntityHitByBeam(Entity entity, Vec3 beamStart, Vec3 beamEnd) {
+        return isHitByRectangularBeam(beamStart, beamEnd, entity.getBoundingBox());
+    }
+
+    private static boolean isHitByRectangularBeam(Vec3 beamStart, Vec3 beamEnd, AABB entityAABB) {
+        Vec3 lookVec = beamEnd.subtract(beamStart).normalize();
+        // 视线接近竖直时水平右侧向量退化，改用固定水平轴
+        Vec3 right = lookVec.y > 0.999D || lookVec.y < -0.999D
+                ? new Vec3(1.0D, 0.0D, 0.0D)
+                : new Vec3(-lookVec.z, 0.0D, lookVec.x).normalize();
+        Vec3 up = lookVec.cross(right).normalize();
+
+        Vec3 halfWidth = right.scale(CHARGE_BEAM_WIDTH / 2.0D);
+        Vec3 halfHeight = up.scale(CHARGE_BEAM_HEIGHT / 2.0D);
+
+        Vec3 topLeftStart = beamStart.add(halfHeight).subtract(halfWidth);
+        Vec3 topRightStart = beamStart.add(halfHeight).add(halfWidth);
+        Vec3 bottomLeftStart = beamStart.subtract(halfHeight).subtract(halfWidth);
+        Vec3 bottomRightStart = beamStart.subtract(halfHeight).add(halfWidth);
+
+        Vec3 topLeftEnd = beamEnd.add(halfHeight).subtract(halfWidth);
+        Vec3 topRightEnd = beamEnd.add(halfHeight).add(halfWidth);
+        Vec3 bottomLeftEnd = beamEnd.subtract(halfHeight).subtract(halfWidth);
+        Vec3 bottomRightEnd = beamEnd.subtract(halfHeight).add(halfWidth);
+
+        if (intersectsLineAABB(topLeftStart, topRightStart, entityAABB)) return true;
+        if (intersectsLineAABB(topRightStart, topRightEnd, entityAABB)) return true;
+        if (intersectsLineAABB(topRightEnd, topLeftEnd, entityAABB)) return true;
+        if (intersectsLineAABB(topLeftEnd, topLeftStart, entityAABB)) return true;
+
+        if (intersectsLineAABB(bottomLeftStart, bottomRightStart, entityAABB)) return true;
+        if (intersectsLineAABB(bottomRightStart, bottomRightEnd, entityAABB)) return true;
+        if (intersectsLineAABB(bottomRightEnd, bottomLeftEnd, entityAABB)) return true;
+        if (intersectsLineAABB(bottomLeftEnd, bottomLeftStart, entityAABB)) return true;
+
+        if (intersectsLineAABB(topLeftStart, bottomLeftStart, entityAABB)) return true;
+        if (intersectsLineAABB(topLeftEnd, bottomLeftEnd, entityAABB)) return true;
+
+        if (intersectsLineAABB(topRightStart, bottomRightStart, entityAABB)) return true;
+        if (intersectsLineAABB(topRightEnd, bottomRightEnd, entityAABB)) return true;
+
+        return isAABBInsideBeam(entityAABB, beamStart, beamEnd, halfWidth, halfHeight, lookVec);
+    }
+
+    private static boolean isAABBInsideBeam(AABB aabb, Vec3 beamStart, Vec3 beamEnd, Vec3 halfWidth, Vec3 halfHeight, Vec3 lookVec) {
+        Vec3 center = aabb.getCenter();
+        Vec3 centerToStart = center.subtract(beamStart);
+        double widthDistance = Math.abs(centerToStart.dot(halfWidth.normalize()));
+        if (widthDistance > halfWidth.length()) {
+            return false;
+        }
+
+        double heightDistance = Math.abs(centerToStart.dot(halfHeight.normalize()));
+        if (heightDistance > halfHeight.length()) {
+            return false;
+        }
+
+        double lengthDistance = centerToStart.dot(lookVec);
+        double beamLength = beamEnd.distanceTo(beamStart);
+        return lengthDistance >= 0 && lengthDistance <= beamLength;
+    }
+
+    private static boolean intersectsLineAABB(Vec3 lineStart, Vec3 lineEnd, AABB aabb) {
+        double[] tNear = {Double.NEGATIVE_INFINITY};
+        double[] tFar = {Double.POSITIVE_INFINITY};
+
+        if (!clipLineToPlane(lineStart.x, lineEnd.x, aabb.minX, aabb.maxX, lineStart, lineEnd, tNear, tFar)) {
+            return false;
+        }
+
+        if (!clipLineToPlane(lineStart.y, lineEnd.y, aabb.minY, aabb.maxY, lineStart, lineEnd, tNear, tFar)) {
+            return false;
+        }
+
+        if (!clipLineToPlane(lineStart.z, lineEnd.z, aabb.minZ, aabb.maxZ, lineStart, lineEnd, tNear, tFar)) {
+            return false;
+        }
+
+        if (tNear[0] > tFar[0]) {
+            return false;
+        }
+
+        return tFar[0] >= 0 && tNear[0] <= 1;
+    }
+
+    private static boolean clipLineToPlane(double start, double end, double min, double max,
+                                           Vec3 lineStart, Vec3 lineEnd, double[] tNear, double[] tFar) {
+        double tMin, tMax;
+
+        if (end - start > 1e-6) {
+            tMin = (min - start) / (end - start);
+            tMax = (max - start) / (end - start);
+        } else if (start - end > 1e-6) {
+            tMin = (max - start) / (end - start);
+            tMax = (min - start) / (end - start);
+        } else {
+            if (start < min || start > max) {
+                return false;
+            }
+            return true;
+        }
+
+        if (tMin > tNear[0]) tNear[0] = tMin;
+        if (tMax < tFar[0]) tFar[0] = tMax;
+
+        return tNear[0] <= tFar[0];
     }
 
     /**
@@ -236,7 +362,7 @@ public class ChargedAttackSweepHandler {
             return;
         }
 
-        double reachDistance = 3.0; // 1.20.1 无实体交互距离属性，使用原版固定值
+        double reachDistance = 3.0 + CHARGE_EXTRA_REACH; // 1.20.1 无实体交互距离属性，使用原版固定值 + 附加长度
         Vec3 eyePos = player.getEyePosition(1.0f);
         Vec3 lookVec = player.getLookAngle();
         Vec3 endPos = eyePos.add(lookVec.scale(reachDistance));
@@ -252,11 +378,10 @@ public class ChargedAttackSweepHandler {
         float chargedDamage = baseDamage * (1.0F + (float) chargeValue);
 
         for (Entity entity : entities) {
-            AABB entityBox = entity.getBoundingBox().inflate(0.5);
-            var clipResult = entityBox.clip(eyePos, endPos);
-            if (clipResult.isPresent()) {
-                entity.hurt(player.damageSources().playerAttack(player), chargedDamage);
+            if (!isEntityHitByBeam(entity, eyePos, endPos)) {
+                continue;
             }
+            entity.hurt(player.damageSources().playerAttack(player), chargedDamage);
         }
     }
 

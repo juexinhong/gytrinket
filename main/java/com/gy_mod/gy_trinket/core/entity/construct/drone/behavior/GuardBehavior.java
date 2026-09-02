@@ -12,13 +12,10 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.entity.projectile.AbstractArrow;
-import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
-import java.lang.reflect.Field;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -40,35 +37,6 @@ public class GuardBehavior implements IDroneBehavior {
     private static final double MAX_ANGULAR_VELOCITY_PER_TICK = Math.toRadians(2.0);
     // 丢失距离：超出40格自毁
     private static final double LOST_DISTANCE = 40.0;
-
-    private static Field ARROW_IN_GROUND_FIELD;
-
-    static {
-        for (String fieldName : new String[]{"f_36704_", "inGround"}) {
-            try {
-                Field f = AbstractArrow.class.getDeclaredField(fieldName);
-                f.setAccessible(true);
-                ARROW_IN_GROUND_FIELD = f;
-                break;
-            } catch (NoSuchFieldException ignored) {
-            }
-        }
-    }
-
-    private static boolean isArrowInGround(AbstractArrow arrow) {
-        if (ARROW_IN_GROUND_FIELD == null) {
-            Vec3 velocity = arrow.getDeltaMovement();
-            double speedSquared = velocity.x * velocity.x + velocity.y * velocity.y + velocity.z * velocity.z;
-            return speedSquared < 0.01;
-        }
-        try {
-            return ARROW_IN_GROUND_FIELD.getBoolean(arrow);
-        } catch (IllegalAccessException e) {
-            Vec3 velocity = arrow.getDeltaMovement();
-            double speedSquared = velocity.x * velocity.x + velocity.y * velocity.y + velocity.z * velocity.z;
-            return speedSquared < 0.01;
-        }
-    }
 
     private static float getConfigAttackRange() { return Config.GUARD_ATTACK_RANGE.get().floatValue(); }
     private static float getConfigAttackInterval() { return Config.GUARD_ATTACK_INTERVAL.get().floatValue(); }
@@ -208,29 +176,52 @@ public class GuardBehavior implements IDroneBehavior {
         return playerTargetAngles.getOrDefault(ownerUUID, 0.0);
     }
 
+    /** 朝向索敌缓存：每玩家每刻只扫描一次，所有守卫阵列无人机共用（危险物 = 敌对生物 + 危险弹射物） */
+    private static final Map<UUID, ThreatCacheEntry> THREAT_CACHE = new HashMap<>();
+
+    private record ThreatCacheEntry(Optional<Vec3> threatPos, long createdTick) {
+        boolean isValid(long currentTick) { return currentTick == createdTick; }
+    }
+
     private Optional<Vec3> findNearestThreat(DroneConstructEntity drone, LivingEntity owner) {
         if (!(owner instanceof Player player)) return Optional.empty();
 
-        LivingEntity nearest = ConstructGroupCache.getInstance().findNearestTarget(
-            owner.getUUID(), owner, owner.position(), THREAT_SEARCH_RANGE);
-
-        if (nearest != null) {
-            return Optional.of(new Vec3(nearest.getX(), 0, nearest.getZ()));
+        // 朝向索敌独立于攻击索敌快照：直接使用危险物管理器（HostileTargetManager，含弹射物），
+        // 玩家中心 30 格，每刻查找并缓存一次，阵列整体朝向最近的危险弹射物或危险生物
+        long currentTick = drone.level().getGameTime();
+        ThreatCacheEntry cached = THREAT_CACHE.get(owner.getUUID());
+        if (cached != null && cached.isValid(currentTick)) {
+            return cached.threatPos();
         }
-        return Optional.empty();
+
+        Optional<Vec3> nearest = scanNearestThreat(player);
+        THREAT_CACHE.put(owner.getUUID(), new ThreatCacheEntry(nearest, currentTick));
+        return nearest;
     }
 
-    private boolean isFriendlyProjectile(Projectile proj, DroneConstructEntity drone, Player player) {
-        Entity projOwner = proj.getOwner();
-        if (projOwner instanceof Player) return true;
-        if (projOwner instanceof DroneConstructEntity droneShooter
-                && droneShooter.getOwnerUUID() != null
-                && droneShooter.getOwnerUUID().equals(drone.getOwnerUUID())) {
-            return true;
-        }
-        if (projOwner == drone) return true;
+    /** 扫描玩家中心 THREAT_SEARCH_RANGE 内最近的危险物（敌对生物 + 危险弹射物） */
+    private Optional<Vec3> scanNearestThreat(Player player) {
+        AABB searchBox = new AABB(
+            player.getX() - THREAT_SEARCH_RANGE,
+            player.getY() - THREAT_SEARCH_RANGE,
+            player.getZ() - THREAT_SEARCH_RANGE,
+            player.getX() + THREAT_SEARCH_RANGE,
+            player.getY() + THREAT_SEARCH_RANGE,
+            player.getZ() + THREAT_SEARCH_RANGE);
 
-        return false;
+        Entity nearest = null;
+        double nearestDistSq = Double.MAX_VALUE;
+        for (Entity entity : player.level().getEntities(player, searchBox,
+                e -> HostileTargetManager.shouldAttackPlayer(e, player))) {
+            double distSq = entity.distanceToSqr(player.getX(), player.getY(), player.getZ());
+            if (distSq < nearestDistSq) {
+                nearestDistSq = distSq;
+                nearest = entity;
+            }
+        }
+        return nearest != null
+                ? Optional.of(new Vec3(nearest.getX(), 0, nearest.getZ()))
+                : Optional.empty();
     }
 
     private void repelEnemiesOnCollision(DroneConstructEntity drone, LivingEntity owner) {

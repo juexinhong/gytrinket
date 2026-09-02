@@ -33,10 +33,10 @@ public class GhostAlphaBufferSource implements MultiBufferSource {
 
     /** 反射字段缓存：RenderType 实例类 -> state 字段 */
     private static final ConcurrentMap<Class<?>, Field> STATE_FIELD_CACHE = new ConcurrentHashMap<>();
-    /** 反射字段：CompositeState.textureState */
-    private static final Field TEXTURE_STATE_FIELD = findField(RenderType.CompositeState.class, "textureState");
-    /** 反射字段：TextureStateShard.texture */
-    private static final Field TEXTURE_FIELD = findField(RenderStateShard.TextureStateShard.class, "texture");
+    /** 反射字段：CompositeState 中类型为 EmptyTextureStateShard 的字段（textureState；1.19.4+ 该字段声明类型为 EmptyTextureStateShard，TextureStateShard 是其子类，按基类匹配） */
+    private static final Field TEXTURE_STATE_FIELD = findFieldByType(RenderType.CompositeState.class, RenderStateShard.EmptyTextureStateShard.class);
+    /** 反射字段：TextureStateShard 中类型为 Optional 的字段（texture，按类型匹配） */
+    private static final Field TEXTURE_FIELD = findFieldByType(RenderStateShard.TextureStateShard.class, Optional.class);
     /** RenderType -> 其内部纹理 缓存（RenderType 引用语义，数量有限） */
     private static final ConcurrentMap<RenderType, ResourceLocation> TEXTURE_CACHE = new ConcurrentHashMap<>();
 
@@ -63,17 +63,21 @@ public class GhostAlphaBufferSource implements MultiBufferSource {
         return TEXTURE_CACHE.computeIfAbsent(renderType, rt -> {
             try {
                 Field stateField = STATE_FIELD_CACHE.computeIfAbsent(rt.getClass(), c -> {
-                    Field f = findField(c, "state");
-                    if (f != null) f.setAccessible(true);
+                    Field f = findFieldByType(c, RenderType.CompositeState.class);
                     return f;
                 });
                 if (stateField == null || TEXTURE_STATE_FIELD == null || TEXTURE_FIELD == null) {
                     return null;
                 }
                 Object state = stateField.get(rt);
-                if (state == null) return null;
+                if (state == null) {
+                    return null;
+                }
                 Object textureState = TEXTURE_STATE_FIELD.get(state);
-                if (textureState == null) return null;
+                // EmptyTextureStateShard 的另一子类 NoTextureStateShard 无 texture 字段，先确认声明类再读取
+                if (textureState == null || !TEXTURE_FIELD.getDeclaringClass().isInstance(textureState)) {
+                    return null;
+                }
                 @SuppressWarnings("unchecked")
                 Optional<ResourceLocation> tex = (Optional<ResourceLocation>) TEXTURE_FIELD.get(textureState);
                 return tex != null && tex.isPresent() ? tex.get() : null;
@@ -83,14 +87,15 @@ public class GhostAlphaBufferSource implements MultiBufferSource {
         });
     }
 
-    private static Field findField(Class<?> clazz, String name) {
-        try {
-            Field f = clazz.getDeclaredField(name);
-            f.setAccessible(true);
-            return f;
-        } catch (Exception e) {
-            return null;
+    /** 按字段类型查找（与混淆字段名无关，开发/生产/SRG 运行时均可解析） */
+    private static Field findFieldByType(Class<?> clazz, Class<?> fieldType) {
+        for (Field f : clazz.getDeclaredFields()) {
+            if (fieldType.isAssignableFrom(f.getType())) {
+                f.setAccessible(true);
+                return f;
+            }
         }
+        return null;
     }
 }
 

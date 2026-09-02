@@ -1,18 +1,23 @@
 package com.gy_mod.gy_trinket.core.attack_mode.charged_attack;
 
 import com.gy_mod.gy_trinket.config.Config;
+import com.gy_mod.gy_trinket.core.attack_mode.AttackModeManager;
 import com.gy_mod.gy_trinket.core.attack_mode.AttackStateManager;
 import com.gy_mod.gy_trinket.core.attack_mode.PlayerAttackLockManager;
 import com.gy_mod.gy_trinket.core.attack_mode.GrudgeManager;
+import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
 import com.gy_mod.gy_trinket.gytrinket;
 import com.gy_mod.gy_trinket.network.NetworkHandler;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.server.ServerLifecycleHooks;
 
 import java.util.Map;
 import java.util.Set;
@@ -42,7 +47,48 @@ public class ChargedAttackManager {
     // 拥有充能攻击能力的玩家集合
     private static final Set<UUID> PLAYER_HAS_CHARGED_ATTACK = new java.util.concurrent.CopyOnWriteArraySet<>();
 
+    // 长按右键充能攻速修正值的动态属性命名空间与属性名
+    private static final String CHARGED_ATTACK_NAMESPACE = "charged_attack";
+    private static final String ATTACK_SPEED_FLAT_ATTRIBUTE = "attack_speed_flat";
+
     private ChargedAttackManager() {}
+
+    /**
+     * 将充能物品白名单攻击速度修正值写入模组属性账本（动态属性，命名空间 charged_attack）
+     * 由 AttackSpeedManager 监听账本变化统一投影到原版攻击速度属性
+     * 仅对非武器物品（武器类与工具类武器自带攻速修正，不受限）且修正值非0时写入，
+     * 武器类或修正值为0时确保移除残留
+     */
+    private static void applyItemUseChargeSpeedAttribute(ServerPlayer player) {
+        Item held = player.getMainHandItem().getItem();
+        if (Config.isWeaponLikeItem(held)) {
+            removeItemUseChargeSpeedAttribute(player);
+            return;
+        }
+        double modifierValue = Config.getItemUseChargeSpeedModifier(held);
+        if (modifierValue == 0) {
+            removeItemUseChargeSpeedAttribute(player);
+            return;
+        }
+        AttributeManager.setDynamicAttribute(
+            player.getUUID(), CHARGED_ATTACK_NAMESPACE, ATTACK_SPEED_FLAT_ATTRIBUTE, modifierValue);
+    }
+
+    private static void removeItemUseChargeSpeedAttribute(Player player) {
+        AttributeManager.removeDynamicAttribute(
+            player.getUUID(), CHARGED_ATTACK_NAMESPACE, ATTACK_SPEED_FLAT_ATTRIBUTE);
+    }
+
+    private static void removeItemUseChargeSpeedAttribute(UUID playerUUID) {
+        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+        if (server == null) {
+            return;
+        }
+        ServerPlayer player = server.getPlayerList().getPlayer(playerUUID);
+        if (player != null) {
+            removeItemUseChargeSpeedAttribute(player);
+        }
+    }
 
     /**
      * 判断玩家是否拥有充能攻击能力
@@ -60,6 +106,8 @@ public class ChargedAttackManager {
         } else {
             PLAYER_HAS_CHARGED_ATTACK.remove(playerUUID);
             PLAYER_CHARGE_DATA.remove(playerUUID);
+            // 模块卸下/失效时移除充能攻速修正值（防御性）
+            removeItemUseChargeSpeedAttribute(playerUUID);
         }
     }
 
@@ -82,6 +130,7 @@ public class ChargedAttackManager {
     /**
      * 计算充能速率
      * 充能速率仅受攻击速度影响，不受攻击伤害影响
+     * 长按右键充能时白名单修正值经模组属性账本投影施加，此处直接读取属性值即可
      */
     public static double calculateChargeRate(Player player) {
         double baseRate = Config.getChargedAttackBaseChargeRate();
@@ -107,9 +156,14 @@ public class ChargedAttackManager {
      * 开始充能
      * 如果已经在充能中，不重置充能值（幂等操作）
      */
-    public static void startCharging(UUID playerUUID) {
+    public static void startCharging(ServerPlayer player) {
+        UUID playerUUID = player.getUUID();
         // 攻击锁定时禁用充能
         if (PlayerAttackLockManager.isLocked(playerUUID)) {
+            return;
+        }
+        // 点射进行中或冷却期间禁用充能（近战点射连击冷却/弹射物点射物品冷却）
+        if (AttackModeManager.isChargingDisabledDuringBurstFire(player)) {
             return;
         }
 
@@ -121,6 +175,7 @@ public class ChargedAttackManager {
         data.charging = true;
         data.chargeValue = 0;
         data.hasSeenHeld = false;
+        data.itemUseCharge = false;
     }
 
     /**
@@ -139,7 +194,7 @@ public class ChargedAttackManager {
             return;
         }
 
-        // 计算充能增量
+        // 计算充能增量（长按右键充能时修正值已经账本投影施加，直接读属性）
         double chargeRate = calculateChargeRate(player);
 
         // 添加积怨充能速率（也受阻力影响）
@@ -155,6 +210,16 @@ public class ChargedAttackManager {
      * 不立即清零充能值，改为标记释放状态，由tick进行快速消退
      */
     public static double releaseCharge(UUID playerUUID) {
+        return releaseCharge(playerUUID, true);
+    }
+
+    /**
+     * 释放充能攻击（可指定是否写入近战伤害Tracker）
+     *
+     * @param storeToTracker true=左键释放，写入Tracker供近战伤害消耗；
+     *                       false=长按右键充能释放，不写Tracker（近战不加成，仅箭矢类弹射物按消退值增幅）
+     */
+    public static double releaseCharge(UUID playerUUID, boolean storeToTracker) {
         ChargedAttackData data = PLAYER_CHARGE_DATA.get(playerUUID);
         if (data == null || !data.charging) {
             return 0;
@@ -163,11 +228,78 @@ public class ChargedAttackManager {
         double chargeValue = data.chargeValue;
         data.charging = false;
         data.releasing = true;
+        data.itemUseCharge = !storeToTracker;
 
-        // 存储充能值到Tracker
-        ChargedAttackDamageTracker.setChargeValue(playerUUID, chargeValue);
+        if (storeToTracker) {
+            // 存储充能值到Tracker
+            ChargedAttackDamageTracker.setChargeValue(playerUUID, chargeValue);
+        }
 
         return chargeValue;
+    }
+
+    /**
+     * 长按右键充能开始（客户端鼠标右键按下时请求）：
+     * 通用右键充能入口，不依赖任何具体物品，由服务端校验充能攻击解锁状态
+     */
+    public static void startItemUseCharge(ServerPlayer player) {
+        UUID uuid = player.getUUID();
+        if (!hasChargedAttack(player)) {
+            return;
+        }
+        // 攻击锁定时禁用充能
+        if (PlayerAttackLockManager.isLocked(uuid)) {
+            return;
+        }
+        // 点射进行中或冷却期间禁用充能（近战点射连击冷却/弹射物点射物品冷却）
+        if (AttackModeManager.isChargingDisabledDuringBurstFire(player)) {
+            return;
+        }
+        ChargedAttackData data = PLAYER_CHARGE_DATA.computeIfAbsent(uuid, k -> new ChargedAttackData());
+        if (data.charging) {
+            // 已经在充能中（左键或右键），不重置
+            return;
+        }
+        data.charging = true;
+        data.chargeValue = 0;
+        data.hasSeenHeld = false;
+        data.itemUseCharge = true;
+
+        // 将充能物品白名单攻击速度修正值写入模组属性账本（由 AttackSpeedManager 统一投影）
+        applyItemUseChargeSpeedAttribute(player);
+    }
+
+    /**
+     * 长按右键松开时释放：不触发任何攻击行为，
+     * 仅让充能值进入消退期（消退期间归属玩家的箭矢类弹射物加入世界时按当前充能值增幅）
+     */
+    public static void releaseChargeFromItemUse(ServerPlayer player) {
+        UUID uuid = player.getUUID();
+        // 无论是否在右键充能中，均移除充能攻速修正值（防御性）
+        removeItemUseChargeSpeedAttribute(player);
+        ChargedAttackData data = PLAYER_CHARGE_DATA.get(uuid);
+        if (data == null || !data.charging || !data.itemUseCharge) {
+            return;
+        }
+
+        double chargeValue = releaseCharge(uuid, false);
+        if (chargeValue > 0) {
+            // 发布释放事件（供幽灵机身等系统使用）
+            net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(
+                new ChargedAttackEvent(ChargedAttackEvent.Type.RELEASED, player));
+
+            // 同步释放后的充能值到客户端（HUD进入消退显示）
+            com.gy_mod.gy_trinket.network.NetworkHandler.sendChargedAttackSyncToPlayer(player, chargeValue);
+        }
+    }
+
+    /**
+     * 获取释放后消退期内的当前充能值（未在消退期返回0）
+     * 供弹射物加入世界时按当前充能值增幅（基础伤害 × (1 + 充能值)）
+     */
+    public static double getReleasingChargeValue(UUID playerUUID) {
+        ChargedAttackData data = PLAYER_CHARGE_DATA.get(playerUUID);
+        return (data != null && data.releasing) ? data.chargeValue : 0;
     }
 
     /**
@@ -178,7 +310,10 @@ public class ChargedAttackManager {
         if (data != null) {
             data.charging = false;
             data.chargeValue = 0;
+            data.itemUseCharge = false;
         }
+        // 取消充能时移除充能攻速修正值（防御性）
+        removeItemUseChargeSpeedAttribute(playerUUID);
     }
 
     @SubscribeEvent
@@ -193,11 +328,17 @@ public class ChargedAttackManager {
 
         UUID uuid = player.getUUID();
 
+        // 防御性清理：非右键充能状态时不应存在充能攻速修正值
+        ChargedAttackData data = PLAYER_CHARGE_DATA.get(uuid);
+        if (data == null || !data.charging || !data.itemUseCharge) {
+            removeItemUseChargeSpeedAttribute(player);
+        }
+
         if (!hasChargedAttack(player)) {
             return;
         }
 
-        ChargedAttackData data = PLAYER_CHARGE_DATA.get(uuid);
+        data = PLAYER_CHARGE_DATA.get(uuid);
         if (data == null) {
             return;
         }
@@ -213,8 +354,22 @@ public class ChargedAttackManager {
         }
 
         if (data.charging) {
-            // 检查玩家是否仍然按住左键
-            if (AttackStateManager.isPlayerHeld(player)) {
+            if (data.itemUseCharge) {
+                // 长按右键充能：由客户端"松开右键"包结束充能，不依赖左键按住状态
+                data.hasSeenHeld = true;
+                updateCharging(uuid, player);
+
+                // 发布充能tick事件
+                net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(
+                    new ChargedAttackEvent(ChargedAttackEvent.Type.CHARGING, player));
+
+                // 每3 tick同步充能值到客户端
+                data.syncTickCounter++;
+                if (data.syncTickCounter >= 3) {
+                    data.syncTickCounter = 0;
+                    NetworkHandler.sendChargedAttackSyncToPlayer(player, data.chargeValue);
+                }
+            } else if (AttackStateManager.isPlayerHeld(player)) {
                 // 持续充能（标记已确认按住状态，供高延迟下松开判定使用）
                 data.hasSeenHeld = true;
                 updateCharging(uuid, player);
@@ -253,6 +408,7 @@ public class ChargedAttackManager {
             if (data.chargeValue <= 0) {
                 data.chargeValue = 0;
                 data.releasing = false;
+                data.itemUseCharge = false;
                 // 同步0到客户端，清空HUD显示
                 NetworkHandler.sendChargedAttackSyncToPlayer(player, 0);
             } else {
@@ -264,8 +420,11 @@ public class ChargedAttackManager {
                 }
             }
 
-            // 同步消退中的充能值到Tracker，供伤害处理使用
-            ChargedAttackDamageTracker.setChargeValue(uuid, data.chargeValue);
+            // 长按右键释放（itemUseCharge）不写入近战Tracker：消退值仅供弹射物增幅
+            if (!data.itemUseCharge) {
+                // 同步消退中的充能值到Tracker，供伤害处理使用
+                ChargedAttackDamageTracker.setChargeValue(uuid, data.chargeValue);
+            }
         }
     }
 
@@ -305,12 +464,15 @@ public class ChargedAttackManager {
         // 是否已通过状态包确认过"按住左键"（高延迟下状态包晚于充能启动请求到达，
         // 确认前不允许按"松开"释放，防止 0 充能值误释放终止充能）
         boolean hasSeenHeld;
+        // 本次充能是否源于长按右键（充能阶段=true=右键充能源；释放后=true=不写近战Tracker）
+        boolean itemUseCharge;
 
         ChargedAttackData() {
             this.charging = false;
             this.releasing = false;
             this.chargeValue = 0;
             this.syncTickCounter = 0;
+            this.itemUseCharge = false;
             this.hasSeenHeld = false;
         }
     }

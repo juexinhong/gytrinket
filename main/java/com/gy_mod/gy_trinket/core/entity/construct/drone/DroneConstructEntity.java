@@ -358,11 +358,6 @@ public class DroneConstructEntity extends AbstractConstructEntity {
                 "simulated_explosion"
         );
 
-        if (this.level() instanceof ServerLevel serverLevel) {
-            serverLevel.sendParticles(ParticleTypes.EXPLOSION_EMITTER,
-                    pos.x, pos.y, pos.z, 1, 0, 0, 0, 0);
-        }
-
         removeFromConstructManager();
         this.remove(Entity.RemovalReason.DISCARDED);
     }

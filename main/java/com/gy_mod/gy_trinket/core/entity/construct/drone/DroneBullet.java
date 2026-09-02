@@ -120,9 +120,11 @@ public class DroneBullet extends ThrowableItemProjectile implements GeoEntity {
             Vec3 currentPos = this.position();
             Vec3 nextPos = currentPos.add(velocity);
 
-            LivingEntity hitTarget = findTargetInPath(currentPos, nextPos);
-            if (hitTarget != null) {
-                dealDamageToTarget(hitTarget);
+            PathHit hit = findTargetInPath(currentPos, nextPos);
+            if (hit != null) {
+                // 将子弹移动到上一刻（本刻预测）计算得出的相交位置，再结算伤害
+                this.setPos(hit.hitPos().x, hit.hitPos().y, hit.hitPos().z);
+                dealDamageToTarget(hit.target());
                 this.discard();
                 return;
             }
@@ -141,12 +143,11 @@ public class DroneBullet extends ThrowableItemProjectile implements GeoEntity {
 
     /**
      * 沿子弹路径寻找第一个可攻击的实体
-     * 检测方式：
-     * 1) 子弹碰撞箱与实体重叠（当前帧已接触）
-     * 2) 射线从当前位置到下一刻位置击中实体碰撞箱（路径预测）
+     * 检测方式：射线从本刻位置到下一刻位置击中实体碰撞箱（路径预测；
+     * 射线自本刻位置发出，天然覆盖本刻重叠情况）
      */
     @Nullable
-    private LivingEntity findTargetInPath(Vec3 currentPos, Vec3 nextPos) {
+    private PathHit findTargetInPath(Vec3 currentPos, Vec3 nextPos) {
         Entity owner = this.getOwner();
         Player ownerPlayer = getOwnerPlayer();
 
@@ -162,39 +163,31 @@ public class DroneBullet extends ThrowableItemProjectile implements GeoEntity {
 
         List<LivingEntity> candidates = this.level().getEntitiesOfClass(LivingEntity.class, pathBox);
 
-        LivingEntity closest = null;
+        PathHit closest = null;
         double closestDist = Double.MAX_VALUE;
-
-        AABB bulletBox = this.getBoundingBox();
 
         for (LivingEntity target : candidates) {
             if (target == owner) continue;
             if (ownerPlayer != null && target == ownerPlayer) continue;
             if (ownerPlayer != null && !HostileTargetManager.shouldAttackPlayer(target, ownerPlayer)) continue;
 
-            // 检查1：子弹碰撞箱是否与实体重叠
-            if (bulletBox.intersects(target.getBoundingBox())) {
-                double dist = currentPos.distanceToSqr(target.position());
-                if (dist < closestDist) {
-                    closestDist = dist;
-                    closest = target;
-                }
-                continue;
-            }
-
-            // 检查2：射线是否击中实体碰撞箱（路径预测，inflate给射线加粗）
+            // 射线是否击中实体碰撞箱（路径预测，inflate给射线加粗）
             AABB targetBox = target.getBoundingBox().inflate(0.3);
             Vec3 intersection = targetBox.clip(currentPos, nextPos).orElse(null);
             if (intersection != null) {
                 double dist = currentPos.distanceToSqr(intersection);
                 if (dist < closestDist) {
                     closestDist = dist;
-                    closest = target;
+                    closest = new PathHit(target, intersection);
                 }
             }
         }
 
         return closest;
+    }
+
+    /** 射线命中结果：目标实体与相交位置 */
+    private record PathHit(LivingEntity target, Vec3 hitPos) {
     }
 
     /**

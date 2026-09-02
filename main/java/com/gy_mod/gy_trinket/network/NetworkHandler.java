@@ -65,6 +65,7 @@ public class NetworkHandler {
         INSTANCE.registerMessage(messageId++, ConfigReorderMessage.class, ConfigReorderMessage::toBytes, ConfigReorderMessage::new, ConfigReorderMessage::handle);
         INSTANCE.registerMessage(messageId++, AttackStateMessage.class, AttackStateMessage::toBytes, AttackStateMessage::new, AttackStateMessage::handle);
         INSTANCE.registerMessage(messageId++, ChargedAttackMessage.class, ChargedAttackMessage::toBytes, ChargedAttackMessage::new, ChargedAttackMessage::handle);
+        INSTANCE.registerMessage(messageId++, ItemUseChargeMessage.class, ItemUseChargeMessage::toBytes, ItemUseChargeMessage::new, ItemUseChargeMessage::handle);
  
         // ======================== S->C ========================
         INSTANCE.registerMessage(messageId++, ResponseAttributesMessage.class, ResponseAttributesMessage::toBytes, ResponseAttributesMessage::new, ResponseAttributesMessage::handle);
@@ -87,6 +88,8 @@ public class NetworkHandler {
         INSTANCE.registerMessage(messageId++, ChargedSweepParticleMessage.class, ChargedSweepParticleMessage::toBytes, ChargedSweepParticleMessage::new, ChargedSweepParticleMessage::handle);
         INSTANCE.registerMessage(messageId++, SwarmEnergyWavePacket.class, SwarmEnergyWavePacket::toBytes, SwarmEnergyWavePacket::new, SwarmEnergyWavePacket::handle);
         INSTANCE.registerMessage(messageId++, EnergyWaveExplosionPacket.class, EnergyWaveExplosionPacket::toBytes, EnergyWaveExplosionPacket::new, EnergyWaveExplosionPacket::handle);
+        // 模拟爆炸贴图特效
+        INSTANCE.registerMessage(messageId++, SimulatedExplosionFXPacket.class, SimulatedExplosionFXPacket::toBytes, SimulatedExplosionFXPacket::new, SimulatedExplosionFXPacket::handle);
 
         // 幽灵机身
         INSTANCE.registerMessage(messageId++, SyncGhostStealthMessage.class, SyncGhostStealthMessage::toBytes, SyncGhostStealthMessage::new, SyncGhostStealthMessage::handle);
@@ -156,6 +159,12 @@ public class NetworkHandler {
 
     public static void sendAuraParticlesToPlayer(ServerPlayer player, double x, double y, double z, double radius) {
         INSTANCE.send(PacketDistributor.TRACKING_ENTITY_AND_SELF.with(() -> player), new AuraParticlePacket(x, y, z, radius));
+    }
+
+    /** 向该维度所有玩家广播模拟爆炸贴图特效 */
+    public static void sendSimulatedExplosionFX(net.minecraft.server.level.ServerLevel level, net.minecraft.world.phys.Vec3 center, double radius) {
+        INSTANCE.send(PacketDistributor.DIMENSION.with(() -> level.dimension()),
+            new SimulatedExplosionFXPacket(center.x, center.y, center.z, radius));
     }
 
     public static void sendReflectParticlesToPlayer(ServerPlayer player, double x, double y, double z,

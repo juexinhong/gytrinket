@@ -9,8 +9,11 @@ import com.gy_mod.gy_trinket.core.shield.DisableSystem;
 import com.gy_mod.gy_trinket.core.shield.type.ShieldTypeManager;
 import com.gy_mod.gy_trinket.core.upgrade.UpgradeManager;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.DiggerItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.SwordItem;
+import net.minecraft.world.item.TridentItem;
 import net.minecraftforge.common.ForgeConfigSpec;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -129,12 +132,23 @@ public class Config {
     public static final ForgeConfigSpec.BooleanValue SECONDARY_DAMAGE_MERGE_ENABLED;
     public static final ForgeConfigSpec.IntValue SECONDARY_DAMAGE_MERGE_WINDOW_TICKS;
 
+    /** 次级爆炸（爆炸半径模块特殊机制）：爆炸伤害占弹射物伤害的比例 */
+    public static final ForgeConfigSpec.DoubleValue SECONDARY_EXPLOSION_DAMAGE_FRACTION;
+    /** 次级爆炸（爆炸半径模块特殊机制）：爆炸半径基础值 */
+    public static final ForgeConfigSpec.DoubleValue SECONDARY_EXPLOSION_RADIUS_BASE;
+    /** 次级爆炸（爆炸半径模块特殊机制）：每点爆炸伤害增加的爆炸半径 */
+    public static final ForgeConfigSpec.DoubleValue SECONDARY_EXPLOSION_RADIUS_DAMAGE_FRACTION;
+
     // ===== 18. 充能攻击 (charged_attack) =====
     public static final ForgeConfigSpec.DoubleValue CHARGED_ATTACK_BASE_CHARGE_RATE;
     public static final ForgeConfigSpec.DoubleValue CHARGED_ATTACK_SPEED_SCALE_FACTOR;
     public static final ForgeConfigSpec.DoubleValue CHARGED_ATTACK_DRAG_COEFFICIENT;
     public static final ForgeConfigSpec.DoubleValue CHARGED_ATTACK_DRAG_THRESHOLD_FACTOR;
     public static final ForgeConfigSpec.DoubleValue CHARGED_ATTACK_MOVEMENT_SPEED_PENALTY;
+    /** 充能物品白名单（长按右键充能）：物品注册名=攻击速度修正值 */
+    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> CHARGED_ATTACK_ITEM_USE_WHITELIST;
+    /** 充能物品白名单未注册物品的默认攻击速度修正值 */
+    public static final ForgeConfigSpec.DoubleValue CHARGED_ATTACK_ITEM_USE_DEFAULT_SPEED_MODIFIER;
 
     // ===== 19. 精密构造 (precision_construct) =====
     public static final ForgeConfigSpec.DoubleValue PRECISION_CONSTRUCT_BONUS_PER_LEVEL;
@@ -787,6 +801,26 @@ public class Config {
             "默认-0.2（即-20%，独立乘区）",
             "范围：-0.99 ~ 0.0"
         ).defineInRange("movementSpeedPenalty", -0.2, -0.99, 0.0);
+
+        CHARGED_ATTACK_ITEM_USE_WHITELIST = BUILDER.comment(
+            "充能物品白名单（长按右键充能）",
+            "格式：物品注册名=攻击速度修正值",
+            "非武器物品没有攻击速度属性修正，长按右键充能时充能会过快，",
+            "充能期间该修正值会以原版攻击速度修饰符（加法）形式临时施加在玩家身上，",
+            "与其他攻击速度修饰符正常叠加，由原版属性系统计算最终攻速",
+            "未在白名单中的物品使用默认修正值 itemUseChargeDefaultSpeedModifier",
+            "武器类物品（剑/三叉戟）与工具类武器（镐/斧/铲/锄）不受此限制，使用实际攻击速度属性",
+            "示例：minecraft:stick=-3.0"
+        ).defineListAllowEmpty("itemUseChargeWhitelist",
+            List.of(),
+            s -> true
+        );
+
+        CHARGED_ATTACK_ITEM_USE_DEFAULT_SPEED_MODIFIER = BUILDER.comment(
+            "充能物品白名单未注册物品的默认攻击速度修正值",
+            "以加法修饰符施加，默认-3.0（基础攻速4.0-3.0=1.0）",
+            "范围：-4.0 ~ 0.0"
+        ).defineInRange("itemUseChargeDefaultSpeedModifier", -3.0, -4.0, 0.0);
 
         BUILDER.pop();
 
@@ -1463,6 +1497,29 @@ public class Config {
 
         BUILDER.pop();
 
+        // ===== 24.5.3 弹射物次级爆炸（爆炸半径模块特殊机制） =====
+        BUILDER.comment("弹射物次级爆炸配置（爆炸半径模块特殊机制）").push("secondary_explosion");
+
+        SECONDARY_EXPLOSION_DAMAGE_FRACTION = BUILDER.comment(
+            "次级爆炸伤害占弹射物伤害的比例",
+            "弹射物次级爆炸：归属玩家的弹射物造成伤害后从世界移除时爆炸",
+            "爆炸伤害 = 已记录最高弹射物伤害 × 该比例",
+            "默认0.15"
+        ).defineInRange("secondaryExplosionDamageFraction", 0.15, 0.0, 1.0);
+
+        SECONDARY_EXPLOSION_RADIUS_BASE = BUILDER.comment(
+            "次级爆炸半径基础值（格）",
+            "次级爆炸半径 = 基础值 + 爆炸伤害 × 每点伤害半径增量，之后经爆炸半径属性组增幅",
+            "默认2.0"
+        ).defineInRange("secondaryExplosionRadiusBase", 2.0, 0.0, 32.0);
+
+        SECONDARY_EXPLOSION_RADIUS_DAMAGE_FRACTION = BUILDER.comment(
+            "次级爆炸每点爆炸伤害增加的爆炸半径（格）",
+            "默认0.5"
+        ).defineInRange("secondaryExplosionRadiusDamageFraction", 0.5, 0.0, 8.0);
+
+        BUILDER.pop();
+
         SPEC = BUILDER.build();
     }
 
@@ -1470,6 +1527,8 @@ public class Config {
     private static final Map<Item, List<String>> ITEM_SHIELD_TYPES = new HashMap<>();
     private static final Map<String, Set<Item>> MODULE_ITEM_SETS = new HashMap<>();
     private static final Set<String> DANGEROUS_ENTITY_SET = new HashSet<>();
+    /** 充能物品白名单缓存（长按右键充能）：物品 -> 攻击速度修正值 */
+    private static final Map<Item, Double> ITEM_USE_CHARGE_WHITELIST = new HashMap<>();
 
     public static List<String> getItemShieldTypes(ResourceLocation itemId) {
         Item item = ForgeRegistries.ITEMS.getValue(itemId);
@@ -1685,6 +1744,9 @@ public class Config {
             case "ghostFuselageDecayRate" -> getGhostFuselageDecayRate();
             case "ghostFuselageMinDecay" -> getGhostFuselageMinDecay();
             case "ghostFuselageStealthSpeedBonusPerLevel" -> getGhostFuselageStealthSpeedBonusPerLevel();
+            case "secondaryExplosionDamageFraction" -> SECONDARY_EXPLOSION_DAMAGE_FRACTION.get();
+            case "secondaryExplosionRadiusBase" -> SECONDARY_EXPLOSION_RADIUS_BASE.get();
+            case "secondaryExplosionRadiusDamageFraction" -> SECONDARY_EXPLOSION_RADIUS_DAMAGE_FRACTION.get();
             default -> 0;
         };
     }
@@ -1742,6 +1804,60 @@ public class Config {
         gytrinket.LOGGER.info("物品属性配置已重置为默认值");
     }
 
+    /**
+     * 解析充能物品白名单配置（长按右键充能）
+     * 格式：物品注册名=攻击速度修正值（有效攻速 = 4.0 + 修正值）
+     */
+    public static void loadItemUseChargeWhitelist() {
+        ITEM_USE_CHARGE_WHITELIST.clear();
+        for (String entry : CHARGED_ATTACK_ITEM_USE_WHITELIST.get()) {
+            String trimmed = entry.trim();
+            if (trimmed.isEmpty()) {
+                continue;
+            }
+            String[] parts = trimmed.split("=");
+            if (parts.length != 2) {
+                gytrinket.LOGGER.warn("无效的充能物品白名单条目（格式应为 物品注册名=攻击速度修正值）：{}", trimmed);
+                continue;
+            }
+            ResourceLocation itemId = ResourceLocation.tryParse(parts[0].trim());
+            if (itemId == null) {
+                gytrinket.LOGGER.warn("无效的物品注册名：{}", parts[0]);
+                continue;
+            }
+            Item item = ForgeRegistries.ITEMS.getValue(itemId);
+            if (item == null || item == Items.AIR) {
+                gytrinket.LOGGER.warn("充能物品白名单中的物品未注册：{}", parts[0]);
+                continue;
+            }
+            try {
+                ITEM_USE_CHARGE_WHITELIST.put(item, Double.parseDouble(parts[1].trim()));
+            } catch (NumberFormatException e) {
+                gytrinket.LOGGER.warn("无效的攻击速度修正值：{} for {}", parts[1], parts[0]);
+            }
+        }
+        gytrinket.LOGGER.info("充能物品白名单加载完成，共 {} 个物品", ITEM_USE_CHARGE_WHITELIST.size());
+    }
+
+    /**
+     * 物品是否为武器类（剑/三叉戟）或工具类武器（镐/斧/铲/锄）
+     * 这些物品自带攻击速度修正，长按右键充能不受白名单限制
+     */
+    public static boolean isWeaponLikeItem(Item item) {
+        return item instanceof SwordItem || item instanceof TridentItem || item instanceof DiggerItem;
+    }
+
+    /**
+     * 获取长按右键充能时的攻击速度修正值
+     * 以原版加法攻击速度修饰符形式临时施加在玩家 ATTACK_SPEED 属性上，
+     * 与其他攻击速度修饰符正常叠加，由原版属性系统计算最终攻速
+     * 白名单查值，未注册返回默认修正值
+     */
+    public static double getItemUseChargeSpeedModifier(Item item) {
+        Double modifier = ITEM_USE_CHARGE_WHITELIST.get(item);
+        return modifier != null ? modifier : CHARGED_ATTACK_ITEM_USE_DEFAULT_SPEED_MODIFIER.get();
+    }
+
     public static boolean isModuleItem(String moduleName, Item item) {
         Set<Item> itemSet = MODULE_ITEM_SETS.get(moduleName);
         return itemSet != null && itemSet.contains(item);
@@ -1758,6 +1874,7 @@ public class Config {
         }
         initialized = true;
         loadItemAttributes();
+        loadItemUseChargeWhitelist();
         gytrinket.LOGGER.info("属性系统配置加载完成");
     }
 

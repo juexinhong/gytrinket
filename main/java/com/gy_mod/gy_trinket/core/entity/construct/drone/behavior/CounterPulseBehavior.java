@@ -125,32 +125,7 @@ public class CounterPulseBehavior implements IDroneSpecialBehavior {
                 "simulated_explosion"
         );
 
-        serverLevel.sendParticles(
-                ParticleTypes.EXPLOSION,
-                drone.getX(), drone.getY(), drone.getZ(),
-                1, 0.0, 0.0, 0.0, 0.0
-        );
-
-        int particleCount = Math.max(1, (int) (explosionRadius * 4));
-        serverLevel.sendParticles(
-                ParticleTypes.SMOKE,
-                drone.getX(), drone.getY(), drone.getZ(),
-                particleCount * 2,
-                explosionRadius, explosionRadius, explosionRadius,
-                0.2
-        );
-
-        int edgePoints = Math.max(12, (int) (explosionRadius * 16));
-        for (int i = 0; i < edgePoints; i++) {
-            double angle = (2.0 * Math.PI * i) / edgePoints;
-            double px = drone.getX() + Math.cos(angle) * explosionRadius;
-            double pz = drone.getZ() + Math.sin(angle) * explosionRadius;
-            serverLevel.sendParticles(
-                    ParticleTypes.END_ROD,
-                    px, drone.getY(), pz,
-                    1, 0.0, 0.0, 0.0, 0.0
-            );
-        }
+        // 原版爆炸粒子已移除，统一由 SimulatedExplosion 广播的模拟爆炸贴图特效呈现
 
         drone.level().playSound(null, drone.getX(), drone.getY(), drone.getZ(),
                 SoundEvents.GENERIC_EXPLODE, SoundSource.BLOCKS, 1.0F, 1.0F);

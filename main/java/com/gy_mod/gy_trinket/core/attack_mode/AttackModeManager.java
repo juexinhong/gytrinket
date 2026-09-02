@@ -2,6 +2,7 @@ package com.gy_mod.gy_trinket.core.attack_mode;
 
 import com.gy_mod.gy_trinket.core.attack_mode.assault.AssaultManager;
 import com.gy_mod.gy_trinket.core.attack_mode.burst_fire.BurstFireManager;
+import com.gy_mod.gy_trinket.core.attack_mode.burst_fire.ProjectileBurstManager;
 import com.gy_mod.gy_trinket.core.attack_mode.charged_attack.ChargedAttackDamageTracker;
 import com.gy_mod.gy_trinket.core.attack_mode.charged_attack.ChargedAttackManager;
 import com.gy_mod.gy_trinket.core.attack_mode.electric_discharge.ElectricDischargeManager;
@@ -170,6 +171,17 @@ public class AttackModeManager {
             return false;
         }
         return BurstFireManager.isInBurstFireState(player) || BurstFireManager.isInComboCooldown(player.getUUID());
+    }
+
+    /**
+     * 点射进行中或冷却期间，是否禁止开始充能（近战点射与弹射物点射均适用）：
+     * 近战点射检查点射进行中/连击冷却状态；
+     * 弹射物点射的复制期与攻击冷却全程挂物品冷却，按冷却物品查询
+     */
+    public static boolean isChargingDisabledDuringBurstFire(Player player) {
+        return BurstFireManager.isInBurstFireState(player)
+            || BurstFireManager.isInComboCooldown(player.getUUID())
+            || ProjectileBurstManager.isInProjectileBurstCooldown(player);
     }
 
     // ===== 充能释放后点射触发 =====

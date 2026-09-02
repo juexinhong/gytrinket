@@ -44,6 +44,9 @@ public class SecondaryDamageMerger {
     /** 待施加批次：键 = (目标UUID, 类型ID) */
     private static final Map<MergeKey, PendingBatch> PENDING = new ConcurrentHashMap<>();
 
+    /** 爆炸伤害收集期时长：0.5秒 = 10刻 */
+    private static final long EXPLOSION_COLLECT_TICKS = 10L;
+
     private SecondaryDamageMerger() {}
 
     /**
@@ -74,6 +77,50 @@ public class SecondaryDamageMerger {
             batch.expireTick = now + Config.SECONDARY_DAMAGE_MERGE_WINDOW_TICKS.get();
             batch.applier = applier;
             PENDING.put(key, batch);
+        }
+        batch.totalDamage += damage;
+    }
+
+    /**
+     * 累积一次爆炸伤害（归属玩家时使用"先应用后收集"模式）。
+     * <p>
+     * 与其他伤害"先收集后应用"不同：归属玩家的爆炸伤害在目标第一次受到该类型时
+     * 立即结算本次伤害，随后开启 0.5 秒收集期；收集期内的后续伤害累积，
+     * 收集期结束时一次性施加。之后再受到该类型伤害时又立即结算并开启新的收集期。
+     * <p>
+     * 未归属玩家的爆炸伤害与普通伤害一致（先收集后应用）。
+     *
+     * @param ownedByPlayer 爆炸是否归属玩家
+     */
+    public static void accumulateExplosion(LivingEntity target, String typeId, float damage,
+                                           boolean ownedByPlayer, HitApplier applier) {
+        if (!ownedByPlayer) {
+            accumulate(target, typeId, damage, applier);
+            return;
+        }
+        if (target == null || !target.isAlive()) {
+            return;
+        }
+        if (!Config.SECONDARY_DAMAGE_MERGE_ENABLED.get()) {
+            applier.apply(target, damage);
+            return;
+        }
+
+        long now = target.level().getGameTime();
+        MergeKey key = new MergeKey(target.getUUID(), typeId);
+        PendingBatch batch = PENDING.get(key);
+        if (batch == null) {
+            // 第一次受到该爆炸伤害：立即结算本次，随后开启收集期（收集期从空开始）
+            applier.apply(target, damage);
+            if (!target.isAlive()) {
+                return;
+            }
+            batch = new PendingBatch();
+            batch.target = target;
+            batch.expireTick = now + EXPLOSION_COLLECT_TICKS;
+            batch.applier = applier;
+            PENDING.put(key, batch);
+            return;
         }
         batch.totalDamage += damage;
     }

@@ -28,6 +28,10 @@ public class AttackSpeedManager {
     private static final String MODIFIER_NAME = ModifierHelper.MOD_PREFIX + "attack_speed";
     private static final UUID MODIFIER_UUID = UUID.fromString("c1d2e3f4-a5b6-7890-cdef-012345678902");
 
+    // 账本 attack_speed_flat（充能攻速修正值等加法贡献）投影到原版属性的修饰符
+    private static final String FLAT_MODIFIER_NAME = ModifierHelper.MOD_PREFIX + "attack_speed_flat";
+    private static final UUID FLAT_MODIFIER_UUID = UUID.fromString("c1d2e3f4-a5b6-7890-cdef-012345678912");
+
     private static final Map<UUID, Double> PLAYER_ATTACK_SPEED_MAP = new ConcurrentHashMap<>();
 
     @SubscribeEvent
@@ -36,6 +40,7 @@ public class AttackSpeedManager {
 
         double attackSpeedPercent = AttributeManager.getPlayerAttribute(playerUUID, "attack_speed_percent");
         double attackSpeedIndependent = AttributeManager.getPlayerAttribute(playerUUID, "attack_speed_independent");
+        double attackSpeedFlat = AttributeManager.getPlayerAttribute(playerUUID, "attack_speed_flat");
 
         ServerPlayer player = event.getPlayer();
         if (player == null) {
@@ -57,6 +62,11 @@ public class AttackSpeedManager {
 
         ModifierHelper.removeAllModModifiers(attribute);
 
+        // 加法贡献（充能攻速修正值等）投影
+        if (attackSpeedFlat != 0.0) {
+            attribute.addTransientModifier(new AttributeModifier(FLAT_MODIFIER_UUID, FLAT_MODIFIER_NAME, attackSpeedFlat, AttributeModifier.Operation.ADDITION));
+        }
+
         if (totalMultiplier != 1.0) {
             AttributeModifier modifier = new AttributeModifier(MODIFIER_UUID, MODIFIER_NAME, totalMultiplier - 1, AttributeModifier.Operation.MULTIPLY_TOTAL);
             attribute.addTransientModifier(modifier);
@@ -70,7 +80,7 @@ public class AttackSpeedManager {
         UUID playerUUID = event.getPlayerUUID();
         String attrName = event.getAttributeName();
 
-        if (!attrName.equals("attack_speed_percent") && !attrName.equals("attack_speed_independent")) {
+        if (!attrName.equals("attack_speed_percent") && !attrName.equals("attack_speed_independent") && !attrName.equals("attack_speed_flat")) {
             return;
         }
 
@@ -86,6 +96,7 @@ public class AttackSpeedManager {
 
         double attackSpeedPercent = AttributeManager.getPlayerAttribute(playerUUID, "attack_speed_percent");
         double attackSpeedIndependent = AttributeManager.getPlayerAttribute(playerUUID, "attack_speed_independent");
+        double attackSpeedFlat = AttributeManager.getPlayerAttribute(playerUUID, "attack_speed_flat");
 
         double totalMultiplier = attackSpeedPercent * attackSpeedIndependent;
 
@@ -95,6 +106,11 @@ public class AttackSpeedManager {
         }
 
         ModifierHelper.removeAllModModifiers(attribute);
+
+        // 加法贡献（充能攻速修正值等）投影
+        if (attackSpeedFlat != 0.0) {
+            attribute.addTransientModifier(new AttributeModifier(FLAT_MODIFIER_UUID, FLAT_MODIFIER_NAME, attackSpeedFlat, AttributeModifier.Operation.ADDITION));
+        }
 
         if (totalMultiplier != 1.0) {
             AttributeModifier modifier = new AttributeModifier(MODIFIER_UUID, MODIFIER_NAME, totalMultiplier - 1, AttributeModifier.Operation.MULTIPLY_TOTAL);

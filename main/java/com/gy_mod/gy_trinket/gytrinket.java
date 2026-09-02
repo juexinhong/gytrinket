@@ -71,6 +71,9 @@ public class gytrinket {
         // Curios 饰品栏可选联动：未安装 Curios 时不注册事件，扩展机制静默失效
         com.gy_mod.gy_trinket.compat.CuriosCompat.init();
 
+        // TACZ 永恒枪械可选联动（1.20.1 独占）：弹射物点射冷却期间禁用枪械射击
+        com.gy_mod.gy_trinket.compat.TaczCompat.init();
+
         modEventBus.addListener(this::setup);
         modEventBus.addListener(this::registerEntityAttributes);
 

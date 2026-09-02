@@ -151,11 +151,6 @@ public class SelfDestructBehavior implements IDroneSpecialBehavior {
                 IgniteManager.applyIgnite(entity, igniteSource, "self_destruct", true);
             }
         }
-
-        if (construct.level() instanceof ServerLevel serverLevel) {
-            serverLevel.sendParticles(ParticleTypes.EXPLOSION_EMITTER,
-                    pos.x, pos.y, pos.z, 1, 0, 0, 0, 0);
-        }
     }
 
     /**

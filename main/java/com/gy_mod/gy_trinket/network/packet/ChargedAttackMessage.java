@@ -56,7 +56,7 @@ public class ChargedAttackMessage {
                         // 同步0到客户端，重置充能状态（包括isCharging）
                         NetworkHandler.sendChargedAttackSyncToPlayer(player, 0);
                     } else {
-                        ChargedAttackManager.startCharging(uuid);
+                        ChargedAttackManager.startCharging(player);
                     }
                 }
                 case 1 -> {

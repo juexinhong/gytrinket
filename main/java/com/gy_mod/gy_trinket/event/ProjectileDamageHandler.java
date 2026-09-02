@@ -1,6 +1,7 @@
 package com.gy_mod.gy_trinket.event;
 
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
+import com.gy_mod.gy_trinket.core.projectile.ProjectileBlacklist;
 import com.gy_mod.gy_trinket.gytrinket;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
@@ -39,6 +40,7 @@ import java.util.UUID;
  * <p>
  * 覆盖范围：所有继承 AbstractArrow 的弹射物（原版弓箭/弩/三叉戟 + 继承该类的模组弹射物）。
  * 不覆盖 ThrowableProjectile（雪球/末影珍珠等，无伤害或固定伤害）和完全自定义弹射物。
+ * 另：弹射物黑名单（{@link ProjectileBlacklist}，末影珍珠等）一律跳过，不受充能攻击增幅。
  */
 @Mod.EventBusSubscriber(modid = gytrinket.MODID)
 public class ProjectileDamageHandler {
@@ -50,6 +52,11 @@ public class ProjectileDamageHandler {
         }
 
         if (!(event.getEntity() instanceof AbstractArrow arrow)) {
+            return;
+        }
+
+        // 弹射物黑名单（末影珍珠等）：不被充能攻击增幅
+        if (ProjectileBlacklist.isBlacklisted(arrow)) {
             return;
         }
 
@@ -72,8 +79,19 @@ public class ProjectileDamageHandler {
         // 应用：底数加算 + 乘区乘算（与近战伤害加成逻辑一致）
         double newBaseDamage = (originalBaseDamage + attackDamageBase) * totalMultiplier;
 
+        // 叠加充能攻击增幅：右键释放的消退期内，按当前充能值增幅（基础伤害 × (1 + 充能值)）
+        double chargeValue = com.gy_mod.gy_trinket.core.attack_mode.charged_attack.ChargedAttackManager
+                .getReleasingChargeValue(playerUUID);
+        if (chargeValue > 0) {
+            newBaseDamage *= (1.0 + chargeValue);
+
+            // 长按右键充能释放：每点充能值提升10%箭矢速度
+            double speedMultiplier = 1.0 + chargeValue * 0.1;
+            arrow.setDeltaMovement(arrow.getDeltaMovement().scale(speedMultiplier));
+        }
+
         // 仅在有加成时修改
-        if (attackDamageBase != 0 || totalMultiplier != 1.0) {
+        if (attackDamageBase != 0 || totalMultiplier != 1.0 || newBaseDamage != originalBaseDamage) {
             arrow.setBaseDamage(newBaseDamage);
         }
     }

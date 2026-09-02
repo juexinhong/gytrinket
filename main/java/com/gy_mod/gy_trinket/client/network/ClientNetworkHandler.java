@@ -103,6 +103,11 @@ public class ClientNetworkHandler {
         }
     }
 
+    /** 客户端：添加模拟爆炸贴图特效 */
+    public static void handleSimulatedExplosionFXMessage(double x, double y, double z, double radius) {
+        com.gy_mod.gy_trinket.client.explosion.SimulatedExplosionFXRenderer.addEffect(x, y, z, radius);
+    }
+
     public static void handleReflectParticlesMessage(double x, double y, double z, double dirX, double dirY, double dirZ,
                                                       int particleCount, double maxAngleDegrees, double speedMultiplier) {
         var minecraft = Minecraft.getInstance();

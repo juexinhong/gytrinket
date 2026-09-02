@@ -58,6 +58,7 @@ public class NetworkHandler {
         registrar.playToServer(ConfigShieldTypesPayload.TYPE, ConfigShieldTypesPayload.STREAM_CODEC, ConfigShieldTypesPayload::handle);
         registrar.playToServer(AttackStatePayload.TYPE, AttackStatePayload.STREAM_CODEC, AttackStatePayload::handle);
         registrar.playToServer(ChargedAttackPayload.TYPE, ChargedAttackPayload.STREAM_CODEC, ChargedAttackPayload::handle);
+        registrar.playToServer(ItemUseChargePayload.TYPE, ItemUseChargePayload.STREAM_CODEC, ItemUseChargePayload::handle);
 
         // S->C
         registrar.playToClient(ResponseAttributesPayload.TYPE, ResponseAttributesPayload.STREAM_CODEC, ResponseAttributesPayload::handle);
@@ -79,6 +80,8 @@ public class NetworkHandler {
         registrar.playToClient(ChargedSweepParticlePacket.TYPE, ChargedSweepParticlePacket.STREAM_CODEC, ChargedSweepParticlePacket::handle);
         registrar.playToClient(SwarmEnergyWavePayload.TYPE, SwarmEnergyWavePayload.STREAM_CODEC, SwarmEnergyWavePayload::handle);
         registrar.playToClient(EnergyWaveExplosionPayload.TYPE, EnergyWaveExplosionPayload.STREAM_CODEC, EnergyWaveExplosionPayload::handle);
+        // 模拟爆炸贴图特效
+        registrar.playToClient(SimulatedExplosionFXPayload.TYPE, SimulatedExplosionFXPayload.STREAM_CODEC, SimulatedExplosionFXPayload::handle);
 
         // 幽灵机身
         registrar.playToClient(SyncGhostStealthPayload.TYPE, SyncGhostStealthPayload.STREAM_CODEC, SyncGhostStealthPayload::handle);
@@ -147,6 +150,12 @@ public class NetworkHandler {
 
     public static void sendAuraParticlesToPlayer(ServerPlayer player, double x, double y, double z, double radius) {
         PacketDistributor.sendToPlayersTrackingEntityAndSelf(player, new AuraParticlePayload(x, y, z, radius));
+    }
+
+    /** 向该维度所有玩家广播模拟爆炸贴图特效 */
+    public static void sendSimulatedExplosionFX(net.minecraft.server.level.ServerLevel level, Vec3 center, double radius) {
+        PacketDistributor.sendToPlayersInDimension(level,
+            new SimulatedExplosionFXPayload(center.x, center.y, center.z, radius));
     }
 
     public static void sendReflectParticlesToPlayer(ServerPlayer player, double x, double y, double z,

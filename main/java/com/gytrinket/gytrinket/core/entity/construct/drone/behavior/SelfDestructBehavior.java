@@ -12,9 +12,7 @@ import com.gytrinket.gytrinket.core.explosion.SimulatedExplosion;
 import com.gytrinket.gytrinket.core.ignite.IIgniteSource;
 import com.gytrinket.gytrinket.core.ignite.IgniteManager;
 import com.gytrinket.gytrinket.storage.PlayerStoreUtils;
-import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
@@ -148,11 +146,6 @@ public class SelfDestructBehavior implements IDroneSpecialBehavior {
                 BurnManager.applyBurnCharge(entity, burnDamage, burnSource);
                 IgniteManager.applyIgnite(entity, igniteSource, "self_destruct", true);
             }
-        }
-
-        if (construct.level() instanceof ServerLevel serverLevel) {
-            serverLevel.sendParticles(ParticleTypes.EXPLOSION_EMITTER,
-                    pos.x, pos.y, pos.z, 1, 0, 0, 0, 0);
         }
     }
 

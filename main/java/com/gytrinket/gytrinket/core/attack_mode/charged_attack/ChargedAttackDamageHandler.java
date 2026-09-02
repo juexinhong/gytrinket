@@ -35,6 +35,11 @@ public class ChargedAttackDamageHandler {
             return;
         }
 
+        // 弹射物（箭矢类）的充能增幅已在 ProjectileDamageHandler 写入 baseDamage，此处跳过避免双重乘算
+        if (event.getSource().getDirectEntity() instanceof net.minecraft.world.entity.projectile.AbstractArrow) {
+            return;
+        }
+
         // 剑类的充能伤害由 executeChargedSweepAttack 全额处理，此处跳过以避免双重乘算
         if (ChargedAttackSweepHandler.isSwordItem(player.getMainHandItem())) {
             return;

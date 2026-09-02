@@ -1,5 +1,6 @@
 package com.gytrinket.gytrinket.core.explosion;
 
+import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.damage.ModDamageTypes;
 import com.gytrinket.gytrinket.core.defs.DefsManager;
 import com.gytrinket.gytrinket.gytrinket;
@@ -10,6 +11,7 @@ import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.projectile.Projectile;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -24,14 +26,15 @@ import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
  *   <li><b>伤害标记</b>：归属玩家的弹射物（{@link Projectile}）对实体造成伤害时，以持久化 NBT
  *       标记该弹射物并记录伤害值；同一弹射物多次造成伤害时只计入最高的一次</li>
  *   <li><b>移除爆炸</b>：弹射物从世界移除时（{@link EntityLeaveLevelEvent}，命中消失/消亡/
- *       被拾取等），若携带标记，则在移除位置产生模拟爆炸</li>
+ *       被拾取等），若携带标记，则在记录的命中点产生模拟爆炸</li>
  * </ol>
  * <p>
  * 基础爆炸参数：
  * <ul>
- *   <li>爆心：弹射物移除的位置</li>
- *   <li>爆炸伤害：弹射物已记录的最高伤害 × 15%</li>
- *   <li>爆炸半径：基础 2 格 + 爆炸伤害数值</li>
+ *   <li>爆心：命中点（最高伤害那次命中时受击者的位置）。枪械等模组的自定义弹道弹射物
+ *       实体位置不随弹道前进（移除时可能仍停在发射点），因此不可用弹射物位置作爆心</li>
+ *   <li>爆炸伤害：弹射物已记录的最高伤害 × 伤害比例（config 可配置，默认 15%）</li>
+ *   <li>爆炸半径：基础值 + 爆炸伤害 × 每点伤害半径增量（config 可配置，默认 2 格 + 0.5 格/点）</li>
  *   <li>无击退效果（击退倍率覆盖为 0）</li>
  * </ul>
  * 以上为基础爆炸参数，由 {@link SimulatedExplosion} 在 owner 非 null 时
@@ -61,16 +64,18 @@ import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
 @EventBusSubscriber(modid = gytrinket.MODID)
 public class SecondaryExplosionHandler {
 
-    /** 爆炸伤害占弹射物伤害的比例 */
-    private static final double DAMAGE_FRACTION = 0.15;
-    /** 爆炸半径基础值：半径 = RADIUS_BASE + 爆炸伤害 */
-    private static final double RADIUS_BASE = 2.0;
     /** 次级爆炸伤害合并类型 */
     private static final String MERGE_TYPE = "secondary_explosion";
     /** NBT 键：弹射物已记录的最高伤害 */
     private static final String NBT_KEY_DAMAGE = "gytrinket:projectile_explosion_damage";
     /** NBT 键：弹射物归属玩家 UUID */
     private static final String NBT_KEY_OWNER = "gytrinket:projectile_explosion_owner";
+    /** NBT 键：命中点 X（最高伤害那次命中时受击者位置，作为爆心） */
+    private static final String NBT_KEY_HIT_X = "gytrinket:projectile_explosion_hit_x";
+    /** NBT 键：命中点 Y */
+    private static final String NBT_KEY_HIT_Y = "gytrinket:projectile_explosion_hit_y";
+    /** NBT 键：命中点 Z */
+    private static final String NBT_KEY_HIT_Z = "gytrinket:projectile_explosion_hit_z";
 
     /**
      * 伤害标记：归属玩家的弹射物造成伤害时，NBT 标记弹射物并记录最高伤害
@@ -106,15 +111,19 @@ public class SecondaryExplosionHandler {
             data.putUUID(NBT_KEY_OWNER, player.getUUID());
         }
 
-        // 多次造成伤害只计入最高的一次
+        // 多次造成伤害只计入最高的一次（同时记录该次命中点 = 受击者位置：
+        // 枪械等模组的自定义弹道弹射物实体位置不随弹道前进，不可用作爆心）
         float amount = event.getAmount();
         if (amount > data.getFloat(NBT_KEY_DAMAGE)) {
             data.putFloat(NBT_KEY_DAMAGE, amount);
+            data.putDouble(NBT_KEY_HIT_X, event.getEntity().getX());
+            data.putDouble(NBT_KEY_HIT_Y, event.getEntity().getY() + event.getEntity().getBbHeight() / 2.0);
+            data.putDouble(NBT_KEY_HIT_Z, event.getEntity().getZ());
         }
     }
 
     /**
-     * 移除爆炸：携带标记的弹射物从世界移除时，在移除位置产生模拟爆炸
+     * 移除爆炸：携带标记的弹射物从世界移除时，在记录的命中点产生模拟爆炸
      */
     @SubscribeEvent
     public static void onEntityLeaveLevel(EntityLeaveLevelEvent event) {
@@ -152,14 +161,21 @@ public class SecondaryExplosionHandler {
             return;
         }
 
-        // 基础爆炸参数：伤害 = 弹射物最高伤害 × 15%，半径 = 2 + 爆炸伤害
-        float explosionDamage = (float) (recordedDamage * DAMAGE_FRACTION);
-        double explosionRadius = RADIUS_BASE + explosionDamage;
+        // 基础爆炸参数（config secondary_explosion 节可配置）；之后由 SimulatedExplosion 应用属性组增幅
+        float explosionDamage = (float) (recordedDamage * Config.SECONDARY_EXPLOSION_DAMAGE_FRACTION.get());
+        double explosionRadius = Config.SECONDARY_EXPLOSION_RADIUS_BASE.get()
+                + explosionDamage * Config.SECONDARY_EXPLOSION_RADIUS_DAMAGE_FRACTION.get();
+
+        // 爆心 = 记录的命中点（最高伤害那次命中时受击者的位置），而非弹射物移除位置
+        Vec3 explosionPos = new Vec3(
+                data.getDouble(NBT_KEY_HIT_X),
+                data.getDouble(NBT_KEY_HIT_Y),
+                data.getDouble(NBT_KEY_HIT_Z));
 
         // owner 非 null 时 SimulatedExplosion 自动应用爆炸伤害/爆炸半径属性组增幅；击退倍率 0 = 无击退
         SimulatedExplosion.execute(
                 event.getLevel(),
-                projectile.position(),
+                explosionPos,
                 explosionRadius,
                 explosionDamage,
                 event.getLevel().damageSources().explosion(null, owner),

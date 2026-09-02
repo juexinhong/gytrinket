@@ -15,6 +15,7 @@ import net.minecraft.world.entity.ai.goal.WrappedGoal;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.ai.targeting.TargetingConditions;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -298,11 +299,26 @@ public class GhostFuselageManager {
     }
 
     /**
-     * 构造体加入世界时，触发玩家破隐（部署扣除）
+     * 实体加入世界时触发玩家破隐：
+     * 归属玩家的弹射物发射扣除（覆盖枪械等以弹射物结算的攻击）；构造体部署扣除
      */
     @SubscribeEvent
     public static void onEntityJoinLevel(EntityJoinLevelEvent event) {
         Entity entity = event.getEntity();
+        if (event.getLevel().isClientSide()) {
+            return;
+        }
+
+        // 归属玩家的弹射物加入世界触发破隐
+        // 区块加载恢复的弹射物不代表玩家当次动作，不触发破隐
+        if (entity instanceof Projectile projectile && !event.loadedFromDisk()) {
+            if (projectile.getOwner() instanceof ServerPlayer player
+                && PLAYER_HAS_GHOST.contains(player.getUUID())) {
+                breakStealth(player.getUUID());
+            }
+            return;
+        }
+
         if (!(entity instanceof AbstractConstructEntity)) {
             return;
         }

@@ -27,6 +27,9 @@ public class NearDeathExplosionBehavior implements IDroneSpecialBehavior {
     private static final String TAG_EXPLODING = "NDEExploding";
     private static final String TAG_EXPLOSION_TIMER = "NDETimer";
     private static final String TAG_EXPLOSION_SPEED = "NDESpeed";
+    private static final String TAG_PENDING_EXPLODE_X = "NDEPendingX";
+    private static final String TAG_PENDING_EXPLODE_Y = "NDEPendingY";
+    private static final String TAG_PENDING_EXPLODE_Z = "NDEPendingZ";
 
     @Override
     public String getId() {
@@ -84,6 +87,19 @@ public class NearDeathExplosionBehavior implements IDroneSpecialBehavior {
         }
 
         CompoundTag data = drone.getPersistentData();
+
+        // 上一刻已预测到本刻命中：先移动到预计算的相交位置，再自爆
+        if (data.contains(TAG_PENDING_EXPLODE_X)) {
+            drone.setPos(data.getDouble(TAG_PENDING_EXPLODE_X),
+                    data.getDouble(TAG_PENDING_EXPLODE_Y),
+                    data.getDouble(TAG_PENDING_EXPLODE_Z));
+            data.remove(TAG_PENDING_EXPLODE_X);
+            data.remove(TAG_PENDING_EXPLODE_Y);
+            data.remove(TAG_PENDING_EXPLODE_Z);
+            drone.explodeAndRemove();
+            return;
+        }
+
         int timer = data.getInt(TAG_EXPLOSION_TIMER);
         if (timer <= 0) {
             drone.explodeAndRemove();
@@ -112,11 +128,6 @@ public class NearDeathExplosionBehavior implements IDroneSpecialBehavior {
         if (target != null) {
             drone.facePositionWithInterpolation(
                     target.position().add(0, target.getEyeHeight() * 0.5, 0), turnSpeed);
-
-            if (drone.distanceTo(target) <= 2.0) {
-                drone.explodeAndRemove();
-                return;
-            }
         } else {
             Entity owner = drone.getOwner();
             if (owner != null && owner.isAlive()) {
@@ -125,13 +136,29 @@ public class NearDeathExplosionBehavior implements IDroneSpecialBehavior {
             }
         }
 
-        Vec3 lookDir = drone.getLookDirection();
-        drone.setDeltaMovement(lookDir.scale(speed));
+        // 本刻运动距离（按转向后的新方向计算）
+        Vec3 movement = drone.getLookDirection().scale(speed);
+        drone.setDeltaMovement(movement);
+
+        if (target != null) {
+            // 射线判定（取代原距离≤2格范围判定）：
+            // 本刻运动扫掠从本刻碰撞箱沿运动距离延伸（天然覆盖本刻重叠情况），
+            // 与目标碰撞箱相交 → 下一刻在相交位置（本刻预计算）自爆
+            AABB sweepBox = drone.getBoundingBox().expandTowards(movement);
+            if (sweepBox.intersects(target.getBoundingBox())) {
+                Vec3 hitPos = drone.position().add(movement);
+                data.putDouble(TAG_PENDING_EXPLODE_X, hitPos.x);
+                data.putDouble(TAG_PENDING_EXPLODE_Y, hitPos.y);
+                data.putDouble(TAG_PENDING_EXPLODE_Z, hitPos.z);
+                return;
+            }
+        }
 
         if (level instanceof ServerLevel serverLevel) {
             Vec3 pos = drone.position();
+            // 只保留火焰粒子，数量消减30%（3 → 2）
             serverLevel.sendParticles(ParticleTypes.FLAME,
-                    pos.x, pos.y, pos.z, 3,
+                    pos.x, pos.y, pos.z, 2,
                     0.1, 0.1, 0.1, 0.02);
         }
     }

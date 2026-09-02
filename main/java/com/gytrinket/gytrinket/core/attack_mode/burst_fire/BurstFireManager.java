@@ -1,13 +1,18 @@
 package com.gytrinket.gytrinket.core.attack_mode.burst_fire;
 
+import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.attack_mode.AttackModeManager;
 import com.gytrinket.gytrinket.core.attack_mode.PlayerAttackLockManager;
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
 import com.gytrinket.gytrinket.gytrinket;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.item.ItemStack;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -29,7 +34,9 @@ import java.util.concurrent.ConcurrentHashMap;
  * 3. 连击数-1
  * 4. 移除目标无敌时间
  * 5. 若连击数不为0且目标存活，重复自动攻击
- * 6. 连击结束，进入冷却
+ * 6. 连击结束，进入冷却（冷却时长按触发时快照的有效攻速计算：
+ *    触发时借用属性系统临时施加修正值后读取——主手武器不加修正、白名单/默认临时施加，
+ *    自动叠加玩家身上所有攻速修饰符）
  * <p>
  * 跨系统交互通过 AttackModeManager 策略管理：
  * - 点射自动攻击后 → 管理器根据策略决定是否触发强袭/电能释放
@@ -42,8 +49,12 @@ import java.util.concurrent.ConcurrentHashMap;
 @EventBusSubscriber(modid = gytrinket.MODID)
 public class BurstFireManager {
 
-    // 延迟时间：2刻 = 0.08秒
-    private static final int BURST_DELAY_TICKS = 2;
+    // 延迟时间：1刻 = 0.05秒
+    private static final int BURST_DELAY_TICKS = 1;
+
+    // 点射冷却攻速计算的临时属性修饰符ID（借用属性系统读取最终攻速，读取后立即移除）
+    private static final ResourceLocation BURST_COOLDOWN_SPEED_ID =
+            ResourceLocation.fromNamespaceAndPath("gytrinket", "burst_fire_cooldown_speed");
 
     // 存储玩家当前攻击目标：UUID -> 目标实体
     private static final Map<UUID, LivingEntity> CURRENT_TARGETS = new ConcurrentHashMap<>();
@@ -60,12 +71,49 @@ public class BurstFireManager {
     // 存储玩家连击冷却计时器：UUID -> 剩余冷却刻数
     private static final Map<UUID, Integer> COMBO_COOLDOWN = new ConcurrentHashMap<>();
 
+    // 存储玩家点射触发时的有效攻速快照：UUID -> 有效攻速（连击冷却按触发时的攻速计算）
+    private static final Map<UUID, Double> ATTACK_SPEED_SNAPSHOTS = new ConcurrentHashMap<>();
+
     /**
      * 获取玩家的连击段数加成
      */
     private static int getComboStacksBonus(Player player) {
         double combo = AttributeManager.getPlayerAttribute(player.getUUID(), "combo");
         return (int) Math.floor(combo);
+    }
+
+    /**
+     * 借用属性系统捕获当前有效攻速（修正值施加方式与右键充能一致）：
+     * 1. 主手物品为武器 → 不施加（武器自带攻速已在属性中生效）
+     * 2. 主手物品命中充能物品白名单 → 临时施加白名单攻速修正值
+     * 3. 其余（含空手）→ 临时施加默认攻速修正值
+     * 读取属性最终攻速（自动叠加急迫等玩家身上所有攻速修饰符）后立即移除临时修饰符
+     */
+    static double captureEffectiveAttackSpeed(ServerPlayer player) {
+        ItemStack mainHand = player.getMainHandItem();
+        // 非武器（含空手）按充能逻辑取修正值：白名单命中取白名单值，未命中自动返回默认值
+        double speedModifier = (mainHand.isEmpty() || !Config.isWeaponLikeItem(mainHand.getItem()))
+                ? Config.getItemUseChargeSpeedModifier(mainHand.getItem())
+                : 0;
+
+        AttributeInstance attackSpeedAttribute = player.getAttribute(Attributes.ATTACK_SPEED);
+        if (speedModifier == 0 || attackSpeedAttribute == null) {
+            return player.getAttributeValue(Attributes.ATTACK_SPEED);
+        }
+
+        // 临时施加修正值，读取最终攻速后立即移除（transient ADD_VALUE，与右键充能同一施加方式）
+        attackSpeedAttribute.addTransientModifier(
+                new AttributeModifier(BURST_COOLDOWN_SPEED_ID, speedModifier, AttributeModifier.Operation.ADD_VALUE));
+        double attackSpeed = player.getAttributeValue(Attributes.ATTACK_SPEED);
+        attackSpeedAttribute.removeModifier(BURST_COOLDOWN_SPEED_ID);
+        return attackSpeed;
+    }
+
+    /**
+     * 按有效攻速计算连击冷却刻数：冷却 = (20 / 有效攻速) × 总连击段数
+     */
+    public static int calcComboCooldownTicks(int totalComboStacks, double attackSpeed) {
+        return (int) Math.ceil((20.0 / Math.max(attackSpeed, 0.1)) * totalComboStacks);
     }
 
     /**
@@ -147,6 +195,9 @@ public class BurstFireManager {
 
             // 设置首次自动攻击延迟
             AUTO_ATTACK_DELAY.put(playerUUID, BURST_DELAY_TICKS);
+
+            // 快照触发时的有效攻速，用于连击冷却计算
+            ATTACK_SPEED_SNAPSHOTS.put(playerUUID, captureEffectiveAttackSpeed(player));
         } else {
             // 自动攻击命中，确保目标无敌时间被移除
             target.invulnerableTime = 0;
@@ -279,10 +330,9 @@ public class BurstFireManager {
 
         int totalComboStacks = 1 + getComboStacksBonus(player);
 
-        // 计算连击冷却时间：基于基础攻击速度（不含强袭加成）
-        double baseAttackSpeed = player.getAttributeValue(Attributes.ATTACK_SPEED);
-        double attackCooldown = 20.0 / baseAttackSpeed;
-        int cooldownTicks = (int) Math.ceil(attackCooldown * totalComboStacks);
+        // 连击冷却时间按触发时快照的有效攻速计算（借用属性系统读取，已叠加玩家所有攻速修饰符）
+        double attackSpeed = ATTACK_SPEED_SNAPSHOTS.getOrDefault(playerUUID, captureEffectiveAttackSpeed(player));
+        int cooldownTicks = calcComboCooldownTicks(totalComboStacks, attackSpeed);
 
         COMBO_COOLDOWN.put(playerUUID, cooldownTicks);
 
@@ -295,6 +345,7 @@ public class BurstFireManager {
         CURRENT_TARGETS.remove(playerUUID);
         REMAINING_COMBO.remove(playerUUID);
         AUTO_ATTACK_DELAY.remove(playerUUID);
+        ATTACK_SPEED_SNAPSHOTS.remove(playerUUID);
     }
 
     /**
@@ -331,6 +382,9 @@ public class BurstFireManager {
         IS_AUTO_ATTACKING.put(playerUUID, true);
         AUTO_ATTACK_DELAY.put(playerUUID, BURST_DELAY_TICKS);
 
+        // 快照触发时的有效攻速，用于连击冷却计算
+        ATTACK_SPEED_SNAPSHOTS.put(playerUUID, captureEffectiveAttackSpeed(player));
+
         // 同步点射进行中状态到客户端
         com.gytrinket.gytrinket.network.NetworkHandler.sendBurstFiringToPlayer(player, true);
     }
@@ -343,6 +397,7 @@ public class BurstFireManager {
         REMAINING_COMBO.remove(playerUUID);
         IS_AUTO_ATTACKING.remove(playerUUID);
         AUTO_ATTACK_DELAY.remove(playerUUID);
+        ATTACK_SPEED_SNAPSHOTS.remove(playerUUID);
     }
 
     /**
@@ -367,6 +422,7 @@ public class BurstFireManager {
         CURRENT_TARGETS.remove(playerUUID);
         REMAINING_COMBO.remove(playerUUID);
         AUTO_ATTACK_DELAY.remove(playerUUID);
+        ATTACK_SPEED_SNAPSHOTS.remove(playerUUID);
         COMBO_COOLDOWN.remove(playerUUID);
     }
 
@@ -384,6 +440,7 @@ public class BurstFireManager {
         REMAINING_COMBO.remove(playerUUID);
         IS_AUTO_ATTACKING.remove(playerUUID);
         AUTO_ATTACK_DELAY.remove(playerUUID);
+        ATTACK_SPEED_SNAPSHOTS.remove(playerUUID);
         COMBO_COOLDOWN.remove(playerUUID);
     }
 
@@ -411,6 +468,7 @@ public class BurstFireManager {
         REMAINING_COMBO.remove(playerUUID);
         IS_AUTO_ATTACKING.remove(playerUUID);
         AUTO_ATTACK_DELAY.remove(playerUUID);
+        ATTACK_SPEED_SNAPSHOTS.remove(playerUUID);
         COMBO_COOLDOWN.remove(playerUUID);
     }
 
@@ -422,6 +480,7 @@ public class BurstFireManager {
         REMAINING_COMBO.clear();
         IS_AUTO_ATTACKING.clear();
         AUTO_ATTACK_DELAY.clear();
+        ATTACK_SPEED_SNAPSHOTS.clear();
         COMBO_COOLDOWN.clear();
     }
 }

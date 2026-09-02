@@ -28,6 +28,7 @@
     { "name": "attack_damage_independent", "combine": "INDEPENDENT_MULTIPLY", "group": "attack_damage" },
     { "name": "attack_speed_percent", "combine": "PERCENT", "group": "attack_speed" },
     { "name": "attack_speed_independent", "combine": "INDEPENDENT_MULTIPLY", "group": "attack_speed" },
+    { "name": "attack_speed_flat", "combine": "BASE", "group": "attack_speed" },
     { "name": "combo", "combine": "BASE" },
     { "name": "movement_speed_percent", "combine": "PERCENT", "group": "movement_speed" },
     { "name": "movement_speed_independent", "combine": "INDEPENDENT_MULTIPLY", "group": "movement_speed" },

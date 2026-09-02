@@ -35,8 +35,6 @@ import java.util.List;
 public class ExplosiveProjectile extends ThrowableItemProjectile {
 
     private float damage;
-    /** 命中实体时在碰撞箱表面的交点位置，用于优化爆炸点位 */
-    private Vec3 explosionPos;
 
     public ExplosiveProjectile(EntityType<? extends ExplosiveProjectile> type, Level level) {
         super(type, level);
@@ -112,12 +110,11 @@ public class ExplosiveProjectile extends ThrowableItemProjectile {
             Vec3 currentPos = this.position();
             Vec3 nextPos = currentPos.add(velocity);
 
-            Vec3[] hitPosOut = new Vec3[1];
-            LivingEntity hitTarget = findTargetInPath(currentPos, nextPos, hitPosOut);
-            if (hitTarget != null) {
-                this.explosionPos = hitPosOut[0] != null ? hitPosOut[0] : hitTarget.position();
-
-                dealDamageToTarget(hitTarget);
+            PathHit hit = findTargetInPath(currentPos, nextPos);
+            if (hit != null) {
+                // 将弹体移动到上一刻（本刻预测）计算得出的相交位置，再结算伤害与爆炸
+                this.setPos(hit.hitPos().x, hit.hitPos().y, hit.hitPos().z);
+                dealDamageToTarget(hit.target());
                 triggerExplosionAndDiscard();
                 return;
             }
@@ -133,19 +130,12 @@ public class ExplosiveProjectile extends ThrowableItemProjectile {
     }
 
     /**
-     * 沿弹道路径寻找第一个可攻击的实体，同时返回命中交点
-     */
-    @Nullable
-    private LivingEntity findTargetInPath(Vec3 currentPos, Vec3 nextPos) {
-        return findTargetInPath(currentPos, nextPos, null);
-    }
-
-    /**
      * 沿弹道路径寻找第一个可攻击的实体
-     * @param hitPosOut 若非null，写入射线与碰撞箱的交点位置（重叠时取子弹当前位置）
+     * 检测方式：射线从本刻位置到下一刻位置击中实体碰撞箱（路径预测；
+     * 射线自本刻位置发出，天然覆盖本刻重叠情况）
      */
     @Nullable
-    private LivingEntity findTargetInPath(Vec3 currentPos, Vec3 nextPos, @Nullable Vec3[] hitPosOut) {
+    private PathHit findTargetInPath(Vec3 currentPos, Vec3 nextPos) {
         Entity owner = this.getOwner();
         Player ownerPlayer = getOwnerPlayer();
 
@@ -160,46 +150,31 @@ public class ExplosiveProjectile extends ThrowableItemProjectile {
 
         List<LivingEntity> candidates = this.level().getEntitiesOfClass(LivingEntity.class, pathBox);
 
-        LivingEntity closest = null;
+        PathHit closest = null;
         double closestDist = Double.MAX_VALUE;
-        Vec3 closestHitPos = null;
-
-        AABB bulletBox = this.getBoundingBox();
 
         for (LivingEntity target : candidates) {
             if (target == owner) continue;
             if (ownerPlayer != null && target == ownerPlayer) continue;
             if (ownerPlayer != null && !HostileTargetManager.shouldAttackPlayer(target, ownerPlayer)) continue;
 
-            // 检查1：子弹碰撞箱是否与实体重叠
-            if (bulletBox.intersects(target.getBoundingBox())) {
-                double dist = currentPos.distanceToSqr(target.position());
-                if (dist < closestDist) {
-                    closestDist = dist;
-                    closest = target;
-                    closestHitPos = currentPos;
-                }
-                continue;
-            }
-
-            // 检查2：射线是否击中实体碰撞箱
+            // 射线是否击中实体碰撞箱
             AABB targetBox = target.getBoundingBox().inflate(0.3);
             Vec3 intersection = targetBox.clip(currentPos, nextPos).orElse(null);
             if (intersection != null) {
                 double dist = currentPos.distanceToSqr(intersection);
                 if (dist < closestDist) {
                     closestDist = dist;
-                    closest = target;
-                    closestHitPos = intersection;
+                    closest = new PathHit(target, intersection);
                 }
             }
         }
 
-        if (closest != null && hitPosOut != null && hitPosOut.length > 0) {
-            hitPosOut[0] = closestHitPos;
-        }
-
         return closest;
+    }
+
+    /** 射线命中结果：目标实体与相交位置 */
+    private record PathHit(LivingEntity target, Vec3 hitPos) {
     }
 
     @Nullable
@@ -235,8 +210,7 @@ public class ExplosiveProjectile extends ThrowableItemProjectile {
      */
     private void triggerExplosionAndDiscard() {
         if (!this.level().isClientSide) {
-            Vec3 pos = this.position();
-            Vec3 explosionCenter = this.explosionPos != null ? this.explosionPos : pos;
+            Vec3 explosionCenter = this.position();
             float explosionDamage = (float) Config.getWingmanExplosionDamage();
             double splashLength = 1.5;
             Vec3 splashDirection = this.getDeltaMovement();

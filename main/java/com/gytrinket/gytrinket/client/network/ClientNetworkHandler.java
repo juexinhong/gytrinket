@@ -67,6 +67,10 @@ public class ClientNetworkHandler {
         }
     }
 
+    public static void handleSimulatedExplosionFXMessage(double x, double y, double z, double radius) {
+        com.gytrinket.gytrinket.client.explosion.SimulatedExplosionFXRenderer.addEffect(x, y, z, radius);
+    }
+
     public static void handleAuraParticlesMessage(double x, double y, double z, double radius) {
         var minecraft = Minecraft.getInstance();
         var level = minecraft.level;

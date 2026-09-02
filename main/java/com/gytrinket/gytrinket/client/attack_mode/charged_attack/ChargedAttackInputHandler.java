@@ -2,11 +2,13 @@ package com.gytrinket.gytrinket.client.attack_mode.charged_attack;
 
 import com.gytrinket.gytrinket.client.attack_mode.AttackModeClientUtil;
 import com.gytrinket.gytrinket.client.attack_mode.AttackStateInputHandler;
+import com.gytrinket.gytrinket.client.attack_mode.burst_fire.BurstFireClientHandler;
 import com.gytrinket.gytrinket.core.attack_mode.AttackStateManager;
 import com.gytrinket.gytrinket.core.attack_mode.charged_attack.ChargedAttackSweepHandler;
 import com.gytrinket.gytrinket.gytrinket;
 import com.gytrinket.gytrinket.network.NetworkHandler;
 import com.gytrinket.gytrinket.network.packet.ChargedAttackPayload;
+import com.gytrinket.gytrinket.network.packet.ItemUseChargePayload;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
@@ -40,6 +42,8 @@ public class ChargedAttackInputHandler {
     // 此时 AttackStateInputHandler 尚未将状态从 RELEASED 更新为 PRESSED，
     // 因此需要跳过启动后的前几 tick 的松开检测
     private static int chargeStartDelay = 0;
+    // 长按右键充能状态（与左键充能 isCharging 分离，避免左键松开检测误触发右键充能释放）
+    private static boolean isRightCharging = false;
 
     @SubscribeEvent
     public static void onClientTick(ClientTickEvent.Post event) {
@@ -54,6 +58,15 @@ public class ChargedAttackInputHandler {
             if (isCharging) {
                 resetCharge();
             }
+            if (isRightCharging) {
+                cancelRightCharging();
+            }
+            return;
+        }
+
+        // 右键充能期间打开界面或窗口失焦：视为松开右键，释放充能
+        if (isRightCharging && (minecraft.screen != null || !minecraft.isWindowActive())) {
+            cancelRightCharging();
             return;
         }
 
@@ -128,9 +141,50 @@ public class ChargedAttackInputHandler {
     }
 
     /**
+     * 长按右键充能开始（由 MouseHandlerMixin 在右键按下时调用）
+     */
+    public static void startChargingFromRightButton() {
+        if (isCharging || isRightCharging) {
+            return;
+        }
+        if (!AttackModeClientUtil.hasChargedAttackItem()) {
+            return;
+        }
+        // 点射连击冷却期间禁止充能（与左键充能同一客户端门控；弹射物点射物品冷却由服务端拦截）
+        Player player = Minecraft.getInstance().player;
+        if (player != null && BurstFireClientHandler.isInComboCooldown(player.getUUID())) {
+            return;
+        }
+        isRightCharging = true;
+        // 通知服务端开始右键充能
+        PacketDistributor.sendToServer(new ItemUseChargePayload(false));
+    }
+
+    /**
+     * 长按右键充能释放（由 MouseHandlerMixin 在右键松开时调用）
+     */
+    public static void releaseChargingFromRightButton() {
+        if (!isRightCharging) {
+            return;
+        }
+        isRightCharging = false;
+        // 通知服务端释放充能（进入消退期，不触发攻击行为）
+        PacketDistributor.sendToServer(new ItemUseChargePayload(true));
+    }
+
+    /**
+     * 兜底取消右键充能（界面打开/失焦/模块失效）：等同松开右键
+     */
+    private static void cancelRightCharging() {
+        isRightCharging = false;
+        PacketDistributor.sendToServer(new ItemUseChargePayload(true));
+    }
+
+    /**
      * 获取客户端充能状态（供 Mixin 和 HUD 渲染使用）
+     * 左键充能与右键充能任一进行中均视为充能中（右键充能期间阻止左键攻击）
      */
     public static boolean isCharging() {
-        return isCharging;
+        return isCharging || isRightCharging;
     }
 }

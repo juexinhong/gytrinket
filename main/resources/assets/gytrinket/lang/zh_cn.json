@@ -50,6 +50,7 @@
   "tooltip.gytrinket.attr.attack_damage_independent": "攻击伤害独立乘区",
   "tooltip.gytrinket.attr.attack_speed_percent": "攻击速度百分比",
   "tooltip.gytrinket.attr.attack_speed_independent": "攻击速度独立乘区",
+  "tooltip.gytrinket.attr.attack_speed_flat": "攻击速度固定加成",
   "tooltip.gytrinket.attr.movement_speed_percent": "移动速度百分比",
   "tooltip.gytrinket.attr.movement_speed_independent": "移动速度独立乘区",
   "tooltip.gytrinket.attr.knockback_resistance": "击退抗性",
@@ -132,7 +133,7 @@
   "tooltip.gytrinket.charged_attack": "充能攻击",
   "tooltip.gytrinket.charged_attack_effect": "按住左键充能，松开释放攻击。充能无上限但受阻力制衡，伤害=当前伤害+充能值。充能时-20%移速",
   "tooltip.gytrinket.projectile_explosion": "弹射物爆炸",
-  "tooltip.gytrinket.projectile_explosion_effect": "归属玩家的弹射物从世界移除时，在移除位置产生爆炸。爆炸伤害为弹射物造成的最高伤害的15%，爆炸半径为基础2格+爆炸伤害。爆炸无击退，可被爆炸属性增幅",
+  "tooltip.gytrinket.projectile_explosion_effect": "归属玩家的弹射物从世界移除时，在移除位置产生爆炸。爆炸伤害为弹射物造成的最高伤害的%s%%，爆炸半径为基础%s格+爆炸伤害×%s。爆炸无击退，可被爆炸属性增幅",
   
   "tooltip.gytrinket.precision_construct": "精妙构造",
   "tooltip.gytrinket.precision_construct_effect": "玩家每级提供%.2f%%独立乘区构建速度属性",

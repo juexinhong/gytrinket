@@ -12,12 +12,10 @@ import com.gytrinket.gytrinket.core.entity.construct.drone.behavior.FormationBeh
 import com.gytrinket.gytrinket.core.entity.construct.drone.behavior.SelfDestructBehavior;
 import com.gytrinket.gytrinket.core.explosion.SimulatedExplosion;
 import com.gytrinket.gytrinket.core.entity.construct.HostileTargetManager;
-import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
@@ -359,11 +357,6 @@ public class DroneConstructEntity extends AbstractConstructEntity {
                 -1.0,
                 "simulated_explosion"
         );
-
-        if (this.level() instanceof ServerLevel serverLevel) {
-            serverLevel.sendParticles(ParticleTypes.EXPLOSION_EMITTER,
-                    pos.x, pos.y, pos.z, 1, 0, 0, 0, 0);
-        }
 
         removeFromConstructManager();
         this.remove(Entity.RemovalReason.DISCARDED);

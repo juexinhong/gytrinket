@@ -103,6 +103,11 @@ public class SimulatedExplosion {
             radius = radius * explosionRadiusMultiplier;
         }
 
+        // 统一广播模拟爆炸贴图特效（替代原版爆炸粒子）
+        if (level instanceof net.minecraft.server.level.ServerLevel serverLevel) {
+            com.gytrinket.gytrinket.network.NetworkHandler.sendSimulatedExplosionFX(serverLevel, center, radius);
+        }
+
         AABB aabb = new AABB(
                 center.x - radius, center.y - radius, center.z - radius,
                 center.x + radius, center.y + radius, center.z + radius
@@ -117,17 +122,48 @@ public class SimulatedExplosion {
             if (!entityFilter.test(entity)) continue;
 
             double distance = entity.position().distanceTo(center);
-            if (distance > radius) continue;
+
+            // 范围修复机制：除原有 3D 距离判定（脚底坐标，受高度差影响）外，
+            // 爆心高度处半径 radius 的水平圆与目标碰撞箱（XZ 投影）相交时同样视为被波及，
+            // 解决边缘/站高差目标的漏判；单实体在单次遍历中只结算一次，天然去重
+            boolean hit = distance <= radius || intersectsExplosionCircle(entity, center, radius);
+            if (!hit) continue;
+
+            // 仅由水平圆命中的目标 distance 可能超过 radius，钳制以免击退衰减计算出负值
+            double effectiveDistance = Math.min(distance, radius);
 
             if (mergeType == null) {
-                applyExplosionHit(entity, center, radius, distance, damage, damageSource,
+                applyExplosionHit(entity, center, radius, effectiveDistance, damage, damageSource,
                         owner, resetInvulnerable, knockbackMultiplierOverride);
             } else {
-                SecondaryDamageMerger.accumulate(entity, mergeType, damage, (target, mergedDamage) ->
-                        applyExplosionHit(target, center, effectiveRadius, distance, mergedDamage, damageSource,
+                // 爆炸伤害：归属玩家时第一次立即结算，随后进入 0.5 秒收集期
+                SecondaryDamageMerger.accumulateExplosion(entity, mergeType, damage, owner != null, (target, mergedDamage) ->
+                        applyExplosionHit(target, center, effectiveRadius, effectiveDistance, mergedDamage, damageSource,
                                 owner, resetInvulnerable, knockbackMultiplierOverride));
             }
         }
+    }
+
+    /**
+     * 范围修复：检查爆心高度处半径 radius 的水平圆是否与目标碰撞箱相交
+     * <p>
+     * 圆位于爆心高度的水平面（y = center.y）上，相交要求：
+     * 1. 碰撞箱跨越爆心高度平面（box.minY ≤ center.y ≤ box.maxY）；
+     * 2. 该平面内圆与碰撞箱截面（XZ 矩形）相交——采用"矩形上距圆心最近点"测试，
+     * 将爆心水平坐标钳制到碰撞箱范围内得到最近点，最近点与爆心的水平距离 ≤ radius 即相交。
+     * 垂直范围由调用处的 AABB 预筛选（爆心 ± radius 立方体）兜底，不会波及过远目标。
+     */
+    private static boolean intersectsExplosionCircle(LivingEntity entity, Vec3 center, double radius) {
+        AABB box = entity.getBoundingBox();
+        // 碰撞箱未跨越爆心高度平面，水平圆与之不相交
+        if (center.y < box.minY || center.y > box.maxY) {
+            return false;
+        }
+        double closestX = Math.max(box.minX, Math.min(center.x, box.maxX));
+        double closestZ = Math.max(box.minZ, Math.min(center.z, box.maxZ));
+        double dx = closestX - center.x;
+        double dz = closestZ - center.z;
+        return dx * dx + dz * dz <= radius * radius;
     }
 
     /**

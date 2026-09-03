@@ -302,13 +302,18 @@ public class HostileTargetManager {
     private static Field ARROW_IN_GROUND_FIELD;
 
     static {
-        for (String fieldName : new String[]{"f_36704_", "inGround"}) {
+        // inGround：MojMap 名（开发/1.21.1 运行时）+ SRG 名（1.20.1 生产环境，f_36703_=inGround）
+        // 注意 f_36704_ 是 inGroundTime(int)，绝不能作为候选（getBoolean 会抛 IllegalArgumentException）
+        for (String fieldName : new String[]{"inGround", "f_36703_"}) {
             try {
                 Field f = AbstractArrow.class.getDeclaredField(fieldName);
+                if (f.getType() != boolean.class) {
+                    continue;
+                }
                 f.setAccessible(true);
                 ARROW_IN_GROUND_FIELD = f;
                 break;
-            } catch (NoSuchFieldException ignored) {
+            } catch (Exception ignored) {
             }
         }
     }
@@ -342,7 +347,8 @@ public class HostileTargetManager {
         if (ARROW_IN_GROUND_FIELD != null) {
             try {
                 return ARROW_IN_GROUND_FIELD.getBoolean(arrow);
-            } catch (IllegalAccessException ignored) {
+            } catch (Exception ignored) {
+                // 类型不符/访问失败等一律退化为速度判定，绝不能让异常冒泡崩溃
             }
         }
         Vec3 velocity = arrow.getDeltaMovement();

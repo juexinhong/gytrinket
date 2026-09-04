@@ -28,9 +28,10 @@ public class AttackSpeedManager {
     private static final String MODIFIER_NAME = ModifierHelper.MOD_PREFIX + "attack_speed";
     private static final UUID MODIFIER_UUID = UUID.fromString("c1d2e3f4-a5b6-7890-cdef-012345678902");
 
-    // 账本 attack_speed_flat（充能攻速修正值等加法贡献）投影到原版属性的修饰符
-    private static final String FLAT_MODIFIER_NAME = ModifierHelper.MOD_PREFIX + "attack_speed_flat";
-    private static final UUID FLAT_MODIFIER_UUID = UUID.fromString("c1d2e3f4-a5b6-7890-cdef-012345678912");
+    // 账本 attack_speed_flat（充能攻速修正值等加法贡献）投影到原版属性的修饰符。
+    // 点射冷却的攻速捕获（BurstFireSupport）共用此修饰符：同种减益不重复施加，避免双重减益把攻速压至 0 以下
+    public static final String FLAT_MODIFIER_NAME = ModifierHelper.MOD_PREFIX + "attack_speed_flat";
+    public static final UUID FLAT_MODIFIER_UUID = UUID.fromString("c1d2e3f4-a5b6-7890-cdef-012345678912");
 
     private static final Map<UUID, Double> PLAYER_ATTACK_SPEED_MAP = new ConcurrentHashMap<>();
 

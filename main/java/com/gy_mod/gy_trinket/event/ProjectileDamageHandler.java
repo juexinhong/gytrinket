@@ -1,7 +1,7 @@
 package com.gy_mod.gy_trinket.event;
 
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
-import com.gy_mod.gy_trinket.core.projectile.ProjectileBlacklist;
+import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.gytrinket;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
@@ -40,7 +40,7 @@ import java.util.UUID;
  * <p>
  * 覆盖范围：所有继承 AbstractArrow 的弹射物（原版弓箭/弩/三叉戟 + 继承该类的模组弹射物）。
  * 不覆盖 ThrowableProjectile（雪球/末影珍珠等，无伤害或固定伤害）和完全自定义弹射物。
- * 另：弹射物黑名单（{@link ProjectileBlacklist}，末影珍珠等）一律跳过，不受充能攻击增幅。
+ * 另：弹射物黑名单（{@link Config#isProjectileBlacklisted}，末影珍珠等）一律跳过，不受充能攻击增幅。
  */
 @Mod.EventBusSubscriber(modid = gytrinket.MODID)
 public class ProjectileDamageHandler {
@@ -56,7 +56,7 @@ public class ProjectileDamageHandler {
         }
 
         // 弹射物黑名单（末影珍珠等）：不被充能攻击增幅
-        if (ProjectileBlacklist.isBlacklisted(arrow)) {
+        if (Config.isProjectileBlacklisted(arrow)) {
             return;
         }
 

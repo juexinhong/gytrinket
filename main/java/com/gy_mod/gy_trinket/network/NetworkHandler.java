@@ -2,6 +2,7 @@ package com.gy_mod.gy_trinket.network;
 
 import com.gy_mod.gy_trinket.compat.CuriosCompat;
 import com.gy_mod.gy_trinket.config.Config;
+import com.gy_mod.gy_trinket.config.ConfigValueRegistry;
 import com.gy_mod.gy_trinket.core.defs.DefsManager;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
 import com.gy_mod.gy_trinket.core.attribute.ItemAttributeConfig;
@@ -113,6 +114,11 @@ public class NetworkHandler {
 
         // 弹射物大小同步
         INSTANCE.registerMessage(messageId++, ProjectileScaleMessage.class, ProjectileScaleMessage::toBytes, ProjectileScaleMessage::new, ProjectileScaleMessage::handle);
+
+        // 配置项界面（特殊机制/自然恢复/客户端HUD）
+        INSTANCE.registerMessage(messageId++, ConfigValuesRequestMessage.class, ConfigValuesRequestMessage::toBytes, ConfigValuesRequestMessage::new, ConfigValuesRequestMessage::handle);
+        INSTANCE.registerMessage(messageId++, ConfigValueUpdateMessage.class, ConfigValueUpdateMessage::toBytes, ConfigValueUpdateMessage::new, ConfigValueUpdateMessage::handle);
+        INSTANCE.registerMessage(messageId++, ConfigValuesSyncMessage.class, ConfigValuesSyncMessage::toBytes, ConfigValuesSyncMessage::new, ConfigValuesSyncMessage::handle);
     }
 
     // ======================== Helper send methods ========================
@@ -465,5 +471,32 @@ public class NetworkHandler {
         Collections.sort(allAttrs);
 
         return new ResponseConfigDataMessage(itemConfigList, allAttrs, openScreen);
+    }
+
+    // ======================== 配置项（特殊机制/自然恢复）同步 ========================
+
+    /** 构建全量配置项同步消息（跳过客户端专属项，服务端专用） */
+    private static ConfigValuesSyncMessage buildConfigValuesSyncMessage(boolean openScreen) {
+        List<String> ids = new ArrayList<>();
+        List<Double> values = new ArrayList<>();
+        for (ConfigValueRegistry.Entry e : ConfigValueRegistry.entries()) {
+            if (e.clientOnly) continue;
+            ids.add(e.id);
+            values.add(e.getter.getAsDouble());
+        }
+        return new ConfigValuesSyncMessage(ids, values, openScreen);
+    }
+
+    /** 发送全量配置项同步给单个玩家（打开界面时） */
+    public static void sendConfigValuesToPlayer(ServerPlayer player, boolean openScreen) {
+        INSTANCE.send(PacketDistributor.PLAYER.with(() -> player), buildConfigValuesSyncMessage(openScreen));
+    }
+
+    /** 发送全量配置项同步给所有在线玩家（编辑生效后广播刷新） */
+    public static void sendConfigValuesToAllPlayers(ServerPlayer source, boolean openScreen) {
+        ConfigValuesSyncMessage msg = buildConfigValuesSyncMessage(openScreen);
+        for (var p : source.server.getPlayerList().getPlayers()) {
+            INSTANCE.send(PacketDistributor.PLAYER.with(() -> p), msg);
+        }
     }
 }

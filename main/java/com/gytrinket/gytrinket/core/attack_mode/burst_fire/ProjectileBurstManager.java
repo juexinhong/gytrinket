@@ -1,7 +1,6 @@
 package com.gytrinket.gytrinket.core.attack_mode.burst_fire;
 
-import com.gytrinket.gytrinket.core.attribute.AttributeManager;
-import com.gytrinket.gytrinket.core.projectile.ProjectileBlacklist;
+import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.gytrinket;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.MinecraftServer;
@@ -31,8 +30,11 @@ import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -43,12 +45,17 @@ import java.util.concurrent.ConcurrentHashMap;
  * 核心流程：
  * 1. 归属玩家的弹射物加入世界（手动使用触发；排除区块加载与复制体）
  * 2. 记录弹射物模板（完整 NBT 快照 + 初始速度）
- * 3. 触发时对冷却物品一次性挂满冷却（连击复制期 + 攻击冷却全程禁用玩家使用该物品）
+ * 3. 触发时对冷却物品挂攻击冷却，单一公式：点射预支未来连击段数次攻击换取爆发效果
+ *    （首发不计——其已承受自身原本的冷却），冷却等价于这些未来攻击的总耗时：
+ *    连击段数 × 攻击间隔（整体一次取整）。攻速口径：与近战点射同一攻速逻辑，
+ *    自动叠加玩家身上所有攻速修饰符
  * 4. 每 1 刻按玩家当前视线复制同样的弹射物加入世界，直到连击段数耗尽
- * 5. 连击结束进入攻击冷却（由物品冷却剩余时长自然倒计时，冷却时长按触发时有效攻速计算：
- *    与近战点射同一攻速逻辑，自动叠加玩家身上所有攻速修饰符）
- * 6. 复制弹射物命中时重置目标无敌时间（避免原弹射物赋予的无敌帧吞掉复制体的伤害）
- * 7. 复制弹射物产生一次碰撞后 1 刻移除（避免滞留世界被拾取进背包）
+ *    （各循环独立计时互不干扰。冷却与循环时长同为连击段数量级：常规攻速下攻击间隔
+ *    ≥ 1 刻、冷却 ≥ 循环时长，物品禁用覆盖复制期、实际单循环；攻速高到攻击间隔 < 1 刻时
+ *    冷却被压缩至短于循环时长，物品冷却提前解禁、玩家再次攻击启动新循环——
+ *    循环叠加是公式的自然结果而非分支逻辑，每次触发都享受完整复制）
+ * 5. 复制弹射物命中时重置目标无敌时间（避免原弹射物赋予的无敌帧吞掉复制体的伤害）
+ * 6. 复制弹射物产生一次碰撞后 1 刻移除（避免滞留世界被拾取进背包）
  * <p>
  * 启用条件：玩家的 combo 属性 > 0
  */
@@ -61,14 +68,12 @@ public class ProjectileBurstManager {
     // 复制体标记键：防止复制体加入世界时再次触发点射
     private static final String TAG_BURST_COPY = "ProjectileBurstCopy";
 
-    // 存储玩家弹射物复制状态：UUID -> 复制状态（模板NBT/剩余复制数/初始速度）
-    private static final Map<UUID, BurstCopyState> ACTIVE = new ConcurrentHashMap<>();
+    // 存储玩家弹射物复制状态：UUID -> 复制循环列表（每次触发点射启动一个独立循环，
+    // 各循环独立倒计时与复制、互不干扰，复制期不占用攻击冷却）
+    private static final Map<UUID, List<BurstCopyState>> ACTIVE = new ConcurrentHashMap<>();
 
-    // 存储玩家复制延迟计时器：UUID -> 剩余延迟刻数
-    private static final Map<UUID, Integer> COPY_DELAY = new ConcurrentHashMap<>();
-
-    // 存储玩家弹射物点射的冷却物品：UUID -> 冷却物品
-    // （连击复制期与攻击冷却全程挂在该物品上，记录物品用于跨系统冷却状态查询，如充能启动拦截）
+    // 存储玩家弹射物点射的冷却物品：UUID -> 最近一次触发时的冷却物品
+    // （攻击冷却挂在该物品上，记录物品用于跨系统冷却状态查询，如充能启动拦截）
     private static final Map<UUID, Item> COOLDOWN_ITEMS = new ConcurrentHashMap<>();
 
     /**
@@ -79,15 +84,20 @@ public class ProjectileBurstManager {
      * 弹道参数只存在于内存字段，仅靠 NBT 快照无法还原（复制体会因字段缺失在
      * 客户端同步包编码时崩溃），复制前以反射记录，还原实体后回填。
      */
-    private record BurstCopyState(CompoundTag template, Map<String, Object> fieldSnapshot, int remainingCopies, float launchSpeed) {
-    }
+    private static final class BurstCopyState {
+        final CompoundTag template;
+        final Map<String, Object> fieldSnapshot;
+        final float launchSpeed;
+        int remainingCopies;
+        int delay;
 
-    /**
-     * 获取玩家的连击段数加成
-     */
-    private static int getComboStacksBonus(Player player) {
-        double combo = AttributeManager.getPlayerAttribute(player.getUUID(), "combo");
-        return (int) Math.floor(combo);
+        BurstCopyState(CompoundTag template, Map<String, Object> fieldSnapshot, int comboStacks, float launchSpeed) {
+            this.template = template;
+            this.fieldSnapshot = fieldSnapshot;
+            this.remainingCopies = comboStacks;
+            this.launchSpeed = launchSpeed;
+            this.delay = BURST_DELAY_TICKS;
+        }
     }
 
     /**
@@ -124,7 +134,7 @@ public class ProjectileBurstManager {
         }
 
         // 弹射物黑名单（末影珍珠等）：不参与点射复制
-        if (ProjectileBlacklist.isBlacklisted(projectile)) {
+        if (Config.isProjectileBlacklisted(projectile)) {
             return;
         }
 
@@ -135,13 +145,8 @@ public class ProjectileBurstManager {
 
         UUID playerUUID = player.getUUID();
 
-        // 已在复制循环中，不重复触发
-        if (ACTIVE.containsKey(playerUUID)) {
-            return;
-        }
-
         // 检查玩家的连击段数是否大于0
-        int comboStacksBonus = getComboStacksBonus(player);
+        int comboStacksBonus = BurstFireSupport.getComboStacksBonus(player);
         if (comboStacksBonus <= 0) {
             return;
         }
@@ -160,20 +165,17 @@ public class ProjectileBurstManager {
         // 冷却物品：弹射物对应物品优先（三叉戟掷出后离手/自带物品的弹射物），否则取主手物品
         Item cooldownItem = resolveCooldownItem(player, projectile);
 
-        // 冷却总时长 = 连击复制期 + 攻击冷却，触发时一次性挂满：
-        // 连击与攻击冷却全程禁用玩家使用该物品（物品冷却转圈），同时防止循环期间重入
-        int comboDurationTicks = BURST_DELAY_TICKS * comboStacksBonus;
-        int totalComboStacks = 1 + comboStacksBonus;
-        // 攻击冷却攻速与近战点射同一逻辑：借用属性系统临时施加修正值后读取
+        // 攻击冷却（单一公式）：点射预支未来连击段数次攻击换取爆发（首发不计，
+        // 其已承受自身原本的冷却），冷却 = 连击段数 × 攻击间隔
+        // 攻击间隔攻速：与近战点射同一逻辑，借用属性系统临时施加修正值后读取
         // （弹射物触发时主手为弹射物物品/空手，自动落到默认修正值，同时叠加玩家所有攻速修饰符）
-        double attackSpeed = BurstFireManager.captureEffectiveAttackSpeed(player);
-        int attackCooldownTicks = BurstFireManager.calcComboCooldownTicks(totalComboStacks, attackSpeed);
-        player.getCooldowns().addCooldown(cooldownItem, comboDurationTicks + attackCooldownTicks);
+        double attackSpeed = BurstFireSupport.captureEffectiveAttackSpeed(player);
+        player.getCooldowns().addCooldown(cooldownItem, BurstFireSupport.calcBurstCooldownTicks(comboStacksBonus, attackSpeed));
         COOLDOWN_ITEMS.put(playerUUID, cooldownItem);
 
-        // 启动复制循环：首次复制延迟与点射一致
-        ACTIVE.put(playerUUID, new BurstCopyState(template, fieldSnapshot, comboStacksBonus, launchSpeed));
-        COPY_DELAY.put(playerUUID, BURST_DELAY_TICKS);
+        // 启动独立复制循环：追加到该玩家的循环列表，多循环并发互不干扰
+        ACTIVE.computeIfAbsent(playerUUID, k -> new ArrayList<>())
+                .add(new BurstCopyState(template, fieldSnapshot, comboStacksBonus, launchSpeed));
     }
 
     /**
@@ -201,8 +203,9 @@ public class ProjectileBurstManager {
     }
 
     /**
-     * 玩家是否处于弹射物点射的冷却中（连击复制期与攻击冷却全程）：
-     * 冷却挂在触发时记录的冷却物品上，按物品冷却状态实时查询
+     * 玩家是否处于弹射物点射的攻击冷却中：
+     * 冷却挂在最近一次触发时记录的冷却物品上（连击段数 × 攻击间隔），
+     * 按物品冷却状态实时查询
      * （供 AttackModeManager 拦截点射冷却期间开始充能等跨系统协调使用）
      */
     public static boolean isInProjectileBurstCooldown(Player player) {
@@ -285,7 +288,6 @@ public class ProjectileBurstManager {
         // 玩家已死亡（兜底保护，死亡事件通常已清理）
         if (!player.isAlive()) {
             ACTIVE.remove(playerUUID);
-            COPY_DELAY.remove(playerUUID);
             return;
         }
 
@@ -293,38 +295,41 @@ public class ProjectileBurstManager {
     }
 
     /**
-     * 处理复制循环逻辑
+     * 处理复制循环逻辑：
+     * 遍历玩家的所有复制循环，各循环独立倒计时、独立复制、独立耗尽移除，互不干扰
      */
     private static void handleCopyLoop(ServerPlayer player) {
         UUID playerUUID = player.getUUID();
 
-        BurstCopyState state = ACTIVE.get(playerUUID);
-        if (state == null) {
+        List<BurstCopyState> loops = ACTIVE.get(playerUUID);
+        if (loops == null || loops.isEmpty()) {
             return;
         }
 
-        if (state.remainingCopies() <= 0) {
+        Iterator<BurstCopyState> iterator = loops.iterator();
+        while (iterator.hasNext()) {
+            BurstCopyState state = iterator.next();
+
+            // 各循环独立倒计时
+            if (state.delay > 0) {
+                state.delay--;
+                continue;
+            }
+
+            copyProjectile(player, state);
+
+            state.remainingCopies--;
+            if (state.remainingCopies <= 0) {
+                // 该循环连击段数耗尽，结束（攻击冷却由物品冷却继续倒计时）
+                iterator.remove();
+            } else {
+                state.delay = BURST_DELAY_TICKS;
+            }
+        }
+
+        // 所有循环结束，移除玩家的循环列表
+        if (loops.isEmpty()) {
             ACTIVE.remove(playerUUID);
-            COPY_DELAY.remove(playerUUID);
-            return;
-        }
-
-        int delay = COPY_DELAY.getOrDefault(playerUUID, 0);
-        if (delay > 0) {
-            COPY_DELAY.put(playerUUID, delay - 1);
-            return;
-        }
-
-        copyProjectile(player, state);
-
-        int remaining = state.remainingCopies() - 1;
-        if (remaining > 0) {
-            ACTIVE.put(playerUUID, new BurstCopyState(state.template(), state.fieldSnapshot(), remaining, state.launchSpeed()));
-            COPY_DELAY.put(playerUUID, BURST_DELAY_TICKS);
-        } else {
-            // 连击段数耗尽，结束复制循环（攻击冷却由物品冷却继续倒计时）
-            ACTIVE.remove(playerUUID);
-            COPY_DELAY.remove(playerUUID);
         }
     }
 
@@ -336,13 +341,13 @@ public class ProjectileBurstManager {
     private static void copyProjectile(ServerPlayer player, BurstCopyState state) {
         Level level = player.level();
 
-        Entity copy = EntityType.loadEntityRecursive(state.template().copy(), level, e -> e);
+        Entity copy = EntityType.loadEntityRecursive(state.template.copy(), level, e -> e);
         if (!(copy instanceof Projectile projectileCopy)) {
             return;
         }
 
         // 回填自定义字段快照（noSave 类弹射物的弹道参数不入 NBT，NBT 还原后缺失，必须反射回填）
-        applyCustomFieldSnapshot(copy, state.fieldSnapshot());
+        applyCustomFieldSnapshot(copy, state.fieldSnapshot);
 
         // 打上复制体标记，防止复制体加入世界时再次触发点射
         projectileCopy.getPersistentData().putBoolean(TAG_BURST_COPY, true);
@@ -355,7 +360,7 @@ public class ProjectileBurstManager {
 
         projectileCopy.setOwner(player);
         projectileCopy.setPos(player.getEyePosition().x, player.getEyePosition().y, player.getEyePosition().z);
-        projectileCopy.shootFromRotation(player, player.getXRot(), player.getYRot(), 0.0F, state.launchSpeed(), 1.0F);
+        projectileCopy.shootFromRotation(player, player.getXRot(), player.getYRot(), 0.0F, state.launchSpeed, 1.0F);
         level.addFreshEntity(projectileCopy);
     }
 
@@ -434,7 +439,6 @@ public class ProjectileBurstManager {
      */
     private static void cleanupPlayerState(UUID playerUUID) {
         ACTIVE.remove(playerUUID);
-        COPY_DELAY.remove(playerUUID);
         COOLDOWN_ITEMS.remove(playerUUID);
     }
 
@@ -467,7 +471,6 @@ public class ProjectileBurstManager {
      */
     public static void clearAllData() {
         ACTIVE.clear();
-        COPY_DELAY.clear();
         COOLDOWN_ITEMS.clear();
     }
 }

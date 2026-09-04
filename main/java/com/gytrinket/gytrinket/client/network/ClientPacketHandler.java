@@ -1,7 +1,9 @@
 package com.gytrinket.gytrinket.client.network;
 
 import com.gytrinket.gytrinket.config.Config;
+import com.gytrinket.gytrinket.config.ConfigValueRegistry;
 import com.gytrinket.gytrinket.client.screen.AbstractPanelScreen;
+import com.gytrinket.gytrinket.client.screen.ConfigEntriesScreen;
 import com.gytrinket.gytrinket.client.screen.ConfigPanelScreen;
 import com.gytrinket.gytrinket.client.screen.PlayerPanelScreen;
 import com.gytrinket.gytrinket.client.screen.UpgradeSelectScreen;
@@ -106,6 +108,18 @@ public final class ClientPacketHandler {
         } else if (msg.openScreen()) {
             Screen parent = findParentPanel(currentScreen);
             mc.setScreen(new ConfigPanelScreen(parent, msg.itemConfigData(), msg.allAttributeNames()));
+        }
+    }
+
+    public static void handleConfigValuesSync(ConfigValuesSyncPayload msg) {
+        ConfigValueRegistry.applyClientSync(msg.ids(), msg.values());
+        Minecraft mc = Minecraft.getInstance();
+        Screen currentScreen = mc.screen;
+        if (currentScreen instanceof ConfigEntriesScreen entriesScreen) {
+            entriesScreen.refreshRows();
+        } else if (msg.openScreen()) {
+            Screen parent = findParentPanel(currentScreen);
+            mc.setScreen(new ConfigEntriesScreen(parent));
         }
     }
 

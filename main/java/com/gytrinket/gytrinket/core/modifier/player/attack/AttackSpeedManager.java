@@ -29,8 +29,9 @@ public class AttackSpeedManager {
     
     private static final ResourceLocation MODIFIER_ID = ResourceLocation.fromNamespaceAndPath("gytrinket", "attack_speed");
 
-    // 账本 attack_speed_flat（充能攻速修正值等加法贡献）投影到原版属性的修饰符 ID
-    private static final ResourceLocation FLAT_MODIFIER_ID = ResourceLocation.fromNamespaceAndPath("gytrinket", "attack_speed_flat");
+    // 账本 attack_speed_flat（充能攻速修正值等加法贡献）投影到原版属性的修饰符 ID。
+    // 点射冷却的攻速捕获（BurstFireSupport）共用此修饰符：同种减益不重复施加，避免双重减益把攻速压至 0 以下
+    public static final ResourceLocation FLAT_MODIFIER_ID = ResourceLocation.fromNamespaceAndPath("gytrinket", "attack_speed_flat");
 
     private static final Map<UUID, Double> PLAYER_ATTACK_SPEED_MAP = new ConcurrentHashMap<>();
 

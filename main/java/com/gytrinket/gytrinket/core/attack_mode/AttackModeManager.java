@@ -34,7 +34,8 @@ import java.util.concurrent.ConcurrentHashMap;
  *   <li>点射：点射</li>
  *   <li>强袭：强袭</li>
  *   <li>充能：充能</li>
- *   <li>点射+强袭：强袭攻击后触发点射。点射期间和冷却期间不触发强袭。点射自动攻击触发强袭效果。</li>
+ *   <li>点射+强袭：强袭攻击后触发点射。点射冷却期间不触发强袭（冷却中攻击本身被禁用）；
+ *       点射循环进行中强袭攻击可叠加新循环。点射自动攻击段触发强袭效果。</li>
  *   <li>点射+充能：充能攻击后触发一次点射（点射不会自主触发）。</li>
  *   <li>强袭+充能：充能期间以攻击速度频率触发强袭效果。</li>
  *   <li>点射+充能+强袭：充能期间以攻击速度频率触发强袭效果。充能攻击后触发一次点射（点射不会自主触发）。</li>
@@ -162,18 +163,6 @@ public class AttackModeManager {
     }
 
     /**
-     * 点射期间或冷却期间，强袭自动攻击是否被禁用。
-     * 仅在点射+强袭组合中生效。
-     */
-    public static boolean isAssaultAutoAttackDisabled(Player player) {
-        AttackModeCombo combo = getCombo(player.getUUID());
-        if (combo != AttackModeCombo.BURST_ASSAULT) {
-            return false;
-        }
-        return BurstFireManager.isInBurstFireState(player) || BurstFireManager.isInComboCooldown(player.getUUID());
-    }
-
-    /**
      * 点射进行中或冷却期间，是否禁止开始充能（近战点射与弹射物点射均适用）：
      * 近战点射检查点射进行中/连击冷却状态；
      * 弹射物点射的复制期与攻击冷却全程挂物品冷却，按冷却物品查询
@@ -224,13 +213,9 @@ public class AttackModeManager {
     /**
      * 攻击事件处理 - HIGHEST优先级
      * <p>
-     * 核心逻辑：充能期间禁用正常攻击。
-     * 当玩家正在充能中时，正常攻击一律取消。
-     * 只有以下情况允许攻击通过：
-     * 1. 充能释放攻击（chargeValue > 0）
-     * 2. 点射自动攻击（IS_AUTO_ATTACKING = true）
-     * <p>
-     * 未在充能中时，正常攻击允许通过（包括强袭攻击）。
+     * 充能期间的攻击输入已由客户端从根源阻止，服务端不再禁用攻击逻辑。
+     * 此处仅处理充能释放攻击（chargeValue > 0）的特效触发（电能释放、充能后点射标记）。
+     * 未在充能中时，正常攻击允许通过（包括强袭攻击触发的点射联动）。
      * 充能的启动由客户端 ChargedAttackMessage(0) 直接触发，不依赖攻击事件。
      */
     @SubscribeEvent(priority = EventPriority.HIGHEST)
@@ -275,9 +260,13 @@ public class AttackModeManager {
         // 电能释放：正常攻击打到目标时触发
         triggerElectricDischarge(player);
 
-        // 点射+强袭：强袭攻击后触发点射（仅非点射自动攻击时，避免与 onBurstFireAutoAttack 双重触发）
+        // 点射+强袭：强袭攻击后触发点射。
+        // 冷却中不触发（预支的攻击时间尚未付清）；点射循环进行中允许叠加新循环。
+        // 自动攻击段的伤害不进入此处（isAutoAttacking 拦截）——强袭由 onBurstFireAutoAttack 统一触发，
+        // 避免同一攻击事件双重触发强袭/点射，也避免自动攻击段自我繁殖新循环
         if (doesAssaultAttackTriggerBurstFire(combo) && AttackStateManager.isPlayerHeld(player)
-                && !BurstFireManager.isInBurstFireState(player)) {
+                && !BurstFireManager.isAutoAttacking(uuid)
+                && !BurstFireManager.isInComboCooldown(uuid)) {
             if (event.getTarget() instanceof LivingEntity target) {
                 AssaultManager.triggerAssault(player);
                 BurstFireManager.startBurstFromAssault(player, target);

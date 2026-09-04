@@ -115,6 +115,11 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
         ).bounds(panelX + 90, btnY, 80, 16).renderer(renderer).build());
 
         this.addRenderableWidget(SciFiButton.create(
+                Component.translatable("screen.gytrinket.config_entries"),
+                button -> PacketDistributor.sendToServer(new ConfigValuesRequestPayload())
+        ).bounds(panelX + 175, btnY, 80, 16).renderer(renderer).build());
+
+        this.addRenderableWidget(SciFiButton.create(
                 Component.translatable("screen.gytrinket.back"),
                 button -> Minecraft.getInstance().setScreen(parentScreen)
         ).bounds(panelX + panelWidth - 85, btnY, 80, 16).renderer(renderer).build());

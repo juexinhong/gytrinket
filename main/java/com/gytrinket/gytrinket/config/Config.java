@@ -10,6 +10,8 @@ import com.gytrinket.gytrinket.core.shield.type.ShieldTypeManager;
 import com.gytrinket.gytrinket.core.upgrade.UpgradeManager;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.DiggerItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
@@ -49,6 +51,16 @@ public class Config {
     // ===== 合成禁用 (crafting_disable) =====
     /** 合成禁用模式：0=不禁用，1=禁用本模组命名空间下注册了实际效果的物品合成，2=禁用所有注册了实际效果的物品合成 */
     public static final ModConfigSpec.IntValue DISABLE_CRAFTING_MODE;
+
+    // ===== 33.5 随机构建系统 (random_build) =====
+    public static final ModConfigSpec.BooleanValue RANDOM_BUILD_ENABLED;
+    public static final ModConfigSpec.BooleanValue SHOW_UPGRADE_REMINDER_HUD;
+    /** 从随机池获取物品时的升级点消耗倍数（升级点惩罚，默认 5 倍） */
+    public static final ModConfigSpec.IntValue RANDOM_BUILD_UPGRADE_POINTS_MULTIPLIER;
+    /** 代币机制：启用后随机池兑换消耗背包代币而非升级点 */
+    public static final ModConfigSpec.BooleanValue RANDOM_BUILD_TOKEN_ENABLED;
+    /** 代币物品 ID（可替换为其他模组的物品） */
+    public static final ModConfigSpec.ConfigValue<String> RANDOM_BUILD_TOKEN_ITEM;
 
     // ===== 1. 光环护盾 (aura_shield) =====
     public static final ModConfigSpec.DoubleValue AURA_RADIUS;
@@ -154,6 +166,10 @@ public class Config {
     public static final ModConfigSpec.ConfigValue<List<? extends String>> CHARGED_ATTACK_ITEM_USE_WHITELIST;
     /** 充能物品白名单未注册物品的默认攻击速度修正值 */
     public static final ModConfigSpec.DoubleValue CHARGED_ATTACK_ITEM_USE_DEFAULT_SPEED_MODIFIER;
+
+    // ===== 18.5 弹射物黑名单 (projectile_blacklist) =====
+    /** 弹射物黑名单：不参与充能攻击增幅与点射复制的实体类型注册名 */
+    public static final ModConfigSpec.ConfigValue<List<? extends String>> PROJECTILE_BLACKLIST;
 
     // ===== 17.5 征途 (journey) =====
 
@@ -338,16 +354,6 @@ public class Config {
     // ===== 33. 快速装备 (quick_equip) =====
     public static final ModConfigSpec.IntValue QUICK_EQUIP_UPGRADE_POINTS_COST;
 
-    // ===== 33.5 随机构建系统 (random_build) =====
-    public static final ModConfigSpec.BooleanValue RANDOM_BUILD_ENABLED;
-    public static final ModConfigSpec.BooleanValue SHOW_UPGRADE_REMINDER_HUD;
-    /** 从随机池获取物品时的升级点消耗倍数（升级点惩罚，默认 5 倍） */
-    public static final ModConfigSpec.IntValue RANDOM_BUILD_UPGRADE_POINTS_MULTIPLIER;
-    /** 代币机制：启用后随机池兑换消耗背包代币而非升级点 */
-    public static final ModConfigSpec.BooleanValue RANDOM_BUILD_TOKEN_ENABLED;
-    /** 代币物品 ID（可替换为其他模组的物品） */
-    public static final ModConfigSpec.ConfigValue<String> RANDOM_BUILD_TOKEN_ITEM;
-
     // ===== 34. 其他通用设置 =====
     public static final ModConfigSpec.ConfigValue<Boolean> HARDCORE_MODE_ENABLED;
     public static final ModConfigSpec.IntValue SHIELD_BLOCK_INVULNERABLE_TICKS;
@@ -485,6 +491,42 @@ public class Config {
             .push("crafting_disable");
         DISABLE_CRAFTING_MODE = BUILDER.comment("0=不禁用，1=仅本模组物品，2=全部注册物品")
             .defineInRange("disableCraftingMode", 1, 0, 2);
+        BUILDER.pop();
+
+        // ===== 33.5 随机构建系统 =====
+        BUILDER.comment("随机构建系统配置").push("random_build");
+
+        RANDOM_BUILD_ENABLED = BUILDER.comment(
+            "是否启用随机构建系统",
+            "启用后：玩家面板经验条上方出现3x3随机池，",
+            "可用升级点（× 配置的消耗倍数）兑换随机物品装备到光点核心。"
+        ).define("enabled", true);
+
+        RANDOM_BUILD_UPGRADE_POINTS_MULTIPLIER = BUILDER.comment(
+            "从随机池获取物品时的升级点消耗倍数（升级点惩罚）",
+            "从随机池获取 1 件物品消耗的升级点 = 基础 1 点 × 该倍数",
+            "默认 8（即每次获取消耗 8 点升级点）；范围 1~100",
+            "代币机制启用时代币消耗不受该倍数影响（每次仍消耗 1 个代币）"
+        ).defineInRange("upgradePointsMultiplier", 8, 1, 100);
+
+        SHOW_UPGRADE_REMINDER_HUD = BUILDER.comment(
+            "是否显示升级提醒 HUD",
+            "当玩家有未使用的升级点时，在物品栏上方显示按下G键的提示",
+            "光点核心已满时不显示，默认 true"
+        ).define("showUpgradeReminderHud", true);
+
+        RANDOM_BUILD_TOKEN_ENABLED = BUILDER.comment(
+            "是否启用代币机制（归属随机构建）",
+            "启用后：从随机池获取物品时改为消耗玩家背包中的代币（每次 1 个），",
+            "升级点消耗倍数惩罚在升级点模式下仍生效，不会因代币启用而取消。"
+        ).define("tokenEnabled", false);
+
+        RANDOM_BUILD_TOKEN_ITEM = BUILDER.comment(
+            "代币物品 ID（可替换为其他模组的物品）",
+            "从随机池获取物品时，会从玩家背包中扣除该物品 1 个",
+            "默认 gytrinket:token（本模组代币物品）"
+        ).define("tokenItem", "gytrinket:token");
+
         BUILDER.pop();
 
         // ===== 1. 光环护盾 =====
@@ -894,6 +936,21 @@ public class Config {
             "以加法修饰符施加，默认-3.0（基础攻速4.0-3.0=1.0）",
             "范围：-4.0 ~ 0.0"
         ).defineInRange("itemUseChargeDefaultSpeedModifier", -3.0, -4.0, 0.0);
+
+        BUILDER.pop();
+
+        // ===== 18.5 弹射物黑名单 =====
+        BUILDER.comment("弹射物黑名单配置").push("projectile_blacklist");
+
+        PROJECTILE_BLACKLIST = BUILDER.comment(
+            "弹射物黑名单（实体类型注册名）",
+            "名单中的弹射物不参与本模组的弹射物系统：不会被充能攻击增幅，也不会被点射复制",
+            "默认仅末影珍珠（点射复制会导致多次瞬移，语义混乱且不可控）",
+            "示例：minecraft:ender_pearl"
+        ).defineListAllowEmpty("projectileBlacklist",
+            List.of("minecraft:ender_pearl"),
+            s -> true
+        );
 
         BUILDER.pop();
 
@@ -1537,42 +1594,6 @@ public class Config {
 
         BUILDER.pop();
 
-        // ===== 33.5 随机构建系统 =====
-        BUILDER.comment("随机构建系统配置").push("random_build");
-
-        RANDOM_BUILD_ENABLED = BUILDER.comment(
-            "是否启用随机构建系统",
-            "启用后：玩家面板经验条上方出现3x3随机池，",
-            "可用升级点（× 配置的消耗倍数）兑换随机物品装备到光点核心。"
-        ).define("enabled", true);
-
-        RANDOM_BUILD_UPGRADE_POINTS_MULTIPLIER = BUILDER.comment(
-            "从随机池获取物品时的升级点消耗倍数（升级点惩罚）",
-            "从随机池获取 1 件物品消耗的升级点 = 基础 1 点 × 该倍数",
-            "默认 8（即每次获取消耗 8 点升级点）；范围 1~100",
-            "代币机制启用时代币消耗不受该倍数影响（每次仍消耗 1 个代币）"
-        ).defineInRange("upgradePointsMultiplier", 8, 1, 100);
-
-        SHOW_UPGRADE_REMINDER_HUD = BUILDER.comment(
-            "是否显示升级提醒 HUD",
-            "当玩家有未使用的升级点时，在物品栏上方显示按下G键的提示",
-            "光点核心已满时不显示，默认 true"
-        ).define("showUpgradeReminderHud", true);
-
-        RANDOM_BUILD_TOKEN_ENABLED = BUILDER.comment(
-            "是否启用代币机制（归属随机构建）",
-            "启用后：从随机池获取物品时改为消耗玩家背包中的代币（每次 1 个），",
-            "升级点消耗倍数惩罚在升级点模式下仍生效，不会因代币启用而取消。"
-        ).define("tokenEnabled", false);
-
-        RANDOM_BUILD_TOKEN_ITEM = BUILDER.comment(
-            "代币物品 ID（可替换为其他模组的物品）",
-            "从随机池获取物品时，会从玩家背包中扣除该物品 1 个",
-            "默认 gytrinket:token（本模组代币物品）"
-        ).define("tokenItem", "gytrinket:token");
-
-        BUILDER.pop();
-
         // ===== 33. 快速装备 =====
         BUILDER.comment("快速装备配置").push("quick_equip");
 
@@ -1708,6 +1729,8 @@ public class Config {
     private static final Set<Item> CHARGED_ATTACK_ITEM_SET = new HashSet<>();
     /** 充能物品白名单缓存（长按右键充能）：物品 -> 攻击速度修正值 */
     private static final Map<Item, Double> ITEM_USE_CHARGE_WHITELIST = new HashMap<>();
+    /** 弹射物黑名单缓存：不参与充能攻击增幅与点射复制的实体类型 */
+    private static final Set<EntityType<?>> PROJECTILE_BLACKLIST_CACHE = new HashSet<>();
     private static final Set<Item> JOURNEY_MODULE_ITEM_SET = new HashSet<>();
     /** 声明为特殊机制的物品集合（special_mechanics 文件夹声明并集），用于快速装备等统一判定 */
     private static final Set<Item> SPECIAL_MECHANIC_ITEM_SET = new HashSet<>();
@@ -1861,6 +1884,40 @@ public class Config {
     }
 
     /**
+     * 解析弹射物黑名单配置
+     * 名单中的弹射物不参与本模组的弹射物系统：不会被充能攻击增幅（ProjectileDamageHandler），
+     * 也不会被点射复制（ProjectileBurstManager）
+     */
+    public static void loadProjectileBlacklist() {
+        PROJECTILE_BLACKLIST_CACHE.clear();
+        for (String entry : PROJECTILE_BLACKLIST.get()) {
+            String trimmed = entry.trim();
+            if (trimmed.isEmpty()) {
+                continue;
+            }
+            ResourceLocation entityTypeId = ResourceLocation.tryParse(trimmed);
+            if (entityTypeId == null) {
+                gytrinket.LOGGER.warn("无效的实体类型注册名：{}", trimmed);
+                continue;
+            }
+            EntityType<?> entityType = BuiltInRegistries.ENTITY_TYPE.get(entityTypeId);
+            if (entityType == null) {
+                gytrinket.LOGGER.warn("弹射物黑名单中的实体类型未注册：{}", trimmed);
+                continue;
+            }
+            PROJECTILE_BLACKLIST_CACHE.add(entityType);
+        }
+        gytrinket.LOGGER.info("弹射物黑名单加载完成，共 {} 个实体类型", PROJECTILE_BLACKLIST_CACHE.size());
+    }
+
+    /**
+     * 弹射物是否在黑名单中（不参与充能攻击增幅与点射复制）
+     */
+    public static boolean isProjectileBlacklisted(Entity entity) {
+        return PROJECTILE_BLACKLIST_CACHE.contains(entity.getType());
+    }
+
+    /**
      * 物品是否为武器类（剑/三叉戟）或工具类武器（镐/斧/铲/锄）
      * 这些物品自带攻击速度修正，长按右键充能不受白名单限制
      */
@@ -1894,6 +1951,7 @@ public class Config {
 
         loadItemAttributes();
         loadItemUseChargeWhitelist();
+        loadProjectileBlacklist();
 
         gytrinket.LOGGER.info("属性系统配置加载完成");
     }

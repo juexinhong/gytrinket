@@ -2,6 +2,7 @@ package com.gytrinket.gytrinket.network;
 
 import com.gytrinket.gytrinket.compat.CuriosCompat;
 import com.gytrinket.gytrinket.config.Config;
+import com.gytrinket.gytrinket.config.ConfigValueRegistry;
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
 import com.gytrinket.gytrinket.core.attribute.ItemAttributeConfig;
 import com.gytrinket.gytrinket.core.defs.DefsManager;
@@ -106,6 +107,11 @@ public class NetworkHandler {
 
         // 弹射物大小同步
         registrar.playToClient(ProjectileScalePayload.TYPE, ProjectileScalePayload.STREAM_CODEC, ProjectileScalePayload::handle);
+
+        // 配置项界面（在线调整 Config 值）
+        registrar.playToServer(ConfigValuesRequestPayload.TYPE, ConfigValuesRequestPayload.STREAM_CODEC, ConfigValuesRequestPayload::handle);
+        registrar.playToServer(ConfigValueUpdatePayload.TYPE, ConfigValueUpdatePayload.STREAM_CODEC, ConfigValueUpdatePayload::handle);
+        registrar.playToClient(ConfigValuesSyncPayload.TYPE, ConfigValuesSyncPayload.STREAM_CODEC, ConfigValuesSyncPayload::handle);
     }
 
     // ======================== Helper send methods ========================
@@ -416,5 +422,31 @@ public class NetworkHandler {
         Collections.sort(allAttrs);
 
         return new ResponseConfigDataPayload(itemConfigList, allAttrs, openScreen);
+    }
+
+    // ======================== 配置项界面（ConfigValueRegistry 同步） ========================
+
+    private static ConfigValuesSyncPayload buildConfigValuesSyncMessage(boolean openScreen) {
+        List<String> ids = new ArrayList<>();
+        List<Double> values = new ArrayList<>();
+        for (ConfigValueRegistry.Entry e : ConfigValueRegistry.entries()) {
+            if (e.clientOnly) continue;
+            ids.add(e.id);
+            values.add(e.getter.getAsDouble());
+        }
+        return new ConfigValuesSyncPayload(ids, values, openScreen);
+    }
+
+    /** 服务端：把全部配置项当前值推送给指定玩家（openScreen=true 时客户端直接打开配置项界面） */
+    public static void sendConfigValuesToPlayer(ServerPlayer player, boolean openScreen) {
+        PacketDistributor.sendToPlayer(player, buildConfigValuesSyncMessage(openScreen));
+    }
+
+    /** 服务端：广播全部配置项当前值给所有玩家（配置修改落盘后调用，保持多端一致） */
+    public static void sendConfigValuesToAllPlayers(ServerPlayer source, boolean openScreen) {
+        ConfigValuesSyncPayload msg = buildConfigValuesSyncMessage(openScreen);
+        for (var p : source.server.getPlayerList().getPlayers()) {
+            PacketDistributor.sendToPlayer(p, msg);
+        }
     }
 }

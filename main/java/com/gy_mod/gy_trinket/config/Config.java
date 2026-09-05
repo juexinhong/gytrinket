@@ -696,9 +696,9 @@ public class Config {
             "装备再生护盾模块后，每次自然恢复额外增加的最大护盾比例",
             "恢复频率：每4刻执行一次（每秒5次），每次恢复量 = naturalRecoveryShield/5 + 该值",
             "实际恢复还会乘恢复效率属性和护盾存在修正系数，以最大护盾值为基数（有限资源制）",
-            "默认 0.004 = 每次 0.4%（折合每秒 2%）",
+            "默认 0.0 注意永远是0的默认值！",
             "范围：0.0 ~ 0.1"
-        ).defineInRange("naturalRecoveryShieldRecoveryPerTick", 0.004, 0.0, 0.1);
+        ).defineInRange("naturalRecoveryShieldRecoveryPerTick", 0.0, 0.0, 0.1);
 
         NATURAL_RECOVERY_SHIELD_PRESENT_HEALTH_MODIFIER = BUILDER.comment(
             "护盾存在时的玩家生命恢复修正值",

@@ -3,6 +3,8 @@ package com.gy_mod.gy_trinket.core.entity.construct.swarm;
 import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.core.attack_mode.ExecuteToggleManager;
 import com.gy_mod.gy_trinket.core.attack_mode.electric_discharge.ElectricDischargeManager;
+import com.gy_mod.gy_trinket.core.damage.ModDamageTypes;
+import com.gy_mod.gy_trinket.core.damage.SecondaryDamageMerger;
 import com.gy_mod.gy_trinket.core.entity.construct.AbstractConstructEntity;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructAttributeApplier;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructData;
@@ -473,32 +475,35 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
             double hitEffectiveRange = baseAttackRange + (int) hit.getBbWidth();
             if (swarm.position().distanceTo(hitCheckPos) > hitEffectiveRange) continue;
 
-            // 攻击前：取消击退标记和无敌时间（参考光束炮/无人机子弹）
+            // 攻击前：取消击退标记（伤害经次级伤害合并系统延迟施加，同类型伤害窗口内累积合并）
             KnockbackManager.markNoKnockback(hit.getUUID());
-            hit.invulnerableTime = 0;
+            SecondaryDamageMerger.accumulate(hit, "swarm_arc", damage, (t, mergedDamage) -> {
+                // 攻击前：取消无敌时间（合并延迟施加时重置）
+                t.invulnerableTime = 0;
 
-            // 斩杀判定：目标当前血量低于伤害时触发斩杀（伤害翻倍，归属玩家）
-            if (player != null && hit.getHealth() < damage) {
-                DamageSource executeSource = ModDamageSources.getExecuteDamageSource(hit, player, swarm);
-                hit.hurt(executeSource, damage * 2.0f);
-                if (ExecuteToggleManager.isExecuteEnabled(player)) {
-                    hit.setLastHurtByMob(player);
+                // 斩杀判定：目标当前血量低于合并总伤害时触发斩杀（伤害翻倍，归属玩家）
+                if (player != null && t.getHealth() < mergedDamage) {
+                    DamageSource executeSource = ModDamageSources.getExecuteDamageSource(t, player, swarm);
+                    t.hurt(executeSource, mergedDamage * 2.0f);
+                    if (ExecuteToggleManager.isExecuteEnabled(player)) {
+                        t.setLastHurtByMob(player);
+                    }
+                } else {
+                    // 普通伤害（自定义蜂群电弧伤害，归属蜂群构造体）
+                    DamageSource source = ModDamageTypes.getSwarmDamageSource(t.level(), swarm);
+                    t.hurt(source, mergedDamage);
                 }
-            } else {
-                // 普通伤害（间接魔法伤害，非灼烧，归属蜂群构造体）
-                DamageSource source = hit.damageSources().indirectMagic(swarm, swarm);
-                hit.hurt(source, damage);
-            }
 
-            // 攻击后：取消无敌时间
-            hit.invulnerableTime = 0;
+                // 攻击后：取消无敌时间
+                t.invulnerableTime = 0;
 
-            // 施加可叠加易伤
-            if (vulnValue > 0.0f) {
-                MinecraftForge.EVENT_BUS.post(
-                    new VulnerabilityApplyEvent("swarm_arc", vulnValue, hit, true)
-                );
-            }
+                // 施加可叠加易伤（与伤害同时刻结算，与无人机子弹模式一致）
+                if (vulnValue > 0.0f) {
+                    MinecraftForge.EVENT_BUS.post(
+                        new VulnerabilityApplyEvent("swarm_arc", vulnValue, t, true)
+                    );
+                }
+            });
 
             hitAny = true;
         }

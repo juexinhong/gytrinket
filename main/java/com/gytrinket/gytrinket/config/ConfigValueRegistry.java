@@ -127,6 +127,12 @@ public final class ConfigValueRegistry {
         i("crafting_disable.disableCraftingMode", GROUP_MECHANICS,
                 () -> Config.DISABLE_CRAFTING_MODE.get(), v -> Config.DISABLE_CRAFTING_MODE.set((int) Math.round(v)), 0, 2);
 
+        // 随机构建系统（构建池）
+        b("random_build.enabled", GROUP_MECHANICS, () -> Config.RANDOM_BUILD_ENABLED.get() ? 1.0 : 0.0, v -> Config.RANDOM_BUILD_ENABLED.set(v != 0.0));
+        i("random_build.upgradePointsMultiplier", GROUP_MECHANICS, () -> Config.RANDOM_BUILD_UPGRADE_POINTS_MULTIPLIER.get(), v -> Config.RANDOM_BUILD_UPGRADE_POINTS_MULTIPLIER.set((int) Math.round(v)), 1, 100);
+        b("random_build.showUpgradeReminderHud", GROUP_MECHANICS, () -> Config.SHOW_UPGRADE_REMINDER_HUD.get() ? 1.0 : 0.0, v -> Config.SHOW_UPGRADE_REMINDER_HUD.set(v != 0.0));
+        b("random_build.tokenEnabled", GROUP_MECHANICS, () -> Config.RANDOM_BUILD_TOKEN_ENABLED.get() ? 1.0 : 0.0, v -> Config.RANDOM_BUILD_TOKEN_ENABLED.set(v != 0.0));
+
         // 光环护盾
         d("aura_shield.auraRadius", GROUP_MECHANICS, () -> Config.AURA_RADIUS.get(), v -> Config.AURA_RADIUS.set(v), 0.0, 100.0);
         d("aura_shield.auraDamage", GROUP_MECHANICS, () -> Config.AURA_DAMAGE.get(), v -> Config.AURA_DAMAGE.set(v), 0.0, 100.0);
@@ -274,8 +280,55 @@ public final class ConfigValueRegistry {
         d("near_death_explosion.nearDeathExplosionInitialSpeed", GROUP_MECHANICS, () -> Config.NEAR_DEATH_EXPLOSION_INITIAL_SPEED.get(), v -> Config.NEAR_DEATH_EXPLOSION_INITIAL_SPEED.set(v), 0.01, 2.0);
         d("near_death_explosion.nearDeathExplosionSpeedAcceleration", GROUP_MECHANICS, () -> Config.NEAR_DEATH_EXPLOSION_SPEED_ACCELERATION.get(), v -> Config.NEAR_DEATH_EXPLOSION_SPEED_ACCELERATION.set(v), 0.001, 1.0);
 
+        // 追击阵列/突击无人机
+        d("pursuit_array.droneBaseHealth", GROUP_MECHANICS, () -> Config.DRONE_BASE_HEALTH.get(), v -> Config.DRONE_BASE_HEALTH.set(v), 1.0, 1000.0);
+        d("pursuit_array.droneBaseDamage", GROUP_MECHANICS, () -> Config.DRONE_BASE_DAMAGE.get(), v -> Config.DRONE_BASE_DAMAGE.set(v), 0.01, 100.0);
+        i("pursuit_array.droneMaxCount", GROUP_MECHANICS, () -> Config.DRONE_MAX_COUNT.get(), v -> Config.DRONE_MAX_COUNT.set((int) Math.round(v)), 1, 20);
+        d("pursuit_array.droneFollowRange", GROUP_MECHANICS, () -> Config.DRONE_FOLLOW_RANGE.get(), v -> Config.DRONE_FOLLOW_RANGE.set(v), 4.0, 64.0);
+        d("pursuit_array.orbitAttackInterval", GROUP_MECHANICS, () -> Config.ORBIT_ATTACK_INTERVAL.get(), v -> Config.ORBIT_ATTACK_INTERVAL.set(v), 0.05, 10.0);
+        d("pursuit_array.orbitAttackRange", GROUP_MECHANICS, () -> Config.ORBIT_ATTACK_RANGE.get(), v -> Config.ORBIT_ATTACK_RANGE.set(v), 1.0, 64.0);
+        d("pursuit_array.pursuitAttackInterval", GROUP_MECHANICS, () -> Config.PURSUIT_ATTACK_INTERVAL.get(), v -> Config.PURSUIT_ATTACK_INTERVAL.set(v), 0.05, 10.0);
+        d("pursuit_array.pursuitAttackRange", GROUP_MECHANICS, () -> Config.PURSUIT_ATTACK_RANGE.get(), v -> Config.PURSUIT_ATTACK_RANGE.set(v), 1.0, 64.0);
+
         // 无人机处决
         b("drone_execute.droneExecuteEnabled", GROUP_MECHANICS, () -> Config.DRONE_EXECUTE_ENABLED.get() ? 1.0 : 0.0, v -> Config.DRONE_EXECUTE_ENABLED.set(v != 0.0));
+
+        // 指挥官
+        i("commander.commanderMaxCount", GROUP_MECHANICS, () -> Config.COMMANDER_MAX_COUNT.get(), v -> Config.COMMANDER_MAX_COUNT.set((int) Math.round(v)), 1, 10);
+        i("commander.commanderAppointDelay", GROUP_MECHANICS, () -> Config.COMMANDER_APPOINT_DELAY.get(), v -> Config.COMMANDER_APPOINT_DELAY.set((int) Math.round(v)), 10, 200);
+        d("commander.commanderVulnerability", GROUP_MECHANICS, () -> Config.COMMANDER_VULNERABILITY.get(), v -> Config.COMMANDER_VULNERABILITY.set(v), 0.001, 1.0);
+
+        // 僚机
+        d("wingman.wingmanBaseHealth", GROUP_MECHANICS, () -> Config.WINGMAN_BASE_HEALTH.get(), v -> Config.WINGMAN_BASE_HEALTH.set(v), 1.0, 1000.0);
+        i("wingman.wingmanMaxCount", GROUP_MECHANICS, () -> Config.WINGMAN_MAX_COUNT.get(), v -> Config.WINGMAN_MAX_COUNT.set((int) Math.round(v)), 1, 20);
+        d("wingman.wingmanAttackInterval", GROUP_MECHANICS, () -> Config.WINGMAN_ATTACK_INTERVAL.get(), v -> Config.WINGMAN_ATTACK_INTERVAL.set(v), 0.05, 100.0);
+        d("wingman.wingmanAttackRange", GROUP_MECHANICS, () -> Config.WINGMAN_ATTACK_RANGE.get(), v -> Config.WINGMAN_ATTACK_RANGE.set(v), 1.0, 64.0);
+        i("wingman.wingmanExplosiveCount", GROUP_MECHANICS, () -> Config.WINGMAN_EXPLOSIVE_COUNT.get(), v -> Config.WINGMAN_EXPLOSIVE_COUNT.set((int) Math.round(v)), 1, 20);
+        d("wingman.wingmanExplosiveDamage", GROUP_MECHANICS, () -> Config.WINGMAN_EXPLOSIVE_DAMAGE.get(), v -> Config.WINGMAN_EXPLOSIVE_DAMAGE.set(v), 0.01, 100.0);
+        d("wingman.wingmanExplosionDamage", GROUP_MECHANICS, () -> Config.WINGMAN_EXPLOSION_DAMAGE.get(), v -> Config.WINGMAN_EXPLOSION_DAMAGE.set(v), 0.01, 100.0);
+        d("wingman.wingmanExplosionRadius", GROUP_MECHANICS, () -> Config.WINGMAN_EXPLOSION_RADIUS.get(), v -> Config.WINGMAN_EXPLOSION_RADIUS.set(v), 0.1, 10.0);
+        i("wingman.wingmanInterceptorChargeDurationTicks", GROUP_MECHANICS, () -> Config.WINGMAN_INTERCEPTOR_CHARGE_DURATION_TICKS.get(), v -> Config.WINGMAN_INTERCEPTOR_CHARGE_DURATION_TICKS.set((int) Math.round(v)), 10, 600);
+        i("wingman.wingmanInterceptorMaxChargeDurationTicks", GROUP_MECHANICS, () -> Config.WINGMAN_INTERCEPTOR_MAX_CHARGE_DURATION_TICKS.get(), v -> Config.WINGMAN_INTERCEPTOR_MAX_CHARGE_DURATION_TICKS.set((int) Math.round(v)), 20, 1200);
+        d("wingman.wingmanInterceptorChargedSweepBaseRange", GROUP_MECHANICS, () -> Config.WINGMAN_INTERCEPTOR_CHARGED_SWEEP_BASE_RANGE.get(), v -> Config.WINGMAN_INTERCEPTOR_CHARGED_SWEEP_BASE_RANGE.set(v), 0.5, 10.0);
+        d("wingman.wingmanEvolutionBonusPerLevel", GROUP_MECHANICS, () -> Config.WINGMAN_EVOLUTION_BONUS_PER_LEVEL.get(), v -> Config.WINGMAN_EVOLUTION_BONUS_PER_LEVEL.set(v), 0.0, 1.0);
+        d("wingman.wingmanNanoRegenPercent", GROUP_MECHANICS, () -> Config.WINGMAN_NANO_REGEN_PERCENT.get(), v -> Config.WINGMAN_NANO_REGEN_PERCENT.set(v), 0.0, 1.0);
+        d("wingman.wingmanShockwaveDamageMultiplier", GROUP_MECHANICS, () -> Config.WINGMAN_SHOCKWAVE_DAMAGE_MULTIPLIER.get(), v -> Config.WINGMAN_SHOCKWAVE_DAMAGE_MULTIPLIER.set(v), 1.0, 10.0);
+        d("wingman.wingmanShockwaveSplashLengthMultiplier", GROUP_MECHANICS, () -> Config.WINGMAN_SHOCKWAVE_SPLASH_LENGTH_MULTIPLIER.get(), v -> Config.WINGMAN_SHOCKWAVE_SPLASH_LENGTH_MULTIPLIER.set(v), 1.0, 10.0);
+
+        // 蜂群
+        d("swarm.swarmBaseHealth", GROUP_MECHANICS, () -> Config.SWARM_BASE_HEALTH.get(), v -> Config.SWARM_BASE_HEALTH.set(v), 0.1, 1000.0);
+        d("swarm.swarmBaseDamage", GROUP_MECHANICS, () -> Config.SWARM_BASE_DAMAGE.get(), v -> Config.SWARM_BASE_DAMAGE.set(v), 0.01, 100.0);
+        d("swarm.swarmAttackInterval", GROUP_MECHANICS, () -> Config.SWARM_ATTACK_INTERVAL.get(), v -> Config.SWARM_ATTACK_INTERVAL.set(v), 0.05, 100.0);
+        d("swarm.swarmAttackRange", GROUP_MECHANICS, () -> Config.SWARM_ATTACK_RANGE.get(), v -> Config.SWARM_ATTACK_RANGE.set(v), 0.5, 32.0);
+        d("swarm.swarmSearchRange", GROUP_MECHANICS, () -> Config.SWARM_SEARCH_RANGE.get(), v -> Config.SWARM_SEARCH_RANGE.set(v), 1.0, 64.0);
+        i("swarm.swarmMaxCount", GROUP_MECHANICS, () -> Config.SWARM_MAX_COUNT.get(), v -> Config.SWARM_MAX_COUNT.set((int) Math.round(v)), 1, 100);
+        i("swarm.swarmCountLimit", GROUP_MECHANICS, () -> Config.SWARM_COUNT_LIMIT.get(), v -> Config.SWARM_COUNT_LIMIT.set((int) Math.round(v)), 0, 100);
+        d("swarm.swarmMoveSpeed", GROUP_MECHANICS, () -> Config.SWARM_MOVE_SPEED.get(), v -> Config.SWARM_MOVE_SPEED.set(v), 0.01, 10.0);
+        i("swarm.swarmBuildTime", GROUP_MECHANICS, () -> Config.SWARM_BUILD_TIME.get(), v -> Config.SWARM_BUILD_TIME.set((int) Math.round(v)), 1, 6000);
+        d("swarm.swarmTierUpgradeChanceStandard", GROUP_MECHANICS, () -> Config.SWARM_TIER_UPGRADE_CHANCE_STANDARD.get(), v -> Config.SWARM_TIER_UPGRADE_CHANCE_STANDARD.set(v), 0.0, 1.0);
+        d("swarm.swarmTierUpgradeChanceAdvanced", GROUP_MECHANICS, () -> Config.SWARM_TIER_UPGRADE_CHANCE_ADVANCED.get(), v -> Config.SWARM_TIER_UPGRADE_CHANCE_ADVANCED.set(v), 0.0, 1.0);
+        d("swarm.swarmVulnerabilityValue", GROUP_MECHANICS, () -> Config.SWARM_VULNERABILITY_VALUE.get(), v -> Config.SWARM_VULNERABILITY_VALUE.set(v), 0.0, 10.0);
+        d("swarm.swarmShieldRepairMultiplier", GROUP_MECHANICS, () -> Config.SWARM_SHIELD_REPAIR_MULTIPLIER.get(), v -> Config.SWARM_SHIELD_REPAIR_MULTIPLIER.set(v), 0.0, 100.0);
         // 高级工程学
         d("advanced_engineering.advancedEngineeringBonusPerLevel", GROUP_MECHANICS, () -> Config.ADVANCED_ENGINEERING_BONUS_PER_LEVEL.get(), v -> Config.ADVANCED_ENGINEERING_BONUS_PER_LEVEL.set(v), 0.0, 1.0);
         // 精密构造
@@ -289,11 +342,11 @@ public final class ConfigValueRegistry {
         d("ignite_system.igniteDefaultDamage", GROUP_MECHANICS, () -> Config.IGNITE_DEFAULT_DAMAGE.get(), v -> Config.IGNITE_DEFAULT_DAMAGE.set(v), 0.0, 100.0);
         i("ignite_system.igniteDefaultDuration", GROUP_MECHANICS, () -> Config.IGNITE_DEFAULT_DURATION.get(), v -> Config.IGNITE_DEFAULT_DURATION.set((int) Math.round(v)), 1, 600);
 
-        // 二次伤害合并
+        // 次级伤害合并
         b("secondary_damage_merge.secondaryDamageMergeEnabled", GROUP_MECHANICS, () -> Config.SECONDARY_DAMAGE_MERGE_ENABLED.get() ? 1.0 : 0.0, v -> Config.SECONDARY_DAMAGE_MERGE_ENABLED.set(v != 0.0));
         i("secondary_damage_merge.secondaryDamageMergeWindowTicks", GROUP_MECHANICS, () -> Config.SECONDARY_DAMAGE_MERGE_WINDOW_TICKS.get(), v -> Config.SECONDARY_DAMAGE_MERGE_WINDOW_TICKS.set((int) Math.round(v)), 1, 100);
 
-        // 二次爆炸
+        // 弹射物爆炸
         d("secondary_explosion.secondaryExplosionDamageFraction", GROUP_MECHANICS, () -> Config.SECONDARY_EXPLOSION_DAMAGE_FRACTION.get(), v -> Config.SECONDARY_EXPLOSION_DAMAGE_FRACTION.set(v), 0.0, 1.0);
         d("secondary_explosion.secondaryExplosionRadiusBase", GROUP_MECHANICS, () -> Config.SECONDARY_EXPLOSION_RADIUS_BASE.get(), v -> Config.SECONDARY_EXPLOSION_RADIUS_BASE.set(v), 0.0, 32.0);
         d("secondary_explosion.secondaryExplosionRadiusDamageFraction", GROUP_MECHANICS, () -> Config.SECONDARY_EXPLOSION_RADIUS_DAMAGE_FRACTION.get(), v -> Config.SECONDARY_EXPLOSION_RADIUS_DAMAGE_FRACTION.set(v), 0.0, 8.0);

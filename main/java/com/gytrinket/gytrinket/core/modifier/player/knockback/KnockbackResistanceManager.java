@@ -51,12 +51,15 @@ public class KnockbackResistanceManager {
 
         ModifierHelper.removeAllModModifiers(attribute);
 
-        if (knockbackResistance != 0) {
+        // 负值不挂原版修饰符（原版属性 clamp 到 [0,1]，负修饰符只会错误抵消玩家装备自带的原版抗性），
+        // 负值专门通过 LivingKnockBackEvent 提升玩家被击退的力度
+        if (knockbackResistance > 0) {
             AttributeModifier modifier = new AttributeModifier(MODIFIER_ID, knockbackResistance, AttributeModifier.Operation.ADD_VALUE);
             attribute.addTransientModifier(modifier);
         }
 
-        PLAYER_KNOCKBACK_RESISTANCE_MAP.put(playerUUID, player.getAttributeValue(Attributes.KNOCKBACK_RESISTANCE));
+        // 存本模组账本值（非原版属性值）：原版属性被 clamp 到 [0,1]，负值读取不到
+        PLAYER_KNOCKBACK_RESISTANCE_MAP.put(playerUUID, knockbackResistance);
     }
 
     @SubscribeEvent

@@ -94,6 +94,11 @@ public class ModDamageTypes {
             Registries.DAMAGE_TYPE, ResourceLocation.fromNamespaceAndPath(NAMESPACE, "construct_self_damage")
     );
 
+    /** 蜂群电弧伤害 */
+    public static final ResourceKey<DamageType> SWARM_DAMAGE = ResourceKey.create(
+            Registries.DAMAGE_TYPE, ResourceLocation.fromNamespaceAndPath(NAMESPACE, "swarm_damage")
+    );
+
     // ==================== 伤害来源创建方法 ====================
 
     /**
@@ -322,6 +327,21 @@ public class ModDamageTypes {
     public static DamageSource getConstructSelfDamageSource(Level level) {
         return new DamageSource(
                 level.registryAccess().registryOrThrow(Registries.DAMAGE_TYPE).getHolderOrThrow(CONSTRUCT_SELF_DAMAGE)
+        );
+    }
+
+    /**
+     * 创建蜂群电弧伤害来源（直接实体与攻击实体均为蜂群构造体）
+     *
+     * @param level         世界
+     * @param causingEntity 蜂群构造体实体
+     * @return 蜂群电弧伤害来源
+     */
+    public static DamageSource getSwarmDamageSource(Level level, Entity causingEntity) {
+        return new DamageSource(
+                level.registryAccess().registryOrThrow(Registries.DAMAGE_TYPE).getHolderOrThrow(SWARM_DAMAGE),
+                causingEntity,
+                causingEntity
         );
     }
 }

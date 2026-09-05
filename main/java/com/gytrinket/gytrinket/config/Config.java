@@ -754,7 +754,7 @@ public class Config {
             "实际恢复还会乘恢复效率属性和护盾存在修正系数，以最大护盾值为基数（有限资源制）",
             "默认 0.004 = 每次 0.4%（折合每秒 2%）",
             "范围：0.0 ~ 0.1"
-        ).defineInRange("naturalRecoveryShieldRecoveryPerTick", 0.004, 0.0, 0.1);
+        ).defineInRange("naturalRecoveryShieldRecoveryPerTick", 0.0, 0.0, 0.1);
 
         NATURAL_RECOVERY_SHIELD_PRESENT_HEALTH_MODIFIER = BUILDER.comment(
             "护盾存在时的玩家生命恢复修正值",

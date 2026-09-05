@@ -17,6 +17,9 @@ public class ConstructBuilder {
         this.completed = false;
     }
 
+    /** 分数速度累积器：<1 的构建速度按确定性累积推进（等效拉长构建时间，无随机抖动） */
+    private double speedAccumulator = 0.0;
+
     public boolean tick() {
         if (completed) {
             return true;
@@ -24,12 +27,26 @@ public class ConstructBuilder {
 
         updateBuildSpeed();
 
-        int increment = Math.max(1, (int) buildSpeedMultiplier);
-        double fractional = buildSpeedMultiplier - (int) buildSpeedMultiplier;
-        if (fractional > 0 && Math.random() < fractional) {
-            increment++;
+        // 负构建速度属性（多个负百分比叠加低于 -100%）钳到 0：构建暂停而非进度倒退
+        double speed = Math.max(0.0, buildSpeedMultiplier);
+        if (speed >= 1.0) {
+            // >= 1：整数部分直接推进，小数部分按概率追加
+            int increment = (int) speed;
+            double fractional = speed - increment;
+            if (fractional > 0 && Math.random() < fractional) {
+                increment++;
+            }
+            progress += increment;
+        } else if (speed > 0.0) {
+            // (0, 1)：确定性累积推进（如速度 0.5 → 每 2 tick +1），
+            // 等效于把构建时间拉长为 1/speed 倍，比随机推进更稳定
+            speedAccumulator += speed;
+            if (speedAccumulator >= 1.0) {
+                int increment = (int) speedAccumulator;
+                progress += increment;
+                speedAccumulator -= increment;
+            }
         }
-        progress += increment;
 
         if (progress >= getEffectiveBuildTime()) {
             completed = true;

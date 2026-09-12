@@ -2,6 +2,7 @@ package com.gy_mod.gy_trinket.core.entity.construct.wingman;
 
 import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.core.TickScheduler;
+import com.gy_mod.gy_trinket.core.defs.DefsManager;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructManager;
 import com.gy_mod.gy_trinket.core.shield.DisableSystem;
 import com.gy_mod.gy_trinket.storage.PlayerStoreUtils;
@@ -53,7 +54,8 @@ public class NanoRegenManager {
             UUID playerUUID = player.getUUID();
             if (!hasNanoRegenModule(playerUUID)) continue;
 
-            double regenPercent = Config.getWingmanNanoRegenPercent();
+            double regenPercent = DefsManager.resolveMechanicValue(server, playerUUID,
+                    "wingman_nano_regen_module_items", "regen_percent", Config.getWingmanNanoRegenPercent());
 
             Map<UUID, Entity> wingmanEntities = ConstructManager.getInstance()
                     .getActiveConstructEntities(playerUUID, WingmanConstructTypes.WINGMAN);

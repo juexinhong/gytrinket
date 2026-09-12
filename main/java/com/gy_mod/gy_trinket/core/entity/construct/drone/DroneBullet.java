@@ -1,7 +1,6 @@
 package com.gy_mod.gy_trinket.core.entity.construct.drone;
 
 import com.gy_mod.gy_trinket.config.Config;
-import com.gy_mod.gy_trinket.core.attack_mode.ExecuteToggleManager;
 import com.gy_mod.gy_trinket.core.damage.SecondaryDamageMerger;
 import com.gy_mod.gy_trinket.core.entity.construct.HostileTargetManager;
 import com.gy_mod.gy_trinket.core.modifier.player.knockback.KnockbackManager;
@@ -206,29 +205,23 @@ public class DroneBullet extends ThrowableItemProjectile implements GeoEntity {
     }
 
     /**
-     * 对目标造成伤害（含斩杀逻辑和指挥官易伤）
+     * 对目标造成伤害（含指挥官易伤）
      */
     private void dealDamageToTarget(LivingEntity target) {
         Entity owner = this.getOwner();
-        Player ownerPlayer = getOwnerPlayer();
-
         float damage = getDamage();
         KnockbackManager.markNoKnockback(target.getUUID());
         SecondaryDamageMerger.accumulate(target, "drone_bullet", damage, (t, mergedDamage) -> {
-            if (t.getHealth() < mergedDamage) {
-                // 斩杀：伤害源统一为无人机子弹，斩杀归属启用时归属玩家，否则归属无人机
-                LivingEntity cause = ExecuteToggleManager.isExecuteEnabled(ownerPlayer)
-                        ? ownerPlayer
-                        : owner instanceof LivingEntity living ? living : null;
-                t.hurt(ModDamageSources.droneBullet(t.level(), this, cause), mergedDamage);
-                if (ExecuteToggleManager.isExecuteEnabled(ownerPlayer)) {
-                    t.setLastHurtByMob(ownerPlayer);
-                }
-            } else {
-                // 非斩杀：攻击者恒为无人机
-                t.hurt(ModDamageSources.droneBullet(t.level(), this, owner instanceof LivingEntity living ? living : null), mergedDamage);
-            }
-
+            // 攻击前：清除无敌时间（清掉残留的原版无敌帧，保证本次伤害足额施加）
+            t.invulnerableTime = 0;
+            // 归属不再由原始伤害预判（原始伤害会被护甲/免伤削减导致误判）：
+            // 施加时攻击者恒为无人机本体，致死归属由 ExecuteAttributionHandler
+            // 按 LivingDeathEvent 实际致死结果判定
+            LivingEntity droneCause = owner instanceof LivingEntity living ? living : null;
+            t.hurt(ModDamageSources.droneBullet(t.level(), this, droneCause), mergedDamage);
+            // 攻击后：清除无敌时间（清掉本次 hurt 写入的原版无敌帧，
+            // 避免阻挡紧随其后的下一发子弹或玩家攻击）
+            t.invulnerableTime = 0;
             if (owner instanceof DroneConstructEntity droneShooter && droneShooter.isCommanderDrone()) {
                 MinecraftForge.EVENT_BUS.post(
                     new VulnerabilityApplyEvent(

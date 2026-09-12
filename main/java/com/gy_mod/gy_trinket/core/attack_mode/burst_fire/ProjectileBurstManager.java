@@ -2,6 +2,8 @@ package com.gy_mod.gy_trinket.core.attack_mode.burst_fire;
 
 import com.gy_mod.gy_trinket.compat.TaczCompat;
 import com.gy_mod.gy_trinket.config.Config;
+import com.gy_mod.gy_trinket.core.modifier.player.knockback.KnockbackManager;
+import com.gy_mod.gy_trinket.core.shield.type.ShieldTypeManager;
 import com.gy_mod.gy_trinket.gytrinket;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.MinecraftServer;
@@ -141,6 +143,11 @@ public class ProjectileBurstManager {
             return;
         }
 
+        // 反射护盾弹出的弹射物不参与点射复制（被动反弹行为，非玩家主动射击）
+        if (ShieldTypeManager.isReflectedProjectile(projectile.getId())) {
+            return;
+        }
+
         // 仅处理归属玩家的弹射物
         if (!(projectile.getOwner() instanceof ServerPlayer player)) {
             return;
@@ -229,7 +236,9 @@ public class ProjectileBurstManager {
      * 监听复制弹射物的伤害事件
      * <p>
      * 原弹射物命中会赋予目标原版无敌帧（invulnerableTime = 20），
-     * 复制弹射物紧随其后命中时伤害会被无敌帧吞掉，因此在伤害结算前重置目标无敌时间
+     * 复制弹射物紧随其后命中时伤害会被无敌帧吞掉，因此在伤害结算前重置目标无敌时间；
+     * 同时标记目标取消本次击退（与无人机子弹同一标记机制，在随后的击退事件中一次性消费）：
+     * 点射是高密度连发，逐发击退会持续打断目标位移、放大实际控制效果
      * <p>
      * 使用 LivingAttackEvent（对应 1.21.1 的 LivingIncomingDamageEvent）：
      * 该事件在 LivingEntity.hurt() 的无敌帧检查之前触发，
@@ -248,6 +257,7 @@ public class ProjectileBurstManager {
 
         LivingEntity target = event.getEntity();
         target.invulnerableTime = 0;
+        KnockbackManager.markNoKnockback(target.getUUID());
     }
 
     /**

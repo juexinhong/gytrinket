@@ -285,10 +285,8 @@ public final class ConfigValueRegistry {
         d("pursuit_array.droneBaseDamage", GROUP_MECHANICS, () -> Config.DRONE_BASE_DAMAGE.get(), v -> Config.DRONE_BASE_DAMAGE.set(v), 0.01, 100.0);
         i("pursuit_array.droneMaxCount", GROUP_MECHANICS, () -> Config.DRONE_MAX_COUNT.get(), v -> Config.DRONE_MAX_COUNT.set((int) Math.round(v)), 1, 20);
         d("pursuit_array.droneFollowRange", GROUP_MECHANICS, () -> Config.DRONE_FOLLOW_RANGE.get(), v -> Config.DRONE_FOLLOW_RANGE.set(v), 4.0, 64.0);
-        d("pursuit_array.orbitAttackInterval", GROUP_MECHANICS, () -> Config.ORBIT_ATTACK_INTERVAL.get(), v -> Config.ORBIT_ATTACK_INTERVAL.set(v), 0.05, 10.0);
-        d("pursuit_array.orbitAttackRange", GROUP_MECHANICS, () -> Config.ORBIT_ATTACK_RANGE.get(), v -> Config.ORBIT_ATTACK_RANGE.set(v), 1.0, 64.0);
-        d("pursuit_array.pursuitAttackInterval", GROUP_MECHANICS, () -> Config.PURSUIT_ATTACK_INTERVAL.get(), v -> Config.PURSUIT_ATTACK_INTERVAL.set(v), 0.05, 10.0);
-        d("pursuit_array.pursuitAttackRange", GROUP_MECHANICS, () -> Config.PURSUIT_ATTACK_RANGE.get(), v -> Config.PURSUIT_ATTACK_RANGE.set(v), 1.0, 64.0);
+        d("pursuit_array.droneAttackRange", GROUP_MECHANICS, () -> Config.DRONE_ATTACK_RANGE.get(), v -> Config.DRONE_ATTACK_RANGE.set(v), 1.0, 64.0);
+        d("pursuit_array.droneTargetRange", GROUP_MECHANICS, () -> Config.DRONE_TARGET_RANGE.get(), v -> Config.DRONE_TARGET_RANGE.set(v), 1.0, 64.0);
 
         // 无人机处决
         b("drone_execute.droneExecuteEnabled", GROUP_MECHANICS, () -> Config.DRONE_EXECUTE_ENABLED.get() ? 1.0 : 0.0, v -> Config.DRONE_EXECUTE_ENABLED.set(v != 0.0));

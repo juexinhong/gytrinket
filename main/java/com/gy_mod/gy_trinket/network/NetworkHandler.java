@@ -67,6 +67,7 @@ public class NetworkHandler {
         INSTANCE.registerMessage(messageId++, AttackStateMessage.class, AttackStateMessage::toBytes, AttackStateMessage::new, AttackStateMessage::handle);
         INSTANCE.registerMessage(messageId++, ChargedAttackMessage.class, ChargedAttackMessage::toBytes, ChargedAttackMessage::new, ChargedAttackMessage::handle);
         INSTANCE.registerMessage(messageId++, ItemUseChargeMessage.class, ItemUseChargeMessage::toBytes, ItemUseChargeMessage::new, ItemUseChargeMessage::handle);
+        INSTANCE.registerMessage(messageId++, SyncMovementSpeedMultiplierMessage.class, SyncMovementSpeedMultiplierMessage::toBytes, SyncMovementSpeedMultiplierMessage::new, SyncMovementSpeedMultiplierMessage::handle);
  
         // ======================== S->C ========================
         INSTANCE.registerMessage(messageId++, ResponseAttributesMessage.class, ResponseAttributesMessage::toBytes, ResponseAttributesMessage::new, ResponseAttributesMessage::handle);
@@ -119,6 +120,9 @@ public class NetworkHandler {
         INSTANCE.registerMessage(messageId++, ConfigValuesRequestMessage.class, ConfigValuesRequestMessage::toBytes, ConfigValuesRequestMessage::new, ConfigValuesRequestMessage::handle);
         INSTANCE.registerMessage(messageId++, ConfigValueUpdateMessage.class, ConfigValueUpdateMessage::toBytes, ConfigValueUpdateMessage::new, ConfigValueUpdateMessage::handle);
         INSTANCE.registerMessage(messageId++, ConfigValuesSyncMessage.class, ConfigValuesSyncMessage::toBytes, ConfigValuesSyncMessage::new, ConfigValuesSyncMessage::handle);
+        // 物品级特殊机制数值覆盖（机制数值编辑）
+        INSTANCE.registerMessage(messageId++, ConfigMechanicValuesMessage.class, ConfigMechanicValuesMessage::toBytes, ConfigMechanicValuesMessage::new, ConfigMechanicValuesMessage::handle);
+        INSTANCE.registerMessage(messageId++, ConfigShieldValuesMessage.class, ConfigShieldValuesMessage::toBytes, ConfigShieldValuesMessage::new, ConfigShieldValuesMessage::handle);
     }
 
     // ======================== Helper send methods ========================
@@ -142,16 +146,51 @@ public class NetworkHandler {
     }
 
     public static void sendShieldSyncToPlayer(ServerPlayer player, double currentShield, double maxShield) {
-        int currentCooldown = ShieldCooldownManager.getCurrentCooldown(player.getUUID());
-        int maxCooldown = ShieldCooldownManager.getMaxCooldown(player.getUUID());
+        SyncShieldMessage message = buildShieldSyncMessage(player, currentShield, maxShield);
+        INSTANCE.send(PacketDistributor.PLAYER.with(() -> player), message);
+    }
+
+    /**
+     * 构造护盾同步消息：护盾类型渲染状态按物品实例收集，
+     * 多个护盾实例在客户端各自独立渲染贴图
+     */
+    public static SyncShieldMessage buildShieldSyncMessage(ServerPlayer player, double currentShield, double maxShield) {
+        java.util.UUID uuid = player.getUUID();
+        int currentCooldown = ShieldCooldownManager.getCurrentCooldown(uuid);
+        int maxCooldown = ShieldCooldownManager.getMaxCooldown(uuid);
         double adaptiveArmorReduction = com.gy_mod.gy_trinket.core.damage.AdaptiveArmorManager.calculateDamageReduction(player);
-        int siphonStacks = com.gy_mod.gy_trinket.core.shield.type.SiphonShieldType.getSiphonStacks(player.getUUID());
-        double shieldEffectRadius = AttributeManager.getGroupAttribute(player.getUUID(), "shield_effect_radius");
-        int[] protectedEntityIds = com.gy_mod.gy_trinket.core.shield_transfer.ShieldTransferManager.getProtectedEntityIds(player.getUUID(), player.serverLevel());
-        boolean auraDamaging = com.gy_mod.gy_trinket.core.shield.type.AuraShieldType.isAuraDamaging(player.getUUID());
-        double amplificationProgress = com.gy_mod.gy_trinket.core.shield.type.AmplificationShieldType.getProgress(player.getUUID());
-        INSTANCE.send(PacketDistributor.PLAYER.with(() -> player),
-            new SyncShieldMessage(currentShield, maxShield, currentCooldown, maxCooldown, adaptiveArmorReduction, siphonStacks, shieldEffectRadius, protectedEntityIds, auraDamaging, amplificationProgress));
+        double shieldEffectRadius = AttributeManager.getGroupAttribute(uuid, "shield_effect_radius");
+        int[] protectedEntityIds = com.gy_mod.gy_trinket.core.shield_transfer.ShieldTransferManager.getProtectedEntityIds(uuid, player.serverLevel());
+
+        // 按 itemId 聚合各类型实例状态（同物品多类型并存时合并到同一条）
+        java.util.Map<String, SyncShieldMessage.ItemShieldState> byItem = new java.util.LinkedHashMap<>();
+        for (com.gy_mod.gy_trinket.core.shield.type.IShieldType.ShieldTypeData data :
+                com.gy_mod.gy_trinket.core.shield.type.ShieldTypeManager.getPlayerShieldTypes(uuid)) {
+            if (!data.active()) continue;
+            String itemId = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(data.source().getItem()).toString();
+            SyncShieldMessage.ItemShieldState state = byItem.computeIfAbsent(itemId,
+                k -> new SyncShieldMessage.ItemShieldState(k));
+            String typeName = data.type().getName();
+            if ("aura".equals(typeName)) {
+                if (com.gy_mod.gy_trinket.core.shield.type.AuraShieldType.isAuraDamagingForItem(uuid, itemId)) {
+                    state.auraDamaging = true;
+                }
+                state.auraRadius = DefsManager.resolveShieldTypeValueForItem(player.getServer(), itemId,
+                        "aura", "radius", Config.AURA_RADIUS.get()) * shieldEffectRadius;
+            } else if ("siphon".equals(typeName)) {
+                state.siphonStacks += com.gy_mod.gy_trinket.core.shield.type.SiphonShieldType.getSiphonStacksForItem(uuid, itemId);
+                state.siphonRadius = DefsManager.resolveShieldTypeValueForItem(player.getServer(), itemId,
+                        "siphon", "radius", Config.SIPHON_RADIUS.get()) * shieldEffectRadius;
+            } else if ("amplification".equals(typeName)) {
+                state.amplificationProgress = Math.max(state.amplificationProgress,
+                    com.gy_mod.gy_trinket.core.shield.type.AmplificationShieldType.getProgressForItem(uuid, itemId));
+                state.amplificationRadius = DefsManager.resolveShieldTypeValueForItem(player.getServer(), itemId,
+                        "amplification", "check_radius", Config.getAmplificationCheckRadius()) * shieldEffectRadius;
+            }
+        }
+
+        return new SyncShieldMessage(currentShield, maxShield, currentCooldown, maxCooldown, adaptiveArmorReduction,
+            protectedEntityIds, new ArrayList<>(byItem.values()));
     }
 
     public static void sendShieldCooldownRequestToServer() {

@@ -2,6 +2,7 @@ package com.gy_mod.gy_trinket.core.attack_mode;
 
 import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.core.attack_mode.charged_attack.ChargedAttackManager;
+import com.gy_mod.gy_trinket.core.defs.DefsManager;
 import com.gy_mod.gy_trinket.core.shield.ShieldManager;
 import com.gy_mod.gy_trinket.gytrinket;
 import net.minecraft.server.level.ServerPlayer;
@@ -107,7 +108,9 @@ public class GrudgeManager {
             double totalLost = healthLost + shieldLost;
 
             if (totalLost > 0) {
-                double conversionRatio = Config.getGrudgeConversionRatio();
+                // 物品级数值覆盖：取首个生效物品的覆盖值，未覆盖回退 Config 默认
+                double conversionRatio = DefsManager.resolveMechanicValue(player.getServer(), uuid,
+                        "grudge_items", "conversion_ratio", Config.getGrudgeConversionRatio());
                 data.rateValue += totalLost * conversionRatio;
             }
 
@@ -116,8 +119,10 @@ public class GrudgeManager {
 
             // 快速消退：每tick消退 max(fadeBase, 当前值 * fadePercent)
             if (data.rateValue > 0) {
-                double fadeBase = Config.getGrudgeFadeBase();
-                double fadePercent = Config.getGrudgeFadePercent();
+                double fadeBase = DefsManager.resolveMechanicValue(player.getServer(), uuid,
+                        "grudge_items", "fade_base", Config.getGrudgeFadeBase());
+                double fadePercent = DefsManager.resolveMechanicValue(player.getServer(), uuid,
+                        "grudge_items", "fade_percent", Config.getGrudgeFadePercent());
                 double decay = Math.max(fadeBase, data.rateValue * fadePercent);
                 data.rateValue -= decay;
                 if (data.rateValue <= 0) {

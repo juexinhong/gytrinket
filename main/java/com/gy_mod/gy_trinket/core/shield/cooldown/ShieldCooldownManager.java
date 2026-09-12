@@ -77,7 +77,8 @@ public class ShieldCooldownManager {
         double cooldownReduction = AttributeManager.getGroupAttribute(playerUUID, "shield_cooldown_reduction");
         double finalCooldownTime = cooldownTime * (1.0 / cooldownReduction);
 
-        int baseMaxCooldown = (int) (finalCooldownTime * 20);
+        // 冷却时间<=0（或折算后不足1 tick）时钳制为1 tick：护盾将在下一刻完成冷却，而不是永不冷却
+        int baseMaxCooldown = Math.max(1, (int) (finalCooldownTime * 20));
         BASE_MAX_COOLDOWN.put(playerUUID, baseMaxCooldown);
 
         CooldownData data = COOLDOWN_MAP.get(playerUUID);
@@ -108,7 +109,8 @@ public class ShieldCooldownManager {
             double cooldownReduction = AttributeManager.getGroupAttribute(playerUUID, "shield_cooldown_reduction");
             double finalCooldownTime = cooldownTime * (1.0 / cooldownReduction);
 
-            int baseMaxCooldown = (int) (finalCooldownTime * 20);
+            // 冷却时间<=0（或折算后不足1 tick）时钳制为1 tick：护盾将在下一刻完成冷却，而不是永不冷却
+            int baseMaxCooldown = Math.max(1, (int) (finalCooldownTime * 20));
             BASE_MAX_COOLDOWN.put(playerUUID, baseMaxCooldown);
 
             CooldownData data = COOLDOWN_MAP.get(playerUUID);

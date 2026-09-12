@@ -71,6 +71,12 @@ public interface IConstructEntity {
     /** 获取当前自转/朝向旋转速度倍率 */
     double getRotationSpeedMultiplier();
 
+    /** 设置大小倍率（来自 construct_size 等属性，同时缩放渲染模型与碰撞箱） */
+    void setSizeMultiplier(double multiplier);
+
+    /** 获取当前大小倍率 */
+    double getSizeMultiplier();
+
     /** 设置低血量攻速独立乘区倍率（炉心融解模块） */
     void setLowHpAttackSpeedMultiplier(double multiplier);
 
@@ -85,5 +91,16 @@ public interface IConstructEntity {
 
     /** 获取实例标签（用于属性目标匹配，如突击/防御/指挥官等） */
     Set<String> getInstanceTags();
+
+    /**
+     * 获取实例键（来源物品 ID），非实例化机制返回 null。
+     * <p>
+     * 实例化机制（如无人机按来源物品分实例）用实例键区分同类构造体的不同实例，
+     * 用于按实例统计数量与淘汰。
+     */
+    @Nullable
+    default String getInstanceKey() {
+        return null;
+    }
 }
 

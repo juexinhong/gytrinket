@@ -5,6 +5,7 @@ import com.gy_mod.gy_trinket.core.entity.construct.ConstructGroupCache;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructManager;
 import com.gy_mod.gy_trinket.core.entity.construct.IConstructEntity;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneArrayType;
+import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneArrayParams;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneBullet;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneConstructTypes;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneConstructEntity;
@@ -41,12 +42,6 @@ public class OrbitBehavior implements IDroneBehavior {
     /** 移动速度（格/秒） */
     private static final float MOVE_SPEED = 10.0f;
 
-    /** 搜索范围（格） */
-    private static final float SEARCH_RANGE = 8.0f;
-
-    private static float getConfigAttackRange() { return Config.ORBIT_ATTACK_RANGE.get().floatValue(); }
-    private static float getConfigAttackInterval() { return Config.ORBIT_ATTACK_INTERVAL.get().floatValue(); }
-
     @Override
     public Set<String> getRequiredTags() {
         return Set.of(DroneArrayType.Tags.ARRAY, DroneArrayType.Tags.ORBIT);
@@ -80,6 +75,8 @@ public class OrbitBehavior implements IDroneBehavior {
         double gameTime = owner.level().getGameTime() / 20.0;
         // 环绕转速受 orbitSpeedMultiplier 影响（炉心融解等模块）
         double orbitMultiplier = drone instanceof IConstructEntity cEntity ? cEntity.getOrbitSpeedMultiplier() : 1.0;
+        // 阵列物品级环绕速度倍率（独立乘区，客户端也按 owner 镜像解析，保证模型位置与实际一致）
+        orbitMultiplier *= DroneArrayParams.getOrbitSpeedMultiplier(owner);
         double rotationAngle = gameTime * ANGULAR_VELOCITY * Math.PI * 2 * orbitMultiplier;
 
         // 计算每个无人机的初始角度，确保均匀分布
@@ -125,8 +122,9 @@ public class OrbitBehavior implements IDroneBehavior {
 
     @Override
     public List<LivingEntity> searchTargets(Entity drone, LivingEntity owner, float range) {
+        // 范围由调用方按实例基础索敌范围 × 阵列索敌范围倍率传入
         return ConstructGroupCache.getInstance().findTargetsInRange(
-            owner.getUUID(), owner, drone.position(), SEARCH_RANGE);
+            owner.getUUID(), owner, drone.position(), range);
     }
 
     @Override
@@ -147,7 +145,10 @@ public class OrbitBehavior implements IDroneBehavior {
 
         double distance = drone.distanceTo(target);
 
-        if (distance > getConfigAttackRange()) {
+        // 二次防御判定：有效攻击范围（基础攻击范围 × 环绕阵列攻击范围倍率）
+        float attackRange = drone instanceof DroneConstructEntity droneEntity
+                ? droneEntity.getEffectiveAttackRange(DroneArrayParams.SET_ORBIT) : 8.0f;
+        if (distance > attackRange) {
             return;
         }
 
@@ -173,12 +174,14 @@ public class OrbitBehavior implements IDroneBehavior {
         Vec3 direction = targetPos.subtract(dronePos).normalize();
 
         float damage = DroneBullet.getBaseDamage();
-        float cooldown = getConfigAttackInterval() * 20.0f;
 
         if (drone instanceof DroneConstructEntity droneEntity) {
             damage = (float) droneEntity.getAttributeValue(Attributes.ATTACK_DAMAGE);
-            cooldown /= (float) droneEntity.getAttackSpeedMultiplier();
-            droneEntity.setAttackCooldown((int) cooldown);
+            // 阵列伤害倍率（独立乘区）：最终伤害 = 攻击力属性 × 环绕阵列伤害倍率
+            damage *= (float) DroneArrayParams.getDamageMultiplier(
+                    owner.getServer(), owner.getUUID(), DroneArrayParams.SET_ORBIT);
+            // 阵列攻速修正：基础间隔 × 环绕阵列倍率（独立乘区）
+            droneEntity.applyArrayAttackCooldown(DroneArrayParams.SET_ORBIT);
 
             DroneBullet bullet = new DroneBullet(drone.level(), droneEntity, damage);
             bullet.setPos(dronePos.x, dronePos.y + 0.4, dronePos.z);
@@ -189,12 +192,7 @@ public class OrbitBehavior implements IDroneBehavior {
 
     @Override
     public float getAttackInterval() {
-        return getConfigAttackInterval();
-    }
-
-    @Override
-    public float getAttackRange() {
-        return getConfigAttackRange();
+        return Config.DRONE_ATTACK_INTERVAL.get().floatValue();
     }
 
     @Override

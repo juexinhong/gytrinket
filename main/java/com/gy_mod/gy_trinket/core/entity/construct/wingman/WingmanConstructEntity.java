@@ -48,6 +48,10 @@ public class WingmanConstructEntity extends AbstractConstructEntity {
 
     private WingmanConstruct wingmanConstruct;
 
+    /** 实例键（来源物品 ID），非实例化路径为 null */
+    @javax.annotation.Nullable
+    private String instanceKey;
+
     // ===== 追击行为参数 =====
     /** 索敌范围 */
     private static final float SEARCH_RANGE = 20.0f;
@@ -90,6 +94,9 @@ public class WingmanConstructEntity extends AbstractConstructEntity {
     /** 近战攻击动画剩余刻数（0=无动画） */
     static final EntityDataAccessor<Integer> DATA_MELEE_ANIM_TICKS =
             SynchedEntityData.defineId(WingmanConstructEntity.class, EntityDataSerializers.INT);
+    /** 实例键（来源物品 ID）：同步到客户端，使客户端能按覆盖表镜像解析实例参数 */
+    static final EntityDataAccessor<String> DATA_INSTANCE_KEY =
+            SynchedEntityData.defineId(WingmanConstructEntity.class, EntityDataSerializers.STRING);
 
     // ===== 拦截机状态 =====
     /** 上一次同步到客户端的有效武器（用于检测玩家手持物品变化） */
@@ -178,6 +185,73 @@ public class WingmanConstructEntity extends AbstractConstructEntity {
         this(ModEntities.WINGMAN_CONSTRUCT.get(), level);
         setOwnerUUID(ownerUUID);
         this.wingmanConstruct = wingmanConstruct;
+        setInstanceKey(wingmanConstruct.getInstanceKey());
+    }
+
+    // ===== 实例化参数（来源物品 ID 相同的僚机共用一套物品级参数，修改即时生效） =====
+
+    /** 实例键（来源物品 ID），非实例化路径为 null */
+    @javax.annotation.Nullable
+    @Override
+    public String getInstanceKey() {
+        // 客户端优先读取同步数据（网络生成包携带），服务端读实体数据未设置时回退字段
+        String synced = this.entityData.get(DATA_INSTANCE_KEY);
+        return (synced != null && !synced.isEmpty()) ? synced : instanceKey;
+    }
+
+    public void setInstanceKey(@javax.annotation.Nullable String instanceKey) {
+        this.instanceKey = instanceKey;
+        this.entityData.set(DATA_INSTANCE_KEY, instanceKey == null ? "" : instanceKey);
+    }
+
+    /**
+     * 解析实例参数值；实例键为空（非实例化路径）或环境不完整时返回 fallback。
+     * 服务端走 DefsManager 服务端覆盖表；逻辑客户端（集成服不可达）按同步的实例键走客户端覆盖表镜像，
+     * 保证客户端表现与服务端实际生效数值一致。
+     */
+    private double resolveInstanceParam(String paramKey, double fallback) {
+        String key = getInstanceKey();
+        if (key == null) return fallback;
+        if (this.level().isClientSide) {
+            return WingmanInstanceParams.resolveClient(key, paramKey);
+        }
+        net.minecraft.server.MinecraftServer server = net.minecraftforge.server.ServerLifecycleHooks.getCurrentServer();
+        if (server == null || getOwnerUUID() == null) return fallback;
+        return WingmanInstanceParams.resolve(server, key, paramKey);
+    }
+
+    /** 实例攻击间隔（秒）；0 表示未定义，沿用 Config 默认 */
+    public float getInstanceAttackInterval() {
+        return (float) resolveInstanceParam(WingmanInstanceParams.KEY_ATTACK_INTERVAL, 0.0D);
+    }
+
+    /** 僚机基础攻击间隔（秒）：物品级定义优先，否则 Config 默认 */
+    public float getBaseAttackInterval() {
+        float iv = getInstanceAttackInterval();
+        return iv > 0 ? iv : (float) Config.getWingmanAttackInterval();
+    }
+
+    /** 实例攻击范围（格）；0 表示未定义，沿用 Config 默认 */
+    public float getInstanceAttackRange() {
+        return (float) resolveInstanceParam(WingmanInstanceParams.KEY_ATTACK_RANGE, 0.0D);
+    }
+
+    /** 僚机基础攻击范围（格）：物品级定义优先，否则 Config 默认 */
+    public float getBaseAttackRange() {
+        float range = getInstanceAttackRange();
+        return range > 0 ? range : Config.getWingmanAttackRange().floatValue();
+    }
+
+    /** 僚机基础生命值：物品级定义优先（属性刷新与恢复路径即时生效），否则构造时写入的 Config 默认 */
+    @Override
+    public double getBaseMaxHealth() {
+        return resolveInstanceParam(WingmanInstanceParams.KEY_BASE_HEALTH, super.getBaseMaxHealth());
+    }
+
+    /** 僚机基础伤害（爆破弹）：物品级定义优先，否则构造时写入的 Config 默认 */
+    @Override
+    public double getBaseAttackDamage() {
+        return resolveInstanceParam(WingmanInstanceParams.KEY_BASE_DAMAGE, super.getBaseAttackDamage());
     }
 
     @Override
@@ -187,6 +261,7 @@ public class WingmanConstructEntity extends AbstractConstructEntity {
         this.entityData.define(DATA_INTERCEPTOR_WEAPON, ItemStack.EMPTY);
         this.entityData.define(DATA_INTERCEPTOR_ATTACK_MODE, InterceptorAttackMode.MELEE.getSerializedName());
         this.entityData.define(DATA_MELEE_ANIM_TICKS, 0);
+        this.entityData.define(DATA_INSTANCE_KEY, "");
     }
 
     // ===== 拦截机统一查询方法（从Manager读取，所有僚机共享同一份数据） =====
@@ -650,7 +725,7 @@ public class WingmanConstructEntity extends AbstractConstructEntity {
         if (this.level().isClientSide) return;
 
         double distance = wingman.distanceTo(target);
-        float attackRange = Config.getWingmanAttackRange().floatValue();
+        float attackRange = getBaseAttackRange();
         if (distance > attackRange) return;
 
         // 爆破弹攻击（始终可用，独立冷却）
@@ -670,7 +745,7 @@ public class WingmanConstructEntity extends AbstractConstructEntity {
 
         fireExplosiveProjectiles(this, owner, target);
 
-        float attackInterval = (float) Config.getWingmanAttackInterval();
+        float attackInterval = getBaseAttackInterval();
         int cooldown = (int) (attackInterval * 20.0f / this.attackSpeedMultiplier);
         this.attackCooldown = Math.max(1, cooldown);
     }
@@ -754,7 +829,7 @@ public class WingmanConstructEntity extends AbstractConstructEntity {
         int projectileCount = type != null
                 ? ConstructAttributeApplier.getEffectiveExplosiveCount(owner.getUUID(), type)
                 : Config.getWingmanExplosiveCount();
-        float damage = (float) this.baseAttackDamage;
+        float damage = (float) this.getBaseAttackDamage();
 
         // 缓存中心发射方向（所有爆破弹共用，保证平行飞行）
         Vec3 centerDirection = targetPos.subtract(wingmanPos).normalize();
@@ -810,12 +885,19 @@ public class WingmanConstructEntity extends AbstractConstructEntity {
     @Override
     protected void addTypeSpecificSaveData(CompoundTag tag) {
         // 拦截机武器/攻击模式数据不再保存到实体NBT，统一从Manager查询
+        String key = getInstanceKey();
+        if (key != null) {
+            tag.putString("instance_key", key);
+        }
     }
 
     @Override
     protected void readTypeSpecificSaveData(CompoundTag tag) {
         // 拦截机武器/攻击模式数据不再从实体NBT读取，统一从Manager查询
         // 实体恢复后从Manager同步到客户端
+        if (tag.contains("instance_key")) {
+            setInstanceKey(tag.getString("instance_key"));
+        }
         syncInterceptorDataToClient();
     }
 
@@ -855,11 +937,14 @@ public class WingmanConstructEntity extends AbstractConstructEntity {
 
     @Override
     protected ConstructData createConstructDataForRegistration(ServerPlayer ownerPlayer) {
-        return new WingmanConstructData(
+        WingmanConstructData newData = new WingmanConstructData(
             WingmanConstructTypes.WINGMAN,
             this.getUUID(),
             this.getBaseMaxHealth()
         );
+        // 快照/注册数据必须携带实例键：实例化僚机退出待机时 restore 依赖它重建，缺失会被拒绝恢复
+        newData.setInstanceKey(this.getInstanceKey());
+        return newData;
     }
 
     @Override

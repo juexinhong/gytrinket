@@ -6,6 +6,7 @@ import com.gy_mod.gy_trinket.core.attack_mode.charged_attack.ChargedAttackManage
 import com.gy_mod.gy_trinket.core.shield.ChargedShieldManager;
 import com.gy_mod.gy_trinket.core.attack_mode.GrudgeManager;
 import com.gy_mod.gy_trinket.core.modifier.ModifierHelper;
+import com.gy_mod.gy_trinket.core.defs.DefsManager;
 import com.gy_mod.gy_trinket.gytrinket;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
@@ -111,8 +112,13 @@ public class AttackSpeedPenaltyManager {
 
         applyOrRemoveModifier(speedAttribute, ASSAULT_PENALTY_UUID, MODIFIER_PREFIX + "assault", currentState.assault, Config.getAssaultMovementSpeedPenalty());
         applyOrRemoveModifier(speedAttribute, CHARGED_PENALTY_UUID, MODIFIER_PREFIX + "charged", currentState.charged, Config.getChargedAttackMovementSpeedPenalty());
-        applyOrRemoveModifier(speedAttribute, CHARGED_SHIELD_PENALTY_UUID, MODIFIER_PREFIX + "charged_shield", currentState.chargedShield, Config.getChargedShieldMovementSpeedPenalty());
-        applyOrRemoveModifier(speedAttribute, GRUDGE_PENALTY_UUID, MODIFIER_PREFIX + "grudge", currentState.grudge, Config.getGrudgeMovementSpeedPenalty());
+        // 物品级数值覆盖：取首个生效物品的覆盖值，未覆盖回退 Config 默认
+        applyOrRemoveModifier(speedAttribute, CHARGED_SHIELD_PENALTY_UUID, MODIFIER_PREFIX + "charged_shield", currentState.chargedShield,
+                DefsManager.resolveMechanicValue(player.getServer(), uuid, "charged_shield_items",
+                        "move_speed_penalty", Config.getChargedShieldMovementSpeedPenalty()));
+        applyOrRemoveModifier(speedAttribute, GRUDGE_PENALTY_UUID, MODIFIER_PREFIX + "grudge", currentState.grudge,
+                DefsManager.resolveMechanicValue(player.getServer(), uuid, "grudge_items",
+                        "move_speed_penalty", Config.getGrudgeMovementSpeedPenalty()));
     }
 
     private static void applyOrRemoveModifier(AttributeInstance attribute, UUID uuid, String name, boolean shouldApply, double amount) {

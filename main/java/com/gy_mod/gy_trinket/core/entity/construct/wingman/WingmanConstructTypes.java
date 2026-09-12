@@ -30,16 +30,34 @@ public class WingmanConstructTypes {
                 .buildTime(500) // 25秒 = 500tick
                 .maxHealth(Config.getWingmanBaseHealth())
                 .maxCount(Config.getWingmanMaxCount())
-                .constructFactory((player, type) ->
-                        new WingmanConstruct(type.getId(), player, type.getMaxHealth()))
+                .constructFactory((player, type) -> createWingmanConstruct(player, type, null))
                 .entityRestorer(new WingmanEntityRestorer())
                 .build());
+    }
+
+    /**
+     * 创建僚机构建体（类型工厂与实例构建器共用）。
+     *
+     * @param player      玩家
+     * @param type        僚机构造体类型（可为 null，内部回退 Config 基础生命）
+     * @param instanceKey 实例键（来源物品 ID）；null 表示非实例化路径
+     */
+    public static WingmanConstruct createWingmanConstruct(net.minecraft.world.entity.player.Player player,
+                                                          @javax.annotation.Nullable ConstructType type,
+                                                          @javax.annotation.Nullable String instanceKey) {
+        double maxHealth = type != null ? type.getMaxHealth() : Config.getWingmanBaseHealth();
+        return new WingmanConstruct(WINGMAN, player, maxHealth, instanceKey);
     }
 
     private static class WingmanEntityRestorer implements IEntityRestorer {
         @Override
         public Entity restore(ServerPlayer player, ConstructData data, ServerLevel level) {
             if (!(data instanceof WingmanConstructData wingmanData)) return null;
+
+            // 实例化改造：旧存档无实例键的僚机不恢复，
+            // 交给 TickScheduler 的实例构建循环按当前装备的实例物品自动补建
+            String instanceKey = wingmanData.getInstanceKey();
+            if (instanceKey == null) return null;
 
             WingmanConstructEntity wingmanEntity = new WingmanConstructEntity(ModEntities.WINGMAN_CONSTRUCT.get(), level);
 
@@ -51,6 +69,9 @@ public class WingmanConstructTypes {
             }
 
             wingmanEntity.setOwnerUUID(player.getUUID());
+            wingmanEntity.setInstanceKey(instanceKey);
+            // 恢复后立即按实例参数刷新属性（基础生命/伤害等物品级定义生效）
+            wingmanEntity.refreshConstructAttributes();
 
             float healthRatio = (float) wingmanData.getHealthRatio();
             float newMaxHealth = wingmanEntity.getMaxHealth();

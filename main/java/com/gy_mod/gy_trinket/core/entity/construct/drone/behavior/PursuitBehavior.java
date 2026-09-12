@@ -3,6 +3,7 @@ package com.gy_mod.gy_trinket.core.entity.construct.drone.behavior;
 import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructGroupCache;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneArrayType;
+import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneArrayParams;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneBullet;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneConstructEntity;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneConstructTypes;
@@ -27,11 +28,6 @@ import org.jetbrains.annotations.Nullable;
  * - 无人机之间使用Boid鸟群算法保持适当间距（不会太挤也不会太松）
  */
 public class PursuitBehavior implements IDroneBehavior {
-    /** 索敌范围 */
-    private static final float SEARCH_RANGE = 20.0f;
-    /** 攻击范围 */
-    private static float getConfigAttackRange() { return Config.PURSUIT_ATTACK_RANGE.get().floatValue(); }
-    private static float getConfigAttackInterval() { return Config.PURSUIT_ATTACK_INTERVAL.get().floatValue(); }
     /** 基础移动速度（格/刻），7格/秒 = 0.35格/刻 */
     private static final float MOVE_SPEED = 0.3f;
     /** 远离速度（用于近距离撤离），3格/秒 = 0.15格/刻 */
@@ -204,9 +200,11 @@ public class PursuitBehavior implements IDroneBehavior {
         long currentTick = level.getGameTime();
         UUID droneUUID = drone.getUUID();
 
-        // 使用共享缓存索敌
+        // 使用共享缓存索敌（有效索敌范围 = 基础索敌范围 × 追击阵列索敌范围倍率）
+        float searchRange = drone instanceof DroneConstructEntity droneEntity
+                ? droneEntity.getEffectiveTargetRange(DroneArrayParams.SET_PURSUIT) : 20.0f;
         LivingEntity cachedTarget = ConstructGroupCache.getInstance().findNearestTarget(
-            owner.getUUID(), owner, drone.position(), SEARCH_RANGE);
+            owner.getUUID(), owner, drone.position(), searchRange);
 
         if (cachedTarget != null) {
             // 更新或创建目标记忆
@@ -315,12 +313,14 @@ public class PursuitBehavior implements IDroneBehavior {
         double speed = 0;
         Vec3 direction = Vec3.ZERO;
         float yaw = drone.getYRot() * (float) Math.PI / 180.0f;
+        // 阵列物品级移动速度倍率（独立乘区）
+        double moveSpeedMult = DroneArrayParams.getMoveSpeedMultiplier(owner.getServer(), owner.getUUID());
 
         if (horizontalDist > 6.0) {
             // 远距离：向朝向方向移动，速度随距离增加（每额外1格+10%）
             float excessDistance = (float) (horizontalDist - 6.0);
             float speedMultiplier = 1.0f + excessDistance * 0.10f;
-            speed = MOVE_SPEED * speedMultiplier;
+            speed = MOVE_SPEED * speedMultiplier * moveSpeedMult;
             direction = new Vec3(-Math.sin(yaw), 0, Math.cos(yaw)).normalize();
         } else if (horizontalDist > 5.0) {
             // 中远距离：慢速接近目标
@@ -369,8 +369,8 @@ public class PursuitBehavior implements IDroneBehavior {
         Vec3 boidForce = calculateBoidFlockForce(drone, owner);
         finalMovement = finalMovement.add(boidForce);
 
-        // 限制最大速度
-        double maxSpeed = MOVE_SPEED * 2.0;
+        // 限制最大速度（上限同步乘阵列移速倍率，防修正后被截断）
+        double maxSpeed = MOVE_SPEED * 2.0 * moveSpeedMult;
         double currentSpeed = finalMovement.length();
         if (currentSpeed > maxSpeed) {
             finalMovement = finalMovement.normalize().scale(maxSpeed);
@@ -394,6 +394,8 @@ public class PursuitBehavior implements IDroneBehavior {
     private Vec3 standbyMovement(Entity drone, LivingEntity owner, float deltaTime) {
         Vec3 dronePos = drone.position();
         Vec3 ownerPos = owner.position();
+        // 阵列物品级移动速度倍率（独立乘区）
+        double moveSpeedMult = DroneArrayParams.getMoveSpeedMultiplier(owner.getServer(), owner.getUUID());
 
         // 目标位置：玩家头上3格
         Vec3 standbyTarget = ownerPos.add(0, 3.0, 0);
@@ -463,7 +465,7 @@ public class PursuitBehavior implements IDroneBehavior {
             Vec3 moveDir = centerToOwner.lengthSqr() > 0.001 ? centerToOwner.normalize() : horizontalDir;
 
             double speedBoost = 1.0 + (horizontalDist - STANDBY_RANGE) * 0.2;
-            finalMovement = moveDir.scale(MOVE_SPEED * speedBoost);
+            finalMovement = moveDir.scale(MOVE_SPEED * speedBoost * moveSpeedMult);
         } else if (horizontalDist > 3.0) {
             // 中距离：慢速靠近玩家
             finalMovement = horizontalDir.scale(LEAVE_SPEED);
@@ -478,8 +480,8 @@ public class PursuitBehavior implements IDroneBehavior {
         Vec3 boidForce = calculateBoidFlockForce(drone, owner);
         finalMovement = finalMovement.add(boidForce);
 
-        // 限制最大速度
-        double maxSpeed = MOVE_SPEED * 2.0;
+        // 限制最大速度（上限同步乘阵列移速倍率，防修正后被截断）
+        double maxSpeed = MOVE_SPEED * 2.0 * moveSpeedMult;
         double currentSpeed = finalMovement.length();
         if (currentSpeed > maxSpeed) {
             finalMovement = finalMovement.normalize().scale(maxSpeed);
@@ -516,7 +518,10 @@ public class PursuitBehavior implements IDroneBehavior {
         }
 
         double distance = drone.distanceTo(target);
-        if (distance > getConfigAttackRange()) {
+        // 二次防御判定：有效攻击范围（基础攻击范围 × 追击阵列攻击范围倍率）
+        float attackRange = drone instanceof DroneConstructEntity droneEntity
+                ? droneEntity.getEffectiveAttackRange(DroneArrayParams.SET_PURSUIT) : 20.0f;
+        if (distance > attackRange) {
             return;
         }
 
@@ -539,12 +544,14 @@ public class PursuitBehavior implements IDroneBehavior {
         Vec3 direction = targetPos.subtract(dronePos).normalize();
 
         float damage = DroneBullet.getBaseDamage();
-        float cooldown = getConfigAttackInterval() * 20.0f;
 
         if (drone instanceof DroneConstructEntity droneEntity) {
             damage = (float) droneEntity.getAttributeValue(Attributes.ATTACK_DAMAGE);
-            cooldown /= (float) droneEntity.getAttackSpeedMultiplier();
-            droneEntity.setAttackCooldown((int) cooldown);
+            // 阵列伤害倍率（独立乘区）：最终伤害 = 攻击力属性 × 追击阵列伤害倍率
+            damage *= (float) DroneArrayParams.getDamageMultiplier(
+                    owner.getServer(), owner.getUUID(), DroneArrayParams.SET_PURSUIT);
+            // 阵列攻速修正：基础间隔 × 追击阵列倍率（独立乘区）
+            droneEntity.applyArrayAttackCooldown(DroneArrayParams.SET_PURSUIT);
 
             // 创建并发射子弹
             DroneBullet bullet = new DroneBullet(drone.level(), droneEntity, damage);
@@ -556,12 +563,7 @@ public class PursuitBehavior implements IDroneBehavior {
 
     @Override
     public float getAttackInterval() {
-        return getConfigAttackInterval();
-    }
-
-    @Override
-    public float getAttackRange() {
-        return getConfigAttackRange();
+        return Config.DRONE_ATTACK_INTERVAL.get().floatValue();
     }
 
     @Override

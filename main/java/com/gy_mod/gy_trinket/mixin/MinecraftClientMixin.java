@@ -76,6 +76,12 @@ public class MinecraftClientMixin {
      */
     @Inject(method = "continueAttack", at = @At("HEAD"), cancellable = true)
     private void gytrinket$onContinueAttack(boolean leftClick, CallbackInfo ci) {
+        // 瞄准方块时不拦截，允许正常挖掘（continueAttack 是原版长按挖掘的入口，不能整体取消）
+        Minecraft mc = (Minecraft) (Object) this;
+        if (mc.hitResult != null && mc.hitResult.getType() == HitResult.Type.BLOCK) {
+            return;
+        }
+
         // 充能期间：阻止所有攻击
         if (ChargedAttackInputHandler.isCharging()) {
             ci.cancel();

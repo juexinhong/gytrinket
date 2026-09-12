@@ -1,7 +1,6 @@
 package com.gy_mod.gy_trinket.core.entity.construct.swarm;
 
 import com.gy_mod.gy_trinket.config.Config;
-import com.gy_mod.gy_trinket.core.attack_mode.ExecuteToggleManager;
 import com.gy_mod.gy_trinket.core.attack_mode.electric_discharge.ElectricDischargeManager;
 import com.gy_mod.gy_trinket.core.damage.ModDamageTypes;
 import com.gy_mod.gy_trinket.core.damage.SecondaryDamageMerger;
@@ -10,7 +9,6 @@ import com.gy_mod.gy_trinket.core.entity.construct.ConstructAttributeApplier;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructData;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructGroupCache;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructManager;
-import com.gy_mod.gy_trinket.core.entity.construct.drone.ModDamageSources;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.ModEntities;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.behavior.BoidCalculator;
 import com.gy_mod.gy_trinket.core.modifier.player.knockback.KnockbackManager;
@@ -31,7 +29,6 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.common.MinecraftForge;
@@ -57,6 +54,10 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
 
     private SwarmConstruct swarmConstruct;
 
+    /** 实例键（来源物品 ID），非实例化路径为 null */
+    @javax.annotation.Nullable
+    private String instanceKey;
+
     // ===== 客户端同步标志 =====
     /** 修复模式标志（服务端计算，客户端读取，避免客户端因无护盾数据而误入待机分支） */
     private static final EntityDataAccessor<Boolean> DATA_REPAIR_MODE =
@@ -64,6 +65,9 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
     /** 护盾破裂标志（服务端计算，客户端读取，用于移动速度倍率） */
     private static final EntityDataAccessor<Boolean> DATA_SHIELD_BROKEN =
             SynchedEntityData.defineId(SwarmConstructEntity.class, EntityDataSerializers.BOOLEAN);
+    /** 实例键（来源物品 ID）：同步到客户端，使客户端能按覆盖表镜像解析实例参数 */
+    private static final EntityDataAccessor<String> DATA_INSTANCE_KEY =
+            SynchedEntityData.defineId(SwarmConstructEntity.class, EntityDataSerializers.STRING);
 
     // ===== 行为参数 =====
     /** 待机跟随高度（朝向玩家上方此高度处） */
@@ -108,7 +112,80 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
         setOwnerUUID(ownerUUID);
         this.swarmConstruct = swarmConstruct;
         this.tier = swarmConstruct.getTier();
+        setInstanceKey(swarmConstruct.getInstanceKey());
         applyAttributeModifiers();
+    }
+
+    // ===== 实例化参数（来源物品 ID 相同的蜂群共用一套物品级参数，修改即时生效） =====
+
+    /** 实例键（来源物品 ID），非实例化路径为 null */
+    @javax.annotation.Nullable
+    @Override
+    public String getInstanceKey() {
+        // 客户端优先读取同步数据（网络生成包携带），服务端读实体数据未设置时回退字段
+        String synced = this.entityData.get(DATA_INSTANCE_KEY);
+        return (synced != null && !synced.isEmpty()) ? synced : instanceKey;
+    }
+
+    public void setInstanceKey(@javax.annotation.Nullable String instanceKey) {
+        this.instanceKey = instanceKey;
+        this.entityData.set(DATA_INSTANCE_KEY, instanceKey == null ? "" : instanceKey);
+    }
+
+    /**
+     * 解析实例参数值；实例键为空（非实例化路径）或环境不完整时返回 fallback。
+     * 服务端走 DefsManager 服务端覆盖表；逻辑客户端（集成服不可达）按同步的实例键走客户端覆盖表镜像，
+     * 保证客户端表现与服务端实际生效数值一致。
+     */
+    private double resolveInstanceParam(String paramKey, double fallback) {
+        String key = getInstanceKey();
+        if (key == null) return fallback;
+        if (this.level().isClientSide) {
+            return SwarmInstanceParams.resolveClient(key, paramKey);
+        }
+        net.minecraft.server.MinecraftServer server = net.minecraftforge.server.ServerLifecycleHooks.getCurrentServer();
+        if (server == null || getOwnerUUID() == null) return fallback;
+        return SwarmInstanceParams.resolve(server, key, paramKey);
+    }
+
+    /** 实例攻击间隔（秒）；0 表示未定义，沿用 Config 默认 */
+    public float getInstanceAttackInterval() {
+        return (float) resolveInstanceParam(SwarmInstanceParams.KEY_ATTACK_INTERVAL, 0.0D);
+    }
+
+    /** 蜂群基础攻击间隔（秒）：物品级定义优先，否则 Config 默认 */
+    public float getBaseAttackInterval() {
+        float iv = getInstanceAttackInterval();
+        return iv > 0 ? iv : (float) Config.getSwarmAttackInterval();
+    }
+
+    /** 实例攻击范围（格）；0 表示未定义，沿用 Config 默认 */
+    public float getInstanceAttackRange() {
+        return (float) resolveInstanceParam(SwarmInstanceParams.KEY_ATTACK_RANGE, 0.0D);
+    }
+
+    /** 蜂群基础攻击范围（格）：物品级定义优先，否则 Config 默认 */
+    public float getBaseAttackRange() {
+        float range = getInstanceAttackRange();
+        return range > 0 ? range : (float) Config.getSwarmAttackRange();
+    }
+
+    /** 实例索敌范围（格）；0 表示未定义，沿用 Config 默认 */
+    public float getInstanceSearchRange() {
+        return (float) resolveInstanceParam(SwarmInstanceParams.KEY_SEARCH_RANGE, 0.0D);
+    }
+
+    /** 蜂群基础索敌范围（格）：物品级定义优先，否则 Config 默认 */
+    public float getBaseSearchRange() {
+        float range = getInstanceSearchRange();
+        return range > 0 ? range : (float) Config.getSwarmSearchRange();
+    }
+
+    /** 蜂群移速倍率：属性倍率 × 物品级倍率（默认 1.0） */
+    @Override
+    public double getMoveSpeedMultiplier() {
+        return super.getMoveSpeedMultiplier()
+                * resolveInstanceParam(SwarmInstanceParams.KEY_MOVE_SPEED, 1.0D);
     }
 
     @Override
@@ -116,6 +193,7 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
         super.defineSynchedData();
         this.entityData.define(DATA_REPAIR_MODE, false);
         this.entityData.define(DATA_SHIELD_BROKEN, false);
+        this.entityData.define(DATA_INSTANCE_KEY, "");
     }
 
     public SwarmConstruct getSwarmConstruct() {
@@ -222,7 +300,7 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
      * 此方法仅做距离过滤取最近目标。
      */
     private LivingEntity findTarget(LivingEntity owner) {
-        float searchRange = (float) Config.getSwarmSearchRange();
+        float searchRange = getBaseSearchRange();
         return ConstructGroupCache.getInstance().findNearestTarget(
             owner.getUUID(), owner, this.position(), searchRange);
     }
@@ -402,7 +480,7 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
     private void repairMovement(Entity swarm, LivingEntity owner) {
         Vec3 pos = swarm.position();
         Vec3 ownerPos = owner.position();
-        double attackRange = Config.getSwarmAttackRange();
+        double attackRange = getBaseAttackRange();
 
         double horizontalDist = Math.sqrt(
             Math.pow(pos.x - ownerPos.x, 2) + Math.pow(pos.z - ownerPos.z, 2)
@@ -450,7 +528,7 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
         if (this.level().isClientSide) return;
         if (this.attackCooldown > 0) return;
 
-        double baseAttackRange = Config.getSwarmAttackRange();
+        double baseAttackRange = getBaseAttackRange();
         // 使用目标身高7/10处为检查点
         Vec3 targetCheckPos = target.position().add(0, target.getBbHeight() * 0.7, 0);
         // 大碰撞箱优化：目标碰撞箱宽度每有1格，攻击范围增加1格
@@ -459,7 +537,6 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
         double distance = swarm.position().distanceTo(targetCheckPos);
         if (distance > effectiveAttackRange) return;
 
-        Player player = owner instanceof Player p ? p : null;
         float damage = (float) this.baseAttackDamage;
         float vulnValue = (float) (Config.getSwarmVulnerabilityValue() * MothershipManager.getOverflowMultiplier(owner.getUUID()));
 
@@ -481,18 +558,11 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
                 // 攻击前：取消无敌时间（合并延迟施加时重置）
                 t.invulnerableTime = 0;
 
-                // 斩杀判定：目标当前血量低于合并总伤害时触发斩杀（伤害翻倍，归属玩家）
-                if (player != null && t.getHealth() < mergedDamage) {
-                    DamageSource executeSource = ModDamageSources.getExecuteDamageSource(t, player, swarm);
-                    t.hurt(executeSource, mergedDamage * 2.0f);
-                    if (ExecuteToggleManager.isExecuteEnabled(player)) {
-                        t.setLastHurtByMob(player);
-                    }
-                } else {
-                    // 普通伤害（自定义蜂群电弧伤害，归属蜂群构造体）
-                    DamageSource source = ModDamageTypes.getSwarmDamageSource(t.level(), swarm);
-                    t.hurt(source, mergedDamage);
-                }
+                // 蜂群电弧伤害（自定义伤害类型，归属蜂群构造体）；
+                // 已取消斩杀2倍增伤，致死归属改由 ExecuteAttributionHandler 按
+                // 所有减伤流程后的实际致死结果判定（避免高护甲/免伤敌人的误判）
+                DamageSource source = ModDamageTypes.getSwarmDamageSource(t.level(), swarm);
+                t.hurt(source, mergedDamage);
 
                 // 攻击后：取消无敌时间
                 t.invulnerableTime = 0;
@@ -515,7 +585,7 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
                     net.minecraft.sounds.SoundSource.NEUTRAL, 0.4f, 1.5f);
         }
 
-        double attackInterval = Config.getSwarmAttackInterval();
+        double attackInterval = getBaseAttackInterval();
         int cooldown = (int) (attackInterval * 20.0 / (attackSpeedMult * this.attackSpeedMultiplier));
         this.attackCooldown = Math.max(1, cooldown);
     }
@@ -528,7 +598,7 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
         if (this.level().isClientSide) return;
         if (this.attackCooldown > 0) return;
 
-        double attackRange = Config.getSwarmAttackRange();
+        double attackRange = getBaseAttackRange();
         double distance = swarm.distanceTo(owner);
         if (distance > attackRange) return;
 
@@ -547,7 +617,7 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
         this.level().playSound(null, owner.blockPosition(), SoundEvents.AMETHYST_BLOCK_CHIME,
                 net.minecraft.sounds.SoundSource.NEUTRAL, 0.5f, 1.5f);
 
-        double attackInterval = Config.getSwarmAttackInterval();
+        double attackInterval = getBaseAttackInterval();
         int cooldown = (int) (attackInterval * 20.0 / this.attackSpeedMultiplier);
         this.attackCooldown = Math.max(1, cooldown);
     }
@@ -577,12 +647,19 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
     @Override
     protected void addTypeSpecificSaveData(CompoundTag tag) {
         tag.putInt("tier", this.tier);
+        String key = getInstanceKey();
+        if (key != null) {
+            tag.putString("instance_key", key);
+        }
     }
 
     @Override
     protected void readTypeSpecificSaveData(CompoundTag tag) {
         if (tag.contains("tier")) {
             this.tier = tag.getInt("tier");
+        }
+        if (tag.contains("instance_key")) {
+            setInstanceKey(tag.getString("instance_key"));
         }
     }
 
@@ -596,8 +673,11 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
     protected void applyAttributeModifiers() {
         double tierMult = getTierMultiplier();
         double overflowMult = MothershipManager.getOverflowMultiplier(getOwnerUUID());
-        this.baseMaxHealth = Config.getSwarmBaseHealth() * tierMult * overflowMult;
-        this.baseAttackDamage = Config.getSwarmBaseDamage() * tierMult * overflowMult;
+        // 物品级实例参数优先（实例键为空回退 Config 默认），再叠加等阶与溢出倍率
+        this.baseMaxHealth = resolveInstanceParam(SwarmInstanceParams.KEY_BASE_HEALTH, Config.getSwarmBaseHealth())
+                * tierMult * overflowMult;
+        this.baseAttackDamage = resolveInstanceParam(SwarmInstanceParams.KEY_BASE_DAMAGE, Config.getSwarmBaseDamage())
+                * tierMult * overflowMult;
         super.applyAttributeModifiers();
     }
 
@@ -616,6 +696,8 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
             this.getBaseMaxHealth()
         );
         newData.setTier(this.tier);
+        // 快照/注册数据必须携带实例键：实例化蜂群退出待机时 restore 依赖它重建，缺失会被拒绝恢复
+        newData.setInstanceKey(this.getInstanceKey());
         return newData;
     }
 

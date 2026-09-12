@@ -2,6 +2,7 @@ package com.gy_mod.gy_trinket.core.entity.construct.wingman;
 
 import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
+import com.gy_mod.gy_trinket.core.defs.DefsManager;
 import com.gy_mod.gy_trinket.core.level.ModLevelManager;
 import com.gy_mod.gy_trinket.core.shield.DisableSystem;
 import com.gy_mod.gy_trinket.event.PlayerAttributesCalculatedEvent;
@@ -60,7 +61,8 @@ public class EvolutionManager {
         }
 
         int modLevel = Math.max(0, ModLevelManager.getModLevel(playerUUID));
-        double bonusPerLevel = Config.getWingmanEvolutionBonusPerLevel();
+        double bonusPerLevel = DefsManager.resolveMechanicValue(player.getServer(), playerUUID,
+                "wingman_evolution_module_items", "bonus_per_level", Config.getWingmanEvolutionBonusPerLevel());
         double bonus = modLevel * bonusPerLevel;
 
         AttributeManager.setDynamicAttribute(playerUUID, NAMESPACE, ATTR_HEALTH_PERCENT, bonus);

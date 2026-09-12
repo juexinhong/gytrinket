@@ -97,7 +97,7 @@
     "tooltip.gytrinket.shield_type.warp":  "워프",
     "tooltip.gytrinket.shield_type.siphon":  "사이펀",
     "tooltip.gytrinket.shield_type.none_desc":  "동일한 유형의 실드 속성을 추가로 중첩할 수 있습니다",
-    "tooltip.gytrinket.shield_type.aura_desc":  "주변 적을 불태우고 점화합니다. (점화 피해가 지정되지 않은 경우 기본값: %.1f/s 피해, %d초 지속)",
+    "tooltip.gytrinket.shield_type.aura_desc":  "%d틱마다 %.1f블록 내의 적을 불태우고 점화하며, 적마다 %.1f의 화상 충전을 축적하고 %.3f의 방어막을 소모합니다. (점화 피해가 지정되지 않은 경우 기본값: %.1f/s 피해, %d초 지속)",
     "tooltip.gytrinket.shield_type.reflect_desc":  "명중한 투사체를 반사합니다. 반사된 투사체 속도가 %d%% 증가하며, 피해는 실드 효과의 영향을 받습니다",
     "tooltip.gytrinket.shield_type.amplification_desc":  "공격 피해가 %d%% 증가합니다. 주변에 적이 있으면 증폭이 증가합니다. 최대 %d%%까지 증가합니다. 실드 효과는 기본 수치와 최대치 모두에 적용됩니다. 실드가 활성화된 동안 %d%% 이동 속도를 제공합니다 (실드 효과의 영향을 받음)",
     "tooltip.gytrinket.shield_type.warp_desc":  "실드가 파괴되면 바라보는 방향으로 순간이동합니다. 순간이동 시작점과 끝점에서의 폭발이 %.1f 폭발 피해를 줍니다",

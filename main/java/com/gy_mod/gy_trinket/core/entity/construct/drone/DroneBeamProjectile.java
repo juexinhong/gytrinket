@@ -146,42 +146,23 @@ public class DroneBeamProjectile extends Entity implements GeoEntity {
                     entity.invulnerableTime = 0;
 
                     Entity realAttacker = this.getOwner();
-                    Player damageOwner = null;
-
-                    if (realAttacker instanceof DroneConstructEntity droneShooter) {
-                        Entity ownerEntity = droneShooter.getOwner();
-                        if (ownerEntity instanceof Player) {
-                            damageOwner = (Player) ownerEntity;
-                        }
-                        if (damageOwner == null && this.ownerUUID != null) {
-                            damageOwner = this.level().getPlayerByUUID(this.ownerUUID);
-                        }
-                    } else if (this.ownerUUID != null) {
-                        damageOwner = this.level().getPlayerByUUID(this.ownerUUID);
-                    }
 
                     float totalDamage = this.getDamage();
                     float projectileDamage = totalDamage * 0.5F;
                     float fireDamage = totalDamage * 0.5F;
 
-                    boolean isFatalHit = entity.getHealth() <= totalDamage;
-
+                    // 归属不再由原始伤害预判（原始伤害会被护甲/免伤削减导致误判）：
+                    // 施加时攻击者恒为无人机本体，致死归属由 ExecuteAttributionHandler
+                    // 按 LivingDeathEvent 实际致死结果判定
                     DamageSource projectileDamageSource;
                     DamageSource fireDamageSource;
 
-                    if (isFatalHit) {
-                        // 斩杀：伤害源根据配置决定是否归属玩家
-                        DamageSource executeSource = ModDamageSources.getExecuteDamageSource(entity, damageOwner, realAttacker);
-                        projectileDamageSource = executeSource;
-                        fireDamageSource = executeSource;
+                    if (realAttacker instanceof LivingEntity livingAttacker) {
+                        projectileDamageSource = entity.damageSources().mobAttack(livingAttacker);
+                        fireDamageSource = entity.damageSources().mobAttack(livingAttacker);
                     } else {
-                        if (realAttacker instanceof LivingEntity livingAttacker) {
-                            projectileDamageSource = entity.damageSources().mobAttack(livingAttacker);
-                            fireDamageSource = entity.damageSources().mobAttack(livingAttacker);
-                        } else {
-                            projectileDamageSource = entity.damageSources().indirectMagic(realAttacker, realAttacker);
-                            fireDamageSource = entity.damageSources().indirectMagic(realAttacker, realAttacker);
-                        }
+                        projectileDamageSource = entity.damageSources().indirectMagic(realAttacker, realAttacker);
+                        fireDamageSource = entity.damageSources().indirectMagic(realAttacker, realAttacker);
                     }
 
                     entity.hurt(projectileDamageSource, projectileDamage);
@@ -194,10 +175,6 @@ public class DroneBeamProjectile extends Entity implements GeoEntity {
                                 "commander", com.gy_mod.gy_trinket.config.Config.COMMANDER_VULNERABILITY.get().floatValue(), entity, true
                             )
                         );
-                    }
-
-                    if (isFatalHit && com.gy_mod.gy_trinket.core.attack_mode.ExecuteToggleManager.isExecuteEnabled(damageOwner)) {
-                        entity.setLastHurtByMob(damageOwner);
                     }
 
                     entity.invulnerableTime = 0;

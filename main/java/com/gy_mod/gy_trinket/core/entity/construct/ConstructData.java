@@ -48,6 +48,9 @@ public class ConstructData {
     private double posZ;
     private String dimension;
 
+    /** 实例键（来源物品 ID），非实例化机制为 null */
+    private String instanceKey;
+
     /**
      * 创建构造体数据
      *
@@ -167,6 +170,16 @@ public class ConstructData {
         this.dimension = dimension;
     }
 
+    /** 获取实例键（来源物品 ID），非实例化机制为 null */
+    public String getInstanceKey() {
+        return instanceKey;
+    }
+
+    /** 设置实例键（来源物品 ID） */
+    public void setInstanceKey(String instanceKey) {
+        this.instanceKey = instanceKey;
+    }
+
     /**
      * 对构造体造成伤害
      *
@@ -206,6 +219,9 @@ public class ConstructData {
             tag.putDouble("posZ", posZ);
             tag.putString("dimension", dimension);
         }
+        if (instanceKey != null) {
+            tag.putString("instanceKey", instanceKey);
+        }
         return tag;
     }
 
@@ -230,6 +246,9 @@ public class ConstructData {
         if (tag.contains("dimension")) {
             data.setSavedPos(tag.getDouble("posX"), tag.getDouble("posY"), tag.getDouble("posZ"));
             data.setDimension(tag.getString("dimension"));
+        }
+        if (tag.contains("instanceKey")) {
+            data.instanceKey = tag.getString("instanceKey");
         }
     }
 

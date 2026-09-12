@@ -1,6 +1,7 @@
 package com.gy_mod.gy_trinket.core.entity.construct.drone;
 
 import com.gy_mod.gy_trinket.config.Config;
+import com.gy_mod.gy_trinket.core.defs.DefsManager;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructBuilder;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructManager;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructType;
@@ -18,11 +19,16 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 无人机管理器
  * <p>
  * 处理无人机的构建、管理逻辑和构建条件检测。
+ * <p>
+ * 实例化机制：每个无人机实例来源物品（声明 {@link DroneInstanceParams#MECHANIC_SET}
+ * 机制集或命中 Config 无人机模块物品）各成一个实例，独立构建、独立数量上限，
+ * 实例参数（构建时间/生命/伤害/数量/攻击间隔/移速）为物品级。
  */
 @Mod.EventBusSubscriber(modid = com.gy_mod.gy_trinket.gytrinket.MODID)
 public class DroneManager {
@@ -30,6 +36,9 @@ public class DroneManager {
 
     /** 玩家构建条件缓存：玩家UUID -> 是否可以构建无人机 */
     private static final Set<UUID> PLAYER_CAN_BUILD_DRONE = new HashSet<>();
+
+    /** 玩家无人机实例物品缓存：玩家UUID -> 实例物品ID集合（实例键） */
+    private static final Map<UUID, Set<String>> PLAYER_DRONE_INSTANCE_ITEMS = new ConcurrentHashMap<>();
 
     /** 玩家拥有的模块缓存：玩家UUID -> 是否拥有突击模块 */
     private static final Set<UUID> PLAYER_HAS_ASSAULT_MODULE = new HashSet<>();
@@ -45,6 +54,13 @@ public class DroneManager {
         ConstructManager.getInstance().registerBuildConditionChecker(
                 DroneConstructTypes.DRONE,
                 player -> PLAYER_CAN_BUILD_DRONE.contains(player.getUUID())
+        );
+
+        // 注册实例基础数量提供器：无人机实例数量上限 = 物品级 base_count 参数（+属性修正）
+        ConstructManager.getInstance().registerInstanceBaseCountProvider(
+                DroneConstructTypes.DRONE,
+                (player, instanceKey) -> DroneInstanceParams.getBaseCount(
+                        ServerLifecycleHooks.getCurrentServer(), instanceKey)
         );
     }
 
@@ -82,9 +98,37 @@ public class DroneManager {
         if (type == null) {
             return;
         }
-        
+
         ConstructBuilder builder = new ConstructBuilder(player, type);
         ConstructManager.getInstance().startBuilding(player, builder);
+    }
+
+    /**
+     * 每刻驱动各无人机实例的构建循环
+     * <p>
+     * 对玩家的每个实例物品：若该实例未在构建，则尝试启动实例构建器
+     * （构建时间与产出参数为物品级；数量上限检查在 startBuildingStorage 内完成）。
+     *
+     * @param player 玩家
+     */
+    public void tickBuilds(Player player) {
+        Set<String> instanceItems = PLAYER_DRONE_INSTANCE_ITEMS.get(player.getUUID());
+        if (instanceItems == null || instanceItems.isEmpty()) {
+            return;
+        }
+        ConstructType type = ConstructManager.getInstance().getConstructType(DroneConstructTypes.DRONE);
+        if (type == null) {
+            return;
+        }
+        ConstructManager constructManager = ConstructManager.getInstance();
+        for (String instanceKey : instanceItems) {
+            String storageKey = ConstructManager.storageKey(DroneConstructTypes.DRONE, instanceKey);
+            if (constructManager.isBuildingStorage(player, storageKey)) {
+                continue;
+            }
+            constructManager.startBuildingStorage(
+                    player, new DroneInstanceBuilder(player, type, instanceKey), storageKey);
+        }
     }
 
     /**
@@ -140,19 +184,28 @@ public class DroneManager {
     @SubscribeEvent
     public static void onAttributesCalculated(PlayerAttributesCalculatedEvent event) {
         UUID playerUUID = event.getPlayerUUID();
+        net.minecraft.server.MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
 
         boolean hasDroneModule = false;
         boolean hasAssaultModule = false;
         boolean hasDefenseModule = false;
         boolean hasCommanderModule = false;
 
+        Set<String> instanceItems = new HashSet<>();
+
         // 已装备物品 = 光点核心存储 + Curios 饰品栏（光点核心内容扩展）
         for (ItemStack stack : PlayerStoreUtils.getEquippedStacks(playerUUID)) {
             if (DisableSystem.isItemDisabled(playerUUID, stack)) continue;
             var item = stack.getItem();
+            String itemId = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(item).toString();
 
-            if (Config.isDroneModuleItem(item)) {
+            // 实例化机制：命中 Config 无人机模块物品、或声明 drone_module_items 机制集的
+            // 物品各成一个实例（并集）；实例键为物品 ID
+            if (Config.isDroneModuleItem(item)
+                    || (server != null && DefsManager.getEffectiveSpecialMechanicSets(itemId)
+                            .contains(DroneInstanceParams.MECHANIC_SET))) {
                 hasDroneModule = true;
+                instanceItems.add(itemId);
             }
             if (Config.isAssaultDroneModuleItem(item)) {
                 hasAssaultModule = true;
@@ -171,7 +224,7 @@ public class DroneManager {
             PLAYER_CAN_BUILD_DRONE.add(playerUUID);
         } else {
             PLAYER_CAN_BUILD_DRONE.remove(playerUUID);
-            
+
             // 如果玩家之前可以构建无人机（现在不能），则销毁所有已存在的无人机
             if (canBuildBefore) {
                 ServerPlayer serverPlayer = event.getPlayer();
@@ -180,6 +233,17 @@ public class DroneManager {
                 }
             }
         }
+
+        // 实例化机制：实例物品集合 diff——被移除的实例取消构建并销毁其全部无人机
+        Set<String> previousItems = PLAYER_DRONE_INSTANCE_ITEMS.getOrDefault(playerUUID, java.util.Collections.emptySet());
+        ServerPlayer playerForDiff = event.getPlayer();
+        for (String removedItem : previousItems) {
+            if (instanceItems.contains(removedItem) || playerForDiff == null) continue;
+            String storageKey = ConstructManager.storageKey(DroneConstructTypes.DRONE, removedItem);
+            ConstructManager.getInstance().cancelBuildingStorage(playerForDiff, storageKey);
+            ConstructManager.getInstance().removeConstructsByInstance(playerForDiff, DroneConstructTypes.DRONE, removedItem);
+        }
+        PLAYER_DRONE_INSTANCE_ITEMS.put(playerUUID, instanceItems);
 
         if (hasAssaultModule) {
             PLAYER_HAS_ASSAULT_MODULE.add(playerUUID);
@@ -203,14 +267,9 @@ public class DroneManager {
         if (playerForEffects != null) {
             updateExistingDroneEffects(playerForEffects, hasAssaultModule, hasDefenseModule);
             validateCurrentArray(playerForEffects);
-        }
-        
-        // 如果玩家现在可以构建无人机（之前不能，现在可以），则开始构建
-        if (!canBuildBefore && hasDroneModule) {
-            ServerPlayer serverPlayer = event.getPlayer();
-            if (serverPlayer != null && DroneManager.getInstance().canBuildDrone(serverPlayer)) {
-                DroneManager.getInstance().startBuildingDrone(serverPlayer);
-            }
+
+            // 驱动各实例的构建循环（新增实例立即开始构建；每刻循环由 TickScheduler 兜底）
+            DroneManager.getInstance().tickBuilds(playerForEffects);
         }
     }
 

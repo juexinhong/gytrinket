@@ -25,6 +25,10 @@ public class SwarmRenderer extends GeoEntityRenderer<SwarmConstructEntity> {
         poseStack.pushPose();
         poseStack.translate(0, 0.1D, 0);
 
+        // 大小属性：按同步的大小倍率缩放渲染模型
+        float sizeMultiplier = (float) entity.getSizeMultiplier();
+        poseStack.scale(sizeMultiplier, sizeMultiplier, sizeMultiplier);
+
         float pitch = entity.xRotO + (entity.getXRot() - entity.xRotO) * partialTicks;
 
         poseStack.pushPose();

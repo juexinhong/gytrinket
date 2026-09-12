@@ -47,14 +47,8 @@ public class AmplifierRenderer {
         double currentShield = ShieldHudRenderer.getInstance().getCurrentShield();
         if (currentShield <= 0) return;
 
-        double displayAlpha = AmplifierClientData.getDisplayAlpha();
-        if (displayAlpha <= 0.001) return;
-
-        // 透明度由进度驱动：有危险物时淡入（1.0），无危险物时20刻淡出；
-        // 无危险物长时间后透明度归零，此处自然不再渲染
-        float alpha = (float) displayAlpha;
-        double size = AmplifierClientData.getDisplaySize();
-        double brightness = AmplifierClientData.getDisplayBrightness();
+        List<AmplifierClientData.State> states = AmplifierClientData.getRenderStates();
+        if (states.isEmpty()) return;
 
         float pt = event.getPartialTick();
         Vec3 camPos = event.getCamera().getPosition();
@@ -84,21 +78,25 @@ public class AmplifierRenderer {
         BufferBuilder bufferBuilder = tessellator.getBuilder();
         bufferBuilder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
 
-        float halfSize = (float) size / 2.0f;
-        // 亮度（8~15）映射为颜色缩放：基础8时较暗，达上限15时为全白
-        float colorScale = (float)(brightness / 15.0);
-        int rgb = (int)(colorScale * 255);
-        int packedColor = ((int)(alpha * 255) << 24) | (rgb << 16) | (rgb << 8) | rgb;
+        // 每个增幅实例各自独立绘制贴图（各用各的尺寸、透明度与亮度）
+        for (AmplifierClientData.State state : states) {
+            float alpha = (float) state.displayAlpha;
+            float halfSize = (float) state.displaySize / 2.0f;
+            // 亮度（8~15）映射为颜色缩放：基础8时较暗，达上限15时为全白
+            float colorScale = (float)(state.getDisplayBrightness() / 15.0);
+            int rgb = (int)(colorScale * 255);
+            int packedColor = ((int)(alpha * 255) << 24) | (rgb << 16) | (rgb << 8) | rgb;
 
-        for (double[] pos : renderPositions) {
-            float px = (float) pos[0];
-            float py = (float) pos[1];
-            float pz = (float) pos[2];
+            for (double[] pos : renderPositions) {
+                float px = (float) pos[0];
+                float py = (float) pos[1];
+                float pz = (float) pos[2];
 
-            bufferBuilder.vertex(matrix, px - halfSize, py, pz - halfSize).uv(0.0f, 0.0f).color(packedColor).endVertex();
-            bufferBuilder.vertex(matrix, px - halfSize, py, pz + halfSize).uv(0.0f, 1.0f).color(packedColor).endVertex();
-            bufferBuilder.vertex(matrix, px + halfSize, py, pz + halfSize).uv(1.0f, 1.0f).color(packedColor).endVertex();
-            bufferBuilder.vertex(matrix, px + halfSize, py, pz - halfSize).uv(1.0f, 0.0f).color(packedColor).endVertex();
+                bufferBuilder.vertex(matrix, px - halfSize, py, pz - halfSize).uv(0.0f, 0.0f).color(packedColor).endVertex();
+                bufferBuilder.vertex(matrix, px - halfSize, py, pz + halfSize).uv(0.0f, 1.0f).color(packedColor).endVertex();
+                bufferBuilder.vertex(matrix, px + halfSize, py, pz + halfSize).uv(1.0f, 1.0f).color(packedColor).endVertex();
+                bufferBuilder.vertex(matrix, px + halfSize, py, pz - halfSize).uv(1.0f, 0.0f).color(packedColor).endVertex();
+            }
         }
 
         BufferUploader.drawWithShader(bufferBuilder.end());

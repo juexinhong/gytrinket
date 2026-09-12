@@ -2,6 +2,7 @@ package com.gy_mod.gy_trinket.core.entity.construct.wingman.attack_mode;
 
 import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.core.attack_mode.charged_attack.ChargedAttackSweepHandler;
+import com.gy_mod.gy_trinket.core.defs.DefsManager;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.ModDamageSources;
 import com.gy_mod.gy_trinket.core.entity.construct.wingman.WingmanConstructEntity;
 import com.gy_mod.gy_trinket.core.attack_mode.GrudgeManager;
@@ -258,7 +259,9 @@ public class InterceptorChargedHandler implements InterceptorAttackModeHandler {
 
         double grudgeRate = 0;
         if (totalLost > 0) {
-            double conversionRatio = Config.getGrudgeConversionRatio();
+            // 物品级数值覆盖：取首个生效物品的覆盖值，未覆盖回退 Config 默认
+            double conversionRatio = DefsManager.resolveMechanicValue(owner.getServer(), ownerUUID,
+                    "grudge_items", "conversion_ratio", Config.getGrudgeConversionRatio());
             grudgeRate = totalLost * conversionRatio;
             InterceptorDebug.logStateChange(wingman, "积怨充能: healthLost=" + String.format("%.1f", healthLost)
                     + " shieldLost=" + String.format("%.1f", shieldLost)

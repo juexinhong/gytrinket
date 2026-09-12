@@ -10,7 +10,9 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @Mod.EventBusSubscriber(modid = com.gy_mod.gy_trinket.gytrinket.MODID)
@@ -23,6 +25,8 @@ public class BurnManager {
     private static final Map<String, Long> BURN_COOLDOWN = new HashMap<>();
     private static final long BURN_COOLDOWN_TICKS = 5;
     private static long lastProcessedTick = -1;
+    /** 两段式灼烧伤害施加中窗口（目标UUID），供减伤后致死归属事件识别 */
+    private static final Set<UUID> BURN_APPLYING = new HashSet<>();
 
     private static String getCooldownKey(UUID targetUUID, String sourceName) {
         return targetUUID.toString() + "_" + sourceName;
@@ -111,65 +115,20 @@ public class BurnManager {
             completeBurn(burnData, target);
             return;
         }
-
-        if (!burnData.isKillCheckPerformed()) {
-            if (canKillTarget(burnData, target)) {
-                executeEarlyKill(burnData, target);
-            }
-        }
     }
 
     private static void completeBurn(BurnData burnData, LivingEntity target) {
         float finalDamage = Math.max(MIN_BURN_DAMAGE, burnData.getAccumulatedDamage());
-        Entity primaryInitiator = burnData.getPrimaryInitiator();
 
-        // 不足以斩杀时不归属攻击者，足够斩杀时根据斩杀归属开关决定
-        boolean canKill = finalDamage >= target.getHealth();
-        Entity initiator = canKill && isExecuteAttributionEnabled(primaryInitiator) ? primaryInitiator : null;
-
-        applyBurnDamage(target, finalDamage, initiator);
+        // 归属不再由原始伤害预判（原始伤害会被护甲/免伤削减导致误判）：
+        // 施加时不带攻击者（避免非致死时触发仇恨），
+        // 由 ExecuteAttributionHandler 按所有减伤流程后的实际致死结果归属
+        applyBurnDamage(target, finalDamage);
 
         burnData.reset();
     }
 
-    private static void executeEarlyKill(BurnData burnData, LivingEntity target) {
-        float finalDamage = burnData.getAccumulatedDamageOrMin();
-        Entity primaryInitiator = burnData.getPrimaryInitiator();
-
-        // 斩杀时根据斩杀归属开关决定是否归属攻击者
-        Entity initiator = isExecuteAttributionEnabled(primaryInitiator) ? primaryInitiator : null;
-        applyBurnDamage(target, finalDamage, initiator);
-
-        burnData.reset();
-    }
-
-    /**
-     * 判断斩杀归属是否启用
-     * 如果 primaryInitiator 是玩家，检查该玩家的斩杀归属开关
-     * 如果 primaryInitiator 是无人机的附属实体，检查其归属玩家的斩杀归属开关
-     */
-    private static boolean isExecuteAttributionEnabled(Entity initiator) {
-        if (initiator instanceof net.minecraft.world.entity.player.Player player) {
-            return com.gy_mod.gy_trinket.core.attack_mode.ExecuteToggleManager.isExecuteEnabled(player);
-        }
-        if (initiator instanceof com.gy_mod.gy_trinket.core.entity.construct.drone.DroneConstructEntity drone) {
-            net.minecraft.world.entity.Entity owner = drone.getOwner();
-            if (owner instanceof net.minecraft.world.entity.player.Player player) {
-                return com.gy_mod.gy_trinket.core.attack_mode.ExecuteToggleManager.isExecuteEnabled(player);
-            }
-        }
-        return true;
-    }
-
-    private static boolean canKillTarget(BurnData burnData, LivingEntity target) {
-        if (target.getHealth() <= burnData.getAccumulatedDamageOrMin()) {
-            return true;
-        }
-        burnData.setKillCheckPerformed();
-        return false;
-    }
-
-    private static void applyBurnDamage(LivingEntity target, float damage, Entity initiator) {
+    private static void applyBurnDamage(LivingEntity target, float damage) {
         if (target.level().isClientSide) {
             return;
         }
@@ -177,13 +136,36 @@ public class BurnManager {
         float halfDamage = damage / 2f;
 
         com.gy_mod.gy_trinket.core.modifier.player.knockback.KnockbackManager.markNoKnockback(target.getUUID());
-        target.invulnerableTime = 0;
-        target.hurt(ModDamageTypes.getBurnDamageSource(target.level(), initiator), halfDamage);
 
-        target.invulnerableTime = 0;
-        target.hurt(target.damageSources().magic(), halfDamage);
+        // 两段式伤害（灼烧伤害源半份 + magic 半份）施加期间打标记，
+        // 供 ExecuteAttributionHandler 识别 magic 半份属于灼烧并按实际致死结果归属
+        BURN_APPLYING.add(target.getUUID());
+        try {
+            target.invulnerableTime = 0;
+            target.hurt(ModDamageTypes.getBurnDamageSource(target.level(), null), halfDamage);
+
+            target.invulnerableTime = 0;
+            target.hurt(target.damageSources().magic(), halfDamage);
+        } finally {
+            BURN_APPLYING.remove(target.getUUID());
+        }
 
         spawnBurnParticles(target);
+    }
+
+    /**
+     * 灼烧伤害是否正在施加中（两段式施加窗口，供减伤后致死归属事件识别）
+     */
+    public static boolean isBurnApplying(LivingEntity target) {
+        return BURN_APPLYING.contains(target.getUUID());
+    }
+
+    /**
+     * 获取当前灼烧的归属发起者（贡献最多的灼烧源，供减伤后致死归属事件解析）
+     */
+    public static Entity getCurrentBurnInitiator(LivingEntity target) {
+        BurnData burnData = getBurnData(target);
+        return burnData != null ? burnData.getPrimaryInitiator() : null;
     }
 
     @SuppressWarnings("resource")

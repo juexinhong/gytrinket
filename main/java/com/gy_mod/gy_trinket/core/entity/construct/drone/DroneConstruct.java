@@ -37,11 +37,28 @@ public class DroneConstruct extends AbstractConstruct {
     private final List<IDroneEffect> effects = new ArrayList<>();
     private boolean commander = false;
 
+    /** 实例键（来源物品 ID），非实例化路径为 null */
+    @javax.annotation.Nullable
+    private final String instanceKey;
+
     public DroneConstruct(String constructId, DroneArrayType arrayType, List<IDroneEffect> effects,
                           net.minecraft.world.entity.LivingEntity owner, double maxHealth) {
+        this(constructId, arrayType, effects, owner, maxHealth, null);
+    }
+
+    public DroneConstruct(String constructId, DroneArrayType arrayType, List<IDroneEffect> effects,
+                          net.minecraft.world.entity.LivingEntity owner, double maxHealth,
+                          @javax.annotation.Nullable String instanceKey) {
         super(constructId, owner, maxHealth);
         this.arrayType = arrayType;
         this.effects.addAll(effects);
+        this.instanceKey = instanceKey;
+    }
+
+    /** 实例键（来源物品 ID），非实例化路径为 null */
+    @javax.annotation.Nullable
+    public String getInstanceKey() {
+        return instanceKey;
     }
 
     /**
@@ -71,6 +88,16 @@ public class DroneConstruct extends AbstractConstruct {
 
         Vec3 spawnPos = owner.position().add(0, 2, 0);
         drone.setPos(spawnPos.x, spawnPos.y, spawnPos.z);
+
+        // 先应用基础属性（基础最大生命/攻击等）再填充当前生命：
+        // MAX_HEALTH 注册默认 5.0，若直接在 addFreshEntity 前 setHealth(getMaxHealth())
+        // 会停留在 5 而非物品级/Config 定义值（与恢复路径 DroneConstructTypes.restore 的时序保持一致）
+        drone.setBaseMaxHealth(drone.getBaseMaxHealth());
+        var maxHealthAttr = drone.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.MAX_HEALTH);
+        if (maxHealthAttr != null) {
+            maxHealthAttr.setBaseValue(drone.getBaseMaxHealth());
+        }
+        drone.refreshConstructAttributes();
 
         // 设置生命值为最大生命值
         drone.setHealth(drone.getMaxHealth());
@@ -128,6 +155,7 @@ public class DroneConstruct extends AbstractConstruct {
         DroneConstructData data = new DroneConstructData(
                 constructId, entityUUID, maxHealth, arrayType
         );
+        data.setInstanceKey(instanceKey);
         data.setHasAssaultModule(isAssaultDrone());
         data.setHasDefenseModule(isDefenseDrone());
         return data;

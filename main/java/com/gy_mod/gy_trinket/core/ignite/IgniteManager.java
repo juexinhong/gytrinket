@@ -34,6 +34,8 @@ public class IgniteManager {
 
     /** 实体点燃数据映射（目标UUID -> 点燃数据列表） */
     private static final Map<UUID, List<IgniteData>> ENTITY_IGNITE_DATA = new HashMap<>();
+    /** 点燃伤害施加中窗口（目标UUID -> 施加中的点燃数据），供减伤后致死归属事件解析 */
+    private static final Map<UUID, IgniteData> IGNITE_APPLYING = new HashMap<>();
     /** 上次处理的游戏刻（用于防止同一刻重复处理） */
     private static long lastProcessedTick = -1;
 
@@ -270,34 +272,31 @@ public class IgniteManager {
         }
 
         float damage = igniteData.getDamagePerTick();
-        Entity initiator = igniteData.getInitiator();
 
-        // 不足以斩杀时不归属攻击者，足够斩杀时根据斩杀归属开关决定
-        boolean canKill = damage >= target.getHealth();
-        Entity actualInitiator = canKill && isExecuteAttributionEnabled(initiator) ? initiator : null;
-
+        // 归属不再由原始伤害预判（原始伤害会被护甲/免伤削减导致误判）：
+        // 施加时不带攻击者（避免非致死时触发仇恨），
+        // 由 ExecuteAttributionHandler 按所有减伤流程后的实际致死结果归属
         com.gy_mod.gy_trinket.core.modifier.player.knockback.KnockbackManager.markNoKnockback(target.getUUID());
-        target.invulnerableTime = 0;
-        target.hurt(ModDamageTypes.getOnFireDamageSource(target.level(), actualInitiator), damage);
-        target.invulnerableTime = 0;
+
+        // 施加期间打标记，供 ExecuteAttributionHandler 解析点燃归属发起者
+        IGNITE_APPLYING.put(target.getUUID(), igniteData);
+        try {
+            target.invulnerableTime = 0;
+            target.hurt(ModDamageTypes.getOnFireDamageSource(target.level(), null), damage);
+            target.invulnerableTime = 0;
+        } finally {
+            IGNITE_APPLYING.remove(target.getUUID());
+        }
 
         spawnIgniteParticles(target);
     }
 
     /**
-     * 判断斩杀归属是否启用
+     * 获取正在施加的点燃伤害的归属发起者（供减伤后致死归属事件解析）
      */
-    private static boolean isExecuteAttributionEnabled(Entity initiator) {
-        if (initiator instanceof net.minecraft.world.entity.player.Player player) {
-            return com.gy_mod.gy_trinket.core.attack_mode.ExecuteToggleManager.isExecuteEnabled(player);
-        }
-        if (initiator instanceof com.gy_mod.gy_trinket.core.entity.construct.drone.DroneConstructEntity drone) {
-            net.minecraft.world.entity.Entity owner = drone.getOwner();
-            if (owner instanceof net.minecraft.world.entity.player.Player player) {
-                return com.gy_mod.gy_trinket.core.attack_mode.ExecuteToggleManager.isExecuteEnabled(player);
-            }
-        }
-        return true;
+    public static Entity getCurrentIgniteInitiator(LivingEntity target) {
+        IgniteData igniteData = IGNITE_APPLYING.get(target.getUUID());
+        return igniteData != null ? igniteData.getInitiator() : null;
     }
 
     /**

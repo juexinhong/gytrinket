@@ -21,9 +21,25 @@ public class SwarmConstruct extends AbstractConstruct {
     /** 单实例等阶：0=基础 1=标准 2=高阶 */
     private final int tier;
 
+    /** 实例键（来源物品 ID），非实例化路径为 null */
+    @javax.annotation.Nullable
+    private final String instanceKey;
+
     public SwarmConstruct(String constructId, net.minecraft.world.entity.LivingEntity owner, double maxHealth, int tier) {
+        this(constructId, owner, maxHealth, tier, null);
+    }
+
+    public SwarmConstruct(String constructId, net.minecraft.world.entity.LivingEntity owner, double maxHealth, int tier,
+                          @javax.annotation.Nullable String instanceKey) {
         super(constructId, owner, maxHealth);
         this.tier = tier;
+        this.instanceKey = instanceKey;
+    }
+
+    /** 实例键（来源物品 ID），非实例化路径为 null */
+    @javax.annotation.Nullable
+    public String getInstanceKey() {
+        return instanceKey;
     }
 
     public int getTier() {
@@ -46,6 +62,7 @@ public class SwarmConstruct extends AbstractConstruct {
     public ConstructData createData(UUID entityUUID) {
         SwarmConstructData data = new SwarmConstructData(constructId, entityUUID, maxHealth);
         data.setTier(tier);
+        data.setInstanceKey(instanceKey);
         return data;
     }
 

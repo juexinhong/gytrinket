@@ -19,6 +19,11 @@ public interface IShieldType {
 
     default void onTick(Player player) {}
 
+    /** 每实例 tick：source 为产生该实例的物品（护盾类型数值按物品实例独立取值）；默认委托玩家级 onTick */
+    default void onTick(Player player, ItemStack source) {
+        onTick(player);
+    }
+
     default boolean shouldReflectProjectile(Player player, Projectile projectile) {
         return false;
     }

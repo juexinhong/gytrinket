@@ -40,12 +40,24 @@ public class SwarmConstructTypes {
                 .buildTime(Config.getSwarmBuildTime())
                 .maxHealth(Config.getSwarmBaseHealth())
                 .maxCount(Config.getSwarmMaxCount())
-                .constructFactory((player, type) -> {
-                    int tier = rollTier();
-                    return new SwarmConstruct(type.getId(), player, type.getMaxHealth(), tier);
-                })
+                .constructFactory((player, type) -> createSwarmConstruct(player, type, null))
                 .entityRestorer(new SwarmEntityRestorer())
                 .build());
+    }
+
+    /**
+     * 创建蜂群构建体（类型工厂与实例构建器共用）。
+     *
+     * @param player      玩家
+     * @param type        蜂群构造体类型（可为 null，内部回退 Config 基础生命）
+     * @param instanceKey 实例键（来源物品 ID）；null 表示非实例化路径
+     */
+    public static SwarmConstruct createSwarmConstruct(net.minecraft.world.entity.player.Player player,
+                                                      @javax.annotation.Nullable ConstructType type,
+                                                      @javax.annotation.Nullable String instanceKey) {
+        int tier = rollTier();
+        double maxHealth = type != null ? type.getMaxHealth() : Config.getSwarmBaseHealth();
+        return new SwarmConstruct(SWARM, player, maxHealth, tier, instanceKey);
     }
 
     private static int rollTier() {
@@ -67,6 +79,11 @@ public class SwarmConstructTypes {
         public Entity restore(ServerPlayer player, ConstructData data, ServerLevel level) {
             if (!(data instanceof SwarmConstructData swarmData)) return null;
 
+            // 实例化改造：旧存档无实例键的蜂群不恢复，
+            // 交给 TickScheduler 的实例构建循环按当前装备的实例物品自动补建
+            String instanceKey = swarmData.getInstanceKey();
+            if (instanceKey == null) return null;
+
             SwarmConstructEntity swarmEntity = new SwarmConstructEntity(ModEntities.SWARM_CONSTRUCT.get(), level);
 
             String currentDimension = player.level().dimension().location().toString();
@@ -77,6 +94,7 @@ public class SwarmConstructTypes {
             }
 
             swarmEntity.setOwnerUUID(player.getUUID());
+            swarmEntity.setInstanceKey(instanceKey);
             swarmEntity.setTier(swarmData.getTier());
             swarmEntity.applyAttributeModifiers();
 

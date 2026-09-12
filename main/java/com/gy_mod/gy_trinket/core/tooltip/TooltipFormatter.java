@@ -9,7 +9,7 @@ public interface TooltipFormatter {
 
     /**
      * 返回格式化参数数组，用于String.format()
+     * @param itemId 当前悬停物品ID（用于读取物品级机制数值覆盖）
      */
-    Object[] formatParameters();
+    Object[] formatParameters(String itemId);
 }
-

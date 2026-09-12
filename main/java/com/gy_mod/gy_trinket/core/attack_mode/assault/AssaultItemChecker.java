@@ -37,7 +37,6 @@ public class AssaultItemChecker {
         boolean hasChargedAttack = PlayerStoreUtils.hasActiveItem(player, Config::isChargedAttackItem);
         boolean hasElectricDischarge = PlayerStoreUtils.hasActiveItem(player, Config::isElectricDischargeItem);
 
-        // 点射由 combo 属性决定
         boolean hasBurstFire = AttributeManager.getPlayerAttribute(playerUUID, "combo") > 0;
 
         AssaultManager.setHasAssault(playerUUID, hasAssault);

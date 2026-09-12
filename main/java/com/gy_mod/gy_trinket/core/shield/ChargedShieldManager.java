@@ -3,6 +3,7 @@ package com.gy_mod.gy_trinket.core.shield;
 import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
 import com.gy_mod.gy_trinket.core.attack_mode.charged_attack.ChargedAttackManager;
+import com.gy_mod.gy_trinket.core.defs.DefsManager;
 import com.gy_mod.gy_trinket.gytrinket;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
@@ -108,9 +109,13 @@ public class ChargedShieldManager {
         int releaseDelay = PLAYER_RELEASE_DELAY.getOrDefault(uuid, 0);
 
         if (isCharging) {
-            // 充能中：线性过渡到目标值
+            // 充能中：线性过渡到目标值（物品级数值覆盖：取首个生效物品的覆盖值，未覆盖回退 Config 默认）
             double chargeValue = ChargedAttackManager.getChargeValue(player);
-            double targetBonus = Math.min(chargeValue * Config.getChargedShieldChargeRatio(), Config.getChargedShieldMaxBonus());
+            double chargeRatio = DefsManager.resolveMechanicValue(player.getServer(), uuid,
+                    "charged_shield_items", "charge_ratio", Config.getChargedShieldChargeRatio());
+            double maxBonus = DefsManager.resolveMechanicValue(player.getServer(), uuid,
+                    "charged_shield_items", "max_bonus", Config.getChargedShieldMaxBonus());
+            double targetBonus = Math.min(chargeValue * chargeRatio, maxBonus);
 
             // 充能中清除延迟计时器
             if (releaseDelay > 0) {
@@ -119,7 +124,8 @@ public class ChargedShieldManager {
             }
 
             // 线性过渡
-            double transitionRate = Config.getChargedShieldDecayRate();
+            double transitionRate = DefsManager.resolveMechanicValue(player.getServer(), uuid,
+                    "charged_shield_items", "decay_rate", Config.getChargedShieldDecayRate());
             if (currentBonus < targetBonus) {
                 currentBonus = Math.min(currentBonus + transitionRate, targetBonus);
             } else if (currentBonus > targetBonus) {
@@ -135,7 +141,8 @@ public class ChargedShieldManager {
             }
         } else if (currentBonus > 0) {
             // 延迟结束后：线性过渡到0
-            double transitionRate = Config.getChargedShieldDecayRate();
+            double transitionRate = DefsManager.resolveMechanicValue(player.getServer(), uuid,
+                    "charged_shield_items", "decay_rate", Config.getChargedShieldDecayRate());
             currentBonus = Math.max(0, currentBonus - transitionRate);
 
             if (currentBonus <= 0) {

@@ -41,11 +41,8 @@ public class AuraRenderer {
         double currentShield = ShieldHudRenderer.getInstance().getCurrentShield();
         if (currentShield <= 0) return;
 
-        double displayAlpha = AuraClientData.getDisplayAlpha();
-        if (displayAlpha <= 0.001) return;
-
-        float alpha = (float) displayAlpha;
-        double size = AuraClientData.getDisplaySize();
+        List<AuraClientData.State> states = AuraClientData.getRenderStates();
+        if (states.isEmpty()) return;
 
         float pt = event.getPartialTick();
         Vec3 camPos = event.getCamera().getPosition();
@@ -66,17 +63,21 @@ public class AuraRenderer {
         BufferBuilder bufferBuilder = Tesselator.getInstance().getBuilder();
         bufferBuilder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
 
-        float halfSize = (float) size / 2.0f;
+        // 每个光环实例各自独立绘制贴图（各用各的尺寸与透明度）
+        for (AuraClientData.State state : states) {
+            float alpha = (float) state.displayAlpha;
+            float halfSize = (float) state.displaySize / 2.0f;
 
-        for (double[] pos : renderPositions) {
-            float px = (float) pos[0];
-            float py = (float) pos[1];
-            float pz = (float) pos[2];
+            for (double[] pos : renderPositions) {
+                float px = (float) pos[0];
+                float py = (float) pos[1];
+                float pz = (float) pos[2];
 
-            bufferBuilder.vertex(matrix, px - halfSize, py, pz - halfSize).uv(0.0f, 0.0f).color(1.0f, 1.0f, 1.0f, alpha).endVertex();
-            bufferBuilder.vertex(matrix, px - halfSize, py, pz + halfSize).uv(0.0f, 1.0f).color(1.0f, 1.0f, 1.0f, alpha).endVertex();
-            bufferBuilder.vertex(matrix, px + halfSize, py, pz + halfSize).uv(1.0f, 1.0f).color(1.0f, 1.0f, 1.0f, alpha).endVertex();
-            bufferBuilder.vertex(matrix, px + halfSize, py, pz - halfSize).uv(1.0f, 0.0f).color(1.0f, 1.0f, 1.0f, alpha).endVertex();
+                bufferBuilder.vertex(matrix, px - halfSize, py, pz - halfSize).uv(0.0f, 0.0f).color(1.0f, 1.0f, 1.0f, alpha).endVertex();
+                bufferBuilder.vertex(matrix, px - halfSize, py, pz + halfSize).uv(0.0f, 1.0f).color(1.0f, 1.0f, 1.0f, alpha).endVertex();
+                bufferBuilder.vertex(matrix, px + halfSize, py, pz + halfSize).uv(1.0f, 1.0f).color(1.0f, 1.0f, 1.0f, alpha).endVertex();
+                bufferBuilder.vertex(matrix, px + halfSize, py, pz - halfSize).uv(1.0f, 0.0f).color(1.0f, 1.0f, 1.0f, alpha).endVertex();
+            }
         }
 
         BufferUploader.drawWithShader(bufferBuilder.end());

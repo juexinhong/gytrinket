@@ -93,8 +93,12 @@ public class SelfDestructBehavior implements IDroneSpecialBehavior {
         if (construct.level().isClientSide) return;
 
         float maxHealth = construct.getMaxHealth();
-        double baseDamage = Config.SELF_DESTRUCT_BASE_DAMAGE.get();
-        double baseRadius = Config.SELF_DESTRUCT_BASE_RADIUS.get();
+        UUID ownerUUID = construct instanceof IConstructEntity cEntity ? cEntity.getOwnerUUID() : null;
+        var server = construct.level().getServer();
+        double baseDamage = DefsManager.resolveMechanicValue(server, ownerUUID,
+                "self_destruct_items", "base_damage", Config.SELF_DESTRUCT_BASE_DAMAGE.get());
+        double baseRadius = DefsManager.resolveMechanicValue(server, ownerUUID,
+                "self_destruct_items", "base_radius", Config.SELF_DESTRUCT_BASE_RADIUS.get());
         double damagePerHealth = Config.SELF_DESTRUCT_DAMAGE_PER_MAX_HEALTH.get();
         double radiusPerHealth = Config.SELF_DESTRUCT_RADIUS_PER_MAX_HEALTH.get();
 
@@ -103,7 +107,6 @@ public class SelfDestructBehavior implements IDroneSpecialBehavior {
 
         Vec3 pos = construct.position();
 
-        UUID ownerUUID = construct instanceof IConstructEntity cEntity ? cEntity.getOwnerUUID() : null;
         Entity owner = ownerUUID != null ? construct.level().getPlayerByUUID(ownerUUID) : null;
         Player playerOwner = owner instanceof Player p ? p : null;
         DamageSource damageSource = construct.damageSources().explosion(construct, owner);

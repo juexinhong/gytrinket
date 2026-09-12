@@ -1,12 +1,10 @@
 package com.gy_mod.gy_trinket.core.entity.construct.drone;
 
-import com.gy_mod.gy_trinket.core.attack_mode.ExecuteToggleManager;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructAggroLockManager;
 import com.gy_mod.gy_trinket.core.damage.ModDamageTypes;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 
 import javax.annotation.Nullable;
@@ -40,27 +38,6 @@ public class ModDamageSources {
         // 守卫阵列仇恨集中：代理到圆弧中间的防御无人机
         LivingEntity aggroProxy = ConstructAggroLockManager.getGuardArrayAggroProxy(attacker);
         return ModDamageTypes.getDroneBulletDamageSource(level, bullet, aggroProxy);
-    }
-
-    /**
-     * 获取无人机斩杀伤害源
-     * <p>
-     * 当斩杀归属启用时：伤害归属玩家（爆炸伤害源），可触发玩家击杀效果
-     * 当斩杀归属禁用时：伤害量不变，但伤害源不归属玩家
-     *
-     * @param target      目标实体
-     * @param damageOwner 伤害归属玩家（可为null）
-     * @param attacker    实际攻击者（无人机实体）
-     * @return 斩杀伤害源
-     */
-    public static DamageSource getExecuteDamageSource(LivingEntity target, @Nullable Player damageOwner, @Nullable Entity attacker) {
-        if (damageOwner != null && ExecuteToggleManager.isExecuteEnabled(damageOwner)) {
-            return target.damageSources().explosion(null, damageOwner);
-        } else if (attacker instanceof LivingEntity livingAttacker) {
-            return target.damageSources().mobAttack(livingAttacker);
-        } else {
-            return target.damageSources().indirectMagic(attacker, attacker);
-        }
     }
 
     /**

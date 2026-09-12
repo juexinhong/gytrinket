@@ -4,6 +4,7 @@ import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.core.shield.ShieldManager;
 import com.gy_mod.gy_trinket.core.shield_transfer.ShieldTransferManager;
 import com.gy_mod.gy_trinket.core.damage.ModDamageTypes;
+import com.gy_mod.gy_trinket.core.defs.DefsManager;
 import com.gy_mod.gy_trinket.storage.PlayerStoreUtils;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.damagesource.DamageType;
@@ -50,9 +51,12 @@ public class BarrierHandler implements DamageHandler {
             return;
         }
 
-        float originalDamage = context.getOriginalDamage();
-        float maxDamage = (float) Config.BARRIER_MAX_DAMAGE.get().doubleValue();
-        if (originalDamage > maxDamage) {
+        // 基于当前伤害（可能已被前序处理器如适应性装甲减伤）向下钳制，
+        // 只在伤害仍高于上限时钳制，避免把已减免的伤害重新抬高覆盖掉
+        float currentDamage = context.getCurrentDamage();
+        float maxDamage = (float) DefsManager.resolveMechanicValue(player.getServer(), playerUUID,
+                "barrier_items", "barrier_max_damage", Config.BARRIER_MAX_DAMAGE.get().doubleValue());
+        if (currentDamage > maxDamage) {
             context.setCurrentDamage(maxDamage);
         }
     }

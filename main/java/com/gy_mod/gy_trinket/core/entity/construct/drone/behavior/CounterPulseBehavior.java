@@ -96,8 +96,8 @@ public class CounterPulseBehavior implements IDroneSpecialBehavior {
     private void triggerCounterPulse(DroneConstructEntity drone, DroneCounterPulseInfo info, boolean isDamageTriggered) {
         if (!(drone.level() instanceof ServerLevel serverLevel)) return;
 
-        double explosionRadius = calculateExplosionRadius(info.chargeLevel);
-        float explosionDamage = calculateExplosionDamage(info.chargeLevel);
+        double explosionRadius = calculateExplosionRadius(drone, info.chargeLevel);
+        float explosionDamage = calculateExplosionDamage(drone, info.chargeLevel);
 
         List<LivingEntity> enemies = getEnemiesInRange(drone, explosionRadius);
 
@@ -138,7 +138,7 @@ public class CounterPulseBehavior implements IDroneSpecialBehavior {
     }
 
     private boolean hasEnemiesInRange(DroneConstructEntity drone, DroneCounterPulseInfo info) {
-        double radius = calculateExplosionRadius(info.chargeLevel);
+        double radius = calculateExplosionRadius(drone, info.chargeLevel);
         return !getEnemiesInRange(drone, radius).isEmpty();
     }
 
@@ -157,13 +157,15 @@ public class CounterPulseBehavior implements IDroneSpecialBehavior {
         return enemies;
     }
 
-    private double calculateExplosionRadius(int chargeLevel) {
-        double baseRadius = Config.COUNTER_PULSE_BASE_EXPLOSION_RADIUS.get();
+    private double calculateExplosionRadius(DroneConstructEntity drone, int chargeLevel) {
+        double baseRadius = DefsManager.resolveMechanicValue(drone.level().getServer(), drone.getOwnerUUID(),
+                "counter_pulse_items", "explosion_radius", Config.COUNTER_PULSE_BASE_EXPLOSION_RADIUS.get());
         return baseRadius * calculateChargeMultiplier(chargeLevel);
     }
 
-    private float calculateExplosionDamage(int chargeLevel) {
-        float baseDamage = Config.COUNTER_PULSE_BASE_EXPLOSION_DAMAGE.get().floatValue();
+    private float calculateExplosionDamage(DroneConstructEntity drone, int chargeLevel) {
+        float baseDamage = (float) DefsManager.resolveMechanicValue(drone.level().getServer(), drone.getOwnerUUID(),
+                "counter_pulse_items", "explosion_damage", Config.COUNTER_PULSE_BASE_EXPLOSION_DAMAGE.get().doubleValue());
         return baseDamage * (float) calculateChargeMultiplier(chargeLevel);
     }
 

@@ -17,14 +17,14 @@ public class ConfigDefsSyncMessage {
     private final Map<String, List<String>> itemToSets;
     private final List<DefsManager.TooltipRuleDef> tooltipRules;
     private final Map<String, DefsManager.SpecialMechanicOverride> specialMechanicOverrides;
-    private final Map<String, List<String>> shieldTypeOverrides;
+    private final Map<String, DefsManager.ShieldTypeOverride> shieldTypeOverrides;
 
     public ConfigDefsSyncMessage(Map<String, Boolean> shieldTypes,
                                  List<String> specialMechanicItems,
                                  Map<String, List<String>> itemToSets,
                                  List<DefsManager.TooltipRuleDef> tooltipRules,
                                  Map<String, DefsManager.SpecialMechanicOverride> specialMechanicOverrides,
-                                 Map<String, List<String>> shieldTypeOverrides) {
+                                 Map<String, DefsManager.ShieldTypeOverride> shieldTypeOverrides) {
         this.shieldTypes = shieldTypes;
         this.specialMechanicItems = specialMechanicItems;
         this.itemToSets = itemToSets;
@@ -79,14 +79,57 @@ public class ConfigDefsSyncMessage {
             for (String s : e.getValue().sets()) {
                 buf.writeUtf(s);
             }
+            // values 段：set 名 -> (paramKey -> 覆盖值 + 是否可叠加)
+            Map<String, Map<String, DefsManager.ParamValue>> values = e.getValue().values();
+            int vn = values == null ? 0 : values.size();
+            buf.writeVarInt(vn);
+            if (values != null) {
+                for (var ve : values.entrySet()) {
+                    buf.writeUtf(ve.getKey());
+                    Map<String, DefsManager.ParamValue> params = ve.getValue();
+                    int pn = params == null ? 0 : params.size();
+                    buf.writeVarInt(pn);
+                    if (params != null) {
+                        for (var pe : params.entrySet()) {
+                            buf.writeUtf(pe.getKey());
+                            buf.writeDouble(pe.getValue().value());
+                            buf.writeBoolean(pe.getValue().stackable());
+                        }
+                    }
+                }
+            }
         }
         // shieldTypeOverrides
         buf.writeVarInt(shieldTypeOverrides.size());
         for (var e : shieldTypeOverrides.entrySet()) {
             buf.writeUtf(e.getKey());
-            buf.writeVarInt(e.getValue().size());
-            for (String s : e.getValue()) {
+            List<String> types = e.getValue().types();
+            buf.writeVarInt(types.size());
+            for (String s : types) {
                 buf.writeUtf(s);
+            }
+            List<String> excl = e.getValue().exclusiveTypes();
+            buf.writeVarInt(excl.size());
+            for (String s : excl) {
+                buf.writeUtf(s);
+            }
+            // values 段：护盾类型 -> (paramKey -> 覆盖值)；护盾类型数值为"每物品实例独立"，无叠/单语义
+            Map<String, Map<String, Double>> values = e.getValue().values();
+            int svn = values == null ? 0 : values.size();
+            buf.writeVarInt(svn);
+            if (values != null) {
+                for (var ve : values.entrySet()) {
+                    buf.writeUtf(ve.getKey());
+                    Map<String, Double> params = ve.getValue();
+                    int pn = params == null ? 0 : params.size();
+                    buf.writeVarInt(pn);
+                    if (params != null) {
+                        for (var pe : params.entrySet()) {
+                            buf.writeUtf(pe.getKey());
+                            buf.writeDouble(pe.getValue());
+                        }
+                    }
+                }
             }
         }
     }
@@ -141,18 +184,50 @@ public class ConfigDefsSyncMessage {
             for (int j = 0; j < m; j++) {
                 sets.add(buf.readUtf());
             }
-            this.specialMechanicOverrides.put(k, removed ? DefsManager.SpecialMechanicOverride.removedState() : DefsManager.SpecialMechanicOverride.declared(sets));
+            // values 段：set 名 -> (paramKey -> 覆盖值 + 是否可叠加)
+            Map<String, Map<String, DefsManager.ParamValue>> values = new HashMap<>();
+            int vn = buf.readVarInt();
+            for (int j = 0; j < vn; j++) {
+                String setName = buf.readUtf();
+                int pn = buf.readVarInt();
+                Map<String, DefsManager.ParamValue> params = new HashMap<>();
+                for (int x = 0; x < pn; x++) {
+                    String paramKey = buf.readUtf();
+                    params.put(paramKey, new DefsManager.ParamValue(buf.readDouble(), buf.readBoolean()));
+                }
+                values.put(setName, params);
+            }
+            this.specialMechanicOverrides.put(k, removed
+                    ? DefsManager.SpecialMechanicOverride.removedState()
+                    : DefsManager.SpecialMechanicOverride.declared(sets, values));
         }
         n = buf.readVarInt();
         this.shieldTypeOverrides = new HashMap<>();
         for (int i = 0; i < n; i++) {
             String k = buf.readUtf();
             int m = buf.readVarInt();
-            List<String> v = new ArrayList<>();
+            List<String> types = new ArrayList<>();
             for (int j = 0; j < m; j++) {
-                v.add(buf.readUtf());
+                types.add(buf.readUtf());
             }
-            this.shieldTypeOverrides.put(k, v);
+            int x = buf.readVarInt();
+            List<String> excl = new ArrayList<>();
+            for (int j = 0; j < x; j++) {
+                excl.add(buf.readUtf());
+            }
+            // values 段：护盾类型 -> (paramKey -> 覆盖值)；护盾类型数值为"每物品实例独立"，无叠/单语义
+            Map<String, Map<String, Double>> shieldValues = new HashMap<>();
+            int svn = buf.readVarInt();
+            for (int j = 0; j < svn; j++) {
+                String typeName = buf.readUtf();
+                int pn = buf.readVarInt();
+                Map<String, Double> params = new HashMap<>();
+                for (int y = 0; y < pn; y++) {
+                    params.put(buf.readUtf(), buf.readDouble());
+                }
+                shieldValues.put(typeName, params);
+            }
+            this.shieldTypeOverrides.put(k, new DefsManager.ShieldTypeOverride(types, excl, shieldValues));
         }
     }
 

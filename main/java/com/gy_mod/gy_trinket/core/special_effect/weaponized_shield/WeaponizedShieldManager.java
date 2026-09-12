@@ -4,6 +4,7 @@ import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
 import com.gy_mod.gy_trinket.core.shield.DisableSystem;
 import com.gy_mod.gy_trinket.core.entity.construct.HostileTargetManager;
+import com.gy_mod.gy_trinket.core.defs.DefsManager;
 import com.gy_mod.gy_trinket.core.shield.ShieldManager;
 import com.gy_mod.gy_trinket.core.shield_transfer.ShieldTransferManager;
 import com.gy_mod.gy_trinket.core.vulnerability.VulnerabilityApplyEvent;
@@ -80,11 +81,13 @@ public class WeaponizedShieldManager {
         }
 
         double shieldEffectRadius = AttributeManager.getGroupAttribute(playerUUID, "shield_effect_radius");
-        double baseRadius = Config.WEAPONIZED_SHIELD_RADIUS.get();
+        double baseRadius = DefsManager.resolveMechanicValue(player.getServer(), playerUUID,
+                "weaponized_shield_items", "radius", Config.WEAPONIZED_SHIELD_RADIUS.get());
         double radius = baseRadius * shieldEffectRadius;
 
         double shieldEffect = AttributeManager.getGroupAttribute(playerUUID, "shield_effect");
-        float baseVulnerability = Config.WEAPONIZED_SHIELD_VULNERABILITY.get().floatValue();
+        float baseVulnerability = (float) DefsManager.resolveMechanicValue(player.getServer(), playerUUID,
+                "weaponized_shield_items", "vulnerability", Config.WEAPONIZED_SHIELD_VULNERABILITY.get().doubleValue());
         float vulnerabilityValue = (float)(baseVulnerability * shieldEffect);
 
         Set<UUID> currentTargets = new HashSet<>();

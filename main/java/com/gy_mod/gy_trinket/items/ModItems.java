@@ -207,7 +207,7 @@ public class ModItems {
     public static final RegistryObject<Item> SUPPRESSION_PART = ITEMS.register("suppression_part", () -> new Item(new Item.Properties())); // 压制零件
 
     // 代币（随机构建代币机制，默认代币；不可合成、无战利品掉落）
-    public static final RegistryObject<Item> TOKEN = ITEMS.register("token", () -> new Item(new Item.Properties())); // 代币
+    public static final RegistryObject<Item> TOKEN = ITEMS.register("token", () -> new TokenItem(new Item.Properties())); // 代币（掉落物免疫常规销毁+头顶遮挡时穿透上浮）
 
     // 战魂（独立物品，暂无装备逻辑，保留数据驱动兼容）
     public static final RegistryObject<Item> WAR_SOUL = ITEMS.register("war_soul", () -> new Item(new Item.Properties())); // 战魂

@@ -2,6 +2,7 @@ package com.gy_mod.gy_trinket.core.special_effect.conversion;
 
 import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
+import com.gy_mod.gy_trinket.core.defs.DefsManager;
 import com.gy_mod.gy_trinket.core.shield.DisableSystem;
 import com.gy_mod.gy_trinket.core.modifier.player.health.PlayerHealthManager;
 import com.gy_mod.gy_trinket.event.PlayerAttributesCalculatedEvent;
@@ -97,7 +98,8 @@ public class ConversionEffectManager {
         double healthMultiplier = 1.0;
         double shieldMultiplier = 1.0;
 
-        double conversionRatio = Config.CONVERSION_RATIO.get();
+        double conversionRatio = DefsManager.resolveMechanicValue(ServerLifecycleHooks.getCurrentServer(), playerUUID,
+                "conversion_items", "conversion_ratio", Config.CONVERSION_RATIO.get());
 
         if (health <= shield) {
             // 生命值 <= 护盾值：将生命转化给护盾

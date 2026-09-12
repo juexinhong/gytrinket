@@ -28,15 +28,12 @@ public class ClientNetworkHandler {
         store.loadFromNBT(tag);
     }
 
-    public static void handleSyncShieldMessage(double currentShield, double maxShield, int currentCooldown, int maxCooldown, double adaptiveArmorReduction, int siphonStacks, double shieldEffectRadius, int[] protectedEntityIds, boolean auraDamaging, double amplificationProgress) {
+    public static void handleSyncShieldMessage(double currentShield, double maxShield, int currentCooldown, int maxCooldown, double adaptiveArmorReduction, int[] protectedEntityIds, java.util.List<com.gy_mod.gy_trinket.network.packet.SyncShieldMessage.ItemShieldState> shieldStates) {
         ShieldHudRenderer.getInstance().updateShieldData(currentShield, maxShield, currentCooldown, maxCooldown, adaptiveArmorReduction);
-        com.gy_mod.gy_trinket.client.shield.type.SiphonClientData.setSiphonStacks(siphonStacks);
-        com.gy_mod.gy_trinket.client.shield.type.SiphonClientData.setShieldEffectRadius(shieldEffectRadius);
         com.gy_mod.gy_trinket.client.shield.type.SiphonClientData.setProtectedEntityIds(protectedEntityIds);
-        com.gy_mod.gy_trinket.client.shield.type.AuraClientData.setShieldEffectRadius(shieldEffectRadius);
-        com.gy_mod.gy_trinket.client.shield.type.AuraClientData.setDamaging(auraDamaging);
-        com.gy_mod.gy_trinket.client.shield.type.AmplifierClientData.setShieldEffectRadius(shieldEffectRadius);
-        com.gy_mod.gy_trinket.client.shield.type.AmplifierClientData.setProgress(amplificationProgress);
+        com.gy_mod.gy_trinket.client.shield.type.SiphonClientData.syncStates(shieldStates);
+        com.gy_mod.gy_trinket.client.shield.type.AuraClientData.syncStates(shieldStates);
+        com.gy_mod.gy_trinket.client.shield.type.AmplifierClientData.syncStates(shieldStates);
     }
 
     public static void handleResponseAttributesMessage(java.util.Map<String, Double> attributes) {

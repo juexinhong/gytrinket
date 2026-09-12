@@ -18,11 +18,13 @@ import java.util.function.Supplier;
 public class ConfigShieldTypesMessage {
     private final String itemId;
     private final List<String> types;
+    private final List<String> exclusiveTypes;
     private final boolean reset;
 
-    public ConfigShieldTypesMessage(String itemId, List<String> types, boolean reset) {
+    public ConfigShieldTypesMessage(String itemId, List<String> types, List<String> exclusiveTypes, boolean reset) {
         this.itemId = itemId;
         this.types = types != null ? types : new ArrayList<>();
+        this.exclusiveTypes = exclusiveTypes != null ? exclusiveTypes : new ArrayList<>();
         this.reset = reset;
     }
 
@@ -34,6 +36,10 @@ public class ConfigShieldTypesMessage {
             for (String t : types) {
                 buf.writeUtf(t);
             }
+            buf.writeVarInt(exclusiveTypes.size());
+            for (String t : exclusiveTypes) {
+                buf.writeUtf(t);
+            }
         }
     }
 
@@ -41,10 +47,15 @@ public class ConfigShieldTypesMessage {
         this.itemId = buf.readUtf();
         this.reset = buf.readBoolean();
         this.types = new ArrayList<>();
+        this.exclusiveTypes = new ArrayList<>();
         if (!reset) {
             int n = buf.readVarInt();
             for (int i = 0; i < n; i++) {
                 this.types.add(buf.readUtf());
+            }
+            int m = buf.readVarInt();
+            for (int i = 0; i < m; i++) {
+                this.exclusiveTypes.add(buf.readUtf());
             }
         }
     }
@@ -65,7 +76,7 @@ public class ConfigShieldTypesMessage {
             if (reset) {
                 DefsManager.removeShieldTypeOverride(server, itemId);
             } else {
-                DefsManager.updateShieldTypeOverride(server, itemId, types);
+                DefsManager.updateShieldTypeOverride(server, itemId, types, exclusiveTypes);
             }
             NetworkHandler.sendDefsSyncToAllPlayers(server);
             // 护盾类型变化影响玩家属性，立即重算所有在线玩家

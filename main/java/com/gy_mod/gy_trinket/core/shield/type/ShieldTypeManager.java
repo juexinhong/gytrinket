@@ -65,41 +65,19 @@ public class ShieldTypeManager {
         return false;
     }
 
-    public static ReflectShieldType.ProjectileDamageInfo getLastProjectileInfo(Player player) {
-        List<IShieldType.ShieldTypeData> types = getPlayerShieldTypes(player.getUUID());
-        for (IShieldType.ShieldTypeData data : types) {
-            if ("reflect".equals(data.type().getName()) && data.active()) {
-                return ReflectShieldType.getLastProjectileInfo(player);
-            }
-        }
-        return null;
-    }
-
-    public static void removeLastProjectileInfo(Player player) {
-        List<IShieldType.ShieldTypeData> types = getPlayerShieldTypes(player.getUUID());
-        for (IShieldType.ShieldTypeData data : types) {
-            if ("reflect".equals(data.type().getName())) {
-                ReflectShieldType.removeLastProjectileInfo(player);
-                break;
-            }
-        }
-    }
-
     public static void recordProjectileForReflect(Player player, Projectile projectile) {
         List<IShieldType.ShieldTypeData> types = getPlayerShieldTypes(player.getUUID());
-        boolean hasReflectType = false;
+        Set<String> recordedItemIds = new HashSet<>();
+        // 每个 active 的 reflect 实例各记录一条，反射时各用各自物品定义的参数（同 itemId 多件去重）
         for (IShieldType.ShieldTypeData data : types) {
             if ("reflect".equals(data.type().getName()) && data.active()) {
-                hasReflectType = true;
-                break;
+                String itemId = BuiltInRegistries.ITEM.getKey(data.source().getItem()).toString();
+                if (!recordedItemIds.add(itemId)) {
+                    continue;
+                }
+                ReflectShieldType.recordProjectileForReflect(player, projectile, itemId);
             }
         }
-
-        if (!hasReflectType) {
-            return;
-        }
-
-        ReflectShieldType.recordProjectileForReflect(player, projectile);
     }
 
     public static void processReflectAfterShieldDamage(Player player) {
@@ -230,6 +208,8 @@ public class ShieldTypeManager {
         List<IShieldType.ShieldTypeData> collected = new ArrayList<>();
 
         // 已装备物品 = 光点核心存储 + Curios 饰品栏（光点核心内容扩展）
+        // 实例粒度 = 物品种类：同一物品装备多件只收一次（其声明的每个护盾类型各为一条实例）
+        Set<String> seenItemIds = new HashSet<>();
         for (ItemStack stack : PlayerStoreUtils.getAllEquippedStacks(player)) {
             if (stack.isEmpty()) {
                 continue;
@@ -240,6 +220,8 @@ public class ShieldTypeManager {
             if (itemId == null) continue;
 
             if (preDisabledItems.contains(itemId.toString())) continue;
+
+            if (!seenItemIds.add(itemId.toString())) continue;
 
             List<String> typeNames = Config.getItemShieldTypes(itemId);
 
@@ -265,8 +247,10 @@ public class ShieldTypeManager {
         for (int i = 0; i < types.size(); i++) {
             IShieldType.ShieldTypeData data = types.get(i);
             String typeName = data.type().getName();
-            boolean isCompatible = Config.isShieldTypeCompatible(typeName);
-            ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(data.source().getItem());
+            // 物品级兼容开关（UI 覆盖层显式值）优先，其次类型级默认
+            net.minecraft.world.item.Item sourceItem = data.source().getItem();
+            boolean isCompatible = Config.isShieldTypeCompatibleForItem(typeName, sourceItem);
+            ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(sourceItem);
 
             if (lastActiveWasCompatible != null && !lastActiveWasCompatible) {
                 // 链已断裂，后续所有护盾都不生效
@@ -334,7 +318,8 @@ public class ShieldTypeManager {
 
         for (IShieldType.ShieldTypeData data : types) {
             if (data.active()) {
-                data.type().onTick(player);
+                // 传入来源物品：护盾类型数值按物品实例独立取值
+                data.type().onTick(player, data.source());
             }
         }
     }

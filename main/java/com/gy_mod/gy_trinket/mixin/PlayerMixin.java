@@ -13,4 +13,3 @@ import org.spongepowered.asm.mixin.Mixin;
 @Mixin(Player.class)
 public class PlayerMixin {
 }
-

@@ -2,7 +2,7 @@ package com.gytrinket.gytrinket.core.explosion;
 
 import com.gytrinket.gytrinket.client.effect.energywave.EnergyWaveVisualManager;
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
-import com.gytrinket.gytrinket.core.attack_mode.ExecuteToggleManager;
+import com.gytrinket.gytrinket.core.damage.DamageAttributionWindow;
 import com.gytrinket.gytrinket.core.damage.SecondaryDamageMerger;
 import com.gytrinket.gytrinket.core.modifier.player.knockback.KnockbackManager;
 import com.gytrinket.gytrinket.network.NetworkHandler;
@@ -173,7 +173,7 @@ public class EnergyWaveExplosion {
     }
 
     /**
-     * 对单个实体施加能量波命中：重置无敌时间、斩杀归属、伤害
+     * 对单个实体施加能量波命中：重置无敌时间、归属窗口、伤害
      *
      * @return 是否造成了伤害
      */
@@ -185,19 +185,24 @@ public class EnergyWaveExplosion {
             entity.invulnerableTime = 0;
         }
 
-        // 伤害归属逻辑：
-        // - 默认：使用原始 damageSource（蜂群攻击时 getEntity()=蜂群 → 仇恨归蜂群）
-        // - 斩杀时（伤害>=生命值 且 斩杀模式开启）：切换为玩家归属（玩家获得击杀判定）
-        DamageSource actualSource = damageSource;
-        if (owner != null && damageSource.getEntity() != null
-                && damage >= entity.getHealth() && ExecuteToggleManager.isExecuteEnabled(owner)) {
-            actualSource = entity.damageSources().explosion(null, owner);
+        // 归属不再由伤害前预判（原始伤害会被护甲/免伤削减导致误判）：
+        // 玩家施加时在归属窗口内透传原始伤害源，致死归属由 ExecuteAttributionHandler
+        // 按 LivingDeathEvent 实际致死结果判定
+        boolean windowed = owner != null && damageSource.getEntity() != null;
+        if (windowed) {
+            DamageAttributionWindow.mark(entity, owner);
         }
 
         // 能量波爆炸不产生击退（参照灼烧系统实现）
         KnockbackManager.markNoKnockback(entity.getUUID());
 
-        entity.hurt(actualSource, damage);
+        try {
+            entity.hurt(damageSource, damage);
+        } finally {
+            if (windowed) {
+                DamageAttributionWindow.unmark(entity);
+            }
+        }
 
         if (resetInvulnerable) {
             entity.invulnerableTime = 0;

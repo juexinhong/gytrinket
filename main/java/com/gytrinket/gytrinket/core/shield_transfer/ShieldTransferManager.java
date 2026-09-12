@@ -2,6 +2,7 @@ package com.gytrinket.gytrinket.core.shield_transfer;
 
 import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
+import com.gytrinket.gytrinket.core.defs.DefsManager;
 import com.gytrinket.gytrinket.core.shield.DisableSystem;
 import com.gytrinket.gytrinket.gytrinket;
 import com.gytrinket.gytrinket.core.TickScheduler;
@@ -794,7 +795,8 @@ public class ShieldTransferManager {
             return;
         }
 
-        double penaltyPerEntity = Config.SHIELD_TRANSFER_EFFECT_PENALTY_PER_ENTITY.get();
+        double penaltyPerEntity = DefsManager.resolveMechanicValue(ServerLifecycleHooks.getCurrentServer(), playerUUID,
+                "shield_transfer_items", "penalty_per_entity", Config.SHIELD_TRANSFER_EFFECT_PENALTY_PER_ENTITY.get());
         double multiplier = 1.0;
         for (int i = 0; i < entityCount; i++) {
             multiplier *= (1.0 - penaltyPerEntity);

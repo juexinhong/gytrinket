@@ -1,6 +1,7 @@
 package com.gytrinket.gytrinket.core.entity.construct.drone.behavior;
 
 import com.gytrinket.gytrinket.config.Config;
+import com.gytrinket.gytrinket.core.entity.construct.drone.DroneArrayParams;
 import com.gytrinket.gytrinket.core.entity.construct.drone.DroneConstructEntity;
 import com.gytrinket.gytrinket.core.entity.construct.drone.DroneBeamProjectile;
 import com.gytrinket.gytrinket.core.entity.construct.drone.DroneConstructTypes;
@@ -21,8 +22,6 @@ import java.util.stream.Collectors;
  * 翼根无人机可以自由攻击，攻击后向下游传递。非翼根无人机收到传递后才能攻击。
  */
 public class FormationBehavior implements IDroneBehavior {
-    private static float getConfigAttackRange() { return Config.FORMATION_ATTACK_RANGE.get().floatValue(); }
-    private static float getConfigAttackInterval() { return Config.FORMATION_ATTACK_INTERVAL.get().floatValue(); }
     private static int getConfigAttackPassDelay() { return Config.FORMATION_ATTACK_PASS_DELAY.get(); }
     private static final float VIEW_ANGLE = 30.0F;
 
@@ -205,9 +204,10 @@ public class FormationBehavior implements IDroneBehavior {
         if (!(drone instanceof DroneConstructEntity)) return Collections.emptyList();
         if (owner == null) return Collections.emptyList();
 
+        // 范围由调用方按实例基础索敌范围 × 列队阵列索敌范围倍率传入
         AABB searchAABB = new AABB(
-                owner.getX() - getConfigAttackRange(), owner.getY() - getConfigAttackRange(), owner.getZ() - getConfigAttackRange(),
-                owner.getX() + getConfigAttackRange(), owner.getY() + getConfigAttackRange(), owner.getZ() + getConfigAttackRange()
+                owner.getX() - range, owner.getY() - range, owner.getZ() - range,
+                owner.getX() + range, owner.getY() + range, owner.getZ() + range
         );
 
         List<LivingEntity> targets = drone.level().getEntitiesOfClass(LivingEntity.class, searchAABB);
@@ -378,7 +378,10 @@ public class FormationBehavior implements IDroneBehavior {
             }
 
             float droneDamage = (float) drone.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE);
-            float beamDamage = droneDamage * 2.0F;
+            // 阵列伤害倍率（独立乘区）：光束伤害 = 攻击力属性 × 列队阵列伤害倍率（默认 2.0）
+            double damageMult = DroneArrayParams.getDamageMultiplier(
+                    drone.getServer(), drone.getOwnerUUID(), DroneArrayParams.SET_FORMATION);
+            float beamDamage = droneDamage * (float) damageMult;
 
             DroneBeamProjectile beam = new DroneBeamProjectile(
                     ModEntities.DRONE_BEAM.get(),
@@ -394,12 +397,7 @@ public class FormationBehavior implements IDroneBehavior {
 
     @Override
     public float getAttackInterval() {
-        return getConfigAttackInterval();
-    }
-
-    @Override
-    public float getAttackRange() {
-        return getConfigAttackRange();
+        return Config.DRONE_ATTACK_INTERVAL.get().floatValue();
     }
 
     @Override

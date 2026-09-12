@@ -61,6 +61,8 @@ public class Config {
     public static final ModConfigSpec.BooleanValue RANDOM_BUILD_TOKEN_ENABLED;
     /** 代币物品 ID（可替换为其他模组的物品） */
     public static final ModConfigSpec.ConfigValue<String> RANDOM_BUILD_TOKEN_ITEM;
+    /** 代币物品自定义描述（附属配置项，非空时显示在代币物品描述上） */
+    public static final ModConfigSpec.ConfigValue<String> RANDOM_BUILD_TOKEN_DESC;
 
     // ===== 1. 光环护盾 (aura_shield) =====
     public static final ModConfigSpec.DoubleValue AURA_RADIUS;
@@ -196,10 +198,12 @@ public class Config {
     public static final ModConfigSpec.DoubleValue DRONE_BASE_DAMAGE;
     public static final ModConfigSpec.IntValue DRONE_MAX_COUNT;
     public static final ModConfigSpec.DoubleValue DRONE_FOLLOW_RANGE;
-    public static final ModConfigSpec.DoubleValue ORBIT_ATTACK_INTERVAL;
-    public static final ModConfigSpec.DoubleValue ORBIT_ATTACK_RANGE;
-    public static final ModConfigSpec.DoubleValue PURSUIT_ATTACK_INTERVAL;
-    public static final ModConfigSpec.DoubleValue PURSUIT_ATTACK_RANGE;
+    /** 无人机正常攻击间隔（秒）：物品级 attack_interval 未定义时的全局默认 */
+    public static final ModConfigSpec.DoubleValue DRONE_ATTACK_INTERVAL;
+    /** 无人机基础攻击范围（格）：物品级 attack_range 未定义时的全局默认 */
+    public static final ModConfigSpec.DoubleValue DRONE_ATTACK_RANGE;
+    /** 无人机基础索敌范围（格）：物品级 target_range 未定义时的全局默认 */
+    public static final ModConfigSpec.DoubleValue DRONE_TARGET_RANGE;
 
     // ===== 21.5 无人机斩杀机制 (drone_execute) =====
     public static final ModConfigSpec.BooleanValue DRONE_EXECUTE_ENABLED;
@@ -289,8 +293,6 @@ public class Config {
 
     // ===== 25. 列队阵列 (formation_array) =====
 
-    public static final ModConfigSpec.DoubleValue FORMATION_ATTACK_INTERVAL;
-    public static final ModConfigSpec.DoubleValue FORMATION_ATTACK_RANGE;
     public static final ModConfigSpec.IntValue FORMATION_ATTACK_PASS_DELAY;
 
     // ===== 26. 指挥官 (commander) =====
@@ -300,10 +302,6 @@ public class Config {
     public static final ModConfigSpec.DoubleValue COMMANDER_VULNERABILITY;
 
     // ===== 27. 守卫阵列/防御无人机 (guard_array) =====
-
-
-    public static final ModConfigSpec.DoubleValue GUARD_ATTACK_INTERVAL;
-    public static final ModConfigSpec.DoubleValue GUARD_ATTACK_RANGE;
 
     // ===== 28. 弧形屏障 (arc_barrier) =====
 
@@ -526,6 +524,12 @@ public class Config {
             "从随机池获取物品时，会从玩家背包中扣除该物品 1 个",
             "默认 gytrinket:token（本模组代币物品）"
         ).define("tokenItem", "gytrinket:token");
+
+        RANDOM_BUILD_TOKEN_DESC = BUILDER.comment(
+            "代币物品自定义描述（附属配置项，可随意填写）",
+            "非空时以特殊机制描述的样式显示在代币物品的悬浮描述上",
+            "支持 \\n 换行；留空则不显示"
+        ).define("tokenItemDescription", "");
 
         BUILDER.pop();
 
@@ -1006,21 +1010,17 @@ public class Config {
             "无人机跟随范围（格）"
         ).defineInRange("droneFollowRange", 16.0, 4.0, 64.0);
 
-        ORBIT_ATTACK_INTERVAL = BUILDER.comment(
-            "环绕阵列攻击间隔（秒）"
-        ).defineInRange("orbitAttackInterval", 0.5, 0.05, 10.0);
+        DRONE_ATTACK_INTERVAL = BUILDER.comment(
+            "无人机正常攻击间隔（秒），物品级 attack_interval 未定义时使用"
+        ).defineInRange("droneAttackInterval", 0.5, 0.05, 10.0);
 
-        ORBIT_ATTACK_RANGE = BUILDER.comment(
-            "环绕阵列攻击范围（格）"
-        ).defineInRange("orbitAttackRange", 8.0, 1.0, 64.0);
+        DRONE_ATTACK_RANGE = BUILDER.comment(
+            "无人机基础攻击范围（格），物品级 attack_range 未定义时使用"
+        ).defineInRange("droneAttackRange", 8.0, 1.0, 64.0);
 
-        PURSUIT_ATTACK_INTERVAL = BUILDER.comment(
-            "追击阵列攻击间隔（秒）"
-        ).defineInRange("pursuitAttackInterval", 0.33, 0.05, 10.0);
-
-        PURSUIT_ATTACK_RANGE = BUILDER.comment(
-            "追击阵列攻击范围（格）"
-        ).defineInRange("pursuitAttackRange", 20.0, 1.0, 64.0);
+        DRONE_TARGET_RANGE = BUILDER.comment(
+            "无人机基础索敌范围（格），物品级 target_range 未定义时使用"
+        ).defineInRange("droneTargetRange", 8.0, 1.0, 64.0);
 
         BUILDER.pop();
 
@@ -1332,16 +1332,6 @@ public class Config {
         // ===== 25. 列队阵列 =====
         BUILDER.comment("列队阵列配置").push("formation_array");
 
-        
-
-        FORMATION_ATTACK_INTERVAL = BUILDER.comment(
-            "列队阵列攻击间隔（秒）"
-        ).defineInRange("formationAttackInterval", 1.0, 0.05, 10.0);
-
-        FORMATION_ATTACK_RANGE = BUILDER.comment(
-            "列队阵列攻击范围（格）"
-        ).defineInRange("formationAttackRange", 15.0, 1.0, 64.0);
-
         FORMATION_ATTACK_PASS_DELAY = BUILDER.comment(
             "列队阵列攻击传递延迟（tick）"
         ).defineInRange("formationAttackPassDelay", 3, 1, 60);
@@ -1373,18 +1363,6 @@ public class Config {
 
         // ===== 27. 守卫阵列/防御无人机 =====
         BUILDER.comment("守卫阵列/防御无人机配置").push("guard_array");
-
-        
-
-        
-
-        GUARD_ATTACK_INTERVAL = BUILDER.comment(
-            "守卫阵列攻击间隔（秒）"
-        ).defineInRange("guardAttackInterval", 0.5, 0.05, 10.0);
-
-        GUARD_ATTACK_RANGE = BUILDER.comment(
-            "守卫阵列攻击范围（格）"
-        ).defineInRange("guardAttackRange", 8.0, 1.0, 64.0);
 
         BUILDER.pop();
 
@@ -1693,6 +1671,8 @@ public class Config {
 
     private static final Map<String, Boolean> SHIELD_TYPE_COMPATIBILITY = new HashMap<>();
     private static final Map<Item, List<String>> ITEM_SHIELD_TYPES = new HashMap<>();
+    /** 物品级护盾类型兼容覆盖（UI 运行时覆盖层）：物品 -> 独占（不兼容）类型集合；存在条目 = 该物品兼容性为显式模式 */
+    private static final Map<Item, Set<String>> ITEM_SHIELD_TYPE_EXCLUSIVES = new HashMap<>();
     private static final Set<Item> BODY_ITEM_SET = new HashSet<>();
     private static final Set<Item> DRONE_MODULE_ITEM_SET = new HashSet<>();
     private static final Set<Item> ASSAULT_DRONE_MODULE_ITEM_SET = new HashSet<>();
@@ -1784,6 +1764,19 @@ public class Config {
 
     public static boolean isShieldTypeCompatible(String typeName) {
         return SHIELD_TYPE_COMPATIBILITY.getOrDefault(typeName, true);
+    }
+
+    /**
+     * 物品级护盾类型兼容判定：
+     * 物品被运行时覆盖层显式设置过兼容性时以物品定义为准（不在独占集合中 = 兼容）；
+     * 否则回退到类型级默认（shield_types 定义）。
+     */
+    public static boolean isShieldTypeCompatibleForItem(String typeName, Item item) {
+        Set<String> exclusives = ITEM_SHIELD_TYPE_EXCLUSIVES.get(item);
+        if (exclusives != null) {
+            return !exclusives.contains(typeName);
+        }
+        return isShieldTypeCompatible(typeName);
     }
 
     public static boolean isBodyItem(Item item) {
@@ -2064,6 +2057,15 @@ public class Config {
             }
         });
 
+        // 物品级护盾类型兼容覆盖（UI 运行时覆盖层，显式模式）
+        ITEM_SHIELD_TYPE_EXCLUSIVES.clear();
+        DefsManager.getItemShieldTypeExclusiveOverrides().forEach((itemId, exclusives) -> {
+            Item item = BuiltInRegistries.ITEM.get(ResourceLocation.parse(itemId));
+            if (item != null && item != Items.AIR) {
+                ITEM_SHIELD_TYPE_EXCLUSIVES.put(item, exclusives);
+            }
+        });
+
         // 物品集合
         loadItemSetFromDefs(BODY_ITEM_SET, "body_items", "机身物品");
         loadItemSetFromDefs(ADAPTIVE_ARMOR_ITEM_SET, "adaptive_armor_items", "适应性装甲启用");
@@ -2195,6 +2197,9 @@ public class Config {
             case "secondaryExplosionDamageFraction" -> SECONDARY_EXPLOSION_DAMAGE_FRACTION.get();
             case "secondaryExplosionRadiusBase" -> SECONDARY_EXPLOSION_RADIUS_BASE.get();
             case "secondaryExplosionRadiusDamageFraction" -> SECONDARY_EXPLOSION_RADIUS_DAMAGE_FRACTION.get();
+            case "electricDischargeBurnDuration" -> getElectricDischargeBurnDuration();
+            case "selfDestructBaseDamage" -> SELF_DESTRUCT_BASE_DAMAGE.get();
+            case "selfDestructBaseRadius" -> SELF_DESTRUCT_BASE_RADIUS.get();
             default -> 0;
         };
     }
@@ -2764,6 +2769,11 @@ public class Config {
     /** 代币物品 ID */
     public static String getRandomBuildTokenItemId() {
         return RANDOM_BUILD_TOKEN_ITEM.get();
+    }
+
+    /** 代币物品自定义描述（非空时显示在代币物品描述上） */
+    public static String getRandomBuildTokenItemDescription() {
+        return RANDOM_BUILD_TOKEN_DESC.get();
     }
 
     public static boolean isHardcoreModeEnabled() {

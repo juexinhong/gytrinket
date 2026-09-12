@@ -39,6 +39,7 @@ public class AdaptiveArmorHandler implements DamageHandler {
         context.setCurrentDamage(reducedDamage);
 
         double layersToAdd = context.getCurrentDamage() * Config.getAdaptiveArmorLayersPerDamage();
+
         armorManager.addArmorLayers(context.getPlayer(), layersToAdd);
     }
 

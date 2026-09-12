@@ -98,7 +98,7 @@
   "tooltip.gytrinket.shield_type.warp": "Warp",
   "tooltip.gytrinket.shield_type.siphon": "Siphon",
   "tooltip.gytrinket.shield_type.none_desc": "Kann zusätzlich Eigenschaften des gleichen Schildtyps stapeln",
-  "tooltip.gytrinket.shield_type.aura_desc": "Verbrennt nahegelegene Feinde und zündet sie an. (Wenn kein Anzündschaden angegeben, Standard ist %.1f/s Schaden für %d Sekunden)",
+  "tooltip.gytrinket.shield_type.aura_desc": "Verbrennt alle %d Ticks Feinde im Umkreis von %.1f Blöcken und zündet sie an, wobei jeder Feind %.1f Brandladung für %.3f Schildkosten erhält. (Wenn kein Anzündschaden angegeben, Standard ist %.1f/s Schaden für %d Sekunden)",
   "tooltip.gytrinket.shield_type.reflect_desc": "Reflektiert Projektile, die dich treffen. Reflektierte Projektile erhöhen Geschwindigkeit um %d%%, Schaden wird vom Schildeffekt beeinflusst",
   "tooltip.gytrinket.shield_type.amplification_desc": "Erhöht Angriffsschaden um %d%%. Verstärkung steigt, wenn Feinde in der Nähe sind. Maximum bei %d%%. Schildeffekt liefert sowohl Basiswert als auch Maximum. Gewährt %d%% Bewegungsgeschwindigkeit, wenn das Schild aktiv ist (beeinflusst vom Schildeffekt)",
   "tooltip.gytrinket.shield_type.warp_desc": "Wenn das Schild bricht, Teleportation in Blickrichtung. Explosionen am Start- und Endpunkt des Teleports verursachen %.1f Explosionsschaden",

@@ -55,6 +55,11 @@ public class QuickEquipEvent {
             return;
         }
 
+        // 饰品类物品（Curios 可穿戴）：最合适的装备位置在饰品栏，禁止快速装备到光点核心
+        if (RandomBuildManager.isTrinketItem(item)) {
+            return;
+        }
+
         event.setCanceled(true);
 
         PlayerStore store = PlayerStoreManager.getPlayerStore(player);

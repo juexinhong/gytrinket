@@ -1,8 +1,6 @@
 package com.gytrinket.gytrinket.network.packet;
 
-import com.gytrinket.gytrinket.core.attribute.AttributeManager;
 import com.gytrinket.gytrinket.core.shield.ShieldManager;
-import com.gytrinket.gytrinket.core.shield.cooldown.ShieldCooldownManager;
 import com.gytrinket.gytrinket.network.NetworkHandler;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
@@ -24,18 +22,11 @@ public record RequestShieldCooldownPayload() implements CustomPacketPayload {
     public static void handle(RequestShieldCooldownPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> {
             if (context.player() instanceof ServerPlayer player) {
-                int currentCooldown = ShieldCooldownManager.getCurrentCooldown(player.getUUID());
-                int maxCooldown = ShieldCooldownManager.getMaxCooldown(player.getUUID());
                 double currentShield = ShieldManager.getCurrentShield(player.getUUID());
                 double maxShield = ShieldManager.getMaxShield(player.getUUID());
-                double adaptiveArmorReduction = com.gytrinket.gytrinket.core.damage.AdaptiveArmorManager.calculateDamageReduction(player);
-                int siphonStacks = com.gytrinket.gytrinket.core.shield.type.SiphonShieldType.getSiphonStacks(player.getUUID());
-                double shieldEffectRadius = AttributeManager.getGroupAttribute(player.getUUID(), "shield_effect_radius");
-                int[] protectedEntityIds = com.gytrinket.gytrinket.core.shield_transfer.ShieldTransferManager.getProtectedEntityIds(player.getUUID(), player.serverLevel());
-                boolean auraDamaging = com.gytrinket.gytrinket.core.shield.type.AuraShieldType.isAuraDamaging(player.getUUID());
-                double amplificationProgress = com.gytrinket.gytrinket.core.shield.type.AmplificationShieldType.getProgress(player.getUUID());
+                // 复用统一的同步消息构建逻辑（与 sendShieldSyncToPlayer 同一实现）
                 PacketDistributor.sendToPlayer(player,
-                    new SyncShieldPayload(currentShield, maxShield, currentCooldown, maxCooldown, adaptiveArmorReduction, siphonStacks, shieldEffectRadius, protectedEntityIds, auraDamaging, amplificationProgress));
+                    NetworkHandler.buildShieldSyncMessage(player, currentShield, maxShield));
             }
         });
     }

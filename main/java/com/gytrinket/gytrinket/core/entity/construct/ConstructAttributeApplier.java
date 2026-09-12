@@ -98,7 +98,7 @@ public class ConstructAttributeApplier {
             return;
         }
 
-        double rawCount = computeRawMaxCount(playerUUID, swarmType);
+        double rawCount = computeRawMaxCount(playerUUID, swarmType, swarmType.getMaxCount());
 
         if (rawCount > swarmLimit) {
             double overflowMultiplier = rawCount / swarmLimit;
@@ -284,6 +284,8 @@ public class ConstructAttributeApplier {
         double moveSpeedPercent = 1.0;
         double orbitSpeedPercent = 1.0;
         double rotationSpeedPercent = 1.0;
+        double sizePercent = 1.0;
+        double sizeIndependent = 1.0;
 
         for (Map.Entry<String, Double> entry : constructAttrs.entrySet()) {
             String attrName = entry.getKey();
@@ -347,6 +349,13 @@ public class ConstructAttributeApplier {
                         case INDEPENDENT_MULTIPLY -> {}
                     }
                 }
+                case SIZE -> {
+                    switch (valueType) {
+                        case BASE -> {} // 大小无 BASE 类型
+                        case PERCENT -> sizePercent *= value;
+                        case INDEPENDENT_MULTIPLY -> sizeIndependent *= value;
+                    }
+                }
                 default -> {} // MAX_COUNT, BUILD_SPEED, EXPLOSIVE_COUNT 不应用到实体属性
             }
         }
@@ -360,12 +369,24 @@ public class ConstructAttributeApplier {
 
         LivingEntity livingEntity = (LivingEntity) entity;
         applyHealthModifier(livingEntity, baseMaxHealth, finalMaxHealth);
+        // ATTACK_DAMAGE 的基础值必须与实体基础伤害一致：
+        // 注册默认 0.3，若不同步为 getBaseAttackDamage()，applyDamageModifier 的差值
+        // 叠加到 0.3 上会得出错误数值（伤害倍率<1 时甚至归零）
+        if (entity instanceof DroneConstructEntity) {
+            AttributeInstance atkAttr = livingEntity.getAttribute(Attributes.ATTACK_DAMAGE);
+            if (atkAttr != null) {
+                atkAttr.setBaseValue(baseAttackDamage);
+            }
+        }
         applyDamageModifier(livingEntity, baseAttackDamage, finalAttackDamage);
+
         entity.setAttackSpeedMultiplier(finalAttackSpeedMultiplier);
         entity.setWeaponAttackSpeedMultiplier(finalWeaponAttackSpeedMultiplier);
         entity.setMoveSpeedMultiplier(moveSpeedPercent);
         entity.setOrbitSpeedMultiplier(orbitSpeedPercent);
         entity.setRotationSpeedMultiplier(rotationSpeedPercent);
+        // 大小倍率：同时缩放渲染模型与碰撞箱（客户端经 SynchedEntityData 同步）
+        entity.setSizeMultiplier(sizePercent * sizeIndependent);
         // 重置低血量攻速独立乘区（炉心融解模块动态施加，属性重算时清除）
         entity.setLowHpAttackSpeedMultiplier(1.0);
     }
@@ -445,7 +466,15 @@ public class ConstructAttributeApplier {
     }
 
     public static double getEffectiveMaxCount(UUID playerUUID, ConstructType type) {
-        double rawCount = computeRawMaxCount(playerUUID, type);
+        return getEffectiveMaxCountForInstance(playerUUID, type, type.getMaxCount());
+    }
+
+    /**
+     * 实例化机制的数量上限：基础数量由调用方按实例解析（如无人机按物品级 base_count），
+     * 属性修正（数量上限属性的 BASE/PERCENT/INDEPENDENT_MULTIPLY）照常作用于该基础值。
+     */
+    public static double getEffectiveMaxCountForInstance(UUID playerUUID, ConstructType type, int baseCountOverride) {
+        double rawCount = computeRawMaxCount(playerUUID, type, baseCountOverride);
 
         // 蜂群数量极限值截断（溢出倍率在 refreshForPlayer 中计算，不在此处设置副作用）
         int swarmLimit = Config.getSwarmCountLimit();
@@ -459,8 +488,7 @@ public class ConstructAttributeApplier {
     /**
      * 计算构造体数量上限的原始值（不应用极限值截断）。
      */
-    private static double computeRawMaxCount(UUID playerUUID, ConstructType type) {
-        int baseCount = type.getMaxCount();
+    private static double computeRawMaxCount(UUID playerUUID, ConstructType type, int baseCount) {
         double baseBonus = 0;
         double percent = 1.0;
         double independent = 1.0;

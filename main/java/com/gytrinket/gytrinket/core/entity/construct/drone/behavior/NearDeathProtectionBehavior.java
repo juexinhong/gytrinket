@@ -45,8 +45,12 @@ public class NearDeathProtectionBehavior implements IDroneSpecialBehavior {
 
         drone.setHealth(1.0f);
 
-        int invincibleDuration = Config.NEAR_DEATH_PROTECTION_INVINCIBLE_DURATION.get();
-        int cooldownDuration = Config.NEAR_DEATH_PROTECTION_COOLDOWN.get();
+        UUID ownerUUID = drone.getOwnerUUID();
+        MinecraftServer server = drone.level().getServer();
+        int invincibleDuration = (int) DefsManager.resolveMechanicValue(server, ownerUUID,
+                "near_death_protection_items", "invincible_duration", Config.NEAR_DEATH_PROTECTION_INVINCIBLE_DURATION.get());
+        int cooldownDuration = (int) DefsManager.resolveMechanicValue(server, ownerUUID,
+                "near_death_protection_items", "cooldown", Config.NEAR_DEATH_PROTECTION_COOLDOWN.get());
 
         InvincibilityMarkerManager.addMarker(drone, invincibleDuration);
 

@@ -162,9 +162,13 @@ public class SecondaryExplosionHandler {
         }
 
         // 基础爆炸参数（config secondary_explosion 节可配置）；之后由 SimulatedExplosion 应用属性组增幅
-        float explosionDamage = (float) (recordedDamage * Config.SECONDARY_EXPLOSION_DAMAGE_FRACTION.get());
-        double explosionRadius = Config.SECONDARY_EXPLOSION_RADIUS_BASE.get()
-                + explosionDamage * Config.SECONDARY_EXPLOSION_RADIUS_DAMAGE_FRACTION.get();
+        var server = owner.getServer();
+        float explosionDamage = (float) (recordedDamage * DefsManager.resolveMechanicValue(server, owner.getUUID(),
+                "projectile_explosion_items", "damage_fraction", Config.SECONDARY_EXPLOSION_DAMAGE_FRACTION.get()));
+        double explosionRadius = DefsManager.resolveMechanicValue(server, owner.getUUID(),
+                "projectile_explosion_items", "radius_base", Config.SECONDARY_EXPLOSION_RADIUS_BASE.get())
+                + explosionDamage * DefsManager.resolveMechanicValue(server, owner.getUUID(),
+                "projectile_explosion_items", "radius_per_damage", Config.SECONDARY_EXPLOSION_RADIUS_DAMAGE_FRACTION.get());
 
         // 爆心 = 记录的命中点（最高伤害那次命中时受击者的位置），而非弹射物移除位置
         Vec3 explosionPos = new Vec3(

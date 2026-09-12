@@ -1,34 +1,48 @@
 package com.gytrinket.gytrinket.client.shield.type;
 
-import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.gytrinket;
+import com.gytrinket.gytrinket.network.packet.SyncShieldPayload;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.api.distmarker.Dist;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * 虹吸护盾客户端显示数据：按物品实例分桶，
+ * 多个虹吸实例各自独立插值与渲染贴图
+ */
 @EventBusSubscriber(modid = com.gytrinket.gytrinket.gytrinket.MODID, value = Dist.CLIENT)
 public class SiphonClientData {
 
-    private static int targetStacks = 0;
-    private static double shieldEffectRadius = 1.0;
-    private static int[] protectedEntityIds = new int[0];
+    /** 单个物品实例的显示状态 */
+    public static class State {
+        public final String itemId;
+        /** 最近一次同步中该实例是否存在（不存在时层数归零并回收） */
+        public boolean active = false;
+        public int targetStacks = 0;
+        public double effectiveRadius = 1.0;
+        public double displayStacks = 0;
+        public double displayAlpha = 0;
+        public double displaySize = 0;
 
-    private static double displayStacks = 0;
-    private static double displayAlpha = 0;
-    private static double displaySize = 0;
+        State(String itemId) {
+            this.itemId = itemId;
+        }
+    }
+
+    private static final Map<String, State> STATES = new HashMap<>();
 
     private static final double LERP_SPEED = 0.15;
 
+    /** 共享：护盾转移保护实体（渲染位置用，与具体实例无关） */
+    private static int[] protectedEntityIds = new int[0];
+
     private SiphonClientData() {}
-
-    public static void setSiphonStacks(int stacks) {
-        targetStacks = stacks;
-    }
-
-    public static void setShieldEffectRadius(double radius) {
-        shieldEffectRadius = radius;
-    }
 
     public static void setProtectedEntityIds(int[] ids) {
         protectedEntityIds = ids != null ? ids : new int[0];
@@ -38,78 +52,87 @@ public class SiphonClientData {
         return protectedEntityIds;
     }
 
-    public static int getTargetStacks() {
-        return targetStacks;
+    /** 同步：护盾类型状态按物品实例分桶更新（有效半径由服务端按实例下发） */
+    public static void syncStates(List<SyncShieldPayload.ItemShieldState> states) {
+        for (State s : STATES.values()) {
+            s.active = false;
+        }
+        for (SyncShieldPayload.ItemShieldState item : states) {
+            State s = STATES.computeIfAbsent(item.itemId, SiphonClientData.State::new);
+            s.active = true;
+            s.targetStacks = item.siphonStacks;
+            s.effectiveRadius = item.siphonRadius;
+        }
     }
 
-    public static double getDisplayStacks() {
-        return displayStacks;
-    }
-
-    public static double getDisplayAlpha() {
-        return displayAlpha;
-    }
-
-    public static double getDisplaySize() {
-        return displaySize;
+    /** 当前可渲染的实例列表（透明度大于阈值） */
+    public static List<State> getRenderStates() {
+        List<State> result = new ArrayList<>();
+        for (State s : STATES.values()) {
+            if (s.displayAlpha > 0.001) {
+                result.add(s);
+            }
+        }
+        return result;
     }
 
     @SubscribeEvent
     public static void onClientTick(ClientTickEvent.Post event) {
-        double targetDisplayStacks = targetStacks;
+        // 回收：同步列表中已消失且层数归零的实例
+        STATES.values().removeIf(s -> !s.active && s.displayStacks <= 0.01);
 
-        double diff = targetDisplayStacks - displayStacks;
-        if (Math.abs(diff) > 0.01) {
-            displayStacks += diff * LERP_SPEED;
-            if (Math.abs(targetDisplayStacks - displayStacks) < 0.01) {
-                displayStacks = targetDisplayStacks;
+        for (State s : STATES.values()) {
+            if (!s.active) {
+                s.targetStacks = 0;
             }
-        } else {
-            displayStacks = targetDisplayStacks;
-        }
 
-        if (displayStacks <= 0) {
-            displayAlpha = 0;
-            displaySize = 0;
-            return;
-        }
-
-        double baseAlpha = 0.05;
-        double alphaPerStack = 0.10;
-        double targetAlpha = baseAlpha + displayStacks * alphaPerStack;
-        targetAlpha = Math.min(targetAlpha, 1.0);
-
-        double alphaDiff = targetAlpha - displayAlpha;
-        if (Math.abs(alphaDiff) > 0.001) {
-            displayAlpha += alphaDiff * LERP_SPEED;
-            if (Math.abs(targetAlpha - displayAlpha) < 0.001) {
-                displayAlpha = targetAlpha;
+            double diff = s.targetStacks - s.displayStacks;
+            if (Math.abs(diff) > 0.01) {
+                s.displayStacks += diff * LERP_SPEED;
+                if (Math.abs(s.targetStacks - s.displayStacks) < 0.01) {
+                    s.displayStacks = s.targetStacks;
+                }
+            } else {
+                s.displayStacks = s.targetStacks;
             }
-        } else {
-            displayAlpha = targetAlpha;
-        }
 
-        double baseRadius = Config.SIPHON_RADIUS.get();
-        double effectiveRadius = baseRadius * shieldEffectRadius;
-        double targetSize = effectiveRadius * 2.0 * (4.0 / 3.0); // 补偿材质内容缩小至3/4
-
-        double sizeDiff = targetSize - displaySize;
-        if (Math.abs(sizeDiff) > 0.01) {
-            displaySize += sizeDiff * LERP_SPEED;
-            if (Math.abs(targetSize - displaySize) < 0.01) {
-                displaySize = targetSize;
+            if (s.displayStacks <= 0) {
+                s.displayAlpha = 0;
+                s.displaySize = 0;
+                continue;
             }
-        } else {
-            displaySize = targetSize;
+
+            double baseAlpha = 0.05;
+            double alphaPerStack = 0.10;
+            double targetAlpha = baseAlpha + s.displayStacks * alphaPerStack;
+            targetAlpha = Math.min(targetAlpha, 1.0);
+
+            double alphaDiff = targetAlpha - s.displayAlpha;
+            if (Math.abs(alphaDiff) > 0.001) {
+                s.displayAlpha += alphaDiff * LERP_SPEED;
+                if (Math.abs(targetAlpha - s.displayAlpha) < 0.001) {
+                    s.displayAlpha = targetAlpha;
+                }
+            } else {
+                s.displayAlpha = targetAlpha;
+            }
+
+            double targetSize = s.effectiveRadius * 2.0 * (4.0 / 3.0); // 补偿材质内容缩小至3/4
+
+            double sizeDiff = targetSize - s.displaySize;
+            if (Math.abs(sizeDiff) > 0.01) {
+                s.displaySize += sizeDiff * LERP_SPEED;
+                if (Math.abs(targetSize - s.displaySize) < 0.01) {
+                    s.displaySize = targetSize;
+                }
+            } else {
+                s.displaySize = targetSize;
+            }
         }
     }
 
     public static void reset() {
-        targetStacks = 0;
-        shieldEffectRadius = 1.0;
+        STATES.clear();
         protectedEntityIds = new int[0];
-        displayStacks = 0;
-        displayAlpha = 0;
-        displaySize = 0;
     }
 }

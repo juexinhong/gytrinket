@@ -19,6 +19,14 @@ public interface IShieldType {
 
     default void onTick(Player player) {}
 
+    /**
+     * 按物品实例分发（ShieldTypeManager.onPlayerTick 对每条 active 条目各调一次）：
+     * source = 提供该护盾类型的物品栈，数值应按该物品实例取（每实例独立，不跨物品合并）。
+     */
+    default void onTick(Player player, ItemStack source) {
+        onTick(player);
+    }
+
     default boolean shouldReflectProjectile(Player player, Projectile projectile) {
         return false;
     }

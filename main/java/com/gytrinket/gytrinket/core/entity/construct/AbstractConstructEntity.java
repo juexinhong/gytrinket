@@ -66,6 +66,10 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
     private static final EntityDataAccessor<Optional<UUID>> DATA_OWNER_UUID =
             SynchedEntityData.defineId(AbstractConstructEntity.class, EntityDataSerializers.OPTIONAL_UUID);
 
+    /** 大小倍率（来自 construct_size 等属性，同步给客户端用于渲染缩放；碰撞箱经 getScale 缩放） */
+    private static final EntityDataAccessor<Float> DATA_SIZE_MULTIPLIER =
+            SynchedEntityData.defineId(AbstractConstructEntity.class, EntityDataSerializers.FLOAT);
+
     private final AnimatableInstanceCache animatableInstanceCache = GeckoLibUtil.createInstanceCache(this);
 
     /** 归属者玩家 UUID */
@@ -118,6 +122,7 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
     protected void defineSynchedData(SynchedEntityData.Builder builder) {
         super.defineSynchedData(builder);
         builder.define(DATA_OWNER_UUID, Optional.empty());
+        builder.define(DATA_SIZE_MULTIPLIER, 1.0F);
     }
 
     // ===== 归属者管理 =====
@@ -265,6 +270,47 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
     @Override
     public double getLowHpAttackSpeedMultiplier() {
         return lowHpAttackSpeedMultiplier;
+    }
+
+    // ===== 大小倍率 =====
+
+    @Override
+    public double getSizeMultiplier() {
+        return this.entityData.get(DATA_SIZE_MULTIPLIER);
+    }
+
+    @Override
+    public void setSizeMultiplier(double multiplier) {
+        // 钳制到安全范围，避免极端数值破坏碰撞箱/渲染
+        float clamped = (float) Math.min(32.0, Math.max(0.05, multiplier));
+        if (this.entityData.get(DATA_SIZE_MULTIPLIER) == clamped) {
+            return;
+        }
+        this.entityData.set(DATA_SIZE_MULTIPLIER, clamped);
+        // 服务端立即刷新碰撞箱
+        if (!this.level().isClientSide) {
+            this.refreshDimensions();
+        }
+    }
+
+    /**
+     * 大小属性缩放：原版 getDimensions 链路（getDefaultDimensions(...).scale(getScale())）
+     * 自动应用此倍率，从而同步缩放碰撞箱、眼睛高度等。
+     * 1.21.1 客户端 LivingEntityRenderer 亦自动应用 getScale 缩放模型；
+     * GeckoLib 渲染器（无人机/蜂群）另行读取同步倍率缩放。
+     */
+    @Override
+    public float getScale() {
+        return (float) this.getSizeMultiplier();
+    }
+
+    @Override
+    public void onSyncedDataUpdated(EntityDataAccessor<?> key) {
+        super.onSyncedDataUpdated(key);
+        if (DATA_SIZE_MULTIPLIER.equals(key)) {
+            // 客户端同步到新大小倍率后刷新碰撞箱
+            this.refreshDimensions();
+        }
     }
 
     // ===== 朝向控制 =====
@@ -656,7 +702,8 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
      */
     protected void applyAttributeModifiers() {
         if (this.getAttribute(Attributes.MAX_HEALTH) != null) {
-            this.getAttribute(Attributes.MAX_HEALTH).setBaseValue(baseMaxHealth);
+            // 调用 getter 而非直接读字段，使子类覆写（如无人机实例化参数）能即时生效
+            this.getAttribute(Attributes.MAX_HEALTH).setBaseValue(getBaseMaxHealth());
         }
         refreshConstructAttributes();
     }

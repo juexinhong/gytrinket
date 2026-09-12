@@ -56,13 +56,16 @@ public class NetworkHandler {
         registrar.playToServer(ConfigRemoveAttrPayload.TYPE, ConfigRemoveAttrPayload.STREAM_CODEC, ConfigRemoveAttrPayload::handle);
         registrar.playToServer(ConfigReorderPayload.TYPE, ConfigReorderPayload.STREAM_CODEC, ConfigReorderPayload::handle);
         registrar.playToServer(ConfigSpecialMechanicPayload.TYPE, ConfigSpecialMechanicPayload.STREAM_CODEC, ConfigSpecialMechanicPayload::handle);
+        registrar.playToServer(ConfigMechanicValuesPayload.TYPE, ConfigMechanicValuesPayload.STREAM_CODEC, ConfigMechanicValuesPayload::handle);
         registrar.playToServer(ConfigShieldTypesPayload.TYPE, ConfigShieldTypesPayload.STREAM_CODEC, ConfigShieldTypesPayload::handle);
+        registrar.playToServer(ConfigShieldValuesPayload.TYPE, ConfigShieldValuesPayload.STREAM_CODEC, ConfigShieldValuesPayload::handle);
         registrar.playToServer(AttackStatePayload.TYPE, AttackStatePayload.STREAM_CODEC, AttackStatePayload::handle);
         registrar.playToServer(ChargedAttackPayload.TYPE, ChargedAttackPayload.STREAM_CODEC, ChargedAttackPayload::handle);
         registrar.playToServer(ItemUseChargePayload.TYPE, ItemUseChargePayload.STREAM_CODEC, ItemUseChargePayload::handle);
 
         // S->C
         registrar.playToClient(ResponseAttributesPayload.TYPE, ResponseAttributesPayload.STREAM_CODEC, ResponseAttributesPayload::handle);
+        registrar.playToClient(SyncMovementSpeedMultiplierPayload.TYPE, SyncMovementSpeedMultiplierPayload.STREAM_CODEC, SyncMovementSpeedMultiplierPayload::handle);
         registrar.playToClient(SyncShieldPayload.TYPE, SyncShieldPayload.STREAM_CODEC, SyncShieldPayload::handle);
         registrar.playToClient(AuraParticlePayload.TYPE, AuraParticlePayload.STREAM_CODEC, AuraParticlePayload::handle);
         registrar.playToClient(ReflectParticlePayload.TYPE, ReflectParticlePayload.STREAM_CODEC, ReflectParticlePayload::handle);
@@ -133,16 +136,42 @@ public class NetworkHandler {
     }
 
     public static void sendShieldSyncToPlayer(ServerPlayer player, double currentShield, double maxShield) {
-        int currentCooldown = ShieldCooldownManager.getCurrentCooldown(player.getUUID());
-        int maxCooldown = ShieldCooldownManager.getMaxCooldown(player.getUUID());
+        PacketDistributor.sendToPlayer(player, buildShieldSyncMessage(player, currentShield, maxShield));
+    }
+
+    /** 构建护盾同步消息：按物品实例聚合护盾类型状态（同 itemId 多件：aura 取或、siphon 求和、amplification 取最大） */
+    public static SyncShieldPayload buildShieldSyncMessage(ServerPlayer player, double currentShield, double maxShield) {
+        java.util.UUID uuid = player.getUUID();
+        int currentCooldown = ShieldCooldownManager.getCurrentCooldown(uuid);
+        int maxCooldown = ShieldCooldownManager.getMaxCooldown(uuid);
         double adaptiveArmorReduction = com.gytrinket.gytrinket.core.damage.AdaptiveArmorManager.calculateDamageReduction(player);
-        int siphonStacks = com.gytrinket.gytrinket.core.shield.type.SiphonShieldType.getSiphonStacks(player.getUUID());
-        double shieldEffectRadius = AttributeManager.getGroupAttribute(player.getUUID(), "shield_effect_radius");
-        int[] protectedEntityIds = com.gytrinket.gytrinket.core.shield_transfer.ShieldTransferManager.getProtectedEntityIds(player.getUUID(), player.serverLevel());
-        boolean auraDamaging = com.gytrinket.gytrinket.core.shield.type.AuraShieldType.isAuraDamaging(player.getUUID());
-        double amplificationProgress = com.gytrinket.gytrinket.core.shield.type.AmplificationShieldType.getProgress(player.getUUID());
-        PacketDistributor.sendToPlayer(player,
-            new SyncShieldPayload(currentShield, maxShield, currentCooldown, maxCooldown, adaptiveArmorReduction, siphonStacks, shieldEffectRadius, protectedEntityIds, auraDamaging, amplificationProgress));
+        double shieldEffectRadius = AttributeManager.getGroupAttribute(uuid, "shield_effect_radius");
+        int[] protectedEntityIds = com.gytrinket.gytrinket.core.shield_transfer.ShieldTransferManager.getProtectedEntityIds(uuid, player.serverLevel());
+
+        java.util.Map<String, SyncShieldPayload.ItemShieldState> byItem = new java.util.LinkedHashMap<>();
+        for (com.gytrinket.gytrinket.core.shield.type.IShieldType.ShieldTypeData data :
+                com.gytrinket.gytrinket.core.shield.type.ShieldTypeManager.getPlayerShieldTypes(uuid)) {
+            if (!data.active()) continue;
+            String itemId = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(data.source().getItem()).toString();
+            SyncShieldPayload.ItemShieldState state = byItem.computeIfAbsent(itemId, k -> new SyncShieldPayload.ItemShieldState(k));
+            String typeName = data.type().getName();
+            if ("aura".equals(typeName)) {
+                if (com.gytrinket.gytrinket.core.shield.type.AuraShieldType.isAuraDamagingForItem(uuid, itemId)) state.auraDamaging = true;
+                state.auraRadius = DefsManager.resolveShieldTypeValueForItem(player.getServer(), itemId,
+                        "aura", "radius", Config.AURA_RADIUS.get()) * shieldEffectRadius;
+            } else if ("siphon".equals(typeName)) {
+                state.siphonStacks += com.gytrinket.gytrinket.core.shield.type.SiphonShieldType.getSiphonStacksForItem(uuid, itemId);
+                state.siphonRadius = DefsManager.resolveShieldTypeValueForItem(player.getServer(), itemId,
+                        "siphon", "radius", Config.SIPHON_RADIUS.get()) * shieldEffectRadius;
+            } else if ("amplification".equals(typeName)) {
+                state.amplificationProgress = Math.max(state.amplificationProgress,
+                    com.gytrinket.gytrinket.core.shield.type.AmplificationShieldType.getProgressForItem(uuid, itemId));
+                state.amplificationRadius = DefsManager.resolveShieldTypeValueForItem(player.getServer(), itemId,
+                        "amplification", "check_radius", Config.getAmplificationCheckRadius()) * shieldEffectRadius;
+            }
+        }
+        return new SyncShieldPayload(currentShield, maxShield, currentCooldown, maxCooldown, adaptiveArmorReduction,
+            protectedEntityIds, new ArrayList<>(byItem.values()));
     }
 
     public static void sendShieldCooldownRequestToServer() {
@@ -401,18 +430,24 @@ public class NetworkHandler {
     }
 
     private static ResponseConfigDataPayload buildConfigDataMessage(boolean openScreen) {
+        // 物品列表 = 注册了属性的物品 ∪ 注册了特殊机制的物品 ∪ 定义了护盾类型的物品
+        java.util.LinkedHashSet<String> itemIds = new java.util.LinkedHashSet<>(AttributeManager.getAllRegisteredItemAttributes());
+        itemIds.addAll(DefsManager.getSpecialMechanicItems());
+        itemIds.addAll(DefsManager.getItemShieldTypes().keySet());
+
         ListTag itemConfigList = new ListTag();
-        for (String itemId : AttributeManager.getAllRegisteredItemAttributes()) {
-            ItemAttributeConfig config = AttributeManager.getItemAttributes(itemId);
-            if (config == null) continue;
+        for (String itemId : itemIds) {
             CompoundTag itemTag = new CompoundTag();
             itemTag.putString("itemId", itemId);
             ListTag attrsTag = new ListTag();
-            for (var entry : config.getAttributes().entrySet()) {
-                CompoundTag attrTag = new CompoundTag();
-                attrTag.putString("name", entry.getKey());
-                attrTag.putDouble("value", entry.getValue());
-                attrsTag.add(attrTag);
+            ItemAttributeConfig config = AttributeManager.getItemAttributes(itemId);
+            if (config != null) {
+                for (var entry : config.getAttributes().entrySet()) {
+                    CompoundTag attrTag = new CompoundTag();
+                    attrTag.putString("name", entry.getKey());
+                    attrTag.putDouble("value", entry.getValue());
+                    attrsTag.add(attrTag);
+                }
             }
             itemTag.put("attributes", attrsTag);
             itemConfigList.add(itemTag);

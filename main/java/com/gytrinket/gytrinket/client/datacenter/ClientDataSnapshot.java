@@ -13,6 +13,8 @@ import java.util.Map;
 public class ClientDataSnapshot {
 
     private ItemStack[] items = new ItemStack[0];
+    /** Curios 饰品栏本地缓存（客户端本地刷新，服务端 NBT 同步不含饰品） */
+    private ItemStack[] curiosItems = new ItemStack[0];
     private double currentShield = 0;
     private double maxShield = 0;
     private String activeShieldType = "none";
@@ -89,6 +91,24 @@ public class ClientDataSnapshot {
         return items != null ? items.length : 0;
     }
 
+    /** 客户端本地刷新 Curios 饰品栏缓存（含本模组效果的判定由读取方谓词负责） */
+    public void updateCuriosItems(java.util.List<ItemStack> stacks) {
+        curiosItems = stacks.toArray(new ItemStack[0]);
+    }
+
+    /** Curios 饰品栏缓存的槽位数 */
+    public int getCuriosSlotCount() {
+        return curiosItems != null ? curiosItems.length : 0;
+    }
+
+    /** 获取 Curios 饰品栏缓存中指定槽位的物品 */
+    public ItemStack getCuriosItemInSlot(int slot) {
+        if (curiosItems == null || slot < 0 || slot >= curiosItems.length) {
+            return ItemStack.EMPTY;
+        }
+        return curiosItems[slot];
+    }
+
     /** 光点核心是否已满（所有槽位都有物品，未加载数据时视为未满） */
     public boolean isCoreFull() {
         if (items == null || items.length == 0) return false;
@@ -120,6 +140,7 @@ public class ClientDataSnapshot {
 
     public void reset() {
         items = new ItemStack[0];
+        curiosItems = new ItemStack[0];
         currentShield = 0;
         maxShield = 0;
         activeShieldType = "none";

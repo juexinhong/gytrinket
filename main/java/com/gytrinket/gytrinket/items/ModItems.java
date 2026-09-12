@@ -212,5 +212,5 @@ public class ModItems {
     public static final DeferredItem<Item> TASKMASTER_PART = ITEMS.registerSimpleItem("taskmaster_part", new Item.Properties()); // 督战者零件
 
     // 代币（随机构建代币机制，默认代币；不可合成、无战利品掉落）
-    public static final DeferredItem<Item> TOKEN = ITEMS.registerSimpleItem("token", new Item.Properties()); // 代币
+    public static final DeferredItem<Item> TOKEN = ITEMS.register("token", () -> new TokenItem(new Item.Properties().fireResistant())); // 代币（掉落物免疫常规销毁+头顶遮挡时穿透上浮）
 }

@@ -1,7 +1,7 @@
 package com.gytrinket.gytrinket.core.explosion;
 
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
-import com.gytrinket.gytrinket.core.attack_mode.ExecuteToggleManager;
+import com.gytrinket.gytrinket.core.damage.DamageAttributionWindow;
 import com.gytrinket.gytrinket.core.damage.SecondaryDamageMerger;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.LivingEntity;
@@ -167,7 +167,7 @@ public class SimulatedExplosion {
     }
 
     /**
-     * 对单个实体施加爆炸命中：重置无敌时间、斩杀归属、伤害、击退
+     * 对单个实体施加爆炸命中：重置无敌时间、归属窗口、伤害、击退
      */
     private static void applyExplosionHit(LivingEntity entity, Vec3 center, double radius, double distance,
                                           float damage, DamageSource damageSource, Player owner,
@@ -176,19 +176,21 @@ public class SimulatedExplosion {
             entity.invulnerableTime = 0;
         }
 
-        // 斩杀归属逻辑：根据 ExecuteToggleManager 决定是否将击杀归属玩家
-        DamageSource actualSource = damageSource;
-        if (owner != null && damageSource.getEntity() != null) {
-            if (damage >= entity.getHealth() && ExecuteToggleManager.isExecuteEnabled(owner)) {
-                // 斩杀归属启用 + 足够斩杀：使用带玩家归属的伤害源
-                actualSource = entity.damageSources().explosion(null, owner);
-            } else {
-                // 斩杀归属禁用 或 不足以斩杀：使用无攻击者的爆炸伤害源
-                actualSource = entity.damageSources().explosion(null);
+        // 归属不再由伤害前预判（原始伤害会被护甲/免伤削减导致误判）：
+        // 玩家施加时改用无攻击者的爆炸伤害源，致死归属由 ExecuteAttributionHandler
+        // 在施加窗口内按 LivingDeathEvent 实际致死结果判定
+        boolean windowed = owner != null && damageSource.getEntity() != null;
+        DamageSource actualSource = windowed ? entity.damageSources().explosion(null) : damageSource;
+        if (windowed) {
+            DamageAttributionWindow.mark(entity, owner);
+        }
+        try {
+            entity.hurt(actualSource, damage);
+        } finally {
+            if (windowed) {
+                DamageAttributionWindow.unmark(entity);
             }
         }
-
-        entity.hurt(actualSource, damage);
 
         if (resetInvulnerable) {
             entity.invulnerableTime = 0;

@@ -77,6 +77,75 @@ public class TooltipHandler {
         for (TooltipConfig config : matchedRules) {
             addConfiguredTooltip(event, itemId, config, collapse);
         }
+
+        // 环绕阵列特殊机制效果句（无 datapack tooltip rule，配置面板可给任意物品添加；与其他阵列一样用一句描述）
+        addOrbitArrayEffectTooltip(event, itemId, collapse);
+
+        // 代币物品自定义描述（config 随机构建的 tokenItemDescription 附属配置项）
+        addTokenItemDescriptionTooltip(event, itemId);
+    }
+
+    /**
+     * 代币物品自定义描述：config 随机构建（构建池）的代币附属配置项 tokenItemDescription，
+     * 可随意填写文本；非空且当前物品与配置的代币物品 ID 一致时，
+     * 以特殊机制描述的样式（空行分隔 + 灰色文本）追加显示。
+     */
+    private static void addTokenItemDescriptionTooltip(ItemTooltipEvent event, String itemId) {
+        String desc = Config.getRandomBuildTokenItemDescription();
+        if (desc == null || desc.isBlank()) {
+            return;
+        }
+        String tokenItemId = Config.getRandomBuildTokenItemId();
+        if (tokenItemId == null || !itemId.equalsIgnoreCase(tokenItemId.trim())) {
+            return;
+        }
+        event.getToolTip().add(Component.literal("").withStyle(ChatFormatting.GRAY));
+        for (String line : desc.split("\n")) {
+            if (!line.isBlank()) {
+                event.getToolTip().add(Component.literal(line).withStyle(ChatFormatting.GRAY));
+            }
+        }
+    }
+
+    /**
+     * 环绕阵列特殊机制描述：像其他阵列特殊机制一样，用带动态倍率的一句话描述。
+     * 覆盖值来自该物品自己的定义（clientResolveMechanicValueForItem），未覆盖时回退 MechanicValueDefs 默认（1.0）。
+     */
+    private static void addOrbitArrayEffectTooltip(ItemTooltipEvent event, String itemId, boolean collapse) {
+        if (!hasSpecialMechanicSet(itemId, "orbit_array_required_items")) {
+            return;
+        }
+        if (collapse) {
+            addTooltip(event, "orbit_array_required", ChatFormatting.GOLD);
+            return;
+        }
+        event.getToolTip().add(Component.literal("").withStyle(ChatFormatting.GRAY));
+        addTooltip(event, "orbit_array_required", ChatFormatting.GOLD);
+        addFormattedTooltip(event, itemId, "orbit_array_effect", ChatFormatting.GRAY,
+            (id) -> new Object[]{
+                formatDecimal(DefsManager.clientResolveMechanicValueForItem(id, "orbit_array_required_items",
+                    "attack_speed_multiplier", 1.0D)),
+                formatDecimal(DefsManager.clientResolveMechanicValueForItem(id, "orbit_array_required_items",
+                    "orbit_speed_multiplier", 1.0D)),
+                formatDecimal(DefsManager.clientResolveMechanicValueForItem(id, "orbit_array_required_items",
+                    "damage_multiplier", 1.0D)),
+                formatDecimal(DefsManager.clientResolveMechanicValueForItem(id, "orbit_array_required_items",
+                    "attack_range_multiplier", 1.0D)),
+                formatDecimal(DefsManager.clientResolveMechanicValueForItem(id, "orbit_array_required_items",
+                    "target_range_multiplier", 1.0D))
+            }
+        );
+    }
+
+    /** 判断物品是否声明了指定特殊机制集合（数据包声明或配置面板物品级覆盖均计入） */
+    private static boolean hasSpecialMechanicSet(String itemId, String mechanicSet) {
+        List<String> sets = DefsManager.clientSpecialMechanicSets(getClientRegistryAccess(), itemId);
+        if (sets.contains(mechanicSet)) {
+            return true;
+        }
+        com.gytrinket.gytrinket.core.defs.DefsManager.SpecialMechanicOverride ov =
+                DefsManager.getClientSpecialMechanicOverride(itemId);
+        return ov != null && !ov.removed() && ov.values() != null && ov.values().containsKey(mechanicSet);
     }
 
     /**
@@ -122,7 +191,7 @@ public class TooltipHandler {
         }
 
         if (config.needsFormatting()) {
-            addFormattedTooltip(event, config.getDescriptionKey(), ChatFormatting.GRAY, config.getFormatter());
+            addFormattedTooltip(event, itemId, config.getDescriptionKey(), ChatFormatting.GRAY, config.getFormatter());
         } else if (config.getDescriptionKey() != null) {
             addTooltip(event, config.getDescriptionKey(), ChatFormatting.GRAY);
         }
@@ -235,8 +304,21 @@ public class TooltipHandler {
             event.getToolTip().add(Component.literal("  +").withStyle(ChatFormatting.GREEN)
                 .append(typeTooltip));
 
-            addShieldTypeDescriptionTooltip(event, type);
+            addShieldTypeDescriptionTooltip(event, type, itemId);
+
+            // 穿盾机制开启时在类型描述下追加提示行（物品级覆盖 pierce_through ≥ 0.5）
+            addShieldPierceThroughLine(event, type, itemId);
         }
+    }
+
+    /** 护盾类型开启穿盾机制时，在描述下追加一行"护盾会被过穿" */
+    private static void addShieldPierceThroughLine(ItemTooltipEvent event, String type, String itemId) {
+        if (DefsManager.clientShieldTypeValueForItem(itemId, type, "pierce_through", 0.0D) < 0.5D) {
+            return;
+        }
+        event.getToolTip().add(Component.literal("    ")
+                .append(Component.translatable(TOOLTIP_PREFIX + "shield_pierce_line"))
+                .withStyle(ChatFormatting.YELLOW));
     }
 
     /**
@@ -247,35 +329,55 @@ public class TooltipHandler {
         return mc.level != null ? mc.level.registryAccess() : null;
     }
 
-    private static void addShieldTypeDescriptionTooltip(ItemTooltipEvent event, String type) {
+    private static void addShieldTypeDescriptionTooltip(ItemTooltipEvent event, String type, String itemId) {
         String descKey = TOOLTIP_PREFIX + "shield_type." + type + "_desc";
         Component descTooltip = Component.translatable(descKey);
 
         if (!isDefaultTranslation(descTooltip, descKey)) {
             String formattedDesc = descTooltip.getString();
             try {
+                // 数值来源与运行时 resolveShieldTypeValueForItem 一致：
+                // 物品级覆盖值优先，未覆盖回退 Config 全局默认，保证描述与实际生效数值相同
                 if (type.equals("aura")) {
                     formattedDesc = String.format(descTooltip.getString(),
+                        (int) DefsManager.clientShieldTypeValueForItem(itemId, type, "trigger_frequency",
+                            Config.AURA_TRIGGER_FREQUENCY.get()),
+                        DefsManager.clientShieldTypeValueForItem(itemId, type, "radius",
+                            Config.AURA_RADIUS.get()),
+                        DefsManager.clientShieldTypeValueForItem(itemId, type, "damage",
+                            Config.AURA_DAMAGE.get()),
+                        DefsManager.clientShieldTypeValueForItem(itemId, type, "shield_cost",
+                            Config.AURA_SHIELD_COST.get()),
                         Config.getIgniteDefaultDamage(),
                         Config.getIgniteDefaultDuration());
                 } else if (type.equals("reflect")) {
                     formattedDesc = String.format(descTooltip.getString(),
-                        (int)(Config.getReflectSpeedBaseModifier() * 100),
-                        Config.getReflectDamageEffectMultiplier());
+                        (int)(DefsManager.clientShieldTypeValueForItem(itemId, type, "speed_base_modifier",
+                            Config.getReflectSpeedBaseModifier()) * 100),
+                        DefsManager.clientShieldTypeValueForItem(itemId, type, "damage_effect_multiplier",
+                            Config.getReflectDamageEffectMultiplier()));
                 } else if (type.equals("amplification")) {
                     formattedDesc = String.format(descTooltip.getString(),
-                        (int)(Config.getAmplificationBaseAmplification() * 100),
-                        (int)(Config.getAmplificationMaxAmplification() * 100),
-                        (int)(Config.getAmplificationMovementSpeedBonus() * 100));
+                        (int)(DefsManager.clientShieldTypeValueForItem(itemId, type, "base_amplification",
+                            Config.getAmplificationBaseAmplification()) * 100),
+                        (int)(DefsManager.clientShieldTypeValueForItem(itemId, type, "max_amplification",
+                            Config.getAmplificationMaxAmplification()) * 100),
+                        (int)(DefsManager.clientShieldTypeValueForItem(itemId, type, "movement_speed_bonus",
+                            Config.getAmplificationMovementSpeedBonus()) * 100));
                 } else if (type.equals("warp")) {
                     formattedDesc = String.format(descTooltip.getString(),
-                        Config.getWarpShieldExplosionDamage());
+                        DefsManager.clientShieldTypeValueForItem(itemId, type, "explosion_damage",
+                            Config.getWarpShieldExplosionDamage()));
                 } else if (type.equals("siphon")) {
                     formattedDesc = String.format(descTooltip.getString(),
-                        Config.SIPHON_TICK_INTERVAL.get(),
-                        Config.SIPHON_DAMAGE.get(),
-                        (int)(Config.SIPHON_HEAL_RATIO.get() * 100),
-                        (int)(Config.SIPHON_MAX_EFFECT.get() * 100));
+                        DefsManager.clientShieldTypeValueForItem(itemId, type, "tick_interval",
+                            Config.SIPHON_TICK_INTERVAL.get()),
+                        DefsManager.clientShieldTypeValueForItem(itemId, type, "damage",
+                            Config.SIPHON_DAMAGE.get()),
+                        (int)(DefsManager.clientShieldTypeValueForItem(itemId, type, "heal_ratio",
+                            Config.SIPHON_HEAL_RATIO.get()) * 100),
+                        (int)(DefsManager.clientShieldTypeValueForItem(itemId, type, "max_effect",
+                            Config.SIPHON_MAX_EFFECT.get()) * 100));
                 }
                 event.getToolTip().add(Component.literal("    ").append(Component.literal(formattedDesc).withStyle(ChatFormatting.GRAY)));
             } catch (Exception e) {
@@ -288,7 +390,7 @@ public class TooltipHandler {
     private static void addModuleTooltips(ItemTooltipEvent event, String itemId, boolean collapse) {
         if (DefsManager.itemSetContains(getClientRegistryAccess(), "drone_module_items", itemId)) {
             addTooltip(event, "drone_module", ChatFormatting.GRAY);
-            if (!collapse) addDroneModuleDescTooltip(event);
+            if (!collapse) addDroneModuleDescTooltip(event, itemId);
         }
 
         if (DefsManager.itemSetContains(getClientRegistryAccess(), "assault_drone_module_items", itemId)) {
@@ -318,7 +420,7 @@ public class TooltipHandler {
 
         if (DefsManager.itemSetContains(getClientRegistryAccess(), "wingman_nano_regen_module_items", itemId)) {
             addTooltip(event, "wingman_nano_regen_module", ChatFormatting.GREEN);
-            if (!collapse) addNanoRegenModuleDescTooltip(event);
+            if (!collapse) addNanoRegenModuleDescTooltip(event, itemId);
         }
 
         if (DefsManager.itemSetContains(getClientRegistryAccess(), "swarm_module_items", itemId)) {
@@ -328,22 +430,25 @@ public class TooltipHandler {
 
         if (DefsManager.itemSetContains(getClientRegistryAccess(), "barrier_items", itemId)) {
             addTooltip(event, "barrier", ChatFormatting.DARK_PURPLE);
-            if (!collapse) addFormattedTooltip(event, "barrier_effect", ChatFormatting.DARK_PURPLE,
-                () -> new Object[]{5, 5});
+            if (!collapse) addFormattedTooltip(event, itemId, "barrier_effect", ChatFormatting.DARK_PURPLE,
+                (id) -> {
+                    double maxDamage = TooltipConfig.mechanicValue(id, "barrierMaxDamage", 5);
+                    return new Object[]{(int) maxDamage, (int) maxDamage};
+                });
         }
 
         if (DefsManager.itemSetContains(getClientRegistryAccess(), "journey_module_items", itemId)) {
             addTooltip(event, "journey_module", ChatFormatting.GOLD);
-            if (!collapse) addJourneyModuleDescTooltip(event);
+            if (!collapse) addJourneyModuleDescTooltip(event, itemId);
         }
     }
 
     /**
      * 征途模块描述工具提示（动态参数：最大层数、持续秒数、消退间隔/数量、攻速/移速每层加成）
      */
-    private static void addJourneyModuleDescTooltip(ItemTooltipEvent event) {
-        addFormattedTooltip(event, "journey_module_desc", ChatFormatting.GRAY,
-            () -> new Object[]{
+    private static void addJourneyModuleDescTooltip(ItemTooltipEvent event, String itemId) {
+        addFormattedTooltip(event, itemId, "journey_module_desc", ChatFormatting.GRAY,
+            (id) -> new Object[]{
                 Config.getJourneyMaxStacks(),
                 Config.getJourneyDurationTicks() / 20.0,
                 Config.getJourneyDecayIntervalTicks(),
@@ -355,21 +460,35 @@ public class TooltipHandler {
     }
 
     /**
-     * 无人机模块描述工具提示（需要特殊的动态参数计算）
+     * 无人机模块描述工具提示（需要特殊的动态参数计算）。
+     * 数值来源与运行时 DroneInstanceParams 一致：物品级覆盖值优先，未覆盖回退类型/Config 默认，
+     * 保证描述显示与实际生效数值相同（参考护盾类型描述实现方式）。
      */
-    private static void addDroneModuleDescTooltip(ItemTooltipEvent event) {
+    private static void addDroneModuleDescTooltip(ItemTooltipEvent event, String itemId) {
         String translationKey = TOOLTIP_PREFIX + "drone_module_desc";
         MutableComponent tooltip = Component.translatable(translationKey);
 
         if (!isDefaultTranslation(tooltip, translationKey)) {
             String formattedText = tooltip.getString();
             try {
-                ConstructType droneType = ConstructManager.getInstance().getConstructType(DroneConstructTypes.DRONE);
-                int maxCount = droneType != null ? droneType.getMaxCount() : Config.getDroneMaxCount();
-                double maxHealth = droneType != null ? droneType.getMaxHealth() : Config.getDroneBaseHealth();
-                double attackSpeed = 1.0 / Config.ORBIT_ATTACK_INTERVAL.get();
+                // 未覆盖回退值需与运行时实例参数解析一致（DroneInstanceParams fallback）：均取 Config 默认
+                double fallbackCount = Config.getDroneMaxCount();
+                double fallbackHealth = Config.getDroneBaseHealth();
+                double fallbackDamage = Config.getDroneBaseDamage();
+                double fallbackInterval = Config.DRONE_ATTACK_INTERVAL.get();
+                // 物品级覆盖值优先（client 覆盖层），未覆盖回退上述默认（与运行时实例参数解析一致）
+                double maxCount = DefsManager.clientResolveMechanicValueForItem(
+                        itemId, "drone_module_items", "base_count", fallbackCount);
+                double maxHealth = DefsManager.clientResolveMechanicValueForItem(
+                        itemId, "drone_module_items", "base_health", fallbackHealth);
+                double damage = DefsManager.clientResolveMechanicValueForItem(
+                        itemId, "drone_module_items", "base_damage", fallbackDamage);
+                double interval = DefsManager.clientResolveMechanicValueForItem(
+                        itemId, "drone_module_items", "attack_interval", fallbackInterval);
+                if (interval <= 0.0D) interval = fallbackInterval;
+                double attackSpeed = 1.0 / interval;
                 formattedText = String.format(formattedText,
-                    maxCount, (int) maxHealth, DroneBullet.getBaseDamage(), formatDecimal(attackSpeed));
+                    (int) maxCount, (int) maxHealth, damage, formatDecimal(attackSpeed));
                 event.getToolTip().add(Component.literal(formattedText).withStyle(ChatFormatting.GRAY));
             } catch (Exception e) {
                 event.getToolTip().add(tooltip.withStyle(ChatFormatting.GRAY));
@@ -413,11 +532,11 @@ public class TooltipHandler {
     }
 
     /**
-     * 纳米再生模块描述工具提示
+     * 纳米再生模块描述工具提示（再生比例支持物品级覆盖）
      */
-    private static void addNanoRegenModuleDescTooltip(ItemTooltipEvent event) {
-        addFormattedTooltip(event, "nano_regen_module_desc", ChatFormatting.GRAY,
-            () -> new Object[]{Config.getWingmanNanoRegenPercent() * 100}
+    private static void addNanoRegenModuleDescTooltip(ItemTooltipEvent event, String itemId) {
+        addFormattedTooltip(event, itemId, "nano_regen_module_desc", ChatFormatting.GRAY,
+            (id) -> new Object[]{TooltipConfig.mechanicValue(id, "wingmanNanoRegenPercent", Config.getWingmanNanoRegenPercent()) * 100}
         );
     }
 
@@ -466,7 +585,7 @@ public class TooltipHandler {
     /**
      * 带格式化参数的工具提示
      */
-    private static void addFormattedTooltip(ItemTooltipEvent event, String key, ChatFormatting color,
+    private static void addFormattedTooltip(ItemTooltipEvent event, String itemId, String key, ChatFormatting color,
                                             TooltipFormatter formatter) {
         String translationKey = TOOLTIP_PREFIX + key;
         MutableComponent tooltip = Component.translatable(translationKey);
@@ -474,7 +593,7 @@ public class TooltipHandler {
         if (!isDefaultTranslation(tooltip, translationKey)) {
             String formattedText = tooltip.getString();
             try {
-                formattedText = String.format(formattedText, formatter.formatParameters());
+                formattedText = String.format(formattedText, formatter.formatParameters(itemId));
                 event.getToolTip().add(Component.literal(formattedText).withStyle(color));
             } catch (Exception e) {
                 event.getToolTip().add(tooltip.withStyle(color));

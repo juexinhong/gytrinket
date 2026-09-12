@@ -90,11 +90,6 @@ public class StandbyBehavior implements IDroneBehavior {
     }
 
     @Override
-    public float getAttackRange() {
-        return 0;
-    }
-
-    @Override
     public boolean isCombatMode() {
         return false;
     }

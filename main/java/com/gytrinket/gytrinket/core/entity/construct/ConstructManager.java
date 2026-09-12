@@ -64,6 +64,14 @@ public class ConstructManager {
     /** 构造体类型构建条件检查器：类型ID -> 检查函数（玩家是否满足该类型的构建条件） */
     private final Map<String, Predicate<Player>> buildConditionCheckers = new ConcurrentHashMap<>();
 
+    /**
+     * 实例基础数量提供器：类型ID -> (玩家, 实例键 -> 该实例的基础数量上限)。
+     * <p>
+     * 实例化机制（如无人机按来源物品分实例）注册后，数量上限按
+     * "实例基础数量 + 属性修正" 逐实例计算；未注册的类型沿用类型级上限。
+     */
+    private final Map<String, java.util.function.BiFunction<Player, String, Integer>> instanceBaseCountProviders = new ConcurrentHashMap<>();
+
     private ConstructManager() {}
 
     /** 获取单例实例 */
@@ -178,6 +186,44 @@ public class ConstructManager {
         buildConditionCheckers.put(constructId, checker);
     }
 
+    // ===== 实例键控支持（实例化机制按来源物品分实例管理构建与数量） =====
+
+    /** 存储键：instanceKey 为空时即类型ID，否则为 "constructId|instanceKey" */
+    public static String storageKey(String constructId, @Nullable String instanceKey) {
+        return instanceKey == null || instanceKey.isEmpty()
+                ? constructId
+                : constructId + "|" + instanceKey;
+    }
+
+    /** 从存储键解析构造体类型ID（第一个 "|" 之前的部分） */
+    public static String parseConstructId(String storageKey) {
+        int idx = storageKey.indexOf('|');
+        return idx > 0 ? storageKey.substring(0, idx) : storageKey;
+    }
+
+    /** 从存储键解析实例键（第一个 "|" 之后的部分），无则返回 null */
+    @Nullable
+    public static String parseInstanceKey(String storageKey) {
+        int idx = storageKey.indexOf('|');
+        return idx > 0 && idx < storageKey.length() - 1 ? storageKey.substring(idx + 1) : null;
+    }
+
+    /**
+     * 注册实例基础数量提供器：构建与数量清理时按实例解析基础数量上限
+     * （如无人机实例 = 物品级 base_count 参数）。
+     */
+    public void registerInstanceBaseCountProvider(String constructId,
+                                                  java.util.function.BiFunction<Player, String, Integer> provider) {
+        instanceBaseCountProviders.put(constructId, provider);
+    }
+
+    /** 解析实例基础数量上限；无提供器返回 null（沿用类型级上限） */
+    @Nullable
+    public Integer getInstanceBaseCount(Player player, String constructId, String instanceKey) {
+        java.util.function.BiFunction<Player, String, Integer> provider = instanceBaseCountProviders.get(constructId);
+        return provider != null ? provider.apply(player, instanceKey) : null;
+    }
+
     /**
      * 检查玩家是否满足指定构造体类型的构建条件
      * <p>
@@ -225,7 +271,18 @@ public class ConstructManager {
 
         ConstructType type = getConstructType(constructId);
         if (type != null) {
-            double effectiveMaxCount = ConstructAttributeApplier.getEffectiveMaxCount(playerUUID, type);
+            // 实例化机制：按实例（ConstructData.instanceKey）独立计算上限与淘汰，
+            // 各实例互不挤占；instanceKey 为空沿用类型级逻辑
+            String instanceKey = constructData.getInstanceKey();
+            double effectiveMaxCount;
+            if (instanceKey != null) {
+                Integer baseCount = getInstanceBaseCount(player, constructId, instanceKey);
+                effectiveMaxCount = baseCount != null
+                        ? ConstructAttributeApplier.getEffectiveMaxCountForInstance(playerUUID, type, baseCount)
+                        : ConstructAttributeApplier.getEffectiveMaxCount(playerUUID, type);
+            } else {
+                effectiveMaxCount = ConstructAttributeApplier.getEffectiveMaxCount(playerUUID, type);
+            }
             ResourceKey<Level> playerDim = player.level().dimension();
 
             // 统计当前维度已有的构造体数量（以活跃实体为准，排除本次新构建的实体，
@@ -239,12 +296,13 @@ public class ConstructManager {
                     currentDimCount = entities.values().stream()
                             .filter(e -> !e.isRemoved() && e.level() != null && e.level().dimension().equals(playerDim))
                             .filter(e -> newEntityUUID == null || !e.getUUID().equals(newEntityUUID))
+                            .filter(e -> matchesInstance(e, instanceKey))
                             .count();
                 }
             }
 
             while (currentDimCount >= effectiveMaxCount) {
-                ConstructData oldestData = evictOldestInDimension(playerUUID, constructId, constructList, playerDim);
+                ConstructData oldestData = evictOldestInDimension(playerUUID, constructId, constructList, playerDim, instanceKey);
                 if (oldestData == null) break;
                 currentDimCount--;
             }
@@ -253,15 +311,28 @@ public class ConstructManager {
         constructList.add(constructData);
     }
 
+    /** 实体是否属于指定实例（entity 有 instanceKey 时按物品 ID 匹配；null instanceKey 仅匹配同样无实例键的实体） */
+    private static boolean matchesInstance(net.minecraft.world.entity.Entity entity, @Nullable String instanceKey) {
+        if (!(entity instanceof IConstructEntity constructEntity)) {
+            return instanceKey == null;
+        }
+        String entityInstanceKey = constructEntity.getInstanceKey();
+        return java.util.Objects.equals(entityInstanceKey, instanceKey);
+    }
+
     /**
      * 在指定维度中淘汰最早构建的一个构造体（销毁实体并清理数据）
+     * <p>
+     * instanceKey 非空时仅在该实例的构造体中淘汰（各实例互不挤占）。
      *
      * @return 被淘汰的构造体数据；如果没有可淘汰的返回 null
      */
     @Nullable
     private ConstructData evictOldestInDimension(UUID playerUUID, String constructId,
-                                                 List<ConstructData> constructList, ResourceKey<Level> dim) {
+                                                 List<ConstructData> constructList, ResourceKey<Level> dim,
+                                                 @Nullable String instanceKey) {
         for (ConstructData data : constructList) {
+            if (!java.util.Objects.equals(data.getInstanceKey(), instanceKey)) continue;
             UUID entityUUID = data.getEntityUUID();
             if (entityUUID == null) continue;
 
@@ -345,18 +416,48 @@ public class ConstructManager {
     }
 
     /**
-     * 获取玩家所有构造体（按类型分组）
+     * 移除玩家指定实例的构造体（销毁该实例的全部实体并清除数据）
+     * <p>
+     * 实例化机制专用：仅移除 instanceKey 匹配的构造体，其他实例不受影响。
      *
-     * @param playerUUID 玩家UUID
-     * @return 构造体类型ID到构造体数据列表的映射
+     * @param player      玩家
+     * @param constructId 构造体ID
+     * @param instanceKey 实例键（来源物品ID）
      */
-    public Map<String, List<ConstructData>> getPlayerConstructs(UUID playerUUID) {
-        Map<String, List<ConstructData>> result = playerConstructs.get(playerUUID);
-        return result != null ? result : Collections.emptyMap();
+    public void removeConstructsByInstance(Player player, String constructId, String instanceKey) {
+        UUID playerUUID = player.getUUID();
+
+        Map<UUID, net.minecraft.world.entity.Entity> entities = getActiveConstructEntities(playerUUID, constructId);
+        for (Map.Entry<UUID, net.minecraft.world.entity.Entity> entry : entities.entrySet()) {
+            if (!matchesInstance(entry.getValue(), instanceKey)) continue;
+            if (entry.getValue().isAlive()) {
+                entry.getValue().remove(net.minecraft.world.entity.Entity.RemovalReason.DISCARDED);
+            }
+            unregisterConstructEntity(playerUUID, constructId, entry.getKey());
+        }
+
+        Map<String, List<ConstructData>> constructs = playerConstructs.get(playerUUID);
+        if (constructs != null) {
+            List<ConstructData> dataList = constructs.get(constructId);
+            if (dataList != null) {
+                dataList.removeIf(data -> java.util.Objects.equals(data.getInstanceKey(), instanceKey));
+            }
+        }
     }
 
     /**
-     * 获取玩家所有构造体
+     * @return 构造体数据列表
+     */
+    public List<ConstructData> getPlayerConstructsByType(Player player, String constructId) {
+        Map<String, List<ConstructData>> constructs = playerConstructs.get(player.getUUID());
+        if (constructs == null) {
+            return Collections.emptyList();
+        }
+        return constructs.getOrDefault(constructId, Collections.emptyList());
+    }
+
+    /**
+     * 获取玩家的全部构造体数据（扁平列表，跨类型）
      *
      * @param player 玩家
      * @return 构造体数据列表
@@ -366,24 +467,17 @@ public class ConstructManager {
         if (constructs == null) {
             return Collections.emptyList();
         }
-        return constructs.values().stream()
-                .flatMap(List::stream)
-                .collect(Collectors.toList());
+        return constructs.values().stream().flatMap(List::stream).collect(Collectors.toList());
     }
 
     /**
-     * 获取玩家指定类型的构造体
+     * 获取玩家的全部构造体数据映射（constructId -> 列表）
      *
-     * @param player      玩家
-     * @param constructId 构造体ID
-     * @return 构造体数据列表
+     * @param playerUUID 玩家UUID
+     * @return 构造体数据映射（无数据时为空映射）
      */
-    public List<ConstructData> getPlayerConstructsByType(Player player, String constructId) {
-        Map<String, List<ConstructData>> constructs = playerConstructs.get(player.getUUID());
-        if (constructs == null) {
-            return Collections.emptyList();
-        }
-        return constructs.getOrDefault(constructId, Collections.emptyList());
+    public Map<String, List<ConstructData>> getPlayerConstructs(UUID playerUUID) {
+        return playerConstructs.getOrDefault(playerUUID, Collections.emptyMap());
     }
 
     /**
@@ -462,6 +556,51 @@ public class ConstructManager {
     }
 
     /**
+     * 检查指定实例是否可以创建构造体
+     * <p>
+     * 只统计玩家当前维度中该实例的构造体数量；baseCount 非空时上限按
+     * "实例基础数量 + 属性修正" 计算，为 null 时沿用类型级上限（按实例过滤统计）。
+     *
+     * @param player      玩家
+     * @param constructId 构造体ID
+     * @param instanceKey 实例键（来源物品ID）
+     * @param baseCount   实例基础数量上限（null 表示沿用类型级逻辑）
+     * @return 如果可以创建返回true
+     */
+    public boolean canCreateConstructForInstance(Player player, String constructId, String instanceKey,
+                                                 @Nullable Integer baseCount) {
+        ConstructType type = getConstructType(constructId);
+        if (type == null) {
+            return false;
+        }
+
+        UUID playerUUID = player.getUUID();
+        double effectiveMaxCount = baseCount != null
+                ? ConstructAttributeApplier.getEffectiveMaxCountForInstance(playerUUID, type, baseCount)
+                : ConstructAttributeApplier.getEffectiveMaxCount(playerUUID, type);
+
+        Map<String, Map<UUID, net.minecraft.world.entity.Entity>> playerConstructs = activeConstructEntities.get(playerUUID);
+        if (playerConstructs == null) {
+            return 0 < effectiveMaxCount;
+        }
+
+        Map<UUID, net.minecraft.world.entity.Entity> entities = playerConstructs.get(constructId);
+        if (entities == null) {
+            return 0 < effectiveMaxCount;
+        }
+
+        entities.entrySet().removeIf(entry -> entry.getValue().isRemoved());
+
+        ResourceKey<Level> playerDim = player.level().dimension();
+        long currentDimCount = entities.values().stream()
+                .filter(e -> e.level() != null && e.level().dimension().equals(playerDim))
+                .filter(e -> matchesInstance(e, instanceKey))
+                .count();
+
+        return currentDimCount < effectiveMaxCount;
+    }
+
+    /**
      * 检查是否正在构建指定构造体
      *
      * @param player      玩家
@@ -493,10 +632,56 @@ public class ConstructManager {
         }
     }
 
+    /** 检查指定存储键（constructId 或 "constructId|instanceKey"）是否正在构建 */
+    public boolean isBuildingStorage(Player player, String storageKey) {
+        Map<String, ConstructBuilder> builders = playerBuilders.get(player.getUUID());
+        return builders != null && builders.containsKey(storageKey);
+    }
+
+    /**
+     * 开始构建指定存储键对应的构造体（使用自定义构建器）
+     * <p>
+     * 实例化机制（如无人机）的存储键为 "constructId|instanceKey"，各实例独立构建。
+     * 如果已经在构建该存储键、或该实例已达到数量上限，则不会开始新的构建。
+     *
+     * @param player     玩家
+     * @param builder    自定义构建器
+     * @param storageKey 存储键
+     */
+    public void startBuildingStorage(Player player, ConstructBuilder builder, String storageKey) {
+        if (buildingDisabledPlayers.contains(player.getUUID())) return;
+        if (builder == null) {
+            return;
+        }
+        if (isBuildingStorage(player, storageKey)) {
+            return;
+        }
+        String constructId = parseConstructId(storageKey);
+        String instanceKey = parseInstanceKey(storageKey);
+        boolean canCreate;
+        if (instanceKey != null) {
+            Integer baseCount = getInstanceBaseCount(player, constructId, instanceKey);
+            canCreate = canCreateConstructForInstance(player, constructId, instanceKey, baseCount);
+        } else {
+            canCreate = canCreateConstruct(player, constructId);
+        }
+        if (canCreate) {
+            UUID playerUUID = player.getUUID();
+            playerBuilders.computeIfAbsent(playerUUID, k -> new ConcurrentHashMap<>());
+            playerBuilders.get(playerUUID).put(storageKey, builder);
+        }
+    }
+
+    /** 取消构建指定存储键对应的构造体 */
+    public void cancelBuildingStorage(Player player, String storageKey) {
+        Map<String, ConstructBuilder> builders = playerBuilders.get(player.getUUID());
+        if (builders != null) {
+            builders.remove(storageKey);
+        }
+    }
+
     /**
      * 开始构建指定构造体（使用自定义构建器）
-     * <p>
-     * 如果已经在构建或已达到数量上限，则不会开始新的构建
      *
      * @param player  玩家
      * @param builder 自定义构建器
@@ -558,11 +743,22 @@ public class ConstructManager {
             List<String> cancelledBuilds = new ArrayList<>();
 
             for (Map.Entry<String, ConstructBuilder> entry : builders.entrySet()) {
-                String constructId = entry.getKey();
+                String builderKey = entry.getKey();
                 ConstructBuilder builder = entry.getValue();
 
-                if (!canCreateConstruct(player, constructId)) {
-                    cancelledBuilds.add(constructId);
+                // 存储键可能为 "constructId|instanceKey"（实例化机制），解析后按实例检查上限
+                String constructId = parseConstructId(builderKey);
+                String instanceKey = parseInstanceKey(builderKey);
+                boolean canCreate;
+                if (instanceKey != null) {
+                    Integer baseCount = getInstanceBaseCount(player, constructId, instanceKey);
+                    canCreate = canCreateConstructForInstance(player, constructId, instanceKey, baseCount);
+                } else {
+                    canCreate = canCreateConstruct(player, constructId);
+                }
+
+                if (!canCreate) {
+                    cancelledBuilds.add(builderKey);
                     continue;
                 }
 
@@ -572,15 +768,15 @@ public class ConstructManager {
                 }
 
                 if (builder.tick()) {
-                    completedBuilds.add(constructId);
+                    completedBuilds.add(builderKey);
                 }
             }
 
-            for (String constructId : completedBuilds) {
-                builders.remove(constructId);
+            for (String builderKey : completedBuilds) {
+                builders.remove(builderKey);
             }
-            for (String constructId : cancelledBuilds) {
-                builders.remove(constructId);
+            for (String builderKey : cancelledBuilds) {
+                builders.remove(builderKey);
             }
         }
 
@@ -597,6 +793,10 @@ public class ConstructManager {
      * <p>
      * 只按玩家当前维度统计，仅销毁当前维度中超出上限的实体。
      * 其他维度遗留的构造体不受影响。
+     * <p>
+     * 实例化机制（实体带 instanceKey 且注册了基础数量提供器）按实例分组，
+     * 每组独立计算 "实例基础数量 + 属性修正" 上限并淘汰本实例最早的构造体，
+     * 各实例互不挤占；无实例键的构造体沿用类型级上限。
      *
      * @param player 玩家
      */
@@ -622,25 +822,38 @@ public class ConstructManager {
                 continue;
             }
 
-            double effectiveMaxCount = ConstructAttributeApplier.getEffectiveMaxCount(playerUUID, type);
+            List<ConstructData> dataList = constructsMap != null ? constructsMap.get(constructId) : null;
 
-            List<net.minecraft.world.entity.Entity> currentDimEntities = entities.values().stream()
-                    .filter(e -> e.level() != null && e.level().dimension().equals(playerDim))
-                    .collect(Collectors.toList());
-
-            if (currentDimEntities.size() <= effectiveMaxCount) {
-                continue;
+            // 当前维度的活跃实体按实例键分组（无实例键归入 null 组，沿用类型级逻辑）
+            Map<String, List<net.minecraft.world.entity.Entity>> instanceGroups = new LinkedHashMap<>();
+            for (net.minecraft.world.entity.Entity entity : entities.values()) {
+                if (entity.level() == null || !entity.level().dimension().equals(playerDim)) continue;
+                String instKey = entity instanceof IConstructEntity constructEntity
+                        ? constructEntity.getInstanceKey() : null;
+                instanceGroups.computeIfAbsent(instKey, k -> new ArrayList<>()).add(entity);
             }
 
-            int excessCount = currentDimEntities.size() - (int) effectiveMaxCount;
-            int removed = 0;
+            for (Map.Entry<String, List<net.minecraft.world.entity.Entity>> groupEntry : instanceGroups.entrySet()) {
+                String instKey = groupEntry.getKey();
+                List<net.minecraft.world.entity.Entity> groupEntities = groupEntry.getValue();
 
-            if (constructsMap != null) {
-                List<ConstructData> dataList = constructsMap.get(constructId);
+                Integer baseCount = instKey != null ? getInstanceBaseCount(player, constructId, instKey) : null;
+                double effectiveMaxCount = baseCount != null
+                        ? ConstructAttributeApplier.getEffectiveMaxCountForInstance(playerUUID, type, baseCount)
+                        : ConstructAttributeApplier.getEffectiveMaxCount(playerUUID, type);
+
+                int excessCount = groupEntities.size() - (int) effectiveMaxCount;
+                if (excessCount <= 0) {
+                    continue;
+                }
+
+                int removed = 0;
+
                 if (dataList != null) {
                     List<ConstructData> toRemove = new ArrayList<>();
                     for (ConstructData data : dataList) {
                         if (removed >= excessCount) break;
+                        if (!java.util.Objects.equals(data.getInstanceKey(), instKey)) continue;
                         UUID entityUUID = data.getEntityUUID();
                         net.minecraft.world.entity.Entity entity = entities.get(entityUUID);
                         if (entity != null && !entity.isRemoved()
@@ -655,20 +868,23 @@ public class ConstructManager {
                     }
                     dataList.removeAll(toRemove);
                 }
-            }
 
-            if (removed < excessCount) {
-                List<UUID> remainingUUIDs = new ArrayList<>(entities.keySet());
-                for (UUID entityUUID : remainingUUIDs) {
-                    if (removed >= excessCount) break;
-                    net.minecraft.world.entity.Entity entity = entities.get(entityUUID);
-                    if (entity != null && !entity.isRemoved()
-                            && entity.level() != null && entity.level().dimension().equals(playerDim)) {
-                        if (entity.isAlive()) {
-                            entity.remove(net.minecraft.world.entity.Entity.RemovalReason.DISCARDED);
+                if (removed < excessCount) {
+                    // 兜底：清理该实例在当前维度剩余的超额实体（无对应数据）
+                    List<UUID> groupUUIDs = groupEntities.stream()
+                            .map(net.minecraft.world.entity.Entity::getUUID)
+                            .collect(Collectors.toList());
+                    for (UUID entityUUID : groupUUIDs) {
+                        if (removed >= excessCount) break;
+                        net.minecraft.world.entity.Entity entity = entities.get(entityUUID);
+                        if (entity != null && !entity.isRemoved()
+                                && entity.level() != null && entity.level().dimension().equals(playerDim)) {
+                            if (entity.isAlive()) {
+                                entity.remove(net.minecraft.world.entity.Entity.RemovalReason.DISCARDED);
+                            }
+                            unregisterConstructEntity(playerUUID, constructId, entityUUID);
+                            removed++;
                         }
-                        unregisterConstructEntity(playerUUID, constructId, entityUUID);
-                        removed++;
                     }
                 }
             }

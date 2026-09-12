@@ -25,6 +25,14 @@ public class ConstructData {
 
     private UUID entityUUID;
 
+    /**
+     * 实例键（可空）：实例化机制（如无人机）中标识来源物品的 ID（如 "minecraft:diamond"）。
+     * <p>
+     * 同一构造体类型可由多个物品分别提供实例，每个实例独立管理数量上限与构建器；
+     * null 表示非实例化路径（旧存档或僚机/蜂群等未实例化的类型）。
+     */
+    private String instanceKey;
+
     /** 当前生命值 */
     private double health;
 
@@ -71,6 +79,15 @@ public class ConstructData {
 
     public UUID getEntityUUID() {
         return entityUUID;
+    }
+
+    /** 获取实例键（来源物品 ID），null 表示非实例化路径 */
+    public String getInstanceKey() {
+        return instanceKey;
+    }
+
+    public void setInstanceKey(String instanceKey) {
+        this.instanceKey = instanceKey;
     }
 
     public void setEntityUUID(UUID entityUUID) {
@@ -200,6 +217,9 @@ public class ConstructData {
         tag.putDouble("healthRatio", healthRatio);
         tag.putBoolean("active", active);
         tag.putLong("createdTime", createdTime);
+        if (instanceKey != null) {
+            tag.putString("instanceKey", instanceKey);
+        }
         if (dimension != null) {
             tag.putDouble("posX", posX);
             tag.putDouble("posY", posY);
@@ -219,6 +239,9 @@ public class ConstructData {
         data.setHealth(tag.getDouble("health"));
         data.setActive(tag.getBoolean("active"));
         data.createdTime = tag.getLong("createdTime");
+        if (tag.contains("instanceKey")) {
+            data.setInstanceKey(tag.getString("instanceKey"));
+        }
         if (tag.contains("healthRatio")) {
             data.setHealthRatio(tag.getDouble("healthRatio"));
         } else {

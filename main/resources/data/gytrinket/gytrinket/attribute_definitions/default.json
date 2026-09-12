@@ -65,6 +65,8 @@
     { "name": "construct_move_speed_percent", "combine": "PERCENT", "group": "construct_move_speed" },
     { "name": "construct_orbit_speed_percent", "combine": "PERCENT", "group": "construct_orbit_speed" },
     { "name": "construct_rotation_speed_percent", "combine": "PERCENT", "group": "construct_rotation_speed" },
+    { "name": "construct_size_percent", "combine": "PERCENT", "group": "construct_size" },
+    { "name": "construct_size_independent", "combine": "INDEPENDENT_MULTIPLY", "group": "construct_size" },
     { "name": "construct_drone_assault_attack_speed_percent", "combine": "PERCENT", "group": "construct_drone_assault_attack_speed" },
     { "name": "construct_drone_assault_attack_speed_independent", "combine": "INDEPENDENT_MULTIPLY", "group": "construct_drone_assault_attack_speed" },
     { "name": "construct_drone_defense_health_base", "combine": "BASE", "group": "construct_drone_defense_health" },

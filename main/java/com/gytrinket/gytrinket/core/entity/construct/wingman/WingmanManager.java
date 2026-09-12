@@ -1,8 +1,8 @@
 package com.gytrinket.gytrinket.core.entity.construct.wingman;
 
 import com.gytrinket.gytrinket.config.Config;
+import com.gytrinket.gytrinket.core.defs.DefsManager;
 import com.gytrinket.gytrinket.core.shield.DisableSystem;
-import com.gytrinket.gytrinket.core.entity.construct.ConstructBuilder;
 import com.gytrinket.gytrinket.core.entity.construct.ConstructManager;
 import com.gytrinket.gytrinket.core.entity.construct.ConstructType;
 import com.gytrinket.gytrinket.event.PlayerAttributesCalculatedEvent;
@@ -17,11 +17,16 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 僚机管理器
  * <p>
  * 处理僚机的构建条件检测和管理逻辑。
+ * <p>
+ * 实例化机制：每个僚机实例来源物品（声明 {@link WingmanInstanceParams#MECHANIC_SET}
+ * 机制集或命中 Config 僚机模块物品）各成一个实例，独立构建、独立数量上限，
+ * 实例参数（构建时间/生命/伤害/数量/攻击间隔/范围）为物品级。
  */
 @EventBusSubscriber(modid = com.gytrinket.gytrinket.gytrinket.MODID)
 public class WingmanManager {
@@ -29,6 +34,9 @@ public class WingmanManager {
 
     /** 玩家构建条件缓存 */
     private static final Set<UUID> PLAYER_CAN_BUILD_WINGMAN = new HashSet<>();
+
+    /** 玩家僚机实例物品缓存：玩家UUID -> 实例物品ID集合（实例键） */
+    private static final Map<UUID, Set<String>> PLAYER_WINGMAN_INSTANCE_ITEMS = new ConcurrentHashMap<>();
 
     /** 玩家拦截机模块缓存 */
     private static final Set<UUID> PLAYER_HAS_INTERCEPTOR_MODULE = new HashSet<>();
@@ -38,6 +46,13 @@ public class WingmanManager {
                 WingmanConstructTypes.WINGMAN,
                 player -> PLAYER_CAN_BUILD_WINGMAN.contains(player.getUUID())
         );
+
+        // 注册实例基础数量提供器：僚机实例数量上限 = 物品级 base_count 参数（+属性修正）
+        ConstructManager.getInstance().registerInstanceBaseCountProvider(
+                WingmanConstructTypes.WINGMAN,
+                (player, instanceKey) -> WingmanInstanceParams.getBaseCount(
+                        net.neoforged.neoforge.server.ServerLifecycleHooks.getCurrentServer(), instanceKey)
+        );
     }
 
     public static WingmanManager getInstance() {
@@ -45,14 +60,38 @@ public class WingmanManager {
     }
 
     /**
-     * 开始构建僚机
+     * 开始构建僚机（驱动各实例的构建循环）
      */
     public void startBuildingWingman(Player player) {
-        ConstructType type = ConstructManager.getInstance().getConstructType(WingmanConstructTypes.WINGMAN);
-        if (type == null) return;
+        tickBuilds(player);
+    }
 
-        ConstructBuilder builder = new ConstructBuilder(player, type);
-        ConstructManager.getInstance().startBuilding(player, builder);
+    /**
+     * 每刻驱动各僚机实例的构建循环
+     * <p>
+     * 对玩家的每个实例物品：若该实例未在构建，则尝试启动实例构建器
+     * （构建时间与产出参数为物品级；数量上限检查在 startBuildingStorage 内完成）。
+     *
+     * @param player 玩家
+     */
+    public void tickBuilds(Player player) {
+        Set<String> instanceItems = PLAYER_WINGMAN_INSTANCE_ITEMS.get(player.getUUID());
+        if (instanceItems == null || instanceItems.isEmpty()) {
+            return;
+        }
+        ConstructType type = ConstructManager.getInstance().getConstructType(WingmanConstructTypes.WINGMAN);
+        if (type == null) {
+            return;
+        }
+        ConstructManager constructManager = ConstructManager.getInstance();
+        for (String instanceKey : instanceItems) {
+            String storageKey = ConstructManager.storageKey(WingmanConstructTypes.WINGMAN, instanceKey);
+            if (constructManager.isBuildingStorage(player, storageKey)) {
+                continue;
+            }
+            constructManager.startBuildingStorage(
+                    player, new WingmanInstanceBuilder(player, type, instanceKey), storageKey);
+        }
     }
 
     /**
@@ -79,21 +118,30 @@ public class WingmanManager {
     @SubscribeEvent
     public static void onAttributesCalculated(PlayerAttributesCalculatedEvent event) {
         UUID playerUUID = event.getPlayerUUID();
+        net.minecraft.server.MinecraftServer server = net.neoforged.neoforge.server.ServerLifecycleHooks.getCurrentServer();
 
-        boolean hasWingmanModule = false;
         boolean hasInterceptorModule = false;
+        Set<String> instanceItems = new HashSet<>();
 
         // 已装备物品 = 光点核心存储 + Curios 饰品栏（光点核心内容扩展）
         for (ItemStack stack : PlayerStoreUtils.getEquippedStacks(playerUUID)) {
             if (DisableSystem.isItemDisabled(playerUUID, stack)) continue;
             var item = stack.getItem();
-            if (Config.isWingmanModuleItem(item)) {
-                hasWingmanModule = true;
+            String itemId = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(item).toString();
+
+            // 实例化机制：命中 Config 僚机模块物品、或声明 wingman_module_items 机制集的
+            // 物品各成一个实例（并集）；实例键为物品 ID
+            if (Config.isWingmanModuleItem(item)
+                    || (server != null && DefsManager.getEffectiveSpecialMechanicSets(server, itemId)
+                            .contains(WingmanInstanceParams.MECHANIC_SET))) {
+                instanceItems.add(itemId);
             }
             if (Config.isInterceptorModuleItem(item)) {
                 hasInterceptorModule = true;
             }
         }
+
+        boolean hasWingmanModule = !instanceItems.isEmpty();
 
         // 更新拦截机模块缓存
         if (hasInterceptorModule) {
@@ -124,11 +172,22 @@ public class WingmanManager {
             }
         }
 
-        // 如果玩家现在可以构建僚机（之前不能），则开始构建
+        // 实例化机制：实例物品集合 diff——被移除的实例取消构建并销毁其全部僚机
+        Set<String> previousItems = PLAYER_WINGMAN_INSTANCE_ITEMS.getOrDefault(playerUUID, java.util.Collections.emptySet());
+        ServerPlayer playerForDiff = event.getPlayer();
+        for (String removedItem : previousItems) {
+            if (instanceItems.contains(removedItem) || playerForDiff == null) continue;
+            String storageKey = ConstructManager.storageKey(WingmanConstructTypes.WINGMAN, removedItem);
+            ConstructManager.getInstance().cancelBuildingStorage(playerForDiff, storageKey);
+            ConstructManager.getInstance().removeConstructsByInstance(playerForDiff, WingmanConstructTypes.WINGMAN, removedItem);
+        }
+        PLAYER_WINGMAN_INSTANCE_ITEMS.put(playerUUID, instanceItems);
+
+        // 如果玩家现在可以构建僚机（之前不能），则驱动构建循环补满
         if (!canBuildBefore && hasWingmanModule) {
             ServerPlayer serverPlayer = event.getPlayer();
-            if (serverPlayer != null && WingmanManager.getInstance().canBuildWingman(serverPlayer)) {
-                WingmanManager.getInstance().startBuildingWingman(serverPlayer);
+            if (serverPlayer != null) {
+                WingmanManager.getInstance().tickBuilds(serverPlayer);
             }
         }
     }
@@ -168,6 +227,7 @@ public class WingmanManager {
 
     private static void clearPlayerCache(UUID playerUUID) {
         PLAYER_CAN_BUILD_WINGMAN.remove(playerUUID);
+        PLAYER_WINGMAN_INSTANCE_ITEMS.remove(playerUUID);
         PLAYER_HAS_INTERCEPTOR_MODULE.remove(playerUUID);
     }
 

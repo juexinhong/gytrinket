@@ -98,7 +98,7 @@
   "tooltip.gytrinket.shield_type.warp": "ワープ",
   "tooltip.gytrinket.shield_type.siphon": "サイフォン",
   "tooltip.gytrinket.shield_type.none_desc": "同種のシールドの属性を追加でスタックできます",
-  "tooltip.gytrinket.shield_type.aura_desc": "近くの敵を燃やし、着火します。（着火ダメージが指定されていない場合、デフォルトは%.1f/s のダメージを%d秒間与えます）",
+  "tooltip.gytrinket.shield_type.aura_desc": "%dティックごとに%.1fブロック内の敵を燃やして着火し、敵1体につき%.1fの燃焼チャージを蓄積し、%.3fのシールドを消費します。（着火ダメージが指定されていない場合、デフォルトは%.1f/s のダメージを%d秒間与えます）",
   "tooltip.gytrinket.shield_type.reflect_desc": "命中した飛び道具を反射します。反射された飛び道具の速度は%d%%増加し、ダメージはシールド効果の影響を受けます",
   "tooltip.gytrinket.shield_type.amplification_desc": "攻撃ダメージが%d%%増加します。敵が近くにいるとアンプリファイアが増加します。上限は%d%%。シールド効果は基本量と上限の両方に適用されます。シールド展開中は%d%%の移動速度を提供します（シールド効果の影響を受けます）",
   "tooltip.gytrinket.shield_type.warp_desc": "シールドが破壊された時、向いている方向にテレポートします。テレポートの開始点と終了点で爆発が発生し、%.1fの爆発ダメージを与えます",

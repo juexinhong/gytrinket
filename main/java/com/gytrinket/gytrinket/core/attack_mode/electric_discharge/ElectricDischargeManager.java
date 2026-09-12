@@ -11,6 +11,7 @@ import com.gytrinket.gytrinket.core.modifier.player.attack.AttackSpeedManager;
 import com.gytrinket.gytrinket.core.shield.ShieldManager;
 import com.gytrinket.gytrinket.core.shield_transfer.ShieldTransferManager;
 import com.gytrinket.gytrinket.core.damage.ModDamageTypes;
+import com.gytrinket.gytrinket.core.defs.DefsManager;
 import com.gytrinket.gytrinket.network.NetworkHandler;
 import com.gytrinket.gytrinket.storage.PlayerStoreUtils;
 import net.minecraft.server.level.ServerLevel;
@@ -150,7 +151,8 @@ public class ElectricDischargeManager {
 
         UUID lightningUuid = UUID.randomUUID();
         List<LightningBurnTarget> burnTargets = new ArrayList<>();
-        int burnDuration = Config.getElectricDischargeBurnDuration();
+        int burnDuration = (int) DefsManager.resolveMechanicValue(player.getServer(), player.getUUID(),
+                "electric_discharge_items", "burn_duration", Config.getElectricDischargeBurnDuration());
 
         for (LivingEntity entity : hitEntities) {
             burnTargets.add(new LightningBurnTarget(entity, player, burnDuration));
@@ -190,7 +192,8 @@ public class ElectricDischargeManager {
                 }
 
                 // 计算灼烧充能
-                float baseBurnCharge = (float) Config.getElectricDischargeBurnCharge();
+                float baseBurnCharge = (float) DefsManager.resolveMechanicValue(target.attacker.getServer(), target.attacker.getUUID(),
+                        "electric_discharge_items", "burn_charge", Config.getElectricDischargeBurnCharge());
                 // 计算灼烧充能（使用不含模组修正的基础攻击速度）
                 double attackSpeedBase = AttackSpeedManager.getBaseAttackSpeed(target.attacker);
                 double attackSpeedMultiplier = attackSpeedBase;

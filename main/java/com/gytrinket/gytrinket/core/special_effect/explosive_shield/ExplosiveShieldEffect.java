@@ -5,6 +5,7 @@ import com.gytrinket.gytrinket.core.attribute.AttributeManager;
 import com.gytrinket.gytrinket.core.shield.DisableSystem;
 import com.gytrinket.gytrinket.core.explosion.SimulatedExplosion;
 import com.gytrinket.gytrinket.core.entity.construct.HostileTargetManager;
+import com.gytrinket.gytrinket.core.defs.DefsManager;
 import com.gytrinket.gytrinket.core.shield_transfer.ShieldTransferManager;
 import com.gytrinket.gytrinket.event.ShieldBreakEvent;
 import com.gytrinket.gytrinket.gytrinket;
@@ -41,11 +42,13 @@ public class ExplosiveShieldEffect {
         }
 
         double shieldEffectRadius = AttributeManager.getGroupAttribute(player.getUUID(), "shield_effect_radius");
-        double baseRadius = Config.EXPLOSIVE_SHIELD_RADIUS.get();
+        double baseRadius = DefsManager.resolveMechanicValue(player.getServer(), player.getUUID(),
+                "explosive_shield_items", "radius", Config.EXPLOSIVE_SHIELD_RADIUS.get());
         double radius = baseRadius * shieldEffectRadius;
 
         double shieldEffect = AttributeManager.getGroupAttribute(player.getUUID(), "shield_effect");
-        double baseDamage = Config.EXPLOSIVE_SHIELD_DAMAGE.get();
+        double baseDamage = DefsManager.resolveMechanicValue(player.getServer(), player.getUUID(),
+                "explosive_shield_items", "base_damage", Config.EXPLOSIVE_SHIELD_DAMAGE.get());
         float damage = (float)(baseDamage * shieldEffect);
 
         for (LivingEntity effectCenter : effectCenters) {

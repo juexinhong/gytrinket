@@ -39,11 +39,6 @@ public interface IDroneBehavior {
     float getAttackInterval();
 
     /**
-     * 获取攻击范围
-     */
-    float getAttackRange();
-
-    /**
      * 检查是否处于战斗模式
      */
     boolean isCombatMode();

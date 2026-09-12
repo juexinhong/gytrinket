@@ -36,7 +36,10 @@ public class PrecisionConstructEventHandler {
         }
 
         int level = Math.max(0, ModLevelManager.getModLevel(playerUUID));
-        double bonus = level * Config.PRECISION_CONSTRUCT_BONUS_PER_LEVEL.get();
+        // 物品级数值覆盖：取首个生效物品的覆盖值，未覆盖回退 Config 默认
+        double bonusPerLevel = DefsManager.resolveMechanicValue(player.getServer(), playerUUID,
+                "precision_construct_items", "bonus_per_level", Config.PRECISION_CONSTRUCT_BONUS_PER_LEVEL.get());
+        double bonus = level * bonusPerLevel;
 
         AttributeManager.setDynamicAttribute(playerUUID, NAMESPACE, "construct_build_speed_independent", bonus);
     }

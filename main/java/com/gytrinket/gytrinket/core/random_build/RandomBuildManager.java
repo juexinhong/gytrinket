@@ -114,12 +114,12 @@ public class RandomBuildManager {
     }
 
     /**
-     * 是否仅饰品栏生效的饰品（注册了 Curios ICurio 行为）。
+     * 是否饰品类物品（注册了 Curios ICurio 行为，可穿戴在饰品栏）。
      * <p>
-     * 这类物品的效果由 Curios 在穿戴时提供，放进光点核心反而会失效，
-     * 因此从随机构建池候选排除。未安装 Curios 时恒为 false。
+     * 这类物品的效果由 Curios 在穿戴时提供，放进光点核心反而会失效：
+     * 从随机构建池候选排除，且禁止快速装备到光点核心。未安装 Curios 时恒为 false。
      */
-    private static boolean isTrinketItem(Item item) {
+    public static boolean isTrinketItem(Item item) {
         if (!CuriosCompat.isCuriosLoaded()) return false;
         ItemStack stack = new ItemStack(item);
         if (stack.isEmpty()) return false;

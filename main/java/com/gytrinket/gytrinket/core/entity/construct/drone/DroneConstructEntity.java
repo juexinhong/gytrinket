@@ -62,6 +62,8 @@ public class DroneConstructEntity extends AbstractConstructEntity {
     private static final EntityDataAccessor<Integer> DATA_EFFECT_TAGS = SynchedEntityData.defineId(DroneConstructEntity.class, EntityDataSerializers.INT);
     /** 最终指令自爆状态（同步到客户端，客户端 tick 同样跳过阵列位置更新，避免模型渲染位置与实体脱节） */
     private static final EntityDataAccessor<Boolean> DATA_EXPLODING = SynchedEntityData.defineId(DroneConstructEntity.class, EntityDataSerializers.BOOLEAN);
+    /** 实例键（来源物品 ID）：同步到客户端，使客户端能按覆盖表镜像解析实例参数（攻击范围/索敌范围等） */
+    private static final EntityDataAccessor<String> DATA_INSTANCE_KEY = SynchedEntityData.defineId(DroneConstructEntity.class, EntityDataSerializers.STRING);
 
     private final Set<DroneEffectTag> effectTags = new HashSet<>();
 
@@ -70,6 +72,10 @@ public class DroneConstructEntity extends AbstractConstructEntity {
 
     /** 存储对应的 DroneConstruct 引用 */
     private DroneConstruct droneConstruct;
+
+    /** 实例键（来源物品 ID），非实例化路径为 null */
+    @Nullable
+    private String instanceKey;
 
     // 列队阵列相关字段
     private int droneIndex = 0;
@@ -96,8 +102,124 @@ public class DroneConstructEntity extends AbstractConstructEntity {
         this(ModEntities.DRONE_CONSTRUCT.get(), level);
         setOwnerUUID(ownerUUID);
         this.droneConstruct = droneConstruct;
+        setInstanceKey(droneConstruct.getInstanceKey());
         // 攻击冷却错峰：随机偏移0-40 tick，避免所有无人机同时开火
         this.attackCooldown = level.random.nextInt(40);
+    }
+
+    // ===== 实例化参数（来源物品 ID 相同的无人机共用一套物品级参数，修改即时生效） =====
+
+    /** 实例键（来源物品 ID），非实例化路径为 null */
+    @Nullable
+    @Override
+    public String getInstanceKey() {
+        // 客户端优先读取同步数据（网络生成包携带），服务端读实体数据未设置时回退字段
+        String synced = this.entityData.get(DATA_INSTANCE_KEY);
+        return (synced != null && !synced.isEmpty()) ? synced : instanceKey;
+    }
+
+    public void setInstanceKey(@Nullable String instanceKey) {
+        this.instanceKey = instanceKey;
+        this.entityData.set(DATA_INSTANCE_KEY, instanceKey == null ? "" : instanceKey);
+    }
+
+    /**
+     * 解析实例参数值；实例键为空（非实例化路径）或环境不完整时返回 fallback。
+     * 服务端走 DefsManager 服务端覆盖表；逻辑客户端（集成服不可达）按同步的实例键走客户端覆盖表镜像，
+     * 保证客户端模型渲染/朝向决策与服务端实际生效数值一致。
+     */
+    private double resolveInstanceParam(String paramKey, double fallback) {
+        String key = getInstanceKey();
+        if (key == null) return fallback;
+        if (this.level().isClientSide) {
+            return DroneInstanceParams.resolveClient(key, paramKey);
+        }
+        net.minecraft.server.MinecraftServer server = net.neoforged.neoforge.server.ServerLifecycleHooks.getCurrentServer();
+        if (server == null || getOwnerUUID() == null) return fallback;
+        return DroneInstanceParams.resolve(server, key, paramKey);
+    }
+
+    /** 实例攻击间隔（秒）；0 表示未定义，沿用全局默认 */
+    public float getInstanceAttackInterval() {
+        return (float) resolveInstanceParam(DroneInstanceParams.KEY_ATTACK_INTERVAL, 0.0D);
+    }
+
+    /** 无人机基础攻击间隔（秒）：物品级定义优先，否则全局默认 */
+    public float getBaseAttackInterval() {
+        float iv = getInstanceAttackInterval();
+        return iv > 0 ? iv : Config.DRONE_ATTACK_INTERVAL.get().floatValue();
+    }
+
+    /** 阵列攻速修正冷却：基础间隔 × 20 ÷ (玩家攻速属性 × 阵列攻速倍率)，写入攻击冷却 */
+    public void applyArrayAttackCooldown(String arraySet) {
+        float baseInterval = getBaseAttackInterval();
+        double arrayMult = DroneArrayParams.getAttackSpeedMultiplier(getServer(), getOwnerUUID(), arraySet);
+        int cooldown = (int) (baseInterval * 20.0 / (this.attackSpeedMultiplier * arrayMult));
+        this.setAttackCooldown(Math.max(1, cooldown));
+    }
+
+    /** 实例攻击范围（格）；0 表示未定义，沿用全局默认 */
+    public float getInstanceAttackRange() {
+        return (float) resolveInstanceParam(DroneInstanceParams.KEY_ATTACK_RANGE, 0.0D);
+    }
+
+    /** 实例索敌范围（格）；0 表示未定义，沿用全局默认 */
+    public float getInstanceTargetRange() {
+        return (float) resolveInstanceParam(DroneInstanceParams.KEY_TARGET_RANGE, 0.0D);
+    }
+
+    /** 无人机基础攻击范围（格）：物品级定义优先，否则全局默认 */
+    public float getBaseAttackRange() {
+        float range = getInstanceAttackRange();
+        return range > 0 ? range : Config.DRONE_ATTACK_RANGE.get().floatValue();
+    }
+
+    /** 无人机基础索敌范围（格）：物品级定义优先，否则全局默认 */
+    public float getBaseTargetRange() {
+        float range = getInstanceTargetRange();
+        return range > 0 ? range : Config.DRONE_TARGET_RANGE.get().floatValue();
+    }
+
+    /** 有效攻击范围（格）：基础攻击范围 × 阵列攻击范围倍率（服务端按 uuid，客户端按 owner 镜像解析） */
+    public float getEffectiveAttackRange(String arraySet) {
+        double mult;
+        net.minecraft.server.MinecraftServer srv = getServer();
+        if (srv != null) {
+            mult = DroneArrayParams.getAttackRangeMultiplier(srv, getOwnerUUID(), arraySet);
+        } else {
+            mult = DroneArrayParams.resolveForOwner(getOwner(), arraySet,
+                    DroneArrayParams.KEY_ATTACK_RANGE, DroneArrayParams.defaultRangeMultiplier(arraySet));
+        }
+        return (float) (getBaseAttackRange() * mult);
+    }
+
+    /** 有效索敌范围（格）：基础索敌范围 × 阵列索敌范围倍率（服务端按 uuid，客户端按 owner 镜像解析） */
+    public float getEffectiveTargetRange(String arraySet) {
+        double mult;
+        net.minecraft.server.MinecraftServer srv = getServer();
+        if (srv != null) {
+            mult = DroneArrayParams.getTargetRangeMultiplier(srv, getOwnerUUID(), arraySet);
+        } else {
+            mult = DroneArrayParams.resolveForOwner(getOwner(), arraySet,
+                    DroneArrayParams.KEY_TARGET_RANGE, DroneArrayParams.defaultRangeMultiplier(arraySet));
+        }
+        return (float) (getBaseTargetRange() * mult);
+    }
+
+    @Override
+    public double getBaseMaxHealth() {
+        return resolveInstanceParam(DroneInstanceParams.KEY_BASE_HEALTH, super.getBaseMaxHealth());
+    }
+
+    @Override
+    public double getBaseAttackDamage() {
+        return resolveInstanceParam(DroneInstanceParams.KEY_BASE_DAMAGE, super.getBaseAttackDamage());
+    }
+
+    @Override
+    public double getMoveSpeedMultiplier() {
+        return super.getMoveSpeedMultiplier()
+                * resolveInstanceParam(DroneInstanceParams.KEY_MOVE_SPEED, 1.0D);
     }
 
     // ===== 同步数据 =====
@@ -108,6 +230,7 @@ public class DroneConstructEntity extends AbstractConstructEntity {
         builder.define(DATA_ARRAY_TYPE, 0);
         builder.define(DATA_EFFECT_TAGS, 0);
         builder.define(DATA_EXPLODING, false);
+        builder.define(DATA_INSTANCE_KEY, "");
     }
 
     @Override
@@ -382,8 +505,11 @@ public class DroneConstructEntity extends AbstractConstructEntity {
                 this.getUUID(),
                 this.getBaseMaxHealth(),
                 currentArrayType);
+        // 快照/注册数据必须携带实例键：实例化无人机退出待机时 restore 依赖它重建，缺失会被拒绝恢复
+        newData.setInstanceKey(this.getInstanceKey());
         newData.setHasAssaultModule(this.hasEffectTag(DroneEffectTag.ASSAULT));
         newData.setHasDefenseModule(this.hasEffectTag(DroneEffectTag.DEFENSE));
+        newData.setHasCommander(this.hasEffectTag(DroneEffectTag.COMMANDER));
         return newData;
     }
 
@@ -405,10 +531,17 @@ public class DroneConstructEntity extends AbstractConstructEntity {
         tag.putInt("side_index", this.sideIndex);
         tag.putInt("wing_index", this.wingIndex);
         tag.putBoolean("is_wing_end", this.isWingEndDrone);
+        String key = getInstanceKey();
+        if (key != null) {
+            tag.putString("instance_key", key);
+        }
     }
 
     @Override
     protected void readTypeSpecificSaveData(CompoundTag tag) {
+        if (tag.contains("instance_key")) {
+            setInstanceKey(tag.getString("instance_key"));
+        }
         if (tag.contains("array_type")) {
             this.entityData.set(DATA_ARRAY_TYPE, tag.getInt("array_type"));
         }
@@ -570,14 +703,14 @@ public class DroneConstructEntity extends AbstractConstructEntity {
                         if (pursuitBehavior.hasPriorityTarget(this, (LivingEntity) owner)) {
                             targetToAttack = pursuitBehavior.findPriorityTarget(this, (LivingEntity) owner);
                         } else {
-                            List<LivingEntity> targets = behavior.searchTargets(this, (LivingEntity) owner, behavior.getAttackRange());
+                            List<LivingEntity> targets = behavior.searchTargets(this, (LivingEntity) owner, getEffectiveTargetRange(DroneArrayParams.SET_PURSUIT));
                             if (!targets.isEmpty()) {
                                 targetToAttack = targets.get(0);
                             }
                         }
 
                         if (targetToAttack != null) {
-                            boolean canAttack = this.distanceTo(targetToAttack) <= behavior.getAttackRange();
+                            boolean canAttack = this.distanceTo(targetToAttack) <= getEffectiveAttackRange(DroneArrayParams.SET_PURSUIT);
 
                             faceTargetWithInterpolation(targetToAttack);
 
@@ -598,18 +731,18 @@ public class DroneConstructEntity extends AbstractConstructEntity {
                     faceFormationDirection((LivingEntity) owner, null);
 
                     // 翼根无人机自由攻击并触发传递，非翼根无人机等待传递
-                    List<LivingEntity> targets = behavior.searchTargets(this, (LivingEntity) owner, behavior.getAttackRange());
+                    List<LivingEntity> targets = behavior.searchTargets(this, (LivingEntity) owner, getEffectiveTargetRange(DroneArrayParams.SET_FORMATION));
 
                     if (this.getWingIndex() == 0) {
                         if (!targets.isEmpty() && this.attackCooldown <= 0) {
                             LivingEntity nearestTarget = targets.get(0);
-                            boolean canAttack = this.distanceTo(nearestTarget) <= behavior.getAttackRange();
+                            boolean canAttack = this.distanceTo(nearestTarget) <= getEffectiveAttackRange(DroneArrayParams.SET_FORMATION);
 
                             if (canAttack) {
                                 faceFormationDirection((LivingEntity) owner, nearestTarget);
                                 FormationBehavior.performBeamAttack(this, nearestTarget);
-                                int formationCooldown = (int) (Config.FORMATION_ATTACK_INTERVAL.get() * 20.0 / this.attackSpeedMultiplier);
-                                this.setAttackCooldown(Math.max(1, formationCooldown));
+                                // 阵列攻速修正：基础间隔 × 列队阵列倍率（独立乘区）
+                                this.applyArrayAttackCooldown(DroneArrayParams.SET_FORMATION);
                                 FormationBehavior.onWingRootAttack(this, nearestTarget);
                             } else {
                                 faceFormationDirection((LivingEntity) owner, null);
@@ -622,7 +755,7 @@ public class DroneConstructEntity extends AbstractConstructEntity {
                         if (FormationBehavior.canNonWingRootAttack(this)) {
                             if (!targets.isEmpty()) {
                                 LivingEntity nearestTarget = targets.get(0);
-                                boolean canAttack = this.distanceTo(nearestTarget) <= behavior.getAttackRange();
+                                boolean canAttack = this.distanceTo(nearestTarget) <= getEffectiveAttackRange(DroneArrayParams.SET_FORMATION);
 
                                 if (canAttack) {
                                     faceFormationDirection((LivingEntity) owner, nearestTarget);
@@ -640,10 +773,10 @@ public class DroneConstructEntity extends AbstractConstructEntity {
                         }
                     }
                 } else if (this.isGuardArray()) {
-                    List<LivingEntity> targets = behavior.searchTargets(this, (LivingEntity) owner, behavior.getAttackRange());
+                    List<LivingEntity> targets = behavior.searchTargets(this, (LivingEntity) owner, getEffectiveTargetRange(DroneArrayParams.SET_GUARD));
                     if (!targets.isEmpty()) {
                         LivingEntity nearestTarget = targets.get(0);
-                        boolean canAttack = this.distanceTo(nearestTarget) <= behavior.getAttackRange();
+                        boolean canAttack = this.distanceTo(nearestTarget) <= getEffectiveAttackRange(DroneArrayParams.SET_GUARD);
 
                         faceOutwardFromOwner((LivingEntity) owner);
 
@@ -653,10 +786,10 @@ public class DroneConstructEntity extends AbstractConstructEntity {
                     }
                 } else {
                     // 环绕阵列
-                    List<LivingEntity> targets = behavior.searchTargets(this, (LivingEntity) owner, behavior.getAttackRange());
+                    List<LivingEntity> targets = behavior.searchTargets(this, (LivingEntity) owner, getEffectiveTargetRange(DroneArrayParams.SET_ORBIT));
                     if (!targets.isEmpty()) {
                         LivingEntity nearestTarget = targets.get(0);
-                        boolean canAttack = this.distanceTo(nearestTarget) <= behavior.getAttackRange();
+                        boolean canAttack = this.distanceTo(nearestTarget) <= getEffectiveAttackRange(DroneArrayParams.SET_ORBIT);
 
                         if (this.isDefenseDrone()) {
                             faceOutwardFromOwner((LivingEntity) owner);

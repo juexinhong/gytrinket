@@ -1,6 +1,7 @@
 package com.gytrinket.gytrinket.client;
 
 import com.gytrinket.gytrinket.config.Config;
+import com.gytrinket.gytrinket.core.defs.DefsManager;
 import com.gytrinket.gytrinket.gytrinket;
 import com.gytrinket.gytrinket.network.packet.SyncGhostMoveSpeedPayload;
 import net.minecraft.client.Minecraft;
@@ -68,7 +69,7 @@ public class GhostFuselageClientTick {
         double moveSpeed = Math.sqrt(dx * dx + dy * dy + dz * dz);
 
         // 计算移动消耗量（含平滑状态判定）
-        float moveReduction = computeMoveReduction(moveSpeed);
+        float moveReduction = computeMoveReduction(player, moveSpeed);
 
         // 每5tick发包一次（降低网络压力）
         tickCounter++;
@@ -89,7 +90,7 @@ public class GhostFuselageClientTick {
      * 瞬时尖峰不会触发，持续高速才会稳定进入；EMA天然滞后即去抖，无需额外滞回带。
      * 处于高速状态时消耗量 = max(原始超出部分×系数, 最小消耗)，保证服务端持续收到>0信号。
      */
-    private static float computeMoveReduction(double moveSpeed) {
+    private static float computeMoveReduction(LocalPlayer player, double moveSpeed) {
         // EMA平滑（静止时平滑值归零，避免残留旧速度）
         smoothedSpeed = smoothedSpeed + SPEED_SMOOTHING_ALPHA * (moveSpeed - smoothedSpeed);
 
@@ -99,7 +100,9 @@ public class GhostFuselageClientTick {
             return 0f;
         }
 
-        double threshold = Config.getGhostFuselageMoveSpeedThreshold();
+        // 物品级数值覆盖：客户端镜像解析（首个生效物品的覆盖值，未覆盖回退 Config 默认）
+        double threshold = DefsManager.clientResolveMechanicValue(player, "ghost_fuselage_items",
+                "move_speed_threshold", Config.getGhostFuselageMoveSpeedThreshold());
         if (movingFast) {
             // 高速移动中：平滑速度降至阈值以下才退出
             if (smoothedSpeed < threshold) {
@@ -118,7 +121,9 @@ public class GhostFuselageClientTick {
 
         // 消耗量按原始速度计算（更贴近真实移速），阈值以下时取最小消耗保持信号
         double excessSpeed = Math.max(moveSpeed - threshold, 0);
-        double reduction = excessSpeed * Config.getGhostFuselageMoveSpeedReduction();
+        double reductionCoefficient = DefsManager.clientResolveMechanicValue(player, "ghost_fuselage_items",
+                "move_speed_reduction", Config.getGhostFuselageMoveSpeedReduction());
+        double reduction = excessSpeed * reductionCoefficient;
         return (float) Math.max(reduction, MIN_MOVE_REDUCTION);
     }
 }

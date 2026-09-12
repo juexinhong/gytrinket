@@ -1,17 +1,22 @@
 package com.gytrinket.gytrinket.core.damage;
 
 import com.gytrinket.gytrinket.config.Config;
+import com.gytrinket.gytrinket.core.defs.DefsManager;
 import com.gytrinket.gytrinket.core.shield.ShieldData;
 import com.gytrinket.gytrinket.core.shield.ShieldManager;
+import com.gytrinket.gytrinket.core.shield.type.IShieldType;
 import com.gytrinket.gytrinket.core.shield.type.ShieldTypeManager;
 import com.gytrinket.gytrinket.core.shield_transfer.ShieldTransferManager;
 import com.gytrinket.gytrinket.core.sound.ModSounds;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 
+import java.util.List;
 import java.util.UUID;
 
 public class ShieldHandler implements DamageHandler {
@@ -27,6 +32,34 @@ public class ShieldHandler implements DamageHandler {
         } else {
             ShieldManager.setCurrentShield(shieldOwnerUUID, value);
         }
+    }
+
+    /**
+     * 穿盾判定：遍历护盾持有者实际生效（active）的护盾类型实例，
+     * 按各实例来源物品的护盾类型定义查询 pierce_through（默认不穿盾）；
+     * 只要有一个定义不穿盾，则整体不穿盾；无任何生效实例时同样不穿盾。
+     */
+    private static boolean isPierceThroughForOwner(Player shieldOwner) {
+        MinecraftServer server = shieldOwner.getServer();
+        if (server == null) {
+            return false;
+        }
+        List<IShieldType.ShieldTypeData> types = ShieldTypeManager.getPlayerShieldTypes(shieldOwner.getUUID());
+        if (types.isEmpty()) {
+            return false;
+        }
+        for (IShieldType.ShieldTypeData data : types) {
+            if (!data.active()) {
+                continue;
+            }
+            String itemId = BuiltInRegistries.ITEM.getKey(data.source().getItem()).toString();
+            boolean pierce = DefsManager.resolveShieldTypeValueForItem(server, itemId,
+                    data.type().getName(), "pierce_through", 0.0) >= 0.5;
+            if (!pierce) {
+                return false;
+            }
+        }
+        return true;
     }
 
     @Override
@@ -78,11 +111,18 @@ public class ShieldHandler implements DamageHandler {
             }
         } else {
             setCurrentShieldForEntity(shieldOwner, shieldOwnerUUID, 0);
-            context.setCanceled(true);
 
-            // 当承受护盾自伤或协议护盾自伤时，不施加无敌标记
-            if (!isShieldSelfDamage) {
-                InvincibilityMarkerManager.addMarker(attackedEntity, Config.SHIELD_BLOCK_INVULNERABLE_TICKS.get());
+            if (isPierceThroughForOwner(shieldOwner)) {
+                // 穿盾（还原 856b1ce 之前的原始实现）：护盾吸收部分伤害后归零，
+                // 剩余伤害重新作用于玩家（不取消事件并下调当前伤害，
+                // 由 DamageManager 走 FINAL_DAMAGE 重施，不施加无敌标记）
+                context.setCurrentDamage((float) (originalDamage - currentShield));
+            } else {
+                context.setCanceled(true);
+                // 当承受护盾自伤或协议护盾自伤时，不施加无敌标记
+                if (!isShieldSelfDamage) {
+                    InvincibilityMarkerManager.addMarker(attackedEntity, Config.SHIELD_BLOCK_INVULNERABLE_TICKS.get());
+                }
             }
         }
 

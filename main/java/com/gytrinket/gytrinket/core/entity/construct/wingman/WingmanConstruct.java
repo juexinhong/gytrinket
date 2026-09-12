@@ -1,9 +1,12 @@
 package com.gytrinket.gytrinket.core.entity.construct.wingman;
 
 import com.gytrinket.gytrinket.core.entity.construct.AbstractConstruct;
+import com.gytrinket.gytrinket.core.entity.construct.ConstructData;
 import com.gytrinket.gytrinket.core.entity.construct.ConstructManager;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
+
+import java.util.UUID;
 
 /**
  * 僚机构造体逻辑类
@@ -13,8 +16,31 @@ import net.minecraft.world.phys.Vec3;
  */
 public class WingmanConstruct extends AbstractConstruct {
 
+    /** 实例键（来源物品 ID），非实例化路径为 null */
+    @javax.annotation.Nullable
+    private final String instanceKey;
+
     public WingmanConstruct(String constructId, net.minecraft.world.entity.LivingEntity owner, double maxHealth) {
+        this(constructId, owner, maxHealth, null);
+    }
+
+    public WingmanConstruct(String constructId, net.minecraft.world.entity.LivingEntity owner, double maxHealth,
+                            @javax.annotation.Nullable String instanceKey) {
         super(constructId, owner, maxHealth);
+        this.instanceKey = instanceKey;
+    }
+
+    /** 实例键（来源物品 ID），非实例化路径为 null */
+    @javax.annotation.Nullable
+    public String getInstanceKey() {
+        return instanceKey;
+    }
+
+    @Override
+    public ConstructData createData(UUID entityUUID) {
+        WingmanConstructData data = new WingmanConstructData(constructId, entityUUID, maxHealth);
+        data.setInstanceKey(instanceKey);
+        return data;
     }
 
     @Override

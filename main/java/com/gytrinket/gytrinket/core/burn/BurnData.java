@@ -25,8 +25,6 @@ public class BurnData {
     private long startTick;
     /** 灼烧持续时间（游戏刻，1秒=20刻） */
     private final int durationTicks;
-    /** 是否已触发过一次斩杀检查 */
-    private boolean killCheckPerformed;
     /** 灼烧源贡献映射（UUID -> 贡献伤害值） */
     private final Map<UUID, Float> sourceContributions;
     /** 灼烧源实体映射（UUID -> 实体引用） */
@@ -43,7 +41,6 @@ public class BurnData {
         this.accumulatedDamage = 0f;
         this.startTick = -1;
         this.durationTicks = durationTicks;
-        this.killCheckPerformed = false;
         this.sourceContributions = new HashMap<>();
         this.sourceEntities = new HashMap<>();
     }
@@ -56,7 +53,6 @@ public class BurnData {
         if (!isBurning()) {
             this.startTick = currentTick;
             this.accumulatedDamage = 0f;
-            this.killCheckPerformed = false;
             this.sourceContributions.clear();
         }
     }
@@ -165,14 +161,6 @@ public class BurnData {
     }
 
     /**
-     * 获取累加伤害（至少1点，用于斩杀）
-     * @return 至少为1的伤害值
-     */
-    public float getAccumulatedDamageOrMin() {
-        return Math.max(1f, accumulatedDamage);
-    }
-
-    /**
      * 获取灼烧目标
      * @return 灼烧目标实体
      */
@@ -194,7 +182,6 @@ public class BurnData {
     public void reset() {
         this.startTick = -1;
         this.accumulatedDamage = 0f;
-        this.killCheckPerformed = false;
         this.sourceContributions.clear();
     }
 
@@ -213,20 +200,5 @@ public class BurnData {
      */
     public Map<UUID, Float> getAllContributions() {
         return new HashMap<>(sourceContributions);
-    }
-
-    /**
-     * 检查是否已进行过斩杀检查
-     * @return 是否已检查
-     */
-    public boolean isKillCheckPerformed() {
-        return killCheckPerformed;
-    }
-
-    /**
-     * 设置斩杀检查已完成
-     */
-    public void setKillCheckPerformed() {
-        this.killCheckPerformed = true;
     }
 }

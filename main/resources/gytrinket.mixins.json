@@ -13,6 +13,7 @@
   ],
   "mixins": [
     "LivingEntityMixin",
+    "MovementSpeedSwimMixin",
     "PlayerMixin",
     "TargetingConditionsMixin"
   ],

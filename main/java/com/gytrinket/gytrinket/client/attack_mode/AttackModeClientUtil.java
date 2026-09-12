@@ -1,16 +1,24 @@
 package com.gytrinket.gytrinket.client.attack_mode;
 
-import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.client.datacenter.ClientDataCenter;
+import com.gytrinket.gytrinket.compat.CuriosCompat;
+import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.attack_mode.charged_attack.ChargedAttackSweepHandler;
 import com.gytrinket.gytrinket.gytrinket;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
 
 import java.util.List;
 import java.util.function.Predicate;
@@ -19,18 +27,71 @@ import java.util.function.Predicate;
  * 攻击模式客户端工具类
  * <p>
  * 提取各攻击模式客户端处理器中的公共方法，避免重复代码。
+ * <p>
+ * 客户端物品快照（服务端 NBT 同步）仅含光点核心、不含 Curios 饰品栏，
+ * 本类在客户端本地周期刷新 Curios 饰品到快照缓存，
+ * 使 {@link #hasActiveItem(Predicate)} 的判定范围与服务端一致（光点核心 + Curios）。
  */
+@EventBusSubscriber(modid = gytrinket.MODID, value = Dist.CLIENT)
 public class AttackModeClientUtil {
 
+    /** Curios 饰品栏本地缓存刷新周期（tick） */
+    private static final int CURIOS_REFRESH_INTERVAL = 10;
+
+    private static int tickCounter = 0;
+
     private AttackModeClientUtil() {}
+
+    /**
+     * 客户端 tick 周期刷新 Curios 饰品栏到本地快照缓存
+     */
+    @SubscribeEvent
+    public static void onClientTick(ClientTickEvent.Post event) {
+        if (++tickCounter < CURIOS_REFRESH_INTERVAL) {
+            return;
+        }
+        tickCounter = 0;
+        refreshCuriosSnapshot();
+    }
+
+    @SubscribeEvent
+    public static void onClientLoggingIn(ClientPlayerNetworkEvent.LoggingIn event) {
+        tickCounter = 0;
+        refreshCuriosSnapshot();
+    }
+
+    @SubscribeEvent
+    public static void onClientLoggingOut(ClientPlayerNetworkEvent.LoggingOut event) {
+        ClientDataCenter.getSnapshot().updateCuriosItems(List.of());
+    }
+
+    /** 从客户端本地 Curios 饰品栏刷新快照缓存 */
+    private static void refreshCuriosSnapshot() {
+        Minecraft mc = Minecraft.getInstance();
+        Player player = mc.player;
+        if (player == null || player.isRemoved()) {
+            return;
+        }
+        List<ItemStack> curios = CuriosCompat.getEquippedCurios(player);
+        ClientDataCenter.getSnapshot().updateCuriosItems(curios);
+    }
 
     /**
      * 寻找准星对准的目标
      */
     public static Entity findTargetInCrosshair(Player player) {
+        return findTargetInCrosshair(player, false);
+    }
+
+    /**
+     * 寻找准星对准的目标
+     * @param livingOnly true=仅查找生物目标（忽略原版准星指向的非生物无效目标，直接光束查找最近生物）；
+     *                   false=非生物目标（展示框/画等）仍依赖原版准星精确指向
+     */
+    public static Entity findTargetInCrosshair(Player player, boolean livingOnly) {
         Minecraft mc = Minecraft.getInstance();
         // 非生物目标（展示框/画等）仍依赖原版准星精确指向；生物目标由下方光束判定覆盖
-        if (mc.hitResult instanceof EntityHitResult entityHitResult) {
+        if (!livingOnly && mc.hitResult instanceof EntityHitResult entityHitResult) {
             Entity entity = entityHitResult.getEntity();
             if (!(entity instanceof LivingEntity) && !shouldSkipEntity(entity)) {
                 return entity;
@@ -104,12 +165,18 @@ public class AttackModeClientUtil {
     }
 
     /**
-     * 检查玩家是否拥有指定类型的物品
+     * 检查玩家是否拥有指定类型的物品（范围：光点核心快照 + Curios 饰品栏本地缓存）
      */
-    public static boolean hasActiveItem(Predicate<net.minecraft.world.item.Item> itemPredicate) {
+    public static boolean hasActiveItem(Predicate<Item> itemPredicate) {
         var snapshot = ClientDataCenter.getSnapshot();
         for (int i = 0; i < snapshot.getSlotCount(); i++) {
-            net.minecraft.world.item.ItemStack stack = snapshot.getItemInSlot(i);
+            ItemStack stack = snapshot.getItemInSlot(i);
+            if (!stack.isEmpty() && itemPredicate.test(stack.getItem())) {
+                return true;
+            }
+        }
+        for (int i = 0; i < snapshot.getCuriosSlotCount(); i++) {
+            ItemStack stack = snapshot.getCuriosItemInSlot(i);
             if (!stack.isEmpty() && itemPredicate.test(stack.getItem())) {
                 return true;
             }

@@ -118,11 +118,14 @@ public class WingmanRenderer extends LivingEntityRenderer<WingmanConstructEntity
         float yaw = entity.yRotO + (entity.getYRot() - entity.yRotO) * partialTick;
         float pitch = entity.xRotO + (entity.getXRot() - entity.xRotO) * partialTick;
 
+        // 大小属性：武器位置与缩放跟随机体大小倍率，避免与机体脱节
+        float sizeMultiplier = (float) entity.getSizeMultiplier();
+
         poseStack.pushPose();
         // 定位到实体上方0.5格
-        poseStack.translate(0, 0.5, 0);
+        poseStack.translate(0, 0.5 * sizeMultiplier, 0);
         // 缩放至原来的一半
-        poseStack.scale(0.8F, 0.8F, 0.8F);
+        poseStack.scale(0.8F * sizeMultiplier, 0.8F * sizeMultiplier, 0.8F * sizeMultiplier);
         // 应用朝向旋转（偏航+俯仰），使武器跟随拦截机朝向
         poseStack.mulPose(Axis.YP.rotationDegrees(-yaw));
         if (!isMeleeAnimating) {

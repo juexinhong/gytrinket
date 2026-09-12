@@ -4,10 +4,12 @@ import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
 import com.gytrinket.gytrinket.core.attack_mode.charged_attack.ChargedAttackEvent;
 import com.gytrinket.gytrinket.core.entity.construct.AbstractConstructEntity;
+import com.gytrinket.gytrinket.core.defs.DefsManager;
 import com.gytrinket.gytrinket.core.level.ModLevelManager;
 import com.gytrinket.gytrinket.core.shield.DisableSystem;
 import com.gytrinket.gytrinket.gytrinket;
 import com.gytrinket.gytrinket.storage.PlayerStoreUtils;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Mob;
@@ -177,8 +179,12 @@ public class GhostFuselageManager {
             data.breaking = true;
         }
 
-        double decayRate = Config.getGhostFuselageDecayRate();
-        double minDecay = Config.getGhostFuselageMinDecay();
+        // 物品级数值覆盖：取首个生效物品的覆盖值，未覆盖回退 Config 默认
+        MinecraftServer server = player.getServer();
+        double decayRate = DefsManager.resolveMechanicValue(server, uuid,
+                "ghost_fuselage_items", "decay_rate", Config.getGhostFuselageDecayRate());
+        double minDecay = DefsManager.resolveMechanicValue(server, uuid,
+                "ghost_fuselage_items", "min_decay", Config.getGhostFuselageMinDecay());
 
         // 使用客户端同步的移动隐身消耗量（直接小幅扣除，不触发破隐）。
         // 高速移动扣除进度的这一刻，停止增加隐身进度。
@@ -198,16 +204,20 @@ public class GhostFuselageManager {
             }
         } else if (!movingFast) {
             // 正常累加：仅当既非破隐也非高速移动时增加进度
-            // 计算隐身速度加成：基础速度 × (1 + level × 0.005)
-            double stealthSpeedMultiplier = 1.0 + modLevel * Config.getGhostFuselageStealthSpeedBonusPerLevel();
+            // 计算隐身速度加成：基础速度 × (1 + level × 每级加成)（物品级数值覆盖）
+            double stealthBonusPerLevel = DefsManager.resolveMechanicValue(server, uuid,
+                    "ghost_fuselage_items", "stealth_speed_bonus_per_level",
+                    Config.getGhostFuselageStealthSpeedBonusPerLevel());
+            double stealthSpeedMultiplier = 1.0 + modLevel * stealthBonusPerLevel;
             // 每tick增加进度 = STEALTH_CAP / fullStealthTicks
-            int fullStealthTicks = Config.getGhostFuselageFullStealthTicks();
+            int fullStealthTicks = (int) DefsManager.resolveMechanicValue(server, uuid,
+                    "ghost_fuselage_items", "full_stealth_ticks", Config.getGhostFuselageFullStealthTicks());
             double progressIncreasePerTick = (STEALTH_CAP / fullStealthTicks) * stealthSpeedMultiplier;
             data.progress = Math.min(STEALTH_CAP, data.progress + progressIncreasePerTick);
         }
 
         // 更新伤害属性（隐身加伤随隐身进度同步变化）
-        updateDamageAttribute(uuid, data.progress);
+        updateDamageAttribute(server, uuid, data.progress);
 
         // 完全隐身时设置原版invisible标签（供渲染/其他系统识别）
         // 目标选取排除由 TargetingConditionsMixin 处理
@@ -335,16 +345,21 @@ public class GhostFuselageManager {
         breakStealth(ownerUUID);
         GhostData data = PLAYER_GHOST_DATA.get(ownerUUID);
         if (data != null) {
-            updateDamageAttribute(ownerUUID, data.progress);
+            updateDamageAttribute(event.getLevel().getServer(), ownerUUID, data.progress);
         }
     }
 
     /**
      * 更新动态伤害属性
      */
-    private static void updateDamageAttribute(UUID playerUUID, double progress) {
+    private static void updateDamageAttribute(MinecraftServer server, UUID playerUUID, double progress) {
         int modLevel = Math.max(0, ModLevelManager.getModLevel(playerUUID));
-        double maxDamageBonus = Config.getGhostFuselageBaseMaxDamageBonus() * (1.0 + modLevel * Config.getGhostFuselageMaxBonusPerLevel());
+        // 物品级数值覆盖：取首个生效物品的覆盖值，未覆盖回退 Config 默认
+        double baseMaxDamage = DefsManager.resolveMechanicValue(server, playerUUID,
+                "ghost_fuselage_items", "base_max_damage_bonus", Config.getGhostFuselageBaseMaxDamageBonus());
+        double maxBonusPerLevel = DefsManager.resolveMechanicValue(server, playerUUID,
+                "ghost_fuselage_items", "max_bonus_per_level", Config.getGhostFuselageMaxBonusPerLevel());
+        double maxDamageBonus = baseMaxDamage * (1.0 + modLevel * maxBonusPerLevel);
         // progress归一化到0~1范围（STEALTH_CAP=1.0对应满伤害）
         double normalizedProgress = Math.min(progress, STEALTH_CAP) / STEALTH_CAP;
         double currentBonus = normalizedProgress * maxDamageBonus;

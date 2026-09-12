@@ -3,18 +3,22 @@ package com.gytrinket.gytrinket.core.shield.type;
 import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
 import com.gytrinket.gytrinket.core.damage.InvincibilityMarkerManager;
+import com.gytrinket.gytrinket.core.defs.DefsManager;
 import com.gytrinket.gytrinket.core.explosion.SimulatedExplosion;
 import com.gytrinket.gytrinket.core.entity.construct.HostileTargetManager;
 import com.gytrinket.gytrinket.core.shield_transfer.ShieldTransferManager;
 import com.gytrinket.gytrinket.event.ShieldBreakEvent;
 import com.gytrinket.gytrinket.gytrinket;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import com.gytrinket.gytrinket.network.NetworkHandler;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -44,8 +48,11 @@ public class WarpShieldType implements IShieldType {
     /** 安全落点搜索半径 */
     private static final int SAFE_SPOT_SEARCH_RADIUS = 3;
     
-    /** 无敌玩家集合：玩家UUID -> 剩余无敌刻数 */
-    private static final Map<UUID, Integer> INVINCIBLE_PLAYERS = new HashMap<>();
+    /** 无敌状态：剩余无敌刻数 + 触发跃传的实例物品 ID（数值按该实例物品取） */
+    private record InvincibleState(int remainingTicks, String itemId) {}
+
+    /** 无敌玩家集合：玩家UUID -> 无敌状态（无敌是玩家级单例，同一时刻只有一次跃传） */
+    private static final Map<UUID, InvincibleState> INVINCIBLE_PLAYERS = new HashMap<>();
 
     @Override
     public String getName() {
@@ -57,6 +64,21 @@ public class WarpShieldType implements IShieldType {
         return false;
     }
 
+    /**
+     * 找到第一个 active 的 warp 实例的物品 ID（数值按该实例物品取）
+     * @param playerUUID 玩家UUID
+     * @return 物品 ID，没有 active 的 warp 实例时返回 null
+     */
+    private static String firstActiveWarpItemId(UUID playerUUID) {
+        for (IShieldType.ShieldTypeData data : ShieldTypeManager.getPlayerShieldTypes(playerUUID)) {
+            if ("warp".equals(data.type().getName()) && data.active()) {
+                ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(data.source().getItem());
+                return itemId != null ? itemId.toString() : null;
+            }
+        }
+        return null;
+    }
+
     @Override
     public void onRemoved(Player player) {
         UUID playerUUID = player.getUUID();
@@ -65,27 +87,33 @@ public class WarpShieldType implements IShieldType {
     }
 
     @Override
-    public void onTick(Player player) {
+    public void onTick(Player player, ItemStack source) {
         if (player.level().isClientSide) {
             return;
         }
 
         UUID playerUUID = player.getUUID();
-        
-        // 处理无敌状态
-        if (INVINCIBLE_PLAYERS.containsKey(playerUUID)) {
-            int remainingTicks = INVINCIBLE_PLAYERS.get(playerUUID);
-            
-            if (remainingTicks > 0) {
-                // 设置玩家状态：无法移动、攻击、跳跃，不受重力影响
-                setPlayerInvincibleState(player, true);
-                INVINCIBLE_PLAYERS.put(playerUUID, remainingTicks - 1);
-            } else {
-                // 无敌状态结束，执行传送
-                INVINCIBLE_PLAYERS.remove(playerUUID);
-                setPlayerInvincibleState(player, false);
-                warpPlayer((ServerPlayer) player);
-            }
+
+        // 无敌状态是玩家级单例：多实例并存时仅由第一个 active 的 warp 实例处理（避免每刻多次递减）
+        ResourceLocation entryItem = BuiltInRegistries.ITEM.getKey(source.getItem());
+        if (entryItem == null || !entryItem.toString().equals(firstActiveWarpItemId(playerUUID))) {
+            return;
+        }
+
+        InvincibleState state = INVINCIBLE_PLAYERS.get(playerUUID);
+        if (state == null) {
+            return;
+        }
+
+        if (state.remainingTicks() > 0) {
+            // 设置玩家状态：无法移动、攻击、跳跃，不受重力影响
+            setPlayerInvincibleState(player, true);
+            INVINCIBLE_PLAYERS.put(playerUUID, new InvincibleState(state.remainingTicks() - 1, state.itemId()));
+        } else {
+            // 无敌状态结束，执行传送
+            INVINCIBLE_PLAYERS.remove(playerUUID);
+            setPlayerInvincibleState(player, false);
+            warpPlayer((ServerPlayer) player, state.itemId());
         }
     }
 
@@ -116,8 +144,9 @@ public class WarpShieldType implements IShieldType {
     /**
      * 传送玩家或被保护的实体
      * @param player 玩家
+     * @param itemId 提供该 warp 实例的物品 ID（数值按该物品实例取）
      */
-    private void warpPlayer(ServerPlayer player) {
+    private void warpPlayer(ServerPlayer player, String itemId) {
         Level level = player.level();
         UUID playerUUID = player.getUUID();
         
@@ -134,9 +163,11 @@ public class WarpShieldType implements IShieldType {
         
         // 获取护盾效果半径属性组（影响传送距离）
         double shieldEffectRadius = AttributeManager.getGroupAttribute(player.getUUID(), "shield_effect_radius");
-        
-        // 计算实际传送距离 = 基础距离 × 护盾效果半径属性组
-        double actualWarpDistance = Config.WARP_SHIELD_WARP_DISTANCE.get() * shieldEffectRadius;
+
+        // 计算实际传送距离 = 基础距离（按物品实例取值） × 护盾效果半径属性组
+        double baseWarpDistance = DefsManager.resolveShieldTypeValueForItem(player.getServer(), itemId,
+                "warp", "warp_distance", Config.WARP_SHIELD_WARP_DISTANCE.get());
+        double actualWarpDistance = baseWarpDistance * shieldEffectRadius;
         
         for (LivingEntity entity : entitiesToWarp) {
             if (entity == null || !entity.isAlive()) {
@@ -168,7 +199,7 @@ public class WarpShieldType implements IShieldType {
             }
             
             // 传送后产生爆炸
-            createExplosion(player, new Vec3(entity.getX(), entity.getY(), entity.getZ()));
+            createExplosion(player, new Vec3(entity.getX(), entity.getY(), entity.getZ()), itemId);
         }
     }
 
@@ -256,29 +287,34 @@ public class WarpShieldType implements IShieldType {
      * 创建模拟爆炸
      * @param player 玩家（伤害归属）
      * @param position 爆炸位置
+     * @param itemId 提供该 warp 实例的物品 ID（数值按该物品实例取）
      */
-    private void createExplosion(Player player, Vec3 position) {
+    private void createExplosion(Player player, Vec3 position, String itemId) {
         Level level = player.level();
-        
+
         // 发送爆炸粒子效果（在正确的爆炸位置显示）
         if (level instanceof ServerLevel serverLevel) {
             NetworkHandler.sendExplosiveShieldFlashToAll(serverLevel, position.x(), position.y(), position.z());
         }
-        
+
         // 获取护盾效果属性组（影响爆炸伤害）
         double shieldEffect = AttributeManager.getGroupAttribute(player.getUUID(), "shield_effect");
 
         // 获取护盾效果半径属性组（影响爆炸半径）
         double shieldEffectRadius = AttributeManager.getGroupAttribute(player.getUUID(), "shield_effect_radius");
 
-        // 计算实际爆炸半径 = 基础半径 × 护盾效果半径属性组
-        double actualExplosionRadius = Config.WARP_SHIELD_EXPLOSION_RADIUS.get() * shieldEffectRadius;
+        // 计算实际爆炸半径 = 基础半径（按物品实例取值） × 护盾效果半径属性组
+        double baseExplosionRadius = DefsManager.resolveShieldTypeValueForItem(player.getServer(), itemId,
+                "warp", "explosion_radius", Config.WARP_SHIELD_EXPLOSION_RADIUS.get());
+        double actualExplosionRadius = baseExplosionRadius * shieldEffectRadius;
 
         // 创建爆炸伤害源（归属玩家）
         DamageSource damageSource = player.damageSources().explosion(player, player);
 
-        // 计算实际爆炸伤害 = 基础伤害 × 护盾效果属性组
-        float actualExplosionDamage = (float) (Config.WARP_SHIELD_EXPLOSION_DAMAGE.get() * shieldEffect);
+        // 计算实际爆炸伤害 = 基础伤害（按物品实例取值） × 护盾效果属性组
+        double baseExplosionDamage = DefsManager.resolveShieldTypeValueForItem(player.getServer(), itemId,
+                "warp", "explosion_damage", Config.WARP_SHIELD_EXPLOSION_DAMAGE.get());
+        float actualExplosionDamage = (float) (baseExplosionDamage * shieldEffect);
         
         SimulatedExplosion.execute(
                 level,
@@ -299,34 +335,38 @@ public class WarpShieldType implements IShieldType {
     public static void onShieldBreak(ShieldBreakEvent event) {
         Player player = event.getPlayer();
         UUID playerUUID = event.getPlayerUUID();
-        
+
         // 检查玩家是否装备跃传护盾
         if (!hasWarpShield(player)) {
             return;
         }
-        
+
+        // 数值按第一个 active 的 warp 实例物品取
+        String itemId = firstActiveWarpItemId(playerUUID);
+
         WarpShieldType shieldType = new WarpShieldType();
-        
+
         if (ShieldTransferManager.isShieldTransferEnabled(playerUUID)) {
             // 护盾移植模式：处理被保护实体（无受保护实体时玩家自身不触发跃迁）
             List<LivingEntity> protectedEntities = ShieldTransferManager.getProtectedEntities(playerUUID, player.level());
-            
+
             // 在每个被保护实体位置产生第一次爆炸
             for (LivingEntity entity : protectedEntities) {
                 if (entity != null && entity.isAlive()) {
-                    shieldType.createExplosion(player, entity.position());
+                    shieldType.createExplosion(player, entity.position(), itemId);
                 }
             }
-            
+
             // 传送被保护的实体（立即传送，因为被保护实体没有无敌状态）
-            shieldType.warpPlayer((ServerPlayer) player);
+            shieldType.warpPlayer((ServerPlayer) player, itemId);
         } else {
             // 未移植时，在玩家位置产生第一次爆炸
-            shieldType.createExplosion(player, player.position());
-            
+            shieldType.createExplosion(player, player.position(), itemId);
+
             // 设置玩家无敌状态（玩家会在无敌状态结束后自动传送）
-            int invincibleDuration = Config.WARP_SHIELD_INVINCIBLE_DURATION.get();
-            INVINCIBLE_PLAYERS.put(playerUUID, invincibleDuration);
+            int invincibleDuration = (int) DefsManager.resolveShieldTypeValueForItem(player.getServer(), itemId,
+                    "warp", "invincible_duration", Config.WARP_SHIELD_INVINCIBLE_DURATION.get());
+            INVINCIBLE_PLAYERS.put(playerUUID, new InvincibleState(invincibleDuration, itemId));
             InvincibilityMarkerManager.addMarker(player, invincibleDuration);
         }
     }

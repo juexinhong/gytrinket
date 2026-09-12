@@ -4,6 +4,7 @@ import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.entity.construct.ConstructGroupCache;
 import com.gytrinket.gytrinket.core.entity.construct.ConstructManager;
 import com.gytrinket.gytrinket.core.entity.construct.drone.DroneArrayType;
+import com.gytrinket.gytrinket.core.entity.construct.drone.DroneArrayParams;
 import com.gytrinket.gytrinket.core.entity.construct.drone.DroneBullet;
 import com.gytrinket.gytrinket.core.entity.construct.drone.DroneConstructEntity;
 import com.gytrinket.gytrinket.core.entity.construct.drone.DroneConstructTypes;
@@ -37,9 +38,6 @@ public class GuardBehavior implements IDroneBehavior {
     private static final double MAX_ANGULAR_VELOCITY_PER_TICK = Math.toRadians(2.0);
     // 丢失距离：超出40格自毁
     private static final double LOST_DISTANCE = 40.0;
-
-    private static float getConfigAttackRange() { return Config.GUARD_ATTACK_RANGE.get().floatValue(); }
-    private static float getConfigAttackInterval() { return Config.GUARD_ATTACK_INTERVAL.get().floatValue(); }
 
     private final Map<UUID, Double> playerTargetAngles = new HashMap<>();
 
@@ -241,9 +239,9 @@ public class GuardBehavior implements IDroneBehavior {
 
     @Override
     public List<LivingEntity> searchTargets(Entity drone, LivingEntity owner, float range) {
-        float searchRange = getConfigAttackRange();
+        // 范围由调用方按实例基础索敌范围 × 守卫阵列索敌范围倍率传入
         return ConstructGroupCache.getInstance().findTargetsInRange(
-            owner.getUUID(), owner, drone.position(), searchRange);
+            owner.getUUID(), owner, drone.position(), range);
     }
 
     @Override
@@ -256,7 +254,10 @@ public class GuardBehavior implements IDroneBehavior {
         if (drone instanceof DroneConstructEntity droneEntity && droneEntity.getAttackCooldown() > 0) return;
 
         double distance = drone.distanceTo(target);
-        if (distance > getConfigAttackRange()) return;
+        // 二次防御判定：有效攻击范围（基础攻击范围 × 守卫阵列攻击范围倍率）
+        float attackRange = drone instanceof DroneConstructEntity guardDrone
+                ? guardDrone.getEffectiveAttackRange(DroneArrayParams.SET_GUARD) : 8.0f;
+        if (distance > attackRange) return;
 
         boolean hasLineOfSight = drone instanceof LivingEntity livingDrone && livingDrone.hasLineOfSight(target);
         if (!hasLineOfSight) return;
@@ -272,12 +273,14 @@ public class GuardBehavior implements IDroneBehavior {
         Vec3 direction = targetPos.subtract(dronePos).normalize();
 
         float damage = DroneBullet.getBaseDamage();
-        float cooldown = getConfigAttackInterval() * 20.0f;
 
         if (drone instanceof DroneConstructEntity droneEntity) {
             damage = (float) droneEntity.getAttributeValue(Attributes.ATTACK_DAMAGE);
-            cooldown /= (float) droneEntity.getAttackSpeedMultiplier();
-            droneEntity.setAttackCooldown((int) cooldown);
+            // 阵列伤害倍率（独立乘区）：最终伤害 = 攻击力属性 × 守卫阵列伤害倍率
+            damage *= (float) DroneArrayParams.getDamageMultiplier(
+                    owner.getServer(), owner.getUUID(), DroneArrayParams.SET_GUARD);
+            // 阵列攻速修正：基础间隔 × 守卫阵列倍率（独立乘区）
+            droneEntity.applyArrayAttackCooldown(DroneArrayParams.SET_GUARD);
 
             DroneBullet bullet = new DroneBullet(drone.level(), droneEntity, damage);
             bullet.setPos(dronePos.x, dronePos.y + 0.4, dronePos.z);
@@ -288,12 +291,7 @@ public class GuardBehavior implements IDroneBehavior {
 
     @Override
     public float getAttackInterval() {
-        return getConfigAttackInterval();
-    }
-
-    @Override
-    public float getAttackRange() {
-        return getConfigAttackRange();
+        return Config.DRONE_ATTACK_INTERVAL.get().floatValue();
     }
 
     @Override

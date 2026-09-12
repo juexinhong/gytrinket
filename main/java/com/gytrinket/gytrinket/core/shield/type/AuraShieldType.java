@@ -4,6 +4,7 @@ import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
 import com.gytrinket.gytrinket.core.burn.BurnManager;
 import com.gytrinket.gytrinket.core.burn.IBurnSource;
+import com.gytrinket.gytrinket.core.defs.DefsManager;
 import com.gytrinket.gytrinket.core.entity.construct.HostileTargetManager;
 import com.gytrinket.gytrinket.core.ignite.IIgniteSource;
 import com.gytrinket.gytrinket.core.ignite.IgniteManager;
@@ -15,14 +16,22 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.AABB;
 
 import java.util.*;
 
 public class AuraShieldType implements IShieldType {
 
-    private static final Map<UUID, Boolean> AURA_DAMAGING = new HashMap<>();
-    private static final Map<UUID, Integer> TICK_COUNTERS = new HashMap<>();
+    /** 实例状态分桶：键 = playerUUID + "|" + itemId（护盾类型数值每物品实例独立） */
+    private static final Map<String, Boolean> AURA_DAMAGING = new HashMap<>();
+    /** tick 计数：键 = playerUUID + "|" + itemId（每物品实例独立计数；同物品多件共享计数，数值相同等效叠加触发） */
+    private static final Map<String, Integer> TICK_COUNTERS = new HashMap<>();
+
+    /** 实例状态键：UUID 与 itemId 均不含 '|'，前缀匹配可安全清理某玩家全部实例 */
+    private static String instanceKey(UUID playerUUID, String itemId) {
+        return playerUUID + "|" + itemId;
+    }
 
     private static class AuraBurnSource implements IBurnSource {
         private final Player player;
@@ -74,8 +83,8 @@ public class AuraShieldType implements IShieldType {
     public void onRemoved(Player player) {
         if (player.level().isClientSide) return;
         UUID uuid = player.getUUID();
-        AURA_DAMAGING.put(uuid, false);
-        TICK_COUNTERS.remove(uuid);
+        AURA_DAMAGING.keySet().removeIf(key -> key.startsWith(uuid + "|"));
+        TICK_COUNTERS.keySet().removeIf(key -> key.startsWith(uuid + "|"));
         if (player instanceof ServerPlayer serverPlayer) {
             NetworkHandler.sendShieldSyncToPlayer(serverPlayer,
                 ShieldManager.getCurrentShield(uuid), ShieldManager.getMaxShield(uuid));
@@ -83,26 +92,30 @@ public class AuraShieldType implements IShieldType {
     }
 
     @Override
-    public void onTick(Player player) {
+    public void onTick(Player player, ItemStack source) {
         if (player.level().isClientSide) {
             return;
         }
 
         UUID uuid = player.getUUID();
+        String itemId = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(source.getItem()).toString();
+        String itemKey = instanceKey(uuid, itemId);
 
         double currentShield = ShieldManager.getCurrentShield(uuid);
         if (currentShield <= 0) {
-            AURA_DAMAGING.put(uuid, false);
-            TICK_COUNTERS.remove(uuid);
+            AURA_DAMAGING.put(itemKey, false);
+            TICK_COUNTERS.remove(itemKey);
             return;
         }
 
-        int tickCounter = TICK_COUNTERS.getOrDefault(uuid, 0) + 1;
-        if (tickCounter < Config.AURA_TRIGGER_FREQUENCY.get()) {
-            TICK_COUNTERS.put(uuid, tickCounter);
+        int tickCounter = TICK_COUNTERS.getOrDefault(itemKey, 0) + 1;
+        int triggerFrequency = (int) DefsManager.resolveShieldTypeValueForItem(player.getServer(), itemId,
+                "aura", "trigger_frequency", Config.AURA_TRIGGER_FREQUENCY.get());
+        if (tickCounter < triggerFrequency) {
+            TICK_COUNTERS.put(itemKey, tickCounter);
             return;
         }
-        TICK_COUNTERS.put(uuid, 0);
+        TICK_COUNTERS.put(itemKey, 0);
 
         List<LivingEntity> effectCenters;
         if (!ShieldTransferManager.shouldProtectPlayer(player)) {
@@ -112,7 +125,8 @@ public class AuraShieldType implements IShieldType {
         }
 
         double shieldEffectRadius = AttributeManager.getGroupAttribute(player.getUUID(), "shield_effect_radius");
-        double baseRadius = Config.AURA_RADIUS.get();
+        double baseRadius = DefsManager.resolveShieldTypeValueForItem(player.getServer(), itemId,
+                "aura", "radius", Config.AURA_RADIUS.get());
         double radius = baseRadius * shieldEffectRadius;
 
         float totalShieldCost = 0;
@@ -133,7 +147,8 @@ public class AuraShieldType implements IShieldType {
 
             for (LivingEntity target : entities) {
                 hasEnemies = true;
-                double chargeRate = Config.AURA_DAMAGE.get();
+                double chargeRate = DefsManager.resolveShieldTypeValueForItem(player.getServer(), itemId,
+                        "aura", "damage", Config.AURA_DAMAGE.get());
                 double shieldEffect = AttributeManager.getGroupAttribute(player.getUUID(), "shield_effect");
                 float charge = (float)(chargeRate * shieldEffect);
                 
@@ -142,12 +157,13 @@ public class AuraShieldType implements IShieldType {
             }
 
             if (!entities.isEmpty()) {
-                double baseShieldCost = Config.AURA_SHIELD_COST.get();
+                double baseShieldCost = DefsManager.resolveShieldTypeValueForItem(player.getServer(), itemId,
+                        "aura", "shield_cost", Config.AURA_SHIELD_COST.get());
                 totalShieldCost += baseShieldCost * entities.size();
             }
         }
 
-        AURA_DAMAGING.put(player.getUUID(), hasEnemies);
+        AURA_DAMAGING.put(itemKey, hasEnemies);
 
         // 同步auraDamaging到客户端：光环渲染贴图透明度由客户端damaging状态驱动，
         // 若不同步，客户端10刻确认超时后会将damaging置false，导致纯光环攻击时贴图不显示。
@@ -199,13 +215,25 @@ public class AuraShieldType implements IShieldType {
         return false;
     }
 
+    /** 玩家全部 aura 实例任一处于攻击状态（HUD/聚合显示用） */
     public static boolean isAuraDamaging(UUID playerUUID) {
-        return AURA_DAMAGING.getOrDefault(playerUUID, false);
+        String prefix = playerUUID + "|";
+        for (Map.Entry<String, Boolean> e : AURA_DAMAGING.entrySet()) {
+            if (e.getKey().startsWith(prefix) && Boolean.TRUE.equals(e.getValue())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** 单实例查询：仅查询该物品实例的攻击状态（同步/渲染按实例独立） */
+    public static boolean isAuraDamagingForItem(UUID playerUUID, String itemId) {
+        return AURA_DAMAGING.getOrDefault(instanceKey(playerUUID, itemId), false);
     }
 
     public static void clearPlayerData(UUID playerUUID) {
         AURA_DAMAGING.remove(playerUUID);
-        TICK_COUNTERS.remove(playerUUID);
+        TICK_COUNTERS.keySet().removeIf(key -> key.startsWith(playerUUID + "|"));
     }
 
     public static void clearAllData() {

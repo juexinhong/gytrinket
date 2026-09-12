@@ -18,6 +18,7 @@ import net.minecraft.server.packs.repository.PackRepository;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimplePreparableReloadListener;
 import net.minecraft.util.profiling.ProfilerFiller;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -29,6 +30,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -38,6 +40,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.function.Predicate;
 
 /**
  * 定义类数据管理器（datapack 数据驱动）
@@ -68,17 +72,50 @@ public class DefsManager {
     /** 覆盖文件（<世界>/gytrinket_ui_overrides.json，位于数据包目录之外，不触发数据包校验/安全模式） */
     private static final String OVERRIDES_FILE_NAME = "gytrinket_ui_overrides.json";
 
-    /** 服务端：特殊机制覆盖（itemId -> 声明），removed=true 表示撤销声明 */
-    public record SpecialMechanicOverride(List<String> sets, boolean removed) {
-        public static SpecialMechanicOverride removedState() { return new SpecialMechanicOverride(List.of(), true); }
-        public static SpecialMechanicOverride declared(List<String> sets) { return new SpecialMechanicOverride(sets, false); }
+    /** 机制参数覆盖值：数值 + 是否可叠加（false = 各物品独立比对取最大，true = 多物品求和） */
+    public record ParamValue(double value, boolean stackable) {
+        public static ParamValue of(double value) { return new ParamValue(value, true); }
+    }
+
+    /**
+     * 特殊机制覆盖条目：removed=true 表示撤销声明。
+     * <p>
+     * values：物品级机制数值覆盖（机制集合名 -> 参数键 -> ParamValue），仅由配置面板 UI 编辑产生；
+     * 未覆盖的参数回退 Config 默认值（视为不可叠加）。同机制多物品时按 ParamValue.stackable 合并：
+     * 可叠加求和、不可叠加各自比对，最终值 = max(可叠加和, 最大的不可叠加项)。
+     */
+    public record SpecialMechanicOverride(List<String> sets, boolean removed,
+                                          Map<String, Map<String, ParamValue>> values) {
+        public SpecialMechanicOverride(List<String> sets, boolean removed) {
+            this(sets, removed, Map.of());
+        }
+        public static SpecialMechanicOverride removedState() { return new SpecialMechanicOverride(List.of(), true, Map.of()); }
+        public static SpecialMechanicOverride declared(List<String> sets) { return new SpecialMechanicOverride(sets, false, Map.of()); }
+        public static SpecialMechanicOverride declared(List<String> sets, Map<String, Map<String, ParamValue>> values) {
+            return new SpecialMechanicOverride(sets, false,
+                    values == null ? Map.of() : Collections.unmodifiableMap(values));
+        }
+    }
+
+    /**
+     * 护盾类型覆盖条目：类型列表 + 其中被标记为独占（不兼容）的类型子集（物品级兼容开关，UI 编辑产生）。
+     * <p>
+     * values：物品级护盾数值覆盖（护盾类型名 -> 参数键 -> ParamValue），仅由配置面板 UI 编辑产生；
+     * 未覆盖的参数回退 Config 默认值。护盾类型数值为"每物品实例独立"：
+     * 兼容时多实例并存各用各的数值，不兼容时由冲突链决定生效实例，不参与叠/单合并。
+     */
+    public record ShieldTypeOverride(List<String> types, List<String> exclusiveTypes,
+                                     Map<String, Map<String, ParamValue>> values) {
+        public ShieldTypeOverride(List<String> types, List<String> exclusiveTypes) {
+            this(types, exclusiveTypes, Map.of());
+        }
     }
 
     private static final Map<String, SpecialMechanicOverride> SERVER_SPECIAL_MECHANIC_OVERRIDES = new HashMap<>();
-    private static final Map<String, List<String>> SERVER_SHIELD_TYPE_OVERRIDES = new HashMap<>();
+    private static final Map<String, ShieldTypeOverride> SERVER_SHIELD_TYPE_OVERRIDES = new HashMap<>();
     /** 客户端：从服务端同步的覆盖数据（面板显示用） */
     private static final Map<String, SpecialMechanicOverride> CLIENT_SPECIAL_MECHANIC_OVERRIDES = new HashMap<>();
-    private static final Map<String, List<String>> CLIENT_SHIELD_TYPE_OVERRIDES = new HashMap<>();
+    private static final Map<String, ShieldTypeOverride> CLIENT_SHIELD_TYPE_OVERRIDES = new HashMap<>();
 
     // ===== registry 键 =====
     public static final ResourceKey<Registry<ItemSetDef>> ITEM_SETS_KEY =
@@ -234,6 +271,8 @@ public class DefsManager {
     private static final Set<String> SPECIAL_MECHANIC_ITEMS = new HashSet<>();
     private static final Map<String, Boolean> SHIELD_TYPES = new HashMap<>();
     private static final Map<String, List<String>> ITEM_SHIELD_TYPES = new HashMap<>();
+    /** 物品级护盾类型兼容覆盖（仅 UI 运行时覆盖层产生）：物品 -> 独占（不兼容）类型集合；存在条目 = 该物品兼容性为显式模式 */
+    private static final Map<String, Set<String>> ITEM_SHIELD_TYPE_EXCLUSIVE_OVERRIDES = new HashMap<>();
     private static final List<AttributeEntry> ATTRIBUTE_DEFS = new ArrayList<>();
     private static final Map<String, Set<String>> DISABLE_TARGETS = new HashMap<>();
     private static final Map<String, Set<String>> DEPENDENCIES = new HashMap<>();
@@ -292,6 +331,7 @@ public class DefsManager {
         SPECIAL_MECHANIC_ITEMS.clear();
         SHIELD_TYPES.clear();
         ITEM_SHIELD_TYPES.clear();
+        ITEM_SHIELD_TYPE_EXCLUSIVE_OVERRIDES.clear();
         ATTRIBUTE_DEFS.clear();
         DISABLE_TARGETS.clear();
         DEPENDENCIES.clear();
@@ -367,9 +407,11 @@ public class DefsManager {
             }
         });
 
-        // 运行时覆盖：护盾类型以覆盖为准（空列表 = 移除全部类型）
+        // 运行时覆盖：护盾类型以覆盖为准（空列表 = 移除全部类型）；
+        // 兼容性同样以覆盖为显式值（exclusiveTypes 空列表 = 全部兼容）
         for (var e : SERVER_SHIELD_TYPE_OVERRIDES.entrySet()) {
-            ITEM_SHIELD_TYPES.put(e.getKey(), new ArrayList<>(e.getValue()));
+            ITEM_SHIELD_TYPES.put(e.getKey(), new ArrayList<>(e.getValue().types()));
+            ITEM_SHIELD_TYPE_EXCLUSIVE_OVERRIDES.put(e.getKey(), new HashSet<>(e.getValue().exclusiveTypes()));
         }
 
         access.registry(ATTRIBUTE_DEFS_KEY).ifPresent(reg -> {
@@ -449,21 +491,106 @@ public class DefsManager {
                     if (def.has("sets") && def.get("sets").isJsonArray()) {
                         def.getAsJsonArray("sets").forEach(el -> sets.add(el.getAsString()));
                     }
+                    Map<String, Map<String, ParamValue>> values = parseMechanicValues(def);
                     SERVER_SPECIAL_MECHANIC_OVERRIDES.put(itemId,
-                            removed ? SpecialMechanicOverride.removedState() : SpecialMechanicOverride.declared(sets));
+                            removed ? SpecialMechanicOverride.removedState() : SpecialMechanicOverride.declared(sets, values));
                 }
             }
             if (root.has("shieldTypes")) {
                 for (var e : root.getAsJsonObject("shieldTypes").entrySet()) {
-                    List<String> types = new ArrayList<>();
-                    e.getValue().getAsJsonArray().forEach(el -> types.add(el.getAsString()));
-                    SERVER_SHIELD_TYPE_OVERRIDES.put(e.getKey(), types);
+                    SERVER_SHIELD_TYPE_OVERRIDES.put(e.getKey(), parseShieldTypeOverride(e.getValue()));
                 }
             }
             gytrinket.LOGGER.info("已读取定义覆盖文件：特殊机制 {} 项，护盾类型 {} 项",
                     SERVER_SPECIAL_MECHANIC_OVERRIDES.size(), SERVER_SHIELD_TYPE_OVERRIDES.size());
         } catch (Exception e) {
             gytrinket.LOGGER.error("读取定义覆盖文件失败: {}", file, e);
+        }
+    }
+
+    /** 解析护盾类型覆盖条目：兼容旧格式（字符串数组）与中间格式（{types,exclusiveTypes}），新格式含 values/stackables 数值段 */
+    private static ShieldTypeOverride parseShieldTypeOverride(com.google.gson.JsonElement el) {
+        if (el.isJsonArray()) {
+            List<String> types = new ArrayList<>();
+            el.getAsJsonArray().forEach(t -> types.add(t.getAsString()));
+            return new ShieldTypeOverride(types, List.of());
+        }
+        com.google.gson.JsonObject def = el.getAsJsonObject();
+        List<String> types = new ArrayList<>();
+        if (def.has("types") && def.get("types").isJsonArray()) {
+            def.getAsJsonArray("types").forEach(t -> types.add(t.getAsString()));
+        }
+        List<String> exclusive = new ArrayList<>();
+        if (def.has("exclusiveTypes") && def.get("exclusiveTypes").isJsonArray()) {
+            def.getAsJsonArray("exclusiveTypes").forEach(t -> exclusive.add(t.getAsString()));
+        }
+        // 数值段结构同机制数值：values={"<type>": {"<param>": value}} + stackables={"<type>": {"<param>": bool}}
+        Map<String, Map<String, ParamValue>> values = parseMechanicValues(def);
+        return new ShieldTypeOverride(types, exclusive, values);
+    }
+
+    /** 解析机制数值覆盖段：values={"<set>": {"<param>": value}} + stackables={"<set>": {"<param>": bool}}，缺省叠加标记视为可叠加（兼容旧格式文件） */
+    private static Map<String, Map<String, ParamValue>> parseMechanicValues(com.google.gson.JsonObject def) {
+        Map<String, Map<String, ParamValue>> result = new LinkedHashMap<>();
+        if (!def.has("values") || !def.get("values").isJsonObject()) {
+            return result;
+        }
+        com.google.gson.JsonObject stackables = def.has("stackables") && def.get("stackables").isJsonObject()
+                ? def.getAsJsonObject("stackables") : new com.google.gson.JsonObject();
+        for (var setEntry : def.getAsJsonObject("values").entrySet()) {
+            if (!setEntry.getValue().isJsonObject()) continue;
+            Map<String, ParamValue> params = new LinkedHashMap<>();
+            com.google.gson.JsonObject setStackables = stackables.has(setEntry.getKey())
+                    && stackables.get(setEntry.getKey()).isJsonObject()
+                    ? stackables.getAsJsonObject(setEntry.getKey()) : new com.google.gson.JsonObject();
+            for (var paramEntry : setEntry.getValue().getAsJsonObject().entrySet()) {
+                try {
+                    boolean stackable = setStackables.has(paramEntry.getKey())
+                            && setStackables.get(paramEntry.getKey()).isJsonPrimitive()
+                            && setStackables.get(paramEntry.getKey()).getAsBoolean();
+                    params.put(paramEntry.getKey(), new ParamValue(paramEntry.getValue().getAsDouble(), stackable));
+                } catch (Exception ignored) {
+                    // 非法数值跳过（回退 config 默认）
+                }
+            }
+            if (!params.isEmpty()) {
+                result.put(setEntry.getKey(), params);
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 将数值覆盖段序列化到条目 JSON：values={"<set/type>": {"<param>": value}}；
+     * includeStackables=true 时附加 stackables 段（全部可叠加时省略，机制数值用），
+     * 护盾类型数值不参与叠/单合并，固定传 false（不写 stackables）。
+     */
+    private static void writeValuesToJson(com.google.gson.JsonObject def, Map<String, Map<String, ParamValue>> values,
+                                          boolean includeStackables) {
+        if (values == null || values.isEmpty()) {
+            return;
+        }
+        com.google.gson.JsonObject valuesJson = new com.google.gson.JsonObject();
+        com.google.gson.JsonObject stackablesJson = new com.google.gson.JsonObject();
+        for (var setEntry : values.entrySet()) {
+            com.google.gson.JsonObject paramsJson = new com.google.gson.JsonObject();
+            com.google.gson.JsonObject setStackables = new com.google.gson.JsonObject();
+            boolean anyNonStackable = false;
+            for (var paramEntry : setEntry.getValue().entrySet()) {
+                paramsJson.addProperty(paramEntry.getKey(), paramEntry.getValue().value());
+                setStackables.addProperty(paramEntry.getKey(), paramEntry.getValue().stackable());
+                if (!paramEntry.getValue().stackable()) {
+                    anyNonStackable = true;
+                }
+            }
+            valuesJson.add(setEntry.getKey(), paramsJson);
+            if (includeStackables && anyNonStackable) {
+                stackablesJson.add(setEntry.getKey(), setStackables);
+            }
+        }
+        def.add("values", valuesJson);
+        if (stackablesJson.size() > 0) {
+            def.add("stackables", stackablesJson);
         }
     }
 
@@ -478,14 +605,21 @@ public class DefsManager {
                 com.google.gson.JsonArray sets = new com.google.gson.JsonArray();
                 e.getValue().sets().forEach(sets::add);
                 def.add("sets", sets);
+                writeValuesToJson(def, e.getValue().values(), true);
                 sm.add(e.getKey(), def);
             }
             root.add("specialMechanics", sm);
             com.google.gson.JsonObject st = new com.google.gson.JsonObject();
             for (var e : SERVER_SHIELD_TYPE_OVERRIDES.entrySet()) {
+                com.google.gson.JsonObject def = new com.google.gson.JsonObject();
                 com.google.gson.JsonArray types = new com.google.gson.JsonArray();
-                e.getValue().forEach(types::add);
-                st.add(e.getKey(), types);
+                e.getValue().types().forEach(types::add);
+                def.add("types", types);
+                com.google.gson.JsonArray exclusive = new com.google.gson.JsonArray();
+                e.getValue().exclusiveTypes().forEach(exclusive::add);
+                def.add("exclusiveTypes", exclusive);
+                writeValuesToJson(def, e.getValue().values(), false);
+                st.add(e.getKey(), def);
             }
             root.add("shieldTypes", st);
             Path file = getOverridesFile(server);
@@ -546,12 +680,145 @@ public class DefsManager {
     }
 
     /**
+     * 服务端：解析玩家某机制参数的生效数值（物品级覆盖 + 多物品合并）。
+     * <p>
+     * 遍历所有声明该机制集合且未被禁用的装备物品，每件贡献一份参数值（有 UI 覆盖取覆盖值，
+     * 否则取 fallback = Config 默认值，未覆盖物品视为不可叠加）。合并规则：
+     * 可叠加项求和，不可叠加项各自独立参与比对，最终值 = max(可叠加和, 最大的不可叠加项)。
+     * 未装备声明物品时返回 fallback（机制判定由调用方的 playerHasEquippedMechanic 负责）。
+     */
+    public static double resolveMechanicValue(MinecraftServer server, UUID playerUUID,
+                                              String mechanicSet, String paramKey, double fallback) {
+        if (server == null) return fallback;
+        return mergeMechanicValue(playerUUID, PlayerStoreUtils.getEquippedStacks(playerUUID),
+                itemId -> getEffectiveSpecialMechanicSets(server, itemId).contains(mechanicSet),
+                SERVER_SPECIAL_MECHANIC_OVERRIDES::get, mechanicSet, paramKey, fallback);
+    }
+
+    /**
+     * 服务端：按物品实例解析护盾类型参数值（单物品直接查询，不跨物品合并）。
+     * <p>
+     * 护盾类型数值为"每物品实例独立"：兼容时多实例并存、各用各的数值；
+     * 不兼容时由冲突链决定生效实例。因此取值始终以具体物品为锚点，
+     * 未定义该类型覆盖参数时返回 fallback（Config 默认值）。
+     */
+    public static double resolveShieldTypeValueForItem(MinecraftServer server, String itemId,
+                                                       String shieldType, String paramKey, double fallback) {
+        if (server == null || itemId == null) return fallback;
+        ShieldTypeOverride ov = SERVER_SHIELD_TYPE_OVERRIDES.get(itemId);
+        if (ov == null) return fallback;
+        Map<String, ParamValue> params = ov.values().get(shieldType);
+        ParamValue pv = params == null ? null : params.get(paramKey);
+        return pv != null ? pv.value() : fallback;
+    }
+
+    /**
+     * 服务端：枚举玩家装备的、声明指定特殊机制集合的物品（覆盖层优先）。
+     * <p>
+     * 跳过空栈与被禁用的物品；按物品种类去重——同一物品装备多件只算一个实例，
+     * 实例粒度为物品种类而非装备件数。
+     */
+    public static List<ItemStack> getEquippedMechanicStacks(MinecraftServer server, UUID playerUUID, String mechanicSet) {
+        List<ItemStack> result = new ArrayList<>();
+        if (server == null || playerUUID == null) return result;
+        Set<String> seen = new HashSet<>();
+        for (ItemStack stack : PlayerStoreUtils.getEquippedStacks(playerUUID)) {
+            if (stack.isEmpty()) continue;
+            if (DisableSystem.isItemDisabled(playerUUID, stack)) continue;
+            String itemId = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
+            if (!seen.add(itemId)) continue;
+            if (getEffectiveSpecialMechanicSets(server, itemId).contains(mechanicSet)) {
+                result.add(stack);
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 服务端：按物品实例解析特殊机制参数值（单物品直接查询，不跨物品合并）。
+     * <p>
+     * 实例化特殊机制（仿护盾类型）：每件提供该机制的物品独立触发、各用各的数值；
+     * 未定义该物品覆盖参数时返回 fallback（Config 默认值）。
+     */
+    public static double resolveMechanicValueForItem(MinecraftServer server, String itemId,
+                                                     String mechanicSet, String paramKey, double fallback) {
+        if (server == null || itemId == null) return fallback;
+        SpecialMechanicOverride ov = SERVER_SPECIAL_MECHANIC_OVERRIDES.get(itemId);
+        if (ov == null || ov.removed()) return fallback;
+        Map<String, ParamValue> params = ov.values().get(mechanicSet);
+        ParamValue pv = params == null ? null : params.get(paramKey);
+        return pv != null ? pv.value() : fallback;
+    }
+
+    /**
+     * 多物品机制参数合并（服务端/客户端共用算法）：遍历装备物品逐件取值——有 UI 覆盖取覆盖值，
+     * 否则取 fallback（未覆盖物品视为不可叠加）。可叠加项求和，不可叠加项比对取最大，
+     * 最终值 = max(可叠加和, 最大的不可叠加项)。未装备声明物品时返回 fallback。
+     */
+    private static double mergeMechanicValue(UUID playerUUID, List<ItemStack> stacks,
+                                             Predicate<String> hasMechanicSet,
+                                             Function<String, SpecialMechanicOverride> overrideOf,
+                                             String mechanicSet, String paramKey, double fallback) {
+        return mergeParamValue(playerUUID, stacks, hasMechanicSet, itemId -> {
+            SpecialMechanicOverride ov = overrideOf.apply(itemId);
+            if (ov == null || ov.removed()) return null;
+            return ov.values().get(mechanicSet);
+        }, paramKey, fallback);
+    }
+
+    /** 多物品参数合并通用核心（机制/护盾类型共用）：paramsOf 给出物品在目标集合/类型下的参数覆盖（无则 null） */
+    private static double mergeParamValue(UUID playerUUID, List<ItemStack> stacks,
+                                          Predicate<String> hasSet,
+                                          Function<String, Map<String, ParamValue>> paramsOf,
+                                          String paramKey, double fallback) {
+        double stackableSum = 0.0D;
+        double bestNonStackable = Double.NEGATIVE_INFINITY;
+        boolean hasProvider = false;
+        for (ItemStack stack : stacks) {
+            if (stack.isEmpty()) continue;
+            if (DisableSystem.isItemDisabled(playerUUID, stack)) continue;
+            String itemId = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
+            if (!hasSet.test(itemId)) continue;
+            hasProvider = true;
+            double value = fallback;
+            boolean stackable = false;
+            Map<String, ParamValue> params = paramsOf.apply(itemId);
+            ParamValue pv = params == null ? null : params.get(paramKey);
+            if (pv != null) {
+                value = pv.value();
+                stackable = pv.stackable();
+            }
+            if (stackable) {
+                stackableSum += value;
+            } else if (value > bestNonStackable) {
+                bestNonStackable = value;
+            }
+        }
+        if (!hasProvider) return fallback;
+        return Math.max(stackableSum, bestNonStackable);
+    }
+
+    /** 拷贝物品既有的机制数值覆盖（编辑操作前保留其他机制的数值，内层 map 浅拷贝） */
+    private static Map<String, Map<String, ParamValue>> copyExistingValues(String itemId) {
+        Map<String, Map<String, ParamValue>> values = new LinkedHashMap<>();
+        SpecialMechanicOverride existing = SERVER_SPECIAL_MECHANIC_OVERRIDES.get(itemId);
+        if (existing != null && !existing.removed()) {
+            for (var e : existing.values().entrySet()) {
+                values.put(e.getKey(), new LinkedHashMap<>(e.getValue()));
+            }
+        }
+        return values;
+    }
+
+    /**
      * 编辑操作：为物品添加/移除指定特殊机制（set）。
      * 添加 = 当前集合 ∪ {set}；移除 = 当前集合 − {set}，移除后为空则整体撤销声明。
      * 写入内存 + 覆盖文件后立即重新加载生效（不重载数据包）。
      */
     public static void updateSpecialMechanicSet(MinecraftServer server, String itemId, String mechanicSet, boolean remove) {
         List<String> current = getEffectiveSpecialMechanicSets(server, itemId);
+        // 保留该物品既有的机制数值覆盖（移除机制时同步删除对应数值）
+        Map<String, Map<String, ParamValue>> values = copyExistingValues(itemId);
         List<String> updated = new ArrayList<>();
         if (remove) {
             for (String s : current) {
@@ -559,25 +826,116 @@ public class DefsManager {
                     updated.add(s);
                 }
             }
+            values.remove(mechanicSet);
             if (updated.isEmpty()) {
                 SERVER_SPECIAL_MECHANIC_OVERRIDES.put(itemId, SpecialMechanicOverride.removedState());
             } else {
-                SERVER_SPECIAL_MECHANIC_OVERRIDES.put(itemId, SpecialMechanicOverride.declared(updated));
+                SERVER_SPECIAL_MECHANIC_OVERRIDES.put(itemId, SpecialMechanicOverride.declared(updated, values));
             }
         } else {
             updated.addAll(current);
             if (!updated.contains(mechanicSet)) {
                 updated.add(mechanicSet);
             }
-            SERVER_SPECIAL_MECHANIC_OVERRIDES.put(itemId, SpecialMechanicOverride.declared(updated));
+            SERVER_SPECIAL_MECHANIC_OVERRIDES.put(itemId, SpecialMechanicOverride.declared(updated, values));
         }
         saveOverridesToFile(server);
         applyOverrides(server);
     }
 
-    /** 编辑操作：更新物品护盾类型（写入内存 + 覆盖文件，立即重新加载生效，不重载数据包） */
-    public static void updateShieldTypeOverride(MinecraftServer server, String itemId, List<String> types) {
-        SERVER_SHIELD_TYPE_OVERRIDES.put(itemId, new ArrayList<>(types));
+    /**
+     * 编辑操作：更新物品某机制集合的数值覆盖（物品级数值，仅影响该物品）。
+     * <p>
+     * 目标物品必须已声明该机制集合（否则忽略）；空参数 map 表示清除该机制的数值覆盖（回退 Config 默认）。
+     * stackables 与 params 平行（paramKey -> 是否可叠加），缺省视为可叠加。
+     * 写入内存 + 覆盖文件后立即重新加载生效（不重载数据包）。
+     */
+    public static void updateSpecialMechanicValues(MinecraftServer server, String itemId,
+                                                   String mechanicSet, Map<String, Double> params,
+                                                   Map<String, Boolean> stackables) {
+        List<String> current = getEffectiveSpecialMechanicSets(server, itemId);
+        if (!current.contains(mechanicSet)) {
+            return;
+        }
+        Map<String, Map<String, ParamValue>> values = copyExistingValues(itemId);
+        if (params == null || params.isEmpty()) {
+            values.remove(mechanicSet);
+        } else {
+            Map<String, ParamValue> paramValues = new LinkedHashMap<>();
+            for (var e : params.entrySet()) {
+                boolean stackable = stackables == null || stackables.getOrDefault(e.getKey(), Boolean.TRUE);
+                paramValues.put(e.getKey(), new ParamValue(e.getValue(), stackable));
+            }
+            values.put(mechanicSet, paramValues);
+        }
+        SERVER_SPECIAL_MECHANIC_OVERRIDES.put(itemId, SpecialMechanicOverride.declared(current, values));
+        saveOverridesToFile(server);
+        applyOverrides(server);
+    }
+
+    /**
+     * 编辑操作：更新物品护盾类型（写入内存 + 覆盖文件，立即重新加载生效，不重载数据包）。
+     * exclusiveTypes 为该物品上被标记为独占（不兼容）的类型子集；存在覆盖条目时兼容性以它为显式值。
+     * 既有的护盾数值覆盖被保留（被移除的类型对应数值同步删除）。
+     */
+    public static void updateShieldTypeOverride(MinecraftServer server, String itemId, List<String> types, List<String> exclusiveTypes) {
+        List<String> exclusive = new ArrayList<>(exclusiveTypes);
+        exclusive.removeIf(t -> !types.contains(t));
+        // 保留该物品既有的护盾数值覆盖，仅保留仍声明的类型
+        Map<String, Map<String, ParamValue>> values = new LinkedHashMap<>();
+        ShieldTypeOverride existing = SERVER_SHIELD_TYPE_OVERRIDES.get(itemId);
+        if (existing != null) {
+            for (var e : existing.values().entrySet()) {
+                if (types.contains(e.getKey())) {
+                    values.put(e.getKey(), new LinkedHashMap<>(e.getValue()));
+                }
+            }
+        }
+        SERVER_SHIELD_TYPE_OVERRIDES.put(itemId, new ShieldTypeOverride(new ArrayList<>(types), exclusive, values));
+        saveOverridesToFile(server);
+        applyOverrides(server);
+    }
+
+    /**
+     * 编辑操作：更新物品某护盾类型的数值覆盖（物品级数值，仅影响该物品实例）。
+     * <p>
+     * 目标物品必须已声明该护盾类型（否则忽略）；空参数 map 表示清除该类型的数值覆盖（回退 Config 默认）。
+     * 护盾类型数值不参与叠/单合并（每物品实例独立），因此无 stackables 参数。
+     * 写入内存 + 覆盖文件后立即重新加载生效（不重载数据包）。
+     */
+    public static void updateShieldTypeValues(MinecraftServer server, String itemId,
+                                              String shieldType, Map<String, Double> params) {
+        ShieldTypeOverride existing = SERVER_SHIELD_TYPE_OVERRIDES.get(itemId);
+        if (existing == null) {
+            // 未覆写过护盾类型：以数据包声明的类型为基础创建覆盖条目（兼容性继承类型级默认，exclusive 为空），
+            // 保证「只编辑数值、不动类型定义」也能直接保存
+            if (params == null || params.isEmpty()) {
+                return; // 清除数值且无覆盖条目：无需处理
+            }
+            List<String> declared = ITEM_SHIELD_TYPES.get(itemId);
+            if (declared == null || !declared.contains(shieldType)) {
+                return;
+            }
+            existing = new ShieldTypeOverride(new ArrayList<>(declared), new ArrayList<>(), new LinkedHashMap<>());
+        }
+        if (!existing.types().contains(shieldType)) {
+            return;
+        }
+        // 保留其他类型的数值覆盖
+        Map<String, Map<String, ParamValue>> values = new LinkedHashMap<>();
+        for (var e : existing.values().entrySet()) {
+            values.put(e.getKey(), new LinkedHashMap<>(e.getValue()));
+        }
+        if (params == null || params.isEmpty()) {
+            values.remove(shieldType);
+        } else {
+            Map<String, ParamValue> paramValues = new LinkedHashMap<>();
+            for (var e : params.entrySet()) {
+                paramValues.put(e.getKey(), new ParamValue(e.getValue(), false));
+            }
+            values.put(shieldType, paramValues);
+        }
+        SERVER_SHIELD_TYPE_OVERRIDES.put(itemId, new ShieldTypeOverride(existing.types(), existing.exclusiveTypes(), values));
         saveOverridesToFile(server);
         applyOverrides(server);
     }
@@ -619,6 +977,11 @@ public class DefsManager {
 
     public static Map<String, List<String>> getItemShieldTypes() {
         return ITEM_SHIELD_TYPES;
+    }
+
+    /** 物品级护盾类型兼容覆盖（UI 运行时覆盖层）：物品 -> 独占（不兼容）类型集合（供 Config.applyDefs 填充运行时缓存） */
+    public static Map<String, Set<String>> getItemShieldTypeExclusiveOverrides() {
+        return ITEM_SHIELD_TYPE_EXCLUSIVE_OVERRIDES;
     }
 
     public static List<AttributeEntry> getAttributeDefs() {
@@ -823,6 +1186,20 @@ public class DefsManager {
         return List.of();
     }
 
+    /**
+     * 客户端：解析玩家某机制参数的生效数值（与 {@link #resolveMechanicValue} 同一语义的客户端镜像）。
+     * <p>
+     * 供纯客户端效果读取（如幽灵机身移动衰减）：遍历本地装备物品逐件合并——可叠加求和、
+     * 不可叠加比对取最大；未覆盖物品按 fallback（Config 默认）不可叠加参与。player 为 null 或未装备时返回 fallback。
+     */
+    public static double clientResolveMechanicValue(Player player, String mechanicSet, String paramKey, double fallback) {
+        if (player == null) return fallback;
+        return mergeMechanicValue(player.getUUID(), PlayerStoreUtils.getAllEquippedStacks(player),
+                itemId -> clientSpecialMechanicSets(player.level() != null ? player.level().registryAccess() : null, itemId)
+                        .contains(mechanicSet),
+                CLIENT_SPECIAL_MECHANIC_OVERRIDES::get, mechanicSet, paramKey, fallback);
+    }
+
     /** 客户端查询：护盾类型名 -> 是否兼容（shield_types 定义） */
     public static Map<String, Boolean> clientShieldTypes(RegistryAccess access) {
         if (access == null) return Map.of();
@@ -837,8 +1214,9 @@ public class DefsManager {
 
     /** 获取物品的护盾类型列表（客户端 tooltip 使用，覆盖层优先） */
     public static List<String> clientItemShieldTypes(RegistryAccess access, String itemId) {
-        if (CLIENT_SHIELD_TYPE_OVERRIDES.containsKey(itemId)) {
-            return List.copyOf(CLIENT_SHIELD_TYPE_OVERRIDES.get(itemId));
+        ShieldTypeOverride ov = CLIENT_SHIELD_TYPE_OVERRIDES.get(itemId);
+        if (ov != null) {
+            return List.copyOf(ov.types());
         }
         if (access == null) return List.of();
         Optional<Registry<ItemShieldTypeDef>> reg = access.registry(ITEM_SHIELD_TYPES_KEY);
@@ -851,8 +1229,49 @@ public class DefsManager {
         return List.of();
     }
 
+    /** 客户端查询：物品的护盾类型覆盖条目（无覆盖时返回 null，调用方回退类型级默认兼容性） */
+    public static ShieldTypeOverride getClientShieldTypeOverride(String itemId) {
+        return CLIENT_SHIELD_TYPE_OVERRIDES.get(itemId);
+    }
+
+    /**
+     * 客户端：按物品解析护盾类型参数生效值（tooltip 描述用）。
+     * 有物品级覆盖取覆盖值，否则回退 fallback（Config 默认值）——
+     * 与服务端 {@link #resolveShieldTypeValueForItem} 语义一致，
+     * 保证物品描述显示的数值与实际生效数值相同
+     */
+    public static double clientShieldTypeValueForItem(String itemId, String shieldType,
+                                                      String paramKey, double fallback) {
+        ShieldTypeOverride ov = CLIENT_SHIELD_TYPE_OVERRIDES.get(itemId);
+        if (ov == null) return fallback;
+        Map<String, ParamValue> params = ov.values().get(shieldType);
+        ParamValue pv = params == null ? null : params.get(paramKey);
+        return pv != null ? pv.value() : fallback;
+    }
+
+    /** 客户端查询：物品的特殊机制覆盖条目（含机制集合与数值覆盖；无覆盖时返回 null） */
+    public static SpecialMechanicOverride getClientSpecialMechanicOverride(String itemId) {
+        return CLIENT_SPECIAL_MECHANIC_OVERRIDES.get(itemId);
+    }
+
+    /**
+     * 客户端：按物品解析特殊机制参数生效值（tooltip/客户端模拟用）。
+     * 有物品级覆盖取覆盖值，否则回退 fallback ——
+     * 与服务端 {@link #resolveMechanicValueForItem} 语义一致，
+     * 保证物品描述显示的数值与实际生效数值相同
+     */
+    public static double clientResolveMechanicValueForItem(String itemId, String mechanicSet,
+                                                           String paramKey, double fallback) {
+        if (itemId == null) return fallback;
+        SpecialMechanicOverride ov = CLIENT_SPECIAL_MECHANIC_OVERRIDES.get(itemId);
+        if (ov == null || ov.removed()) return fallback;
+        Map<String, ParamValue> params = ov.values().get(mechanicSet);
+        ParamValue pv = params == null ? null : params.get(paramKey);
+        return pv != null ? pv.value() : fallback;
+    }
+
     /** 客户端：从服务端同步的覆盖数据更新本地覆盖层（面板显示实时生效） */
-    public static void setClientOverrides(Map<String, SpecialMechanicOverride> specialMechanics, Map<String, List<String>> shieldTypes) {
+    public static void setClientOverrides(Map<String, SpecialMechanicOverride> specialMechanics, Map<String, ShieldTypeOverride> shieldTypes) {
         CLIENT_SPECIAL_MECHANIC_OVERRIDES.clear();
         CLIENT_SPECIAL_MECHANIC_OVERRIDES.putAll(specialMechanics);
         CLIENT_SHIELD_TYPE_OVERRIDES.clear();
@@ -865,7 +1284,7 @@ public class DefsManager {
     }
 
     /** 服务端：获取当前覆盖数据（供同步到客户端） */
-    public static Map<String, List<String>> getServerShieldTypeOverrides() {
+    public static Map<String, ShieldTypeOverride> getServerShieldTypeOverrides() {
         return SERVER_SHIELD_TYPE_OVERRIDES;
     }
 

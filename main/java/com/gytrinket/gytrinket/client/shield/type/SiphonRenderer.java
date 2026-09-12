@@ -41,11 +41,8 @@ public class SiphonRenderer {
         double currentShield = ShieldHudRenderer.getInstance().getCurrentShield();
         if (currentShield <= 0) return;
 
-        double displayStacks = SiphonClientData.getDisplayStacks();
-        if (displayStacks <= 0) return;
-
-        float alpha = (float) SiphonClientData.getDisplayAlpha();
-        double size = SiphonClientData.getDisplaySize();
+        List<SiphonClientData.State> states = SiphonClientData.getRenderStates();
+        if (states.isEmpty()) return;
 
         float pt = event.getPartialTick().getGameTimeDeltaPartialTick(false);
         Vec3 camPos = event.getCamera().getPosition();
@@ -73,21 +70,25 @@ public class SiphonRenderer {
 
         BufferBuilder bufferBuilder = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
 
-        float halfSize = (float) size / 2.0f;
-        // 亮度固定为12（0~15），映射为颜色缩放
-        float colorScale = 12.0f / 15.0f;
-        int rgb = (int)(colorScale * 255);
-        int packedColor = ((int)(alpha * 255) << 24) | (rgb << 16) | (rgb << 8) | rgb;
+        // 每个虹吸实例各自独立绘制贴图（各用各的尺寸与透明度）
+        for (SiphonClientData.State state : states) {
+            float alpha = (float) state.displayAlpha;
+            float halfSize = (float) state.displaySize / 2.0f;
+            // 亮度固定为12（0~15），映射为颜色缩放
+            float colorScale = 12.0f / 15.0f;
+            int rgb = (int)(colorScale * 255);
+            int packedColor = ((int)(alpha * 255) << 24) | (rgb << 16) | (rgb << 8) | rgb;
 
-        for (double[] pos : renderPositions) {
-            float px = (float) pos[0];
-            float py = (float) pos[1];
-            float pz = (float) pos[2];
+            for (double[] pos : renderPositions) {
+                float px = (float) pos[0];
+                float py = (float) pos[1];
+                float pz = (float) pos[2];
 
-            bufferBuilder.addVertex(matrix, px - halfSize, py, pz - halfSize).setUv(0.0f, 0.0f).setColor(packedColor);
-            bufferBuilder.addVertex(matrix, px - halfSize, py, pz + halfSize).setUv(0.0f, 1.0f).setColor(packedColor);
-            bufferBuilder.addVertex(matrix, px + halfSize, py, pz + halfSize).setUv(1.0f, 1.0f).setColor(packedColor);
-            bufferBuilder.addVertex(matrix, px + halfSize, py, pz - halfSize).setUv(1.0f, 0.0f).setColor(packedColor);
+                bufferBuilder.addVertex(matrix, px - halfSize, py, pz - halfSize).setUv(0.0f, 0.0f).setColor(packedColor);
+                bufferBuilder.addVertex(matrix, px - halfSize, py, pz + halfSize).setUv(0.0f, 1.0f).setColor(packedColor);
+                bufferBuilder.addVertex(matrix, px + halfSize, py, pz + halfSize).setUv(1.0f, 1.0f).setColor(packedColor);
+                bufferBuilder.addVertex(matrix, px + halfSize, py, pz - halfSize).setUv(1.0f, 0.0f).setColor(packedColor);
+            }
         }
 
         BufferUploader.drawWithShader(bufferBuilder.buildOrThrow());

@@ -37,7 +37,7 @@ public class ConstructAttributeNameParser {
     /** 已知的效果 token（多词组合需特殊处理） */
     private static final Set<String> EFFECT_TOKENS = Set.of(
             "health", "damage", "count", "build_speed", "attack_speed", "weapon_attack_speed", "explosive_count",
-            "move_speed", "orbit_speed", "rotation_speed"
+            "move_speed", "orbit_speed", "rotation_speed", "size"
     );
 
     /** 已知的值类型 token */
@@ -160,6 +160,7 @@ public class ConstructAttributeNameParser {
             case "move_speed" -> EffectType.MOVE_SPEED;
             case "orbit_speed" -> EffectType.ORBIT_SPEED;
             case "rotation_speed" -> EffectType.ROTATION_SPEED;
+            case "size" -> EffectType.SIZE;
             default -> null;
         };
     }
@@ -245,6 +246,7 @@ public class ConstructAttributeNameParser {
         EXPLOSIVE_COUNT,
         MOVE_SPEED,
         ORBIT_SPEED,
-        ROTATION_SPEED
+        ROTATION_SPEED,
+        SIZE
     }
 }

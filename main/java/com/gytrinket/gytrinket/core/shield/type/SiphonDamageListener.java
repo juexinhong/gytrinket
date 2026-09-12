@@ -1,6 +1,7 @@
 package com.gytrinket.gytrinket.core.shield.type;
 
 import com.gytrinket.gytrinket.config.Config;
+import com.gytrinket.gytrinket.core.defs.DefsManager;
 import com.gytrinket.gytrinket.core.shield.ShieldManager;
 import com.gytrinket.gytrinket.core.damage.ModDamageTypes;
 import com.gytrinket.gytrinket.gytrinket;
@@ -11,8 +12,6 @@ import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
-
-import java.util.UUID;
 
 @EventBusSubscriber(modid = gytrinket.MODID)
 public class SiphonDamageListener {
@@ -31,21 +30,24 @@ public class SiphonDamageListener {
             return;
         }
 
-        // 从追踪Map获取玩家UUID，而非从伤害源获取（避免非斩杀时触发仇恨）
-        UUID playerUUID = SiphonShieldType.getSiphonPlayerUUID(target.getUUID());
-        if (playerUUID == null) {
+        // 从追踪Map获取归属引用（玩家+物品实例），而非从伤害源获取（避免非斩杀时触发仇恨）
+        SiphonShieldType.SiphonTargetRef ref = SiphonShieldType.getSiphonTargetRef(target.getUUID());
+        if (ref == null) {
             return;
         }
 
-        if (!SiphonShieldType.hasSiphonShieldType(playerUUID)) {
+        if (!SiphonShieldType.hasSiphonShieldType(ref.playerUUID())) {
             return;
         }
 
         float damageAmount = event.getNewDamage();
-        double shieldRecovery = damageAmount * Config.SIPHON_HEAL_RATIO.get();
+        double healRatio = DefsManager.resolveShieldTypeValueForItem(
+                net.neoforged.neoforge.server.ServerLifecycleHooks.getCurrentServer(), ref.itemId(),
+                "siphon", "heal_ratio", Config.SIPHON_HEAL_RATIO.get());
+        double shieldRecovery = damageAmount * healRatio;
 
         if (shieldRecovery > 0) {
-            ShieldManager.addShield(playerUUID, shieldRecovery);
+            ShieldManager.addShield(ref.playerUUID(), shieldRecovery);
         }
     }
 }

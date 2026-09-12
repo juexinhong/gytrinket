@@ -2,7 +2,9 @@ package com.gytrinket.gytrinket.core.shield.type;
 
 import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
+import com.gytrinket.gytrinket.core.defs.DefsManager;
 import com.gytrinket.gytrinket.core.shield.ShieldManager;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
@@ -41,14 +43,17 @@ public class ReflectShieldType implements IShieldType {
         private final Projectile projectile;
         private final double originalSpeed;
         private final double posX, posY, posZ;
+        /** 提供该 reflect 实例的物品 ID（数值按该物品实例取） */
+        private final String itemId;
 
         public ProjectileDamageInfo(Projectile projectile, double originalSpeed,
-                                    double posX, double posY, double posZ) {
+                                    double posX, double posY, double posZ, String itemId) {
             this.projectile = projectile;
             this.originalSpeed = originalSpeed;
             this.posX = posX;
             this.posY = posY;
             this.posZ = posZ;
+            this.itemId = itemId;
         }
 
         public Projectile getProjectile() { return projectile; }
@@ -56,10 +61,11 @@ public class ReflectShieldType implements IShieldType {
         public double getPosX() { return posX; }
         public double getPosY() { return posY; }
         public double getPosZ() { return posZ; }
+        public String getItemId() { return itemId; }
     }
 
-    /** 存储玩家最后受到的弹射物信息 */
-    private static final Map<UUID, ProjectileDamageInfo> LAST_PROJECTILE_INFO = new HashMap<>();
+    /** 存储玩家待反射的弹射物信息（每个 active reflect 实例一条，各用各自物品定义的参数） */
+    private static final Map<UUID, List<ProjectileDamageInfo>> PENDING_REFLECT_INFOS = new HashMap<>();
     /** 存储已反射弹射物及其信息（效果值和过期时间） */
     private static final Map<Integer, ReflectedProjectileInfo> REFLECTED_PROJECTILES = new HashMap<>();
     /** 存储需要防止爆炸的弹射物及其过期时间 */
@@ -75,8 +81,11 @@ public class ReflectShieldType implements IShieldType {
      */
     private static class ReflectedProjectileInfo {
         final long expireTime;
+        /** 提供该 reflect 实例的物品 ID */
+        final String itemId;
 
-        ReflectedProjectileInfo(float effect, long expireTime) {
+        ReflectedProjectileInfo(String itemId, long expireTime) {
+            this.itemId = itemId;
             this.expireTime = expireTime;
         }
     }
@@ -92,37 +101,12 @@ public class ReflectShieldType implements IShieldType {
     }
 
     /**
-     * 获取玩家最后受到的弹射物信息
-     * @param player 玩家
-     * @return 弹射物信息，如果没有则返回 null
-     */
-    public static ProjectileDamageInfo getLastProjectileInfo(Player player) {
-        return LAST_PROJECTILE_INFO.get(player.getUUID());
-    }
-
-    /**
-     * 设置玩家最后受到的弹射物信息
+     * 记录待反射的弹射物（每个 active reflect 实例各记录一条，反射时各用各自物品定义的参数）
      * @param player 玩家
      * @param projectile 弹射物
+     * @param itemId 提供该 reflect 实例的物品 ID（数值按该物品实例取）
      */
-    public static void setLastProjectileInfo(Player player, Projectile projectile) {
-        LAST_PROJECTILE_INFO.put(player.getUUID(), createProjectileDamageInfo(projectile));
-    }
-
-    /**
-     * 移除玩家的最后弹射物信息
-     * @param player 玩家
-     */
-    public static void removeLastProjectileInfo(Player player) {
-        LAST_PROJECTILE_INFO.remove(player.getUUID());
-    }
-
-    /**
-     * 记录待反射的弹射物
-     * @param player 玩家
-     * @param projectile 弹射物
-     */
-    public static void recordProjectileForReflect(Player player, Projectile projectile) {
+    public static void recordProjectileForReflect(Player player, Projectile projectile, String itemId) {
         if (player.level().isClientSide()) {
             return;
         }
@@ -140,8 +124,14 @@ public class ReflectShieldType implements IShieldType {
             return;
         }
 
-        ProjectileDamageInfo info = createProjectileDamageInfo(projectile);
-        LAST_PROJECTILE_INFO.put(player.getUUID(), info);
+        List<ProjectileDamageInfo> infos = PENDING_REFLECT_INFOS.computeIfAbsent(player.getUUID(), k -> new ArrayList<>());
+        // 同一（弹射物, 物品实例）对只记录一条：不同 reflect 实例各记录一条（各用各自物品参数），重复伤害事件不重复记录
+        for (ProjectileDamageInfo existing : infos) {
+            if (existing.getProjectile() == projectile && java.util.Objects.equals(existing.getItemId(), itemId)) {
+                return;
+            }
+        }
+        infos.add(createProjectileDamageInfo(projectile, itemId));
         EXPLOSION_PREVENTION_PROJECTILES.put(projectile.getId(), System.currentTimeMillis() + EXPLOSION_PREVENTION_DURATION);
     }
 
@@ -160,19 +150,6 @@ public class ReflectShieldType implements IShieldType {
     }
 
     /**
-     * 在护盾处理后处理反射
-     * @param player 玩家
-     * @param damage 伤害值
-     */
-    public static void handleReflectAfterShield(Player player, float damage) {
-        ProjectileDamageInfo info = LAST_PROJECTILE_INFO.remove(player.getUUID());
-        if (info == null || !info.getProjectile().isAlive()) {
-            return;
-        }
-        reflectProjectile(info.getProjectile(), player, player, info);
-    }
-
-    /**
      * 在护盾受伤后处理反射
      * @param player 玩家
      */
@@ -181,16 +158,22 @@ public class ReflectShieldType implements IShieldType {
     }
 
     /**
-     * 在护盾受伤后处理反射
+     * 在护盾受伤后处理反射：每个待反射实例各自反射一个弹射物（各用各自物品定义的参数）
      * @param player 玩家
      * @param attackedEntity 被攻击的实体（可能是玩家或被护盾保护的实体）
      */
     public static void processReflectAfterShieldDamage(Player player, LivingEntity attackedEntity) {
-        ProjectileDamageInfo info = LAST_PROJECTILE_INFO.remove(player.getUUID());
-        if (info == null || !info.getProjectile().isAlive()) {
+        List<ProjectileDamageInfo> infos = PENDING_REFLECT_INFOS.remove(player.getUUID());
+        if (infos == null || infos.isEmpty()) {
             return;
         }
-        reflectProjectile(info.getProjectile(), player, attackedEntity, info);
+        // 弹射物本体已失效（如已撞地消失）则不反射
+        if (!infos.get(0).getProjectile().isAlive()) {
+            return;
+        }
+        for (ProjectileDamageInfo info : infos) {
+            reflectProjectile(info.getProjectile(), player, attackedEntity, info);
+        }
     }
 
     /**
@@ -211,7 +194,12 @@ public class ReflectShieldType implements IShieldType {
      */
     private static void reflectProjectile(Projectile projectile, Player player, LivingEntity attackedEntity, ProjectileDamageInfo info) {
         double shieldEffect_radius = AttributeManager.getGroupAttribute(player.getUUID(), "shield_effect_radius") - 1;
-        double speedModifier = Config.getReflectSpeedBaseModifier() * (1 + Config.getReflectSpeedExtraModifier() * shieldEffect_radius);
+        // 数值按提供该 reflect 实例的物品取（每实例独立）
+        double speedBaseModifier = DefsManager.resolveShieldTypeValueForItem(player.getServer(), info.getItemId(),
+                "reflect", "speed_base_modifier", Config.getReflectSpeedBaseModifier());
+        double speedExtraModifier = DefsManager.resolveShieldTypeValueForItem(player.getServer(), info.getItemId(),
+                "reflect", "speed_extra_modifier", Config.getReflectSpeedExtraModifier());
+        double speedModifier = speedBaseModifier * (1 + speedExtraModifier * shieldEffect_radius);
 
         Entity originalOwner = projectile.getOwner();
         Vec3 direction = calculateReflectDirection(projectile, attackedEntity, originalOwner);
@@ -239,10 +227,12 @@ public class ReflectShieldType implements IShieldType {
             reflectedPotion.setItem(originalPotion.getItem());
         }
 
-        player.level().addFreshEntity(reflected);
-
+        // 先登记反射记录再加入世界：EntityJoinLevelEvent（点射注册等）在 addFreshEntity 内同步触发，
+        // 届时需能通过 ShieldTypeManager.isReflectedProjectile 查到本弹射物
         long expireTime = System.currentTimeMillis() + REFLECTED_PROJECTILE_EXPIRE_TIME;
-        REFLECTED_PROJECTILES.put(reflected.getId(), new ReflectedProjectileInfo((float)shieldEffect_radius, expireTime));
+        REFLECTED_PROJECTILES.put(reflected.getId(), new ReflectedProjectileInfo(info.getItemId(), expireTime));
+
+        player.level().addFreshEntity(reflected);
     }
 
     /**
@@ -267,13 +257,15 @@ public class ReflectShieldType implements IShieldType {
     /**
      * 创建弹射物伤害信息
      * @param projectile 弹射物
+     * @param itemId 提供该 reflect 实例的物品 ID
      * @return 弹射物伤害信息
      */
-    private static ProjectileDamageInfo createProjectileDamageInfo(Projectile projectile) {
+    private static ProjectileDamageInfo createProjectileDamageInfo(Projectile projectile, String itemId) {
         return new ProjectileDamageInfo(
             projectile,
             projectile.getDeltaMovement().length(),
-            projectile.getX(), projectile.getY(), projectile.getZ()
+            projectile.getX(), projectile.getY(), projectile.getZ(),
+            itemId
         );
     }
 
@@ -359,13 +351,16 @@ public class ReflectShieldType implements IShieldType {
         event.setCanceled(true);
 
         Player attacker = (Player) owner;
-        REFLECTED_PROJECTILES.remove(projectileId);
+        ReflectedProjectileInfo reflectedInfo = REFLECTED_PROJECTILES.remove(projectileId);
 
         LivingEntity target = (LivingEntity) event.getEntity();
 
         float originalDamage = event.getAmount();
         double shieldEffect = AttributeManager.getGroupAttribute(attacker.getUUID(), "shield_effect") - 1;
-        double damageEffectMultiplier = Config.getReflectDamageEffectMultiplier();
+        // 数值按产生该反射弹射物的实例物品取
+        double damageEffectMultiplier = DefsManager.resolveShieldTypeValueForItem(attacker.getServer(),
+                reflectedInfo != null ? reflectedInfo.itemId : null,
+                "reflect", "damage_effect_multiplier", Config.getReflectDamageEffectMultiplier());
         float finalDamage = (float)(originalDamage * (1 + shieldEffect * damageEffectMultiplier));
 
         target.invulnerableTime = 0;
@@ -396,7 +391,7 @@ public class ReflectShieldType implements IShieldType {
      * @param playerUUID 玩家UUID
      */
     public static void clearPlayerData(UUID playerUUID) {
-        LAST_PROJECTILE_INFO.remove(playerUUID);
+        PENDING_REFLECT_INFOS.remove(playerUUID);
     }
 
     /**
@@ -412,7 +407,7 @@ public class ReflectShieldType implements IShieldType {
      * 清理所有数据
      */
     public static void clearAllData() {
-        LAST_PROJECTILE_INFO.clear();
+        PENDING_REFLECT_INFOS.clear();
         REFLECTED_PROJECTILES.clear();
         EXPLOSION_PREVENTION_PROJECTILES.clear();
     }

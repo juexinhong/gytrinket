@@ -17,15 +17,18 @@ import java.util.List;
 /**
  * 物品护盾类型定义 payload（配置面板「护盾类型」按钮）。
  * <p>
- * 写入运行时覆盖文件后立即重新加载生效（不重载数据包），types 为空列表表示移除该物品的全部护盾类型。
+ * 写入运行时覆盖文件后立即重新加载生效（不重载数据包），types 为空列表表示移除该物品的全部护盾类型；
+ * exclusiveTypes 为其中被标记为独占（不兼容）的类型子集（物品级兼容开关）。
  */
-public record ConfigShieldTypesPayload(String itemId, List<String> types) implements CustomPacketPayload {
+public record ConfigShieldTypesPayload(String itemId, List<String> types,
+                                       List<String> exclusiveTypes) implements CustomPacketPayload {
     public static final Type<ConfigShieldTypesPayload> TYPE = new Type<>(
         ResourceLocation.fromNamespaceAndPath("gytrinket", "config_shield_types"));
 
     public static final StreamCodec<RegistryFriendlyByteBuf, ConfigShieldTypesPayload> STREAM_CODEC = StreamCodec.composite(
         ByteBufCodecs.STRING_UTF8, ConfigShieldTypesPayload::itemId,
         ByteBufCodecs.STRING_UTF8.apply(ByteBufCodecs.list()), ConfigShieldTypesPayload::types,
+        ByteBufCodecs.STRING_UTF8.apply(ByteBufCodecs.list()), ConfigShieldTypesPayload::exclusiveTypes,
         ConfigShieldTypesPayload::new
     );
 
@@ -38,7 +41,7 @@ public record ConfigShieldTypesPayload(String itemId, List<String> types) implem
             if (!player.hasPermissions(2)) return;
             if (ResourceLocation.tryParse(payload.itemId) == null) return;
 
-            DefsManager.updateShieldTypeOverride(player.server, payload.itemId, payload.types());
+            DefsManager.updateShieldTypeOverride(player.server, payload.itemId, payload.types(), payload.exclusiveTypes());
 
             // 立即重算玩家属性并同步覆盖层到所有客户端（编辑即生效）
             for (var p : player.server.getPlayerList().getPlayers()) {

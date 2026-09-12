@@ -5,6 +5,7 @@ import com.gytrinket.gytrinket.core.attack_mode.assault.AssaultManager;
 import com.gytrinket.gytrinket.core.attack_mode.charged_attack.ChargedAttackManager;
 import com.gytrinket.gytrinket.core.shield.ChargedShieldManager;
 import com.gytrinket.gytrinket.core.attack_mode.GrudgeManager;
+import com.gytrinket.gytrinket.core.defs.DefsManager;
 import com.gytrinket.gytrinket.core.modifier.ModifierHelper;
 import com.gytrinket.gytrinket.gytrinket;
 import net.minecraft.resources.ResourceLocation;
@@ -108,8 +109,13 @@ public class AttackSpeedPenaltyManager {
 
         applyOrRemoveModifier(speedAttribute, ASSAULT_PENALTY_ID, MODIFIER_PREFIX + "assault", currentState.assault, Config.getAssaultMovementSpeedPenalty());
         applyOrRemoveModifier(speedAttribute, CHARGED_PENALTY_ID, MODIFIER_PREFIX + "charged", currentState.charged, Config.getChargedAttackMovementSpeedPenalty());
-        applyOrRemoveModifier(speedAttribute, CHARGED_SHIELD_PENALTY_ID, MODIFIER_PREFIX + "charged_shield", currentState.chargedShield, Config.getChargedShieldMovementSpeedPenalty());
-        applyOrRemoveModifier(speedAttribute, GRUDGE_PENALTY_ID, MODIFIER_PREFIX + "grudge", currentState.grudge, Config.getGrudgeMovementSpeedPenalty());
+        // 物品级数值覆盖：取首个生效物品的覆盖值，未覆盖回退 Config 默认
+        applyOrRemoveModifier(speedAttribute, CHARGED_SHIELD_PENALTY_ID, MODIFIER_PREFIX + "charged_shield", currentState.chargedShield,
+                DefsManager.resolveMechanicValue(player.getServer(), uuid, "charged_shield_items",
+                        "move_speed_penalty", Config.getChargedShieldMovementSpeedPenalty()));
+        applyOrRemoveModifier(speedAttribute, GRUDGE_PENALTY_ID, MODIFIER_PREFIX + "grudge", currentState.grudge,
+                DefsManager.resolveMechanicValue(player.getServer(), uuid, "grudge_items",
+                        "move_speed_penalty", Config.getGrudgeMovementSpeedPenalty()));
     }
 
     private static void applyOrRemoveModifier(AttributeInstance attribute, ResourceLocation id, String name, boolean shouldApply, double amount) {

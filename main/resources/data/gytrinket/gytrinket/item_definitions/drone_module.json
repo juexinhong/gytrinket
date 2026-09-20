@@ -1,0 +1,10 @@
+{
+    "items":  {
+                  "gytrinket:drone_module":  {
+                                                 "mechanic":  true,
+                                                 "sets":  [
+                                                              "drone_module_items"
+                                                          ]
+                                             }
+              }
+}

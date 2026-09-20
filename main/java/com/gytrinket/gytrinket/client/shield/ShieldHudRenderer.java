@@ -15,12 +15,11 @@ public class ShieldHudRenderer {
     private static ShieldHudRenderer instance;
     private double currentShield = 0;
     private double maxShield = 0;
-    private int currentCooldown = 0;
-    private int maxCooldown = 0;
     private double adaptiveArmorReduction = 0;
     private static final float TEXT_SCALE = 0.75f;
 
     private double displayShield = 0;
+    private double displayFocusShield = 0; // 焦点实例（当前护盾）平滑显示值
     private float displayCooldownRatio = 0;
     private double displayAdaptiveArmorReduction = 0;
     private static final float LERP_SPEED = 0.005f;
@@ -33,6 +32,10 @@ public class ShieldHudRenderer {
     private static final int TEXTURE_WIDTH = 83;
     private static final int TEXTURE_HEIGHT = 11;
 
+    /** 护盾实例列表（服务端 ShieldInstance 镜像，实例列表序 = 装备扫描序） */
+    private final java.util.List<com.gytrinket.gytrinket.network.packet.SyncShieldPayload.InstanceShieldData> instances =
+            new java.util.ArrayList<>();
+
     public static ShieldHudRenderer getInstance() {
         if (instance == null) {
             instance = new ShieldHudRenderer();
@@ -42,12 +45,47 @@ public class ShieldHudRenderer {
 
     private ShieldHudRenderer() {}
 
-    public void updateShieldData(double current, double max, int currentCooldown, int maxCooldown, double adaptiveArmorReduction) {
+    public void updateShieldData(double current, double max, double adaptiveArmorReduction) {
         this.currentShield = Math.max(0, Math.min(current, max));
         this.maxShield = Math.max(0, max);
-        this.currentCooldown = currentCooldown;
-        this.maxCooldown = maxCooldown;
         this.adaptiveArmorReduction = adaptiveArmorReduction;
+    }
+
+    /** 同步护盾实例列表（HUD 焦点实例数据源） */
+    public void updateInstances(java.util.List<com.gytrinket.gytrinket.network.packet.SyncShieldPayload.InstanceShieldData> instances) {
+        this.instances.clear();
+        this.instances.addAll(instances);
+    }
+
+    /**
+     * 焦点实例（当前护盾）：第一个未破盾且有池量的实例 = 当前能够承受且最先承受伤害的护盾。
+     */
+    private com.gytrinket.gytrinket.network.packet.SyncShieldPayload.InstanceShieldData findFocusInstance() {
+        for (com.gytrinket.gytrinket.network.packet.SyncShieldPayload.InstanceShieldData inst : instances) {
+            if (!inst.broken && inst.currentShield > 0) {
+                return inst;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 冷却条数据源：焦点实例的冷却充能进度；无焦点实例（全部破盾）时
+     * 回退显示第一个冷却充能实例（破盾回满 / 装备入场充能可见）。
+     */
+    private float cooldownTargetRatio() {
+        var focus = findFocusInstance();
+        if (focus != null) {
+            return focus.isCoolingDown() && focus.maxCooldown > 0
+                    ? Mth.clamp((float) focus.cooldownProgress / focus.maxCooldown, 0.0f, 1.0f)
+                    : 0.0f;
+        }
+        for (com.gytrinket.gytrinket.network.packet.SyncShieldPayload.InstanceShieldData inst : instances) {
+            if (inst.isCoolingDown() && inst.maxCooldown > 0) {
+                return Mth.clamp((float) inst.cooldownProgress / inst.maxCooldown, 0.0f, 1.0f);
+            }
+        }
+        return 0.0f;
     }
 
     public double getCurrentShield() {
@@ -64,6 +102,7 @@ public class ShieldHudRenderer {
         float cooldownLerpSpeed = vanillaStyle ? VANILLA_COOLDOWN_LERP_SPEED : LERP_SPEED;
 
         lerpShieldValues(shieldLerpSpeed);
+        lerpFocusShield(shieldLerpSpeed);
         lerpCooldownValues(cooldownLerpSpeed);
         lerpAdaptiveArmorReduction();
 
@@ -97,8 +136,23 @@ public class ShieldHudRenderer {
         }
     }
 
+    /** 焦点实例（当前护盾）平滑：目标 = 可用实例的当前池量，冷却/破盾实例计 0 */
+    private void lerpFocusShield(float speed) {
+        var focus = findFocusInstance();
+        double target = (focus != null && !focus.broken) ? focus.currentShield : 0;
+        double diff = target - this.displayFocusShield;
+        if (Math.abs(diff) > LERP_THRESHOLD) {
+            this.displayFocusShield += diff * speed;
+            if (Math.abs(target - this.displayFocusShield) < 0.02f) {
+                this.displayFocusShield = target;
+            }
+        } else {
+            this.displayFocusShield = target;
+        }
+    }
+
     private void lerpCooldownValues(float speed) {
-        float targetRatio = this.maxCooldown > 0 ? (float) this.currentCooldown / this.maxCooldown : 0;
+        float targetRatio = cooldownTargetRatio();
         float diffRatio = targetRatio - this.displayCooldownRatio;
 
         if (diffRatio > 0) {
@@ -140,11 +194,22 @@ public class ShieldHudRenderer {
         if (maxShield > 0) {
             guiGraphics.fill(bgX, bgY, bgX + barWidth, bgY + barHeight, 0xFFFFFFFF);
 
+            // 暗层：总计护盾值
             float fillRatio = (float) (displayShield / maxShield);
             int fillWidth = (int) (barWidth * fillRatio);
 
             if (fillWidth > 0) {
-                guiGraphics.fill(bgX, bgY, bgX + fillWidth, bgY + barHeight, 0xFF55AACC);
+                guiGraphics.fill(bgX, bgY, bgX + fillWidth, bgY + barHeight, 0xFF2A5566);
+            }
+
+            // 亮层：当前护盾值（最先承受伤害的护盾），同一位置叠加
+            var focus = findFocusInstance();
+            if (focus != null && !focus.broken && focus.maxShield > 0 && displayFocusShield > 0) {
+                float focusRatio = Mth.clamp((float) (displayFocusShield / focus.maxShield), 0.0f, 1.0f);
+                int focusWidth = (int) (barWidth * focusRatio);
+                if (focusWidth > 0) {
+                    guiGraphics.fill(bgX, bgY, bgX + focusWidth, bgY + barHeight, 0xFF55AACC);
+                }
             }
 
             int textX = bgX + (barWidth - textWidth) / 2;
@@ -159,6 +224,7 @@ public class ShieldHudRenderer {
 
             poseStack.popPose();
 
+            // 冷却条：当前护盾冷却进度（主条下方灰块）
             if (displayCooldownRatio > 0) {
                 int cooldownBgY = bgY + barHeight;
                 int cooldownFillWidth = (int) (barWidth * displayCooldownRatio);
@@ -208,13 +274,27 @@ public class ShieldHudRenderer {
             poseStack.translate(left, top, 0);
             poseStack.scale(scale, scale, 1.0f);
 
+            // 暗层：总计护盾值（亮度调暗）
             float shieldRatio = maxShield > 0 ? (float) (displayShield / maxShield) : 0;
             int shieldVisibleWidth = Mth.clamp((int) (TEXTURE_WIDTH * shieldRatio), 0, TEXTURE_WIDTH);
 
             if (shieldVisibleWidth > 0) {
+                RenderSystem.setShaderColor(0.45f, 0.45f, 0.45f, 1.0f);
                 guiGraphics.blit(SHIELD_HUD_TEXTURE, 0, 0, 0, 0, shieldVisibleWidth, TEXTURE_HEIGHT, TEXTURE_WIDTH, TEXTURE_HEIGHT);
+                RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
             }
 
+            // 亮层：当前护盾值（最先承受伤害的护盾），同一位置叠加
+            var focus = findFocusInstance();
+            if (focus != null && !focus.broken && focus.maxShield > 0 && displayFocusShield > 0) {
+                float focusRatio = Mth.clamp((float) (displayFocusShield / focus.maxShield), 0.0f, 1.0f);
+                int focusVisibleWidth = Mth.clamp((int) (TEXTURE_WIDTH * focusRatio), 0, TEXTURE_WIDTH);
+                if (focusVisibleWidth > 0) {
+                    guiGraphics.blit(SHIELD_HUD_TEXTURE, 0, 0, 0, 0, focusVisibleWidth, TEXTURE_HEIGHT, TEXTURE_WIDTH, TEXTURE_HEIGHT);
+                }
+            }
+
+            // 冷却条：当前护盾冷却进度（贴图叠加，透明度走配置）
             if (displayCooldownRatio > 0) {
                 int cooldownVisibleWidth = Mth.clamp((int) (TEXTURE_WIDTH * displayCooldownRatio), 0, TEXTURE_WIDTH);
 
@@ -242,11 +322,11 @@ public class ShieldHudRenderer {
     public void reset() {
         this.currentShield = 0;
         this.maxShield = 0;
-        this.currentCooldown = 0;
-        this.maxCooldown = 0;
         this.adaptiveArmorReduction = 0;
         this.displayShield = 0;
+        this.displayFocusShield = 0;
         this.displayCooldownRatio = 0;
         this.displayAdaptiveArmorReduction = 0;
+        this.instances.clear();
     }
 }

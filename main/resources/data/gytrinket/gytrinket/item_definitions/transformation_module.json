@@ -1,0 +1,14 @@
+{
+  "items": {
+    "gytrinket:transformation_module": {
+      "mechanic": true,
+      "sets": [
+        "conversion_items"
+      ],
+      "attributes": {
+        "shield_base": 1.0,
+        "player_health": 1.0
+      }
+    }
+  }
+}

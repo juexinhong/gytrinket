@@ -47,6 +47,27 @@ public class PlayerStoreUtils {
     }
 
     /**
+     * 获取玩家全部已装备物品，Curios 饰品栏在前、光点核心存储在后。
+     * 护盾实例构建等需要"饰品优先"语义的扫描使用。
+     */
+    public static List<ItemStack> getEquippedStacksCuriosFirst(Player player) {
+        List<ItemStack> result = new ArrayList<>();
+        if (CuriosCompat.isCuriosLoaded()) {
+            result.addAll(CuriosCompat.getEquippedCurios(player));
+        }
+        PlayerStore store = PlayerStoreManager.getPlayerStore(player.getUUID());
+        if (store != null) {
+            for (int i = 0; i < store.getItemHandler().getSlots(); i++) {
+                ItemStack stack = store.getItemHandler().getStackInSlot(i);
+                if (!stack.isEmpty()) {
+                    result.add(stack);
+                }
+            }
+        }
+        return result;
+    }
+
+    /**
      * 获取玩家全部已装备物品的注册 ID 集合（光点核心存储 + Curios 饰品栏）。
      */
     public static Set<String> getAllEquippedItemIds(Player player) {

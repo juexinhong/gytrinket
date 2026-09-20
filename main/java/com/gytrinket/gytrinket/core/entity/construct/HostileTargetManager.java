@@ -37,6 +37,9 @@ import java.util.concurrent.ConcurrentHashMap;
 @EventBusSubscriber(modid = com.gytrinket.gytrinket.gytrinket.MODID)
 public class HostileTargetManager {
 
+    /** 生物实体加入世界的危险物豁免期（tick）：期内不计入危险物名单（弹射物等非生物不受限） */
+    private static final int NEW_LIVING_GRACE_TICKS = 20;
+
     private static final Map<UUID, Map<UUID, Long>> PLAYER_MARKED_ENTITIES = new ConcurrentHashMap<>();
 
     @SubscribeEvent
@@ -160,11 +163,19 @@ public class HostileTargetManager {
      * 判断实体是否为配置中的危险实体
      * <p>
      * 危险实体列表在Config中配置，包括箭矢、烈焰弹、药水瓶等。
-     * 
+     * <p>
+     * 前置条件：生物实体（LivingEntity）加入世界未超过 {@link #NEW_LIVING_GRACE_TICKS} 刻时
+     * 不计入危险物（刚生成/区块重载的实体状态未稳定，避免瞬判）；
+     * 弹射物等非生物实体不受此限制，照常按名单判定。
+     *
      * @param entity 待判断的实体
      * @return 是否为危险实体
      */
     public static boolean isDangerousEntity(Entity entity) {
+        // 生物实体加入世界未超过 20 刻：暂不计入危险物名单（弹射物等非生物实体不受此限制）
+        if (entity instanceof LivingEntity && entity.tickCount < NEW_LIVING_GRACE_TICKS) {
+            return false;
+        }
         var key = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType());
         return key != null && Config.isDangerousEntity(key.toString());
     }

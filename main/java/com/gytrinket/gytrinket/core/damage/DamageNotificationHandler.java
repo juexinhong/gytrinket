@@ -1,11 +1,15 @@
 package com.gytrinket.gytrinket.core.damage;
 
-import com.gytrinket.gytrinket.core.shield.cooldown.IShieldCooldownModifier;
-import com.gytrinket.gytrinket.core.shield.cooldown.CooldownContext;
 import com.gytrinket.gytrinket.core.shield.cooldown.ShieldCooldownManager;
 
 import net.minecraft.world.entity.player.Player;
 
+/**
+ * 伤害通知：受击时对冷却中的护盾实例施加受击冷却延长。
+ * <p>
+ * 责任链按 priority 降序执行，本 Handler（30）先于 ShieldHandler（20），
+ * 因此传入的伤害为护盾吸收前的减免后伤害。
+ */
 public class DamageNotificationHandler implements DamageHandler {
 
     private static final int PRIORITY = 30;
@@ -16,8 +20,6 @@ public class DamageNotificationHandler implements DamageHandler {
             return;
         }
 
-        var playerUUID = context.getPlayer().getUUID();
-
         if (context.isAnySelfDamage()) {
             return;
         }
@@ -26,20 +28,7 @@ public class DamageNotificationHandler implements DamageHandler {
             return;
         }
 
-        ShieldCooldownManager.CooldownData cooldownData = ShieldCooldownManager.getCooldownData(playerUUID);
-        if (cooldownData == null || cooldownData.isComplete()) {
-            return;
-        }
-
-        float originalDamage = context.getOriginalDamage();
-        float currentDamage = context.getCurrentDamage();
-        CooldownContext cooldownContext = ShieldCooldownManager.createContext(playerUUID);
-        cooldownContext.setOriginalDamage(originalDamage);
-        cooldownContext.setCurrentDamage(currentDamage);
-
-        for (IShieldCooldownModifier modifier : ShieldCooldownManager.getModifiers()) {
-            modifier.onDamageTaken(cooldownData, cooldownContext, originalDamage);
-        }
+        ShieldCooldownManager.applyHitExtension(context.getPlayer().getUUID(), context.getCurrentDamage());
     }
 
     @Override

@@ -1,0 +1,10 @@
+{
+    "items":  {
+                  "gytrinket:electric_energy_release_module":  {
+                                                                   "mechanic":  true,
+                                                                   "sets":  [
+                                                                                "electric_discharge_items"
+                                                                            ]
+                                                               }
+              }
+}

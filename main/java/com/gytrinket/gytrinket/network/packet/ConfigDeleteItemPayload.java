@@ -1,7 +1,7 @@
 package com.gytrinket.gytrinket.network.packet;
 
-import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
+import com.gytrinket.gytrinket.core.defs.DefsManager;
 import com.gytrinket.gytrinket.network.NetworkHandler;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
@@ -28,9 +28,8 @@ public record ConfigDeleteItemPayload(String itemId) implements CustomPacketPayl
             if (!(context.player() instanceof ServerPlayer player)) return;
             if (!player.hasPermissions(2)) return;
 
-            AttributeManager.removeItemAttributes(payload.itemId);
-
-            Config.saveItemAttributesConfig();
+            // 删除物品属性 = 显式空接管（覆盖为无属性；物品保留在列表，机制/护盾声明不受影响）
+            DefsManager.clearItemAttributes(player.server, payload.itemId);
 
             for (var p : player.server.getPlayerList().getPlayers()) {
                 AttributeManager.recalculateAndCachePlayerAttributes(p);

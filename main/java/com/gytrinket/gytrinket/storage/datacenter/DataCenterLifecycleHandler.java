@@ -85,21 +85,18 @@ public class DataCenterLifecycleHandler {
         // Phase 1: 加载基础数据（从Attachment自动加载，初始化默认值）
         PlayerDataCenter.onLogin(player);
 
+        // Phase 1.5: 暂存存档护盾实例快照（必须先于 Phase 2 属性重算：重算会重建实例并把护盾槽位覆盖为 0，
+        // 暂存过晚会导致恢复值丢失。实例重建时按 identityKey 迁移池量/破盾/冷却状态）
+        ShieldData savedShield = PlayerDataCenter.getData(player.getUUID(), "shield");
+        if (savedShield != null) {
+            ShieldManager.stageRestore(player.getUUID(), savedShield);
+        }
+
         // Phase 2: 触发光点核心内容变化 → 属性重算
         NeoForge.EVENT_BUS.post(
             new com.gytrinket.gytrinket.event.PlayerLightPointStoreChangedEvent(player.getUUID()));
 
-        // Phase 3: 恢复护盾值（此时maxShield已正确计算）
-        ShieldData savedShield = PlayerDataCenter.getData(player.getUUID(), "shield");
-        if (savedShield != null && savedShield.getCurrentShield() > 0) {
-            double currentMax = ShieldManager.getMaxShield(player.getUUID());
-            if (currentMax > 0) {
-                double restoredCurrent = Math.min(savedShield.getCurrentShield(), currentMax);
-                ShieldManager.setCurrentShield(player.getUUID(), restoredCurrent);
-            }
-        }
-
-        // Phase 3.5: 恢复当前血量
+        // Phase 3: 恢复当前血量
         Double savedHealth = PlayerDataCenter.getData(player.getUUID(), "health");
         if (savedHealth != null && savedHealth > 0) {
             float maxHealth = serverPlayer.getMaxHealth();

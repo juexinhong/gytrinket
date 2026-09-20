@@ -1,7 +1,7 @@
 package com.gytrinket.gytrinket.event;
 
 import com.gytrinket.gytrinket.config.Config;
-import com.gytrinket.gytrinket.core.attribute.AttributeManager;
+import com.gytrinket.gytrinket.core.defs.DefsManager;
 import com.gytrinket.gytrinket.core.level.ModLevelManager;
 import com.gytrinket.gytrinket.core.random_build.RandomBuildManager;
 import com.gytrinket.gytrinket.gytrinket;
@@ -186,14 +186,14 @@ public class QuickEquipEvent {
      * <p>
      * 各路径职责单一：
      * <ol>
-     *   <li>本模组属性（{@link AttributeManager#isItemAttributeRegistered}）</li>
+     *   <li>本模组属性（{@link DefsManager#getEffectiveItemAttributes}，权威定义 + 覆写层）</li>
      *   <li>护盾类型（item_shield_types）</li>
      *   <li>特殊机制声明（special_mechanics 路径，文件存在即声明，
      *       {@link Config#isSpecialMechanicItem}）——快速装备只检查该路径</li>
      * </ol>
      */
     public static boolean isQuickEquipItem(String itemId, Item item) {
-        if (AttributeManager.isItemAttributeRegistered(itemId)) {
+        if (DefsManager.getEffectiveItemAttributes(itemId) != null) {
             return true;
         }
 

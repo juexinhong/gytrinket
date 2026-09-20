@@ -1,0 +1,10 @@
+{
+    "items":  {
+                  "gytrinket:wingman_module":  {
+                                                   "mechanic":  true,
+                                                   "sets":  [
+                                                                "wingman_module_items"
+                                                            ]
+                                               }
+              }
+}

@@ -1,0 +1,16 @@
+{
+  "items": {
+    "gytrinket:shield_siphon2": {
+      "shieldTypes": ["siphon"],
+      "shieldValues": {
+        "shield_base": 16.0,
+        "shield_cooldown_time": 7.0,
+        "shield_hit_cooldown_extend": 40.0,
+        "shield_hit_cooldown_extend_multiplier": 0.1
+      },
+      "attributes": {
+        "shield_effect_percent": -0.1
+      }
+    }
+  }
+}

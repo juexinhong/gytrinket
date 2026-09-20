@@ -1,0 +1,10 @@
+{
+    "items":  {
+                  "gytrinket:weaponized_shield_module":  {
+                                                             "mechanic":  true,
+                                                             "sets":  [
+                                                                          "weaponized_shield_items"
+                                                                      ]
+                                                         }
+              }
+}

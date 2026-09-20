@@ -1,0 +1,13 @@
+{
+  "items": {
+    "gytrinket:explosion_radius_module": {
+      "mechanic": true,
+      "sets": [
+        "projectile_explosion_items"
+      ],
+      "attributes": {
+        "explosion_radius_independent": 0.1
+      }
+    }
+  }
+}

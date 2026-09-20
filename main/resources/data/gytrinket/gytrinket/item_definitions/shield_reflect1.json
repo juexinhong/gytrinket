@@ -1,0 +1,13 @@
+{
+  "items": {
+    "gytrinket:shield_reflect1": {
+      "shieldTypes": ["reflect"],
+      "shieldValues": {
+        "shield_base": 14.4,
+        "shield_cooldown_time": 7.5,
+        "shield_hit_cooldown_extend": 40.0,
+        "shield_hit_cooldown_extend_multiplier": 0.1
+      }
+    }
+  }
+}

@@ -44,10 +44,6 @@ import java.util.Set;
 public class Config {
     private static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
 
-    // ===== 1. 护盾基础属性 (attributes) =====
-
-    public static final ModConfigSpec.ConfigValue<List<? extends String>> ITEM_ATTRIBUTES_CONFIG;
-
     // ===== 合成禁用 (crafting_disable) =====
     /** 合成禁用模式：0=不禁用，1=禁用本模组命名空间下注册了实际效果的物品合成，2=禁用所有注册了实际效果的物品合成 */
     public static final ModConfigSpec.IntValue DISABLE_CRAFTING_MODE;
@@ -369,121 +365,6 @@ public class Config {
     private static boolean initialized = false;
 
     static {
-        // ===== 1. 护盾基础属性 =====
-        BUILDER.comment("属性系统配置").push("attributes");
-
-        ITEM_ATTRIBUTES_CONFIG = BUILDER.comment(
-            "物品属性配置",
-            "格式：物品ID|属性名=数值|属性名=数值",
-            "使用 | 分隔物品ID和属性，使用 = 分隔属性名和值",
-            "每个物品单独占一行",
-            "示例：minecraft:diamond|shield_base=10.0|shield_percent=0.1"
-        ).defineListAllowEmpty("itemAttributes",
-            List.of(
-                "gytrinket:shield_gy|shield_base=6.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
-                "gytrinket:shield_gy1|shield_base=7.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
-                "gytrinket:shield_gy2|shield_base=8.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
-                "gytrinket:shield_gy3|shield_base=9.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
-
-                "gytrinket:shield_aura_ring|shield_base=8.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
-                "gytrinket:shield_aura_ring1|shield_base=12.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
-                "gytrinket:shield_aura_ring2|shield_base=16.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
-                "gytrinket:shield_aura_ring3|shield_base=20.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
-
-                "gytrinket:shield_siphon|shield_base=8.0|shield_cooldown_time=7|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1|shield_effect_percent=-0.3",
-                "gytrinket:shield_siphon1|shield_base=12.0|shield_cooldown_time=7|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1|shield_effect_percent=-0.2",
-                "gytrinket:shield_siphon2|shield_base=16.0|shield_cooldown_time=7|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1|shield_effect_percent=-0.1",
-                "gytrinket:shield_siphon3|shield_base=20.0|shield_cooldown_time=7|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1|shield_effect_percent=0.0",
-
-                "gytrinket:shield_reflect|shield_base=9.6|shield_cooldown_time=7.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
-                "gytrinket:shield_reflect1|shield_base=14.4|shield_cooldown_time=7.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
-                "gytrinket:shield_reflect2|shield_base=19.2|shield_cooldown_time=7.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
-                "gytrinket:shield_reflect3|shield_base=24.0|shield_cooldown_time=7.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
-
-                "gytrinket:shield_amplifier|shield_base=4.0|shield_cooldown_time=6.0|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
-                "gytrinket:shield_amplifier1|shield_base=6.0|shield_cooldown_time=6.0|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
-                "gytrinket:shield_amplifier2|shield_base=8.0|shield_cooldown_time=6.0|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
-                "gytrinket:shield_amplifier3|shield_base=10.0|shield_cooldown_time=6.0|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
-
-                "gytrinket:shield_warp|shield_base=18.0|shield_cooldown_time=10.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
-                "gytrinket:shield_warp1|shield_base=18.0|shield_cooldown_time=8.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
-                "gytrinket:shield_warp2|shield_base=18.0|shield_cooldown_time=7.0|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
-                "gytrinket:shield_warp3|shield_base=18.0|shield_cooldown_time=6.0|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
-
-                "gytrinket:shield_amplifier_module|shield_percent=0.2",
-                "gytrinket:barrier_shield_module|shield_percent=0.05|shield_cooldown_reduction_percent=-0.05",
-                "gytrinket:reflect_shield_module|shield_percent=0.05",
-                "gytrinket:ultimate_shield_module|shield_base=11.0|shield_damage_reduction=-0.15|shield_effect_percent=0.15|shield_hit_cooldown_extend_final_multiplier=-0.65|player_health_independent=-0.85",
-
-                "gytrinket:shield_cooldown_reduction_module|shield_cooldown_reduction_percent=0.2",
-                "gytrinket:shield_quick_charge_module|shield_cooldown_reduction_percent=0.25|shield_independent=-0.25",
-                "gytrinket:explosive_shield_module|shield_percent=0.05",
-
-                "gytrinket:shield_effect_boost_module|shield_effect_percent=0.1|shield_effect_radius=0.25",
-                "gytrinket:divergent_shield_module|shield_effect_radius=0.5|shield_percent=-0.1|shield_cooldown_reduction_independent=-0.1",
-                "gytrinket:focused_shield_module|shield_effect_percent=0.25|shield_percent=0.05|shield_effect_radius=-0.2",
-
-                "gytrinket:health_boost_module|player_health_percent=0.2",
-                "gytrinket:coating_module|coating=3",
-                "gytrinket:colossus_module|player_health_percent=0.25|player_knockback_percent=0.4|knockback_resistance=0.2|movement_speed_independent=-0.25",
-
-                "gytrinket:bond_module|adaptive_armor_duration=0.2",
-                "gytrinket:core_armor_module|shield_base=1.0|player_health=1.0|shield_self_damage_reduction=-0.2|player_self_damage_reduction=-0.2|adaptive_armor_duration=0.2",
-
-                "gytrinket:regen_module|recovery_efficiency_percent=0.4",
-                "gytrinket:regen_shield_module|recovery_efficiency_percent=0.1",
-
-                "gytrinket:transformation_module|shield_base=1.0|player_health=1.0",
-
-                "gytrinket:fast_shooting_module|attack_speed_percent=0.15",
-                "gytrinket:burst_fire_module|attack_speed_percent=0.2|combo=2",
-
-                "gytrinket:explosion_radius_module|explosion_radius_independent=0.1",
-                "gytrinket:high_explosive_module|explosion_radius_independent=0.2",
-                "gytrinket:implosion_module|explosion_damage_percent=0.35|explosion_radius_independent=-0.3",
-                "gytrinket:giant_star_module|attack_damage_percent=0.15|weapon_projectile_size_percent=0.2|explosion_radius_independent=0.05",
-                "gytrinket:overcharge_module|attack_damage_percent=0.3|weapon_projectile_size_percent=0.12|explosion_radius_independent=0.05|attack_speed_percent=-0.12",
-
-                "gytrinket:thrust_boost_module|movement_speed_percent=0.25",
-                "gytrinket:aerodynamic_framework_module|movement_speed_percent=0.25|player_health_independent=-0.1|player_knockback_percent=-0.2|knockback_resistance=-0.2",
-
-                "gytrinket:precision_construct_module|construct_health_percent=0.25|construct_build_speed_percent=0.10",
-                "gytrinket:shield_transfer_module|shield_damage_reduction=-0.5|player_damage_reduction=-0.1|player_health=2|player_health_percent=0.1",
-
-                "gytrinket:drone_module|",
-                "gytrinket:advanced_engineering_module|construct_drone_count_base=1",
-
-                "gytrinket:assault_drone_module|construct_drone_assault_attack_speed_percent=0.2|construct_drone_count_base=1",
-                "gytrinket:wing_commander_module|construct_drone_count_base=1|construct_commander_health_percent=2.0|construct_commander_damage_percent=2.0",
-
-                "gytrinket:defense_drone_module|construct_drone_defense_health_percent=1.5",
-
-                "gytrinket:interceptor_module|construct_wingman_explosive_count_base=1",
-                "gytrinket:evolution_module|construct_wingman_explosive_count_base=1",
-                "gytrinket:suppression_module|construct_wingman_weapon_attack_speed_percent=0.5|construct_wingman_explosive_count_base=2",
-
-                "gytrinket:self_destruct_module|",
-                "gytrinket:taskmaster_module|construct_standard_non_weapon_count_percent=1|construct_basic_non_weapon_count_percent=1|construct_advanced_count_base=1",
-
-                "gytrinket:guardian|shield_effect_percent=0.10|shield_effect_radius=0.25|shield_damage_reduction=-0.1|attack_speed_percent=-0.1",
-
-                "gytrinket:mothership_body|shield_percent=0.15|player_health_percent=0.15|movement_speed_percent=0.4|knockback_resistance=0.2",
-
-                "gytrinket:engineering_fuselage|construct_standard_count_base=2|construct_advanced_count_base=1|shield_percent=-0.10|player_health=-2",
-
-                "gytrinket:grudge_module|player_health_percent=0.05|attack_damage_percent=0.05|movement_speed_independent=-0.1",
-
-                "gytrinket:apex_apparatus_module|construct_attack_speed_percent=0.30|construct_health_percent=0.30|shield_effect_percent=0.20|construct_build_speed_independent=-0.75",
-
-                "gytrinket:furnace_core_module|construct_non_shield_build_speed_percent=0.30|construct_attack_speed_percent=0.30|construct_move_speed_percent=0.30|construct_orbit_speed_percent=0.30|construct_rotation_speed_percent=0.30",
-
-                "gytrinket:quick_reconstruction_module|recovery_efficiency_percent=1.0|player_health=10|coating=2"
-            ),
-            s -> true
-        );
-
-        BUILDER.pop();
-
         // ===== 合成禁用 (crafting_disable) =====
         BUILDER.comment("合成禁用模式：0=不禁用合成，1=禁用本模组命名空间下注册了本模组实际效果（属性或特殊机制）的物品的合成，2=禁用所有注册了本模组实际效果的物品的合成")
             .push("crafting_disable");
@@ -1671,8 +1552,6 @@ public class Config {
 
     private static final Map<String, Boolean> SHIELD_TYPE_COMPATIBILITY = new HashMap<>();
     private static final Map<Item, List<String>> ITEM_SHIELD_TYPES = new HashMap<>();
-    /** 物品级护盾类型兼容覆盖（UI 运行时覆盖层）：物品 -> 独占（不兼容）类型集合；存在条目 = 该物品兼容性为显式模式 */
-    private static final Map<Item, Set<String>> ITEM_SHIELD_TYPE_EXCLUSIVES = new HashMap<>();
     private static final Set<Item> BODY_ITEM_SET = new HashSet<>();
     private static final Set<Item> DRONE_MODULE_ITEM_SET = new HashSet<>();
     private static final Set<Item> ASSAULT_DRONE_MODULE_ITEM_SET = new HashSet<>();
@@ -1766,79 +1645,8 @@ public class Config {
         return SHIELD_TYPE_COMPATIBILITY.getOrDefault(typeName, true);
     }
 
-    /**
-     * 物品级护盾类型兼容判定：
-     * 物品被运行时覆盖层显式设置过兼容性时以物品定义为准（不在独占集合中 = 兼容）；
-     * 否则回退到类型级默认（shield_types 定义）。
-     */
-    public static boolean isShieldTypeCompatibleForItem(String typeName, Item item) {
-        Set<String> exclusives = ITEM_SHIELD_TYPE_EXCLUSIVES.get(item);
-        if (exclusives != null) {
-            return !exclusives.contains(typeName);
-        }
-        return isShieldTypeCompatible(typeName);
-    }
-
     public static boolean isBodyItem(Item item) {
         return BODY_ITEM_SET.contains(item);
-    }
-
-    public static void saveItemAttributesConfig() {
-        java.util.Set<String> registeredItems = AttributeManager.getAllRegisteredItemAttributes();
-        java.util.List<String> configList = new java.util.ArrayList<>();
-        for (String itemId : registeredItems) {
-            ItemAttributeConfig config = AttributeManager.getItemAttributes(itemId);
-            if (config == null || config.getAttributes().isEmpty()) continue;
-            StringBuilder sb = new StringBuilder(itemId);
-            for (var entry : config.getAttributes().entrySet()) {
-                sb.append("|").append(entry.getKey()).append("=").append(entry.getValue());
-            }
-            configList.add(sb.toString());
-        }
-        ITEM_ATTRIBUTES_CONFIG.set(configList);
-        SPEC.save();
-        gytrinket.LOGGER.info("物品属性配置已保存，共 {} 个物品", configList.size());
-    }
-
-    public static void loadItemAttributes() {
-        List<? extends String> itemAttrsList = ITEM_ATTRIBUTES_CONFIG.get();
-        for (String itemConfig : itemAttrsList) {
-            if (!itemConfig.trim().isEmpty()) {
-                String[] itemParts = itemConfig.trim().split("\\|");
-                if (itemParts.length >= 2) {
-                    String itemId = itemParts[0].trim();
-                    // 移除命令方块的属性注册（历史测试项）：跳过加载并清理内存残留，防止旧配置文件回写
-                    if ("minecraft:command_block".equals(itemId)) {
-                        AttributeManager.removeItemAttributes(itemId);
-                        continue;
-                    }
-                    Map<String, Double> attrs = new HashMap<>();
-                    for (int i = 1; i < itemParts.length; i++) {
-                        String[] attrParts = itemParts[i].trim().split("=");
-                        if (attrParts.length == 2) {
-                            String attrName = attrParts[0].trim();
-                            try {
-                                double value = Double.parseDouble(attrParts[1].trim());
-                                attrs.put(attrName, value);
-                            } catch (NumberFormatException e) {
-                                gytrinket.LOGGER.warn("无效的属性值：{} for {}", attrParts[1], itemId);
-                            }
-                        }
-                    }
-                    if (!attrs.isEmpty()) {
-                        AttributeManager.registerItemAttributes(itemId, attrs);
-                        gytrinket.LOGGER.info("注册物品属性: {} -> {}", itemId, attrs);
-                    }
-                }
-            }
-        }
-    }
-
-    public static void resetItemAttributesConfig() {
-        ITEM_ATTRIBUTES_CONFIG.set(ITEM_ATTRIBUTES_CONFIG.getDefault());
-        SPEC.save();
-        loadItemAttributes();
-        gytrinket.LOGGER.info("物品属性配置已重置为默认值");
     }
 
     /**
@@ -1942,11 +1750,10 @@ public class Config {
         }
         initialized = true;
 
-        loadItemAttributes();
         loadItemUseChargeWhitelist();
         loadProjectileBlacklist();
 
-        gytrinket.LOGGER.info("属性系统配置加载完成");
+        gytrinket.LOGGER.info("配置加载完成");
     }
 
     /**
@@ -2054,15 +1861,6 @@ public class Config {
             if (item != null && item != Items.AIR) {
                 ITEM_SHIELD_TYPES.put(item, types);
                 gytrinket.LOGGER.info("注册物品护盾类型: {} -> {}", itemId, types);
-            }
-        });
-
-        // 物品级护盾类型兼容覆盖（UI 运行时覆盖层，显式模式）
-        ITEM_SHIELD_TYPE_EXCLUSIVES.clear();
-        DefsManager.getItemShieldTypeExclusiveOverrides().forEach((itemId, exclusives) -> {
-            Item item = BuiltInRegistries.ITEM.get(ResourceLocation.parse(itemId));
-            if (item != null && item != Items.AIR) {
-                ITEM_SHIELD_TYPE_EXCLUSIVES.put(item, exclusives);
             }
         });
 

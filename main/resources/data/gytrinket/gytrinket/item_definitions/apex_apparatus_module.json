@@ -1,0 +1,12 @@
+{
+  "items": {
+    "gytrinket:apex_apparatus_module": {
+      "attributes": {
+        "construct_attack_speed_percent": 0.30,
+        "construct_health_percent": 0.30,
+        "shield_effect_percent": 0.20,
+        "construct_build_speed_independent": -0.75
+      }
+    }
+  }
+}

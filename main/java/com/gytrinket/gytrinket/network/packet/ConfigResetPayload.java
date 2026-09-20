@@ -29,7 +29,6 @@ public record ConfigResetPayload() implements CustomPacketPayload {
             DefsManager.resetOverrides(player.server);
 
             AttributeManager.resetToDefaults();
-            Config.resetItemAttributesConfig();
 
             for (var p : player.server.getPlayerList().getPlayers()) {
                 AttributeManager.recalculateAndCachePlayerAttributes(p);

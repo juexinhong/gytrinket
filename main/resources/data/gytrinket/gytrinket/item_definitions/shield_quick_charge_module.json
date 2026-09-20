@@ -1,0 +1,10 @@
+{
+  "items": {
+    "gytrinket:shield_quick_charge_module": {
+      "attributes": {
+        "shield_cooldown_reduction_percent": 0.25,
+        "shield_independent": -0.25
+      }
+    }
+  }
+}

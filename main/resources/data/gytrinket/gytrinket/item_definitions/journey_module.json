@@ -1,0 +1,10 @@
+{
+    "items":  {
+                  "gytrinket:journey_module":  {
+                                                   "mechanic":  true,
+                                                   "sets":  [
+                                                                "journey_module_items"
+                                                            ]
+                                               }
+              }
+}

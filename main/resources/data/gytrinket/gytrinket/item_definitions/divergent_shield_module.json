@@ -1,0 +1,11 @@
+{
+  "items": {
+    "gytrinket:divergent_shield_module": {
+      "attributes": {
+        "shield_effect_radius": 0.5,
+        "shield_percent": -0.1,
+        "shield_cooldown_reduction_independent": -0.1
+      }
+    }
+  }
+}

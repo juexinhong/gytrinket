@@ -1,7 +1,7 @@
 package com.gytrinket.gytrinket.network.packet;
 
-import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
+import com.gytrinket.gytrinket.core.defs.DefsManager;
 import com.gytrinket.gytrinket.network.NetworkHandler;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
@@ -29,9 +29,8 @@ public record ConfigRemoveAttrPayload(String itemId, String attributeName) imple
             if (!(context.player() instanceof ServerPlayer player)) return;
             if (!player.hasPermissions(2)) return;
 
-            AttributeManager.removeItemAttribute(payload.itemId, payload.attributeName);
-
-            Config.saveItemAttributesConfig();
+            // 从覆写层移除单条属性（剩余集整体写回；显式空 = 覆盖为无属性）
+            DefsManager.removeItemAttribute(player.server, payload.itemId, payload.attributeName);
 
             for (var p : player.server.getPlayerList().getPlayers()) {
                 AttributeManager.recalculateAndCachePlayerAttributes(p);

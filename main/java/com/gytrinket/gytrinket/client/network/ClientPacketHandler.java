@@ -99,7 +99,6 @@ public final class ClientPacketHandler {
 
     public static void handleResponseConfigData(ResponseConfigDataPayload msg) {
         syncLocalAttributeManager(msg.itemConfigData());
-        Config.saveItemAttributesConfig();
 
         Minecraft mc = Minecraft.getInstance();
         Screen currentScreen = mc.screen;

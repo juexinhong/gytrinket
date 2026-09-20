@@ -4,6 +4,7 @@ import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.attribute.AttributeDefinition;
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
 import com.gytrinket.gytrinket.core.attribute.AttributeType;
+import com.gytrinket.gytrinket.core.attribute.ItemAttributeConfig;
 import com.gytrinket.gytrinket.core.defs.DefsManager;
 import com.gytrinket.gytrinket.core.entity.construct.ConstructManager;
 import com.gytrinket.gytrinket.gytrinket;
@@ -198,37 +199,29 @@ public class TooltipHandler {
     }
 
     private static void addItemAttributesTooltip(ItemTooltipEvent event, String itemId) {
-        List<? extends String> itemAttributesConfig = Config.ITEM_ATTRIBUTES_CONFIG.get();
+        // 数据源 = 客户端同步的物品属性（运行时覆盖层；权威 item_definitions 属性展示由配置同步合并提供）
+        ItemAttributeConfig config = AttributeManager.getItemAttributes(itemId);
+        if (config == null || config.getAttributes().isEmpty()) {
+            return;
+        }
 
-        for (String configLine : itemAttributesConfig) {
-            if (configLine.startsWith(itemId + "|")) {
-                String attributesPart = configLine.substring(itemId.length() + 1);
-                String[] attrPairs = attributesPart.split("\\|");
+        event.getToolTip().add(Component.literal("").withStyle(ChatFormatting.GRAY));
+        event.getToolTip().add(Component.literal("属性:").withStyle(ChatFormatting.GOLD));
 
-                event.getToolTip().add(Component.literal("").withStyle(ChatFormatting.GRAY));
-                event.getToolTip().add(Component.literal("属性:").withStyle(ChatFormatting.GOLD));
+        for (var entry : config.getAttributes().entrySet()) {
+            String attrName = entry.getKey();
 
-                for (String attrPair : attrPairs) {
-                    String[] parts = attrPair.split("=");
-                    if (parts.length == 2) {
-                        String attrName = parts[0];
-                        String attrValue = parts[1];
+            Component attrTooltip = Component.translatable(TOOLTIP_PREFIX + "attr." + attrName)
+                .withStyle(ChatFormatting.WHITE);
 
-                        Component attrTooltip = Component.translatable(TOOLTIP_PREFIX + "attr." + attrName)
-                            .withStyle(ChatFormatting.WHITE);
-
-                        if (isDefaultTranslation(attrTooltip, TOOLTIP_PREFIX + "attr." + attrName)) {
-                            attrTooltip = Component.literal(attrName).withStyle(ChatFormatting.WHITE);
-                        }
-
-                        event.getToolTip().add(Component.literal("  +").withStyle(ChatFormatting.GREEN)
-                            .append(attrTooltip)
-                            .append(Component.literal(" ").withStyle(ChatFormatting.GRAY))
-                            .append(Component.literal(formatAttributeValue(attrName, attrValue)).withStyle(ChatFormatting.YELLOW)));
-                    }
-                }
-                break;
+            if (isDefaultTranslation(attrTooltip, TOOLTIP_PREFIX + "attr." + attrName)) {
+                attrTooltip = Component.literal(attrName).withStyle(ChatFormatting.WHITE);
             }
+
+            event.getToolTip().add(Component.literal("  +").withStyle(ChatFormatting.GREEN)
+                .append(attrTooltip)
+                .append(Component.literal(" ").withStyle(ChatFormatting.GRAY))
+                .append(Component.literal(formatAttributeValue(attrName, entry.getValue())).withStyle(ChatFormatting.YELLOW)));
         }
     }
 
@@ -237,20 +230,16 @@ public class TooltipHandler {
      * - 百分比/独立乘区属性：值×100，显示为百分数（最多保留两位小数，四舍五入）
      * - 常规属性（BASE）：最多保留两位小数，四舍五入
      */
-    private static String formatAttributeValue(String attrName, String rawValue) {
-        try {
-            double value = Double.parseDouble(rawValue);
-            AttributeType type = getAttributeType(attrName);
+    private static String formatAttributeValue(String attrName, double rawValue) {
+        double value = rawValue;
+        AttributeType type = getAttributeType(attrName);
 
-            if (type == AttributeType.PERCENT || type == AttributeType.INDEPENDENT_MULTIPLY) {
-                // 百分比显示：值×100，最多保留两位小数
-                return formatDecimal(value * 100) + "%";
-            } else {
-                // 常规小数：最多保留两位小数
-                return formatDecimal(value);
-            }
-        } catch (NumberFormatException e) {
-            return rawValue;
+        if (type == AttributeType.PERCENT || type == AttributeType.INDEPENDENT_MULTIPLY) {
+            // 百分比显示：值×100，最多保留两位小数
+            return formatDecimal(value * 100) + "%";
+        } else {
+            // 常规小数：最多保留两位小数
+            return formatDecimal(value);
         }
     }
 

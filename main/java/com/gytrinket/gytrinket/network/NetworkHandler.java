@@ -4,7 +4,6 @@ import com.gytrinket.gytrinket.compat.CuriosCompat;
 import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.config.ConfigValueRegistry;
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
-import com.gytrinket.gytrinket.core.attribute.ItemAttributeConfig;
 import com.gytrinket.gytrinket.core.defs.DefsManager;
 import com.gytrinket.gytrinket.core.shield.cooldown.ShieldCooldownManager;
 import com.gytrinket.gytrinket.core.shield.ShieldManager;
@@ -28,6 +27,7 @@ import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 public class NetworkHandler {
 
@@ -54,7 +54,6 @@ public class NetworkHandler {
         registrar.playToServer(ConfigDeleteItemPayload.TYPE, ConfigDeleteItemPayload.STREAM_CODEC, ConfigDeleteItemPayload::handle);
         registrar.playToServer(ConfigAddItemPayload.TYPE, ConfigAddItemPayload.STREAM_CODEC, ConfigAddItemPayload::handle);
         registrar.playToServer(ConfigRemoveAttrPayload.TYPE, ConfigRemoveAttrPayload.STREAM_CODEC, ConfigRemoveAttrPayload::handle);
-        registrar.playToServer(ConfigReorderPayload.TYPE, ConfigReorderPayload.STREAM_CODEC, ConfigReorderPayload::handle);
         registrar.playToServer(ConfigSpecialMechanicPayload.TYPE, ConfigSpecialMechanicPayload.STREAM_CODEC, ConfigSpecialMechanicPayload::handle);
         registrar.playToServer(ConfigMechanicValuesPayload.TYPE, ConfigMechanicValuesPayload.STREAM_CODEC, ConfigMechanicValuesPayload::handle);
         registrar.playToServer(ConfigShieldTypesPayload.TYPE, ConfigShieldTypesPayload.STREAM_CODEC, ConfigShieldTypesPayload::handle);
@@ -170,8 +169,16 @@ public class NetworkHandler {
                         "amplification", "check_radius", Config.getAmplificationCheckRadius()) * shieldEffectRadius;
             }
         }
+        // 护盾实例列表（ShieldInstance 镜像，客户端 HUD 顶条按焦点实例显示池量/冷却）
+        java.util.List<SyncShieldPayload.InstanceShieldData> instances = new ArrayList<>();
+        for (com.gytrinket.gytrinket.core.shield.ShieldInstance inst : com.gytrinket.gytrinket.core.shield.ShieldManager.getInstances(uuid)) {
+            instances.add(new SyncShieldPayload.InstanceShieldData(
+                    inst.getItemId(), inst.getShieldTypeName() == null ? "" : inst.getShieldTypeName(),
+                    inst.getCurrentShield(), inst.getMaxShield(), inst.isBroken(),
+                    inst.getCooldownProgress(), inst.getMaxCooldown()));
+        }
         return new SyncShieldPayload(currentShield, maxShield, currentCooldown, maxCooldown, adaptiveArmorReduction,
-            protectedEntityIds, new ArrayList<>(byItem.values()));
+            protectedEntityIds, new ArrayList<>(byItem.values()), instances);
     }
 
     public static void sendShieldCooldownRequestToServer() {
@@ -429,9 +436,16 @@ public class NetworkHandler {
         }
     }
 
+    /** 把运行时定义覆盖数据同步给单个客户端（打开配置界面热重载后单播最新覆盖） */
+    public static void sendDefsOverridesToPlayer(ServerPlayer player) {
+        PacketDistributor.sendToPlayer(player, new ConfigDefsSyncPayload(
+                DefsManager.getServerSpecialMechanicOverrides(),
+                DefsManager.getServerShieldTypeOverrides()));
+    }
+
     private static ResponseConfigDataPayload buildConfigDataMessage(boolean openScreen) {
-        // 物品列表 = 注册了属性的物品 ∪ 注册了特殊机制的物品 ∪ 定义了护盾类型的物品
-        java.util.LinkedHashSet<String> itemIds = new java.util.LinkedHashSet<>(AttributeManager.getAllRegisteredItemAttributes());
+        // 物品列表 = 声明属性的物品（覆写层 + 权威定义） ∪ 注册了特殊机制的物品 ∪ 定义了护盾类型的物品
+        java.util.LinkedHashSet<String> itemIds = new java.util.LinkedHashSet<>(DefsManager.getEffectiveItemAttributeItemIds());
         itemIds.addAll(DefsManager.getSpecialMechanicItems());
         itemIds.addAll(DefsManager.getItemShieldTypes().keySet());
 
@@ -440,12 +454,13 @@ public class NetworkHandler {
             CompoundTag itemTag = new CompoundTag();
             itemTag.putString("itemId", itemId);
             ListTag attrsTag = new ListTag();
-            ItemAttributeConfig config = AttributeManager.getItemAttributes(itemId);
-            if (config != null) {
-                for (var entry : config.getAttributes().entrySet()) {
+            // 有效属性 = 权威定义 + 覆写层合并（服务端权威数据源，客户端 tooltip/UI 显示链）
+            Map<String, DefsManager.ParamValue> effective = DefsManager.getEffectiveItemAttributes(itemId);
+            if (effective != null) {
+                for (var entry : effective.entrySet()) {
                     CompoundTag attrTag = new CompoundTag();
                     attrTag.putString("name", entry.getKey());
-                    attrTag.putDouble("value", entry.getValue());
+                    attrTag.putDouble("value", entry.getValue().value());
                     attrsTag.add(attrTag);
                 }
             }

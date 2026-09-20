@@ -1,0 +1,14 @@
+{
+  "items": {
+    "gytrinket:precision_construct_module": {
+      "mechanic": true,
+      "sets": [
+        "precision_construct_items"
+      ],
+      "attributes": {
+        "construct_health_percent": 0.25,
+        "construct_build_speed_percent": 0.10
+      }
+    }
+  }
+}

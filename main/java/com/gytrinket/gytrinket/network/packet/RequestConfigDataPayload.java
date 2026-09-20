@@ -21,7 +21,10 @@ public record RequestConfigDataPayload() implements CustomPacketPayload {
         context.enqueueWork(() -> {
             if (context.player() instanceof ServerPlayer player) {
                 if (!player.hasPermissions(2)) return;
+                // 打开配置界面：先热重载磁盘覆盖文件（分层 override_layer_N.json + UI 文件），保证界面读取磁盘最新状态
+                com.gytrinket.gytrinket.core.defs.DefsManager.applyOverrides(player.server);
                 NetworkHandler.sendConfigDataToPlayer(player);
+                NetworkHandler.sendDefsOverridesToPlayer(player);
             }
         });
     }

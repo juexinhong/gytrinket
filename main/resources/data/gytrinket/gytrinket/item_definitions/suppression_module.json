@@ -1,0 +1,10 @@
+{
+  "items": {
+    "gytrinket:suppression_module": {
+      "attributes": {
+        "construct_wingman_weapon_attack_speed_percent": 0.5,
+        "construct_wingman_explosive_count_base": 2
+      }
+    }
+  }
+}

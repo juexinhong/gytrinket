@@ -1,0 +1,9 @@
+{
+  "items": {
+    "gytrinket:shield_cooldown_reduction_module": {
+      "attributes": {
+        "shield_cooldown_reduction_percent": 0.2
+      }
+    }
+  }
+}

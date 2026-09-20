@@ -1,0 +1,13 @@
+{
+  "items": {
+    "gytrinket:advanced_engineering_module": {
+      "mechanic": true,
+      "sets": [
+        "advanced_engineering_items"
+      ],
+      "attributes": {
+        "construct_drone_count_base": 1
+      }
+    }
+  }
+}

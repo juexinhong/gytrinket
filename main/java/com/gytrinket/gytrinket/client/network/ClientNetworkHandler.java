@@ -23,11 +23,13 @@ public class ClientNetworkHandler {
         store.loadFromNBT(tag);
     }
 
-    public static void handleSyncShieldMessage(double currentShield, double maxShield, int currentCooldown, int maxCooldown,
+    public static void handleSyncShieldMessage(double currentShield, double maxShield,
                                                double adaptiveArmorReduction,
                                                int[] protectedEntityIds,
-                                               java.util.List<com.gytrinket.gytrinket.network.packet.SyncShieldPayload.ItemShieldState> shieldStates) {
-        ShieldHudRenderer.getInstance().updateShieldData(currentShield, maxShield, currentCooldown, maxCooldown, adaptiveArmorReduction);
+                                               java.util.List<com.gytrinket.gytrinket.network.packet.SyncShieldPayload.ItemShieldState> shieldStates,
+                                               java.util.List<com.gytrinket.gytrinket.network.packet.SyncShieldPayload.InstanceShieldData> instances) {
+        ShieldHudRenderer.getInstance().updateShieldData(currentShield, maxShield, adaptiveArmorReduction);
+        ShieldHudRenderer.getInstance().updateInstances(instances);
         com.gytrinket.gytrinket.client.shield.type.SiphonClientData.setProtectedEntityIds(protectedEntityIds);
         com.gytrinket.gytrinket.client.shield.type.SiphonClientData.syncStates(shieldStates);
         com.gytrinket.gytrinket.client.shield.type.AuraClientData.syncStates(shieldStates);

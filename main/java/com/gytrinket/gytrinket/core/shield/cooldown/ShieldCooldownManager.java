@@ -2,38 +2,49 @@ package com.gytrinket.gytrinket.core.shield.cooldown;
 
 import com.gytrinket.gytrinket.core.attack_cooldown.AttackCooldownModifier;
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
+import com.gytrinket.gytrinket.core.defs.DefsManager;
+import com.gytrinket.gytrinket.core.shield.ShieldInstance;
 import com.gytrinket.gytrinket.core.shield.ShieldManager;
 import com.gytrinket.gytrinket.event.AttributeDynamicChangeEvent;
-import com.gytrinket.gytrinket.event.PlayerAttributesCalculatedEvent;
-import com.gytrinket.gytrinket.event.ShieldBreakEvent;
 import com.gytrinket.gytrinket.event.ShieldCooldownCompleteEvent;
 import com.gytrinket.gytrinket.gytrinket;
 import com.gytrinket.gytrinket.network.NetworkHandler;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
-import net.neoforged.neoforge.event.tick.PlayerTickEvent;
-import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 import net.neoforged.neoforge.server.ServerLifecycleHooks;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
+/**
+ * 护盾冷却管理：破盾实例逐实例推进冷却，冷却完成后回满该实例池量。
+ * <p>
+ * 攻击减速通过玩家级速度因子生效（进度增量 &lt;1，等效旧版 1.25 倍冷却时长），
+ * 受击冷却延长见 {@link #applyHitExtension}。
+ */
 @EventBusSubscriber(modid = gytrinket.MODID)
 public class ShieldCooldownManager {
 
-    private static final Map<UUID, CooldownData> COOLDOWN_MAP = new HashMap<>();
     private static final Map<UUID, Integer> PLAYER_TICK_COUNTER = new HashMap<>();
-    public static final Map<UUID, Integer> BASE_MAX_COOLDOWN = new HashMap<>();
     private static final int PUSH_INTERVAL = 2;
+
+    /** 玩家级冷却推进速度因子（攻击减速时 &lt;1），默认 1.0 */
+    private static final Map<UUID, Double> SPEED_FACTOR = new HashMap<>();
 
     private static final List<IShieldCooldownModifier> MODIFIERS = new ArrayList<>();
 
     private ShieldCooldownManager() {}
 
     static {
-        registerModifier(new DamageReductionModifier());
         registerModifier(new AttackCooldownModifier());
     }
 
@@ -51,74 +62,9 @@ public class ShieldCooldownManager {
         return removed;
     }
 
-    public static CooldownData getCooldownData(UUID playerUUID) {
-        return COOLDOWN_MAP.get(playerUUID);
-    }
-
-    public static List<IShieldCooldownModifier> getModifiers() {
-        return Collections.unmodifiableList(MODIFIERS);
-    }
-
-    public static CooldownContext createContext(UUID playerUUID) {
-        return new CooldownContext(
-            playerUUID,
-            ShieldManager.getCurrentShield(playerUUID),
-            ShieldManager.getMaxShield(playerUUID)
-        );
-    }
-
-    @SubscribeEvent
-    public static void onAttributesCalculated(PlayerAttributesCalculatedEvent event) {
-        UUID playerUUID = event.getPlayerUUID();
-        Map<String, Double> attributes = event.getAttributes();
-
-        double cooldownTime = attributes.getOrDefault("shield_cooldown_time", 0.0);
-        double cooldownReduction = AttributeManager.getGroupAttribute(playerUUID, "shield_cooldown_reduction");
-        double finalCooldownTime = cooldownTime * (1.0 / cooldownReduction);
-
-        // 冷却时间<=0（或折算后不足1 tick）时钳制为1 tick：护盾将在下一刻完成冷却，而不是永不冷却
-        int baseMaxCooldown = Math.max(1, (int) (finalCooldownTime * 20));
-        BASE_MAX_COOLDOWN.put(playerUUID, baseMaxCooldown);
-
-        CooldownData data = COOLDOWN_MAP.get(playerUUID);
-        if (data != null) {
-            data.updateMaxCooldown(baseMaxCooldown);
-        } else {
-            COOLDOWN_MAP.put(playerUUID, new CooldownData(baseMaxCooldown));
-        }
-
-        syncCooldownToClient(playerUUID);
-    }
-
-    /**
-     * 监听属性动态变化事件
-     * 当护盾冷却缩减属性组变化时，重新计算基础冷却时间
-     */
-    @SubscribeEvent
-    public static void onAttributeDynamicChange(AttributeDynamicChangeEvent event) {
-        UUID playerUUID = event.getPlayerUUID();
-        
-        String attrName = event.getAttributeName();
-        if (attrName.equals("shield_cooldown_reduction_percent") || 
-            attrName.equals("shield_cooldown_reduction_independent") ||
-            attrName.equals("recovery_efficiency_percent") ||
-            attrName.equals("recovery_efficiency_independent")) {
-            
-            double cooldownTime = AttributeManager.getPlayerAttribute(playerUUID, "shield_cooldown_time");
-            double cooldownReduction = AttributeManager.getGroupAttribute(playerUUID, "shield_cooldown_reduction");
-            double finalCooldownTime = cooldownTime * (1.0 / cooldownReduction);
-
-            // 冷却时间<=0（或折算后不足1 tick）时钳制为1 tick：护盾将在下一刻完成冷却，而不是永不冷却
-            int baseMaxCooldown = Math.max(1, (int) (finalCooldownTime * 20));
-            BASE_MAX_COOLDOWN.put(playerUUID, baseMaxCooldown);
-
-            CooldownData data = COOLDOWN_MAP.get(playerUUID);
-            if (data != null) {
-                data.updateMaxCooldown(baseMaxCooldown);
-            }
-
-            syncCooldownToClient(playerUUID);
-        }
+    /** 供修饰器设置每刻冷却推进速度因子 */
+    public static void setSpeedFactor(UUID playerUUID, double speedFactor) {
+        SPEED_FACTOR.put(playerUUID, Math.max(0, speedFactor));
     }
 
     @SubscribeEvent
@@ -127,77 +73,136 @@ public class ShieldCooldownManager {
         if (!(player instanceof ServerPlayer)) {
             return;
         }
-
         UUID playerUUID = player.getUUID();
 
-        CooldownData data = COOLDOWN_MAP.get(playerUUID);
-        if (data == null) {
-            data = new CooldownData(0);
-            COOLDOWN_MAP.put(playerUUID, data);
+        if (!ShieldManager.hasCoolingInstances(playerUUID)) {
+            SPEED_FACTOR.remove(playerUUID);
+            return;
         }
 
-        double currentShield = ShieldManager.getCurrentShield(playerUUID);
-        double maxShield = ShieldManager.getMaxShield(playerUUID);
         CooldownContext context = createContext(playerUUID);
+        for (IShieldCooldownModifier modifier : MODIFIERS) {
+            modifier.onPreTick(context);
+        }
 
-        if (currentShield >= maxShield && maxShield > 0) {
-            int oldCooldown = data.getCurrentCooldown();
-            data.reset();
-            if (oldCooldown > 0) {
-                syncCooldownToClient(playerUUID);
+        double speedFactor = SPEED_FACTOR.getOrDefault(playerUUID, 1.0);
+
+        boolean anyCompleted = false;
+        for (ShieldInstance instance : ShieldManager.getInstances(playerUUID)) {
+            if (!instance.isCoolingDown()) {
+                continue;
             }
+            instance.tickCooldown(speedFactor);
+            if (!instance.isCoolingDown()) {
+                instance.completeCooldown();
+                anyCompleted = true;
+            }
+        }
+
+        for (IShieldCooldownModifier modifier : MODIFIERS) {
+            modifier.onPostTick(context);
+        }
+
+        if (anyCompleted) {
+            ShieldManager.afterInstanceMutation(playerUUID, null);
+            if (!ShieldManager.hasCoolingInstances(playerUUID)) {
+                NeoForge.EVENT_BUS.post(new ShieldCooldownCompleteEvent(playerUUID));
+            }
+        }
+
+        // 冷却进度推送防抖
+        int tickCounter = PLAYER_TICK_COUNTER.getOrDefault(playerUUID, 0) + 1;
+        PLAYER_TICK_COUNTER.put(playerUUID, tickCounter);
+        if (tickCounter >= PUSH_INTERVAL) {
+            PLAYER_TICK_COUNTER.put(playerUUID, 0);
+            syncCooldownToClient(playerUUID);
+        }
+    }
+
+    /**
+     * 受击冷却延长：对全部冷却中的实例按伤害扣除冷却进度。
+     * <p>
+     * extend = shield_hit_cooldown_extend（物品 shieldValues → 护盾类型默认值 →
+     * 玩家全局聚合 fallback）× 组乘子；multiplier = shield_hit_cooldown_extend_multiplier 同链。
+     */
+    public static void applyHitExtension(UUID playerUUID, float damage) {
+        List<ShieldInstance> coolingInstances = new ArrayList<>();
+        for (ShieldInstance instance : ShieldManager.getInstances(playerUUID)) {
+            if (instance.isCoolingDown()) {
+                coolingInstances.add(instance);
+            }
+        }
+        if (coolingInstances.isEmpty()) {
             return;
         }
 
-        if (currentShield < maxShield && maxShield > 0 && !data.isComplete()) {
-            boolean wasComplete = data.isComplete();
-            int oldCooldown = data.getCurrentCooldown();
+        double extendMultiplier = AttributeManager.getGroupMultiplier(playerUUID, "shield_hit_cooldown_extend");
+        double multMultiplier = AttributeManager.getGroupMultiplier(playerUUID, "shield_hit_cooldown_extend_multiplier");
+        float finalMultiplier = (float) AttributeManager.getPlayerAttribute(playerUUID, "shield_hit_cooldown_extend_final_multiplier");
 
-            boolean skipDefault = false;
-            for (IShieldCooldownModifier modifier : MODIFIERS) {
-                skipDefault |= modifier.onPreTick(data, context);
+        for (ShieldInstance instance : coolingInstances) {
+            String itemId = instance.getItemId();
+            double extend = DefsManager.resolveShieldParam(null, itemId, instance.getShieldTypeName(),
+                    "shield_hit_cooldown_extend",
+                    AttributeManager.getPlayerAttribute(playerUUID, "shield_hit_cooldown_extend")) * extendMultiplier;
+            double multiplier = DefsManager.resolveShieldParam(null, itemId, instance.getShieldTypeName(),
+                    "shield_hit_cooldown_extend_multiplier",
+                    AttributeManager.getPlayerAttribute(playerUUID, "shield_hit_cooldown_extend_multiplier")) * multMultiplier;
+
+            // 伤害<=1 时延长值衰减：原值<5 取原值，否则取 5，再减 35
+            if (damage <= 1.0f) {
+                extend = Math.max(extend < 5 ? extend : 5, extend - 35);
             }
 
-            if (!skipDefault) {
-                data.tick();
+            if (extend == 0) {
+                continue;
             }
 
-            for (IShieldCooldownModifier modifier : MODIFIERS) {
-                modifier.onPostTick(data, context);
+            double factor = Math.max(1.0, 1.0 + Math.max(0, damage - 1) * (multiplier - 1));
+            int reduction = (int) (factor * extend * finalMultiplier);
+            if (reduction <= 0) {
+                continue;
             }
 
-            if (data.getCurrentCooldown() != oldCooldown) {
-                int tickCounter = PLAYER_TICK_COUNTER.getOrDefault(playerUUID, 0) + 1;
-                PLAYER_TICK_COUNTER.put(playerUUID, tickCounter);
-
-                if (tickCounter >= PUSH_INTERVAL) {
-                    PLAYER_TICK_COUNTER.put(playerUUID, 0);
-                    syncCooldownToClient(playerUUID);
-                }
-            }
-
-            if (!wasComplete && data.isComplete()) {
-                for (IShieldCooldownModifier modifier : MODIFIERS) {
-                    modifier.onCooldownComplete(data, context);
-                }
-                NeoForge.EVENT_BUS.post(new ShieldCooldownCompleteEvent(playerUUID));
-                syncCooldownToClient(playerUUID);
-            }
-            return;
+            instance.setCooldownProgress(Math.max(0, instance.getCooldownProgress() - reduction));
         }
     }
 
     @SubscribeEvent
-    public static void onShieldBreak(ShieldBreakEvent event) {
+    public static void onAttributeDynamicChange(AttributeDynamicChangeEvent event) {
         UUID playerUUID = event.getPlayerUUID();
-        CooldownData data = COOLDOWN_MAP.get(playerUUID);
+        String attrName = event.getAttributeName();
 
-        if (data != null) {
-            CooldownContext context = createContext(playerUUID);
-            for (IShieldCooldownModifier modifier : MODIFIERS) {
-                modifier.onShieldBreak(data, context);
+        if (attrName.equals("shield_cooldown_reduction_percent") ||
+            attrName.equals("shield_cooldown_reduction_independent") ||
+            attrName.equals("recovery_efficiency_percent") ||
+            attrName.equals("recovery_efficiency_independent")) {
+
+            recalcCooldowns(playerUUID);
+            syncCooldownToClient(playerUUID);
+        }
+    }
+
+    /** 冷却缩减属性变化：非全局实例按新上限折算进度，全局池跟随首个物品实例 */
+    private static void recalcCooldowns(UUID playerUUID) {
+        int firstShieldMaxCooldown = -1;
+        List<ShieldInstance> instances = ShieldManager.getInstances(playerUUID);
+        for (ShieldInstance instance : instances) {
+            if (instance.isGlobalPool()) {
+                continue;
             }
-            data.reset();
+            int newMax = ShieldManager.computeMaxCooldown(playerUUID, instance.getItemId(), instance.getShieldTypeName());
+            instance.updateMaxCooldown(newMax);
+            if (firstShieldMaxCooldown < 0) {
+                firstShieldMaxCooldown = newMax;
+            }
+        }
+        if (firstShieldMaxCooldown >= 0) {
+            for (ShieldInstance instance : instances) {
+                if (instance.isGlobalPool()) {
+                    instance.updateMaxCooldown(firstShieldMaxCooldown);
+                }
+            }
         }
     }
 
@@ -206,14 +211,20 @@ public class ShieldCooldownManager {
         if (!(event.getEntity() instanceof ServerPlayer)) {
             return;
         }
-        UUID playerUUID = event.getEntity().getUUID();
-        syncCooldownToClient(playerUUID);
+        syncCooldownToClient(event.getEntity().getUUID());
     }
 
     @SubscribeEvent
     public static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
-        UUID playerUUID = event.getEntity().getUUID();
-        clearPlayerCooldown(playerUUID);
+        clearPlayerCooldown(event.getEntity().getUUID());
+    }
+
+    private static CooldownContext createContext(UUID playerUUID) {
+        return new CooldownContext(
+                playerUUID,
+                ShieldManager.getCurrentShield(playerUUID),
+                ShieldManager.getMaxShield(playerUUID)
+        );
     }
 
     private static void syncCooldownToClient(UUID playerUUID) {
@@ -222,82 +233,41 @@ public class ShieldCooldownManager {
             ServerPlayer player = server.getPlayerList().getPlayer(playerUUID);
             if (player != null) {
                 NetworkHandler.sendShieldSyncToPlayer(
-                    player,
-                    ShieldManager.getCurrentShield(playerUUID),
-                    ShieldManager.getMaxShield(playerUUID)
+                        player,
+                        ShieldManager.getCurrentShield(playerUUID),
+                        ShieldManager.getMaxShield(playerUUID)
                 );
             }
         }
     }
 
-    public static boolean isCooldownComplete(UUID playerUUID) {
-        CooldownData data = COOLDOWN_MAP.get(playerUUID);
-        return data != null && data.isComplete();
-    }
-
+    /** HUD 显示：第一个冷却中实例的进度 */
     public static int getCurrentCooldown(UUID playerUUID) {
-        CooldownData data = COOLDOWN_MAP.get(playerUUID);
-        return data != null ? data.getCurrentCooldown() : 0;
+        for (ShieldInstance instance : ShieldManager.getInstances(playerUUID)) {
+            if (instance.isCoolingDown()) {
+                return instance.getCurrentCooldown();
+            }
+        }
+        return 0;
     }
 
+    /** HUD 显示：第一个冷却中实例的上限 */
     public static int getMaxCooldown(UUID playerUUID) {
-        CooldownData data = COOLDOWN_MAP.get(playerUUID);
-        return data != null ? data.getMaxCooldown() : 0;
+        for (ShieldInstance instance : ShieldManager.getInstances(playerUUID)) {
+            if (instance.isCoolingDown()) {
+                return instance.getMaxCooldown();
+            }
+        }
+        return 0;
     }
 
     public static void clearPlayerCooldown(UUID playerUUID) {
-        COOLDOWN_MAP.remove(playerUUID);
         PLAYER_TICK_COUNTER.remove(playerUUID);
-        BASE_MAX_COOLDOWN.remove(playerUUID);
+        SPEED_FACTOR.remove(playerUUID);
     }
 
     public static void clearAllCooldowns() {
-        COOLDOWN_MAP.clear();
         PLAYER_TICK_COUNTER.clear();
-        BASE_MAX_COOLDOWN.clear();
-    }
-
-    public static class CooldownData {
-        private int currentCooldown;
-        private int maxCooldown;
-
-        public CooldownData(int maxCooldown) {
-            this.maxCooldown = maxCooldown;
-            this.currentCooldown = 0;
-        }
-
-        public boolean isComplete() {
-            return maxCooldown > 0 && currentCooldown >= maxCooldown;
-        }
-
-        public void tick() {
-            if (currentCooldown < maxCooldown) {
-                currentCooldown++;
-            }
-        }
-
-        public void reset() {
-            this.currentCooldown = 0;
-        }
-
-        public void updateMaxCooldown(int newMaxCooldown) {
-            if (maxCooldown > 0 && newMaxCooldown > 0) {
-                float ratio = (float) currentCooldown / maxCooldown;
-                currentCooldown = (int) (newMaxCooldown * ratio);
-            }
-            this.maxCooldown = newMaxCooldown;
-        }
-
-        public int getCurrentCooldown() {
-            return currentCooldown;
-        }
-
-        public int getMaxCooldown() {
-            return maxCooldown;
-        }
-
-        public void setCurrentCooldown(int currentCooldown) {
-            this.currentCooldown = currentCooldown;
-        }
+        SPEED_FACTOR.clear();
     }
 }

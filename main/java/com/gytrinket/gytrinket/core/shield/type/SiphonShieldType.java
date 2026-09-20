@@ -34,6 +34,14 @@ public class SiphonShieldType implements IShieldType {
         return playerUUID + "|" + BuiltInRegistries.ITEM.getKey(source.getItem());
     }
 
+    /**
+     * 实例级激活条件：该物品的虹吸护盾池实例存在且有池量。
+     * 实例破裂（池量归零）或实例不存在（物品卸下/禁用）→ 效果关闭
+     */
+    private static boolean isInstancePoolEmpty(UUID playerUUID, String itemId) {
+        return ShieldManager.isInstancePoolEmpty(playerUUID, itemId, "siphon");
+    }
+
     /** 虹吸伤害归属引用：玩家 UUID + 提供虹吸的物品 id（数值按该物品实例取） */
     public record SiphonTargetRef(UUID playerUUID, String itemId) {}
 
@@ -85,6 +93,17 @@ public class SiphonShieldType implements IShieldType {
         UUID uuid = player.getUUID();
         String itemKey = instanceKey(uuid, source);
         String itemId = BuiltInRegistries.ITEM.getKey(source.getItem()).toString();
+
+        // [实例级闸门] 本实例护盾池量归零或实例不存在时：清空实例层数并重算聚合属性（破裂实例不再虹吸、层数加成关闭）
+        if (isInstancePoolEmpty(uuid, itemId)) {
+            SiphonData removed = PLAYER_SIPHON_DATA.remove(itemKey);
+            if (removed != null && removed.stacks > 0) {
+                updateSiphonAttributes(uuid);
+                syncSiphonStacksToClient(player, 0);
+            }
+            return;
+        }
+
         SiphonData data = PLAYER_SIPHON_DATA.computeIfAbsent(itemKey, k -> new SiphonData());
 
         data.tickCounter++;

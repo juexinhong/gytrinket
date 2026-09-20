@@ -80,8 +80,6 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
     /** 护盾类型选择器 overlay 状态 */
     private boolean isSelectingShieldTypes = false;
     private final List<String> shieldTypeSelection = new ArrayList<>();
-    /** 每个已选护盾类型的兼容开关（true=兼容可多选，false=独占独占选中）；仅对已选类型有意义 */
-    private final Map<String, Boolean> shieldTypeCompat = new HashMap<>();
     /** 选中行状态行上的护盾类型文本悬停标记 */
     private boolean hoveredShieldTypeBtn = false;
     /** 特殊机制选择器 overlay 状态（true=添加列表，false=移除列表） */
@@ -143,6 +141,10 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
     private String shieldValueEditBuffer = "";
     /** 护盾数值编辑器 overlay 的参数行悬停标记（渲染与点击共用） */
     private int hoveredShieldValueRow = -1;
+    /** 护盾数值编辑器滑块（像素单位，与 shieldValuesScrollRow 同步） */
+    private final ScrollBarComponent shieldValuesScrollBar = new ScrollBarComponent();
+    /** 护盾数值编辑器列表滚动行号（参数行+穿盾行总数超出可视区时滚动显示） */
+    private int shieldValuesScrollRow = 0;
     /** 护盾类型选择器底部"编辑数值"按钮悬停标记 */
     private boolean hoveredShieldValuesBtn = false;
     /** 护盾类型选择器底部"保存"按钮悬停标记（应用类型/兼容选择，与数值编辑器的保存操作统一） */
@@ -201,15 +203,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
         }
         String itemId = itemConfigData.getCompound(selectedItemIndex).getString("itemId");
         shieldTypeSelection.clear();
-        shieldTypeCompat.clear();
-        Map<String, Boolean> typeDefaults = DefsManager.clientShieldTypes(getClientRegistryAccess());
         shieldTypeSelection.addAll(DefsManager.clientItemShieldTypes(getClientRegistryAccess(), itemId));
-        // 兼容开关初值：物品级覆盖条目存在则以显式值为准，否则回退类型级默认
-        DefsManager.ShieldTypeOverride ov = DefsManager.getClientShieldTypeOverride(itemId);
-        for (String t : shieldTypeSelection) {
-            shieldTypeCompat.put(t, ov != null ? !ov.exclusiveTypes().contains(t)
-                    : typeDefaults.getOrDefault(t, Boolean.TRUE));
-        }
         isSelectingShieldTypes = true;
     }
 
@@ -413,6 +407,8 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
     private void rebuildShieldValuesDraft(String type) {
         cancelShieldValueEdit();
         shieldValuesType = type;
+        shieldValuesScrollRow = 0;
+        shieldValuesScrollBar.setScrollOffset(0);
         shieldValuesParamKeys.clear();
         shieldValuesDraft.clear();
         shieldValuesOverridden.clear();
@@ -502,6 +498,8 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
         shieldValuesItemId = "";
         shieldValuesType = "";
         shieldValuesPierce = false;
+        shieldValuesScrollRow = 0;
+        shieldValuesScrollBar.setScrollOffset(0);
         shieldValuesPreferredTypes.clear();
         shieldValuesParamKeys.clear();
         shieldValuesDraft.clear();
@@ -601,7 +599,6 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
             if (keyCode == 256) { // Esc：取消
                 isSelectingShieldTypes = false;
                 shieldTypeSelection.clear();
-                shieldTypeCompat.clear();
                 return true;
             } else if (keyCode == 257 || keyCode == 335) { // Enter：应用
                 applyShieldTypeSelection();
@@ -657,22 +654,15 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
         return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
-    /** 应用护盾类型选择并发送到服务端（独占类型集合 = 选中且开关为不兼容的子集） */
+    /** 应用护盾类型选择并发送到服务端（护盾全部按实例生效，无独占/兼容设置） */
     private void applyShieldTypeSelection() {
         if (selectedItemIndex >= 0 && selectedItemIndex < itemConfigData.size()) {
             String itemId = itemConfigData.getCompound(selectedItemIndex).getString("itemId");
-            List<String> exclusiveTypes = new ArrayList<>();
-            for (String t : shieldTypeSelection) {
-                if (!shieldTypeCompat.getOrDefault(t, Boolean.TRUE)) {
-                    exclusiveTypes.add(t);
-                }
-            }
             PacketDistributor.sendToServer(new ConfigShieldTypesPayload(
-                    itemId, new ArrayList<>(shieldTypeSelection), exclusiveTypes));
+                    itemId, new ArrayList<>(shieldTypeSelection)));
         }
         isSelectingShieldTypes = false;
         shieldTypeSelection.clear();
-        shieldTypeCompat.clear();
     }
 
     @Override
@@ -844,6 +834,13 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
             int maxRow = Math.max(0, MechanicValueDefs.getParams(mechanicValuesSet).size() - visibleRows);
             mechanicValuesScrollRow = Math.max(0, Math.min(mechanicValuesScrollRow - step, maxRow));
             mechanicValuesScrollBar.setScrollOffset(mechanicValuesScrollRow * MECHANIC_VALUES_ROW_H);
+        } else if (isEditingShieldValues) {
+            int step = (int) (verticalScroll * 8);
+            int visibleRows = Math.max(1, (MECHANIC_VALUES_OVERLAY_H - MECHANIC_VALUES_PARAMS_TOP
+                    - MECHANIC_VALUES_LIST_BOTTOM_MARGIN) / MECHANIC_VALUES_ROW_H);
+            int maxRow = Math.max(0, shieldValuesTotalRows() - visibleRows);
+            shieldValuesScrollRow = Math.max(0, Math.min(shieldValuesScrollRow - step, maxRow));
+            shieldValuesScrollBar.setScrollOffset(shieldValuesScrollRow * MECHANIC_VALUES_ROW_H);
         } else if (isSelectingAttr) {
             int step = (int) (verticalScroll * 8);
             // 可视完整行数 = (140 - 18 - 10) / 10 = 11，滚动上限按 11 行计算，保证末尾属性能完整显示
@@ -1452,17 +1449,6 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
             guiGraphics.drawString(font, text, overlayX + 8, listY,
                     hovered ? renderer.getValueColor() : (selected ? renderer.getValueColor() : renderer.getTextColor()));
 
-            // 已选行右侧的兼容/独占切换按钮
-            if (selected) {
-                int[] btn = shieldTypeCompatBtnBounds(overlayX, overlayW, typeName);
-                boolean btnHovered = mouseX >= btn[0] - 1 && mouseX < btn[0] + btn[1]
-                        && mouseY >= listY && mouseY < listY + 10;
-                if (btnHovered) {
-                    guiGraphics.fill(btn[0] - 1, listY - 1, btn[0] + btn[1], listY + 9, 0xFF2A4A8A);
-                }
-                guiGraphics.drawString(font, shieldTypeCompatLabel(typeName), btn[0], listY,
-                        btnHovered ? renderer.getAccentColor() : renderer.getHintColor());
-            }
             listY += 11;
         }
         if (allTypes.isEmpty()) {
@@ -1653,6 +1639,18 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
                 overlayX + 8, overlayY + overlayH - 12, renderer.getHintColor());
     }
 
+    /** 护盾数值编辑器列表总行数 = 参数行（空类型为提示占位行）+ 穿盾行（列表末行） */
+    private int shieldValuesTotalRows() {
+        List<ShieldValueDefs.ParamDef> defs = ShieldValueDefs.getParams(shieldValuesType);
+        return defs.size() + (defs.isEmpty() ? 1 : 0) + 1;
+    }
+
+    /** 参数显示默认值：基础四项优先取护盾类型定义（shield_types 同步 registry），未定义回退 ParamDef 硬编码 */
+    private double shieldValueDefaultValue(ShieldValueDefs.ParamDef def) {
+        Double typeDefault = DefsManager.clientShieldTypeParamDefault(getClientRegistryAccess(), shieldValuesType, def.key());
+        return typeDefault != null ? typeDefault : def.defaultValue();
+    }
+
     /** 护盾类型数值编辑器 overlay：护盾类型 tab 切换 + 参数行点击编辑 + 重置/保存（布局与机制数值编辑器一致） */
     private void renderShieldValuesOverlay(GuiGraphics guiGraphics, int mouseX, int mouseY) {
         int overlayW = MECHANIC_VALUES_OVERLAY_W;
@@ -1679,16 +1677,35 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
             tabX += font.width(label) + 4;
         }
 
-        // 参数行：覆盖值高亮；未覆盖显示 Config 默认值（带"默认"标记）
+        // 参数行：覆盖值高亮；未覆盖显示 Config 默认值（带"默认"标记）；行数过多时滚动显示，底部为保存/提示预留区
         List<ShieldValueDefs.ParamDef> defs = ShieldValueDefs.getParams(shieldValuesType);
-        int rowY = overlayY + MECHANIC_VALUES_PARAMS_TOP;
+        int listTop = overlayY + MECHANIC_VALUES_PARAMS_TOP;
+        int listBottom = overlayY + overlayH - MECHANIC_VALUES_LIST_BOTTOM_MARGIN;
+        int visibleRows = Math.max(1, (listBottom - listTop) / MECHANIC_VALUES_ROW_H);
+        int totalRows = shieldValuesTotalRows();
+        int maxScrollRow = Math.max(0, totalRows - visibleRows);
+        if (shieldValuesScrollRow > maxScrollRow) {
+            shieldValuesScrollRow = maxScrollRow;
+        }
+        int listHeight = listBottom - listTop;
+        int totalPx = totalRows * MECHANIC_VALUES_ROW_H;
+        int visiblePx = visibleRows * MECHANIC_VALUES_ROW_H;
+        shieldValuesScrollBar.setScrollOffset(shieldValuesScrollRow * MECHANIC_VALUES_ROW_H);
+        shieldValuesScrollBar.updateMaxScroll(totalPx, visiblePx);
+        // 滑块占位宽度（显示滑块时行文本/悬停区右侧让位）
+        int scrollReserve = shieldValuesScrollBar.needsScrollbar() ? 10 : 0;
+
+        int rowY = listTop;
         if (defs.isEmpty()) {
             // 该类型未注册数值参数：明确提示，避免误以为点击无效（占一行，让穿盾行落到下一行，不与提示叠字）
-            guiGraphics.drawString(font, Component.translatable("screen.gytrinket.shield_values_no_params").getString(),
-                    overlayX + 8, rowY + 4, renderer.getHintColor());
+            if (shieldValuesScrollRow == 0) {
+                guiGraphics.drawString(font, Component.translatable("screen.gytrinket.shield_values_no_params").getString(),
+                        overlayX + 8, rowY + 4, renderer.getHintColor());
+            }
             rowY += MECHANIC_VALUES_ROW_H;
         }
-        for (int idx = 0; idx < defs.size(); idx++) {
+        for (int idx = shieldValuesScrollRow; idx < defs.size(); idx++) {
+            if (rowY + MECHANIC_VALUES_ROW_H > listBottom) break;
             ShieldValueDefs.ParamDef def = defs.get(idx);
             String name = shieldValueDisplayName(def);
             String valueText;
@@ -1700,20 +1717,37 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
                 valueText = shieldValuesDraft.getOrDefault(def.key(), "");
                 valueColor = renderer.getValueColor();
             } else {
-                valueText = formatValue(def.defaultValue())
+                valueText = formatValue(shieldValueDefaultValue(def))
                         + Component.translatable("screen.gytrinket.shield_value_default_tag").getString();
                 valueColor = renderer.getHintColor();
             }
 
-            boolean rowHovered = mouseX >= overlayX + 5 && mouseX < overlayX + overlayW - 5
+            // 行尾按钮让位宽度（覆盖行才有 [重置]）
+            int buttonZone = shieldValuesOverridden.contains(def.key())
+                    ? font.width(Component.translatable("screen.gytrinket.shield_value_reset_btn").getString()) : 0;
+            // 文本截断：名称/数值超宽追加省略号，避免溢出到行尾按钮与滑块区域
+            int maxTextW = Math.max(20, overlayW - 16 - scrollReserve - buttonZone);
+            String nameText = name + "=";
+            if (font.width(nameText) > maxTextW) {
+                name = truncateToWidth(name, Math.max(4, maxTextW - font.width("=")));
+                nameText = name + "=";
+            }
+            if (idx != shieldValueEditIndex) {
+                int valueMaxW = Math.max(4, maxTextW - font.width(nameText) - 2);
+                if (font.width(valueText) > valueMaxW) {
+                    valueText = truncateToWidth(valueText, valueMaxW);
+                }
+            }
+
+            boolean rowHovered = mouseX >= overlayX + 5 && mouseX < overlayX + overlayW - 5 - scrollReserve
                     && mouseY >= rowY && mouseY < rowY + MECHANIC_VALUES_ROW_H;
             if (rowHovered) {
                 hoveredShieldValueRow = idx;
-                guiGraphics.fill(overlayX + 4, rowY - 1, overlayX + overlayW - 4,
+                guiGraphics.fill(overlayX + 4, rowY - 1, overlayX + overlayW - 4 - scrollReserve,
                         rowY + MECHANIC_VALUES_ROW_H - 1, 0xFF2A4A8A);
             }
-            guiGraphics.drawString(font, name + "=", overlayX + 8, rowY + 2, renderer.getTextColor());
-            guiGraphics.drawString(font, valueText, overlayX + 10 + font.width(name + "="), rowY + 2, valueColor);
+            guiGraphics.drawString(font, nameText, overlayX + 8, rowY + 2, renderer.getTextColor());
+            guiGraphics.drawString(font, valueText, overlayX + 10 + font.width(nameText), rowY + 2, valueColor);
 
             // 行尾 [重置]：仅已覆盖参数显示
             if (shieldValuesOverridden.contains(def.key())) {
@@ -1728,18 +1762,26 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
             rowY += MECHANIC_VALUES_ROW_H;
         }
 
-        // 穿盾开关行：护盾耗尽时溢出伤害是否作用于玩家（多类型实际生效时任一不穿盾则全部不穿盾）
-        String pierceLabel = Component.translatable("screen.gytrinket.shield_pierce_toggle").getString()
-                + "=" + Component.translatable(shieldValuesPierce
-                        ? "screen.gytrinket.shield_pierce_on" : "screen.gytrinket.shield_pierce_off").getString();
-        boolean pierceHovered = mouseX >= overlayX + 5 && mouseX < overlayX + overlayW - 5
-                && mouseY >= rowY && mouseY < rowY + MECHANIC_VALUES_ROW_H;
-        if (pierceHovered) {
-            guiGraphics.fill(overlayX + 4, rowY - 1, overlayX + overlayW - 4,
-                    rowY + MECHANIC_VALUES_ROW_H - 1, 0xFF2A4A8A);
+        // 穿盾开关行：护盾耗尽时溢出伤害是否作用于玩家（多类型实际生效时任一不穿盾则全部不穿盾）；列表末行，滚动到底可见
+        if (rowY + MECHANIC_VALUES_ROW_H <= listBottom) {
+            String pierceLabel = Component.translatable("screen.gytrinket.shield_pierce_toggle").getString()
+                    + "=" + Component.translatable(shieldValuesPierce
+                            ? "screen.gytrinket.shield_pierce_on" : "screen.gytrinket.shield_pierce_off").getString();
+            boolean pierceHovered = mouseX >= overlayX + 5 && mouseX < overlayX + overlayW - 5 - scrollReserve
+                    && mouseY >= rowY && mouseY < rowY + MECHANIC_VALUES_ROW_H;
+            if (pierceHovered) {
+                guiGraphics.fill(overlayX + 4, rowY - 1, overlayX + overlayW - 4 - scrollReserve,
+                        rowY + MECHANIC_VALUES_ROW_H - 1, 0xFF2A4A8A);
+            }
+            guiGraphics.drawString(font, pierceLabel, overlayX + 8, rowY + 2,
+                    shieldValuesPierce ? renderer.getValueColor() : renderer.getHintColor());
         }
-        guiGraphics.drawString(font, pierceLabel, overlayX + 8, rowY + 2,
-                shieldValuesPierce ? renderer.getValueColor() : renderer.getHintColor());
+
+        // 右侧滑块（列表超出可视区时显示，支持拖动与滚轮）
+        if (shieldValuesScrollBar.needsScrollbar()) {
+            shieldValuesScrollBar.render(guiGraphics, renderer,
+                    overlayX + overlayW - 6, listTop, listHeight, visiblePx, totalPx);
+        }
 
         // 底部保存按钮 + 提示
         String saveText = Component.translatable("screen.gytrinket.shield_values_save").getString();
@@ -1761,50 +1803,13 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
         return translated.equals(key) ? typeName : translated;
     }
 
-    /** 兼容/独占切换按钮文案（随该类型在本物品上的开关状态变化） */
-    private String shieldTypeCompatLabel(String typeName) {
-        return Component.translatable(shieldTypeCompat.getOrDefault(typeName, Boolean.TRUE)
-                ? "screen.gytrinket.shield_type_compat_btn"
-                : "screen.gytrinket.shield_type_exclusive_btn").getString();
-    }
-
-    /** 已选中类型行右侧兼容/独占按钮的区域（渲染与点击共用）；返回 {x, width}，右缘距 overlay 右侧 8px */
-    private int[] shieldTypeCompatBtnBounds(int overlayX, int overlayW, String typeName) {
-        int width = font.width(shieldTypeCompatLabel(typeName)) + 4;
-        return new int[]{overlayX + overlayW - 8 - width, width};
-    }
-
-    /** 切换护盾类型选择：兼容类型可共存；独占类型独占选中（清空其他选择） */
+    /** 切换护盾类型选择（护盾全部按实例生效，无独占/兼容语义） */
     private void toggleShieldType(String typeName) {
         if (shieldTypeSelection.contains(typeName)) {
             shieldTypeSelection.remove(typeName);
-            shieldTypeCompat.remove(typeName);
             return;
         }
-        // 保持"独占类型独占选中"不变量：选择新类型时，先移除当前开关为不兼容的类型
-        shieldTypeSelection.removeIf(t -> !shieldTypeCompat.getOrDefault(t, Boolean.TRUE));
         shieldTypeSelection.add(typeName);
-        // 新选类型的开关初值取类型级默认（此前被翻转过的沿用已存值）
-        shieldTypeCompat.putIfAbsent(typeName, defaultShieldTypeCompat(typeName));
-    }
-
-    /** 切换已选类型的兼容开关；翻为独占时保持"独占类型独占选中"不变量 */
-    private void toggleShieldTypeCompat(String typeName) {
-        if (!shieldTypeSelection.contains(typeName)) {
-            return;
-        }
-        boolean nowCompatible = !shieldTypeCompat.getOrDefault(typeName, Boolean.TRUE);
-        shieldTypeCompat.put(typeName, nowCompatible);
-        if (!nowCompatible) {
-            shieldTypeSelection.removeIf(t -> !t.equals(typeName));
-            shieldTypeCompat.keySet().removeIf(t -> !t.equals(typeName));
-            shieldTypeCompat.put(typeName, false);
-        }
-    }
-
-    /** 类型级兼容默认值（datapack 定义，缺省视为兼容） */
-    private boolean defaultShieldTypeCompat(String typeName) {
-        return DefsManager.clientShieldTypes(getClientRegistryAccess()).getOrDefault(typeName, Boolean.TRUE);
     }
 
     /** 特殊机制选择器 overlay：单击选择即发送（添加/移除指定机制），支持鼠标滚轮 */
@@ -1987,18 +1992,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
                 if (listY + 10 > listBottom) break;
                 if (mouseX >= overlayX + 5 && mouseX < overlayX + overlayW - 5
                         && mouseY >= listY && mouseY < listY + 10) {
-                    String typeName = e.getKey();
-                    // 已选行右侧命中兼容/独占按钮时切换开关，否则切换选择
-                    if (shieldTypeSelection.contains(typeName)) {
-                        int[] btn = shieldTypeCompatBtnBounds(overlayX, overlayW, typeName);
-                        if (mouseX >= btn[0] - 1) {
-                            toggleShieldTypeCompat(typeName);
-                        } else {
-                            toggleShieldType(typeName);
-                        }
-                    } else {
-                        toggleShieldType(typeName);
-                    }
+                    toggleShieldType(e.getKey());
                     return true;
                 }
                 listY += 11;
@@ -2021,7 +2015,6 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
             if (mouseX < overlayX || mouseX >= overlayX + overlayW || mouseY < overlayY || mouseY >= overlayY + overlayH) {
                 isSelectingShieldTypes = false;
                 shieldTypeSelection.clear();
-                shieldTypeCompat.clear();
             }
             return true;
         }
@@ -2164,6 +2157,20 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
                 return true;
             }
 
+            // 右侧滑块：点击开始拖动（行数超出可视区时）
+            int listTop = overlayY + MECHANIC_VALUES_PARAMS_TOP;
+            int listBottom = overlayY + overlayH - MECHANIC_VALUES_LIST_BOTTOM_MARGIN;
+            int listHeight = listBottom - listTop;
+            int totalPx = shieldValuesTotalRows() * MECHANIC_VALUES_ROW_H;
+            int visibleRows = Math.max(1, listHeight / MECHANIC_VALUES_ROW_H);
+            int visiblePx = visibleRows * MECHANIC_VALUES_ROW_H;
+            shieldValuesScrollBar.setScrollOffset(shieldValuesScrollRow * MECHANIC_VALUES_ROW_H);
+            shieldValuesScrollBar.updateMaxScroll(totalPx, visiblePx);
+            if (shieldValuesScrollBar.mouseClicked(mouseX, mouseY,
+                    overlayX + overlayW - 6, listTop, listHeight, visiblePx, totalPx)) {
+                return true;
+            }
+
             // 护盾类型 tab 切换
             List<String> types = shieldValuesTabTypes();
             int tabX = overlayX + 5;
@@ -2189,15 +2196,16 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
                 return true;
             }
 
-            // 参数行：先判行尾 [重置]，再判行（进入编辑）
+            // 参数行：先判行尾 [重置]，再判行（进入编辑）；仅可视区内的行可点击（与渲染滚动一致）
             List<ShieldValueDefs.ParamDef> defs = ShieldValueDefs.getParams(shieldValuesType);
-            int rowY = overlayY + MECHANIC_VALUES_PARAMS_TOP;
+            int rowY = listTop;
             if (defs.isEmpty()) {
                 // 与渲染一致：无参数类型提示占一行，穿盾行落到下一行
                 rowY += MECHANIC_VALUES_ROW_H;
             }
-            for (int idx = 0; idx < defs.size(); idx++) {
+            for (int idx = shieldValuesScrollRow; idx < defs.size(); idx++) {
                 ShieldValueDefs.ParamDef def = defs.get(idx);
+                if (rowY + MECHANIC_VALUES_ROW_H > listBottom) break;
                 if (mouseY >= rowY && mouseY < rowY + MECHANIC_VALUES_ROW_H) {
                     if (shieldValuesOverridden.contains(def.key())) {
                         String resetText = Component.translatable("screen.gytrinket.shield_value_reset_btn").getString();
@@ -2217,8 +2225,9 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
                 rowY += MECHANIC_VALUES_ROW_H;
             }
 
-            // 穿盾开关行
-            if (mouseY >= rowY && mouseY < rowY + MECHANIC_VALUES_ROW_H) {
+            // 穿盾开关行：列表末行，滚出可视区不可点击
+            if (rowY + MECHANIC_VALUES_ROW_H <= listBottom
+                    && mouseY >= rowY && mouseY < rowY + MECHANIC_VALUES_ROW_H) {
                 shieldValuesPierce = !shieldValuesPierce;
             }
             return true;
@@ -2319,8 +2328,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
                 else if (selectedItemIndex > dragFromIndex && selectedItemIndex <= insertIdx) selectedItemIndex--;
                 else if (selectedItemIndex < dragFromIndex && selectedItemIndex >= insertIdx) selectedItemIndex++;
 
-                PacketDistributor.sendToServer(
-                    new ConfigReorderPayload(dragFromIndex, dragTargetIndex));
+                // 拖拽排序仅作用于本地会话显示（覆写层无顺序语义，服务端广播时恢复权威顺序）
             }
             isDraggingItem = false;
             dragFromIndex = -1;
@@ -2329,6 +2337,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
         }
         mechanicScrollBar.mouseReleased();
         mechanicValuesScrollBar.mouseReleased();
+        shieldValuesScrollBar.mouseReleased();
         scrollBar.mouseReleased();
         return super.mouseReleased(mouseX, mouseY, button);
     }
@@ -2343,6 +2352,16 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
             int totalPx = MechanicValueDefs.getParams(mechanicValuesSet).size() * MECHANIC_VALUES_ROW_H;
             mechanicValuesScrollBar.mouseDragged(mouseY, listY, listHeight, visibleRows * MECHANIC_VALUES_ROW_H, totalPx);
             mechanicValuesScrollRow = mechanicValuesScrollBar.getScrollOffset() / MECHANIC_VALUES_ROW_H;
+            return true;
+        }
+        if (shieldValuesScrollBar.isDraggingScrollbar() && isEditingShieldValues) {
+            int overlayY = panelY + panelHeight / 2 - MECHANIC_VALUES_OVERLAY_H / 2;
+            int listY = overlayY + MECHANIC_VALUES_PARAMS_TOP;
+            int listHeight = MECHANIC_VALUES_OVERLAY_H - MECHANIC_VALUES_PARAMS_TOP - MECHANIC_VALUES_LIST_BOTTOM_MARGIN;
+            int visibleRows = Math.max(1, listHeight / MECHANIC_VALUES_ROW_H);
+            int totalPx = shieldValuesTotalRows() * MECHANIC_VALUES_ROW_H;
+            shieldValuesScrollBar.mouseDragged(mouseY, listY, listHeight, visibleRows * MECHANIC_VALUES_ROW_H, totalPx);
+            shieldValuesScrollRow = shieldValuesScrollBar.getScrollOffset() / MECHANIC_VALUES_ROW_H;
             return true;
         }
         if (mechanicScrollBar.isDraggingScrollbar() && isSelectingMechanic) {
@@ -2416,7 +2435,6 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
             isDeletingAttr = false;
             isSelectingShieldTypes = false;
             shieldTypeSelection.clear();
-            shieldTypeCompat.clear();
             closeShieldValuesEditor();
             isSelectingMechanic = false;
         }

@@ -1,0 +1,10 @@
+{
+    "items":  {
+                  "gytrinket:charged_shield_module":  {
+                                                          "mechanic":  true,
+                                                          "sets":  [
+                                                                       "charged_shield_items"
+                                                                   ]
+                                                      }
+              }
+}

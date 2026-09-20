@@ -1,0 +1,10 @@
+{
+    "items":  {
+                  "gytrinket:binary_protocol_module":  {
+                                                           "mechanic":  true,
+                                                           "sets":  [
+                                                                        "binary_protocol_items"
+                                                                    ]
+                                                       }
+              }
+}

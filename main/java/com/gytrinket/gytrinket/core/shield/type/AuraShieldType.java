@@ -33,6 +33,14 @@ public class AuraShieldType implements IShieldType {
         return playerUUID + "|" + itemId;
     }
 
+    /**
+     * 实例级激活条件：该物品的光环护盾池实例存在且有池量。
+     * 实例破裂（池量归零）或实例不存在（物品卸下/禁用）→ 效果关闭
+     */
+    private static boolean isInstancePoolEmpty(UUID playerUUID, String itemId) {
+        return ShieldManager.isInstancePoolEmpty(playerUUID, itemId, "aura");
+    }
+
     private static class AuraBurnSource implements IBurnSource {
         private final Player player;
 
@@ -103,6 +111,13 @@ public class AuraShieldType implements IShieldType {
 
         double currentShield = ShieldManager.getCurrentShield(uuid);
         if (currentShield <= 0) {
+            AURA_DAMAGING.put(itemKey, false);
+            TICK_COUNTERS.remove(itemKey);
+            return;
+        }
+
+        // [实例级闸门] 本实例护盾池量归零或实例不存在时：光环失活（破裂实例不再攻击敌人、不再经全局护盾扣费）
+        if (isInstancePoolEmpty(uuid, itemId)) {
             AURA_DAMAGING.put(itemKey, false);
             TICK_COUNTERS.remove(itemKey);
             return;

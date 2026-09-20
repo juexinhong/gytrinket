@@ -1,0 +1,13 @@
+{
+  "items": {
+    "gytrinket:regen_shield_module": {
+      "mechanic": true,
+      "sets": [
+        "shield_natural_recovery_items"
+      ],
+      "attributes": {
+        "recovery_efficiency_percent": 0.1
+      }
+    }
+  }
+}

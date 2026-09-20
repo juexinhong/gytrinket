@@ -1,0 +1,13 @@
+{
+  "items": {
+    "gytrinket:core_armor_module": {
+      "attributes": {
+        "shield_base": 1.0,
+        "player_health": 1.0,
+        "shield_self_damage_reduction": -0.2,
+        "player_self_damage_reduction": -0.2,
+        "adaptive_armor_duration": 0.2
+      }
+    }
+  }
+}

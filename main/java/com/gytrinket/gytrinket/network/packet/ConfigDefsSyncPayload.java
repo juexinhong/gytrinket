@@ -68,11 +68,6 @@ public record ConfigDefsSyncPayload(Map<String, DefsManager.SpecialMechanicOverr
                         for (int i = 0; i < typesTag.size(); i++) {
                             types.add(typesTag.getString(i));
                         }
-                        List<String> exclusive = new ArrayList<>();
-                        ListTag exTag = def.getList("exclusiveTypes", 8);
-                        for (int i = 0; i < exTag.size(); i++) {
-                            exclusive.add(exTag.getString(i));
-                        }
                         // 物品级护盾数值覆盖：type -> param -> value（每物品实例独立，无叠/单语义）
                         Map<String, Map<String, DefsManager.ParamValue>> values = new HashMap<>();
                         CompoundTag valuesTag = def.getCompound("values");
@@ -84,7 +79,7 @@ public record ConfigDefsSyncPayload(Map<String, DefsManager.SpecialMechanicOverr
                             }
                             values.put(typeName, params);
                         }
-                        st.put(key, new DefsManager.ShieldTypeOverride(types, exclusive, values));
+                        st.put(key, new DefsManager.ShieldTypeOverride(types, values));
                     }
                 }
             }
@@ -129,11 +124,6 @@ public record ConfigDefsSyncPayload(Map<String, DefsManager.SpecialMechanicOverr
                     types.add(net.minecraft.nbt.StringTag.valueOf(t));
                 }
                 def.put("types", types);
-                ListTag exclusive = new ListTag();
-                for (String t : e.getValue().exclusiveTypes()) {
-                    exclusive.add(net.minecraft.nbt.StringTag.valueOf(t));
-                }
-                def.put("exclusiveTypes", exclusive);
                 // 物品级护盾数值覆盖：type -> param -> ParamValue（values 数值 + stackables 平行布尔）
                 CompoundTag valuesTag = new CompoundTag();
                 CompoundTag stackablesTag = new CompoundTag();

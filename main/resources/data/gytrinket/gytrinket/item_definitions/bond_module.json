@@ -1,0 +1,13 @@
+{
+  "items": {
+    "gytrinket:bond_module": {
+      "mechanic": true,
+      "sets": [
+        "adaptive_armor_shield_effect_items"
+      ],
+      "attributes": {
+        "adaptive_armor_duration": 0.2
+      }
+    }
+  }
+}

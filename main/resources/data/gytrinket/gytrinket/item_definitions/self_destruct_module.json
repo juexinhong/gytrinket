@@ -1,0 +1,10 @@
+{
+    "items":  {
+                  "gytrinket:self_destruct_module":  {
+                                                         "mechanic":  true,
+                                                         "sets":  [
+                                                                      "self_destruct_items"
+                                                                  ]
+                                                     }
+              }
+}

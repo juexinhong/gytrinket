@@ -1,0 +1,15 @@
+{
+  "items": {
+    "gytrinket:grudge_module": {
+      "mechanic": true,
+      "sets": [
+        "grudge_items"
+      ],
+      "attributes": {
+        "player_health_percent": 0.05,
+        "attack_damage_percent": 0.05,
+        "movement_speed_independent": -0.1
+      }
+    }
+  }
+}

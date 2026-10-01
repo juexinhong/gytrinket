@@ -1,0 +1,10 @@
+{
+    "items":  {
+                  "gytrinket:nano_regen_module":  {
+                                                      "mechanic":  true,
+                                                      "sets":  [
+                                                                   "wingman_nano_regen_module_items"
+                                                               ]
+                                                  }
+              }
+}

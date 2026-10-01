@@ -34,7 +34,7 @@ public class IgniteManager {
 
     /** 实体点燃数据映射（目标UUID -> 点燃数据列表） */
     private static final Map<UUID, List<IgniteData>> ENTITY_IGNITE_DATA = new HashMap<>();
-    /** 点燃伤害施加中窗口（目标UUID -> 施加中的点燃数据），供减伤后致死归属事件解析 */
+    /** 点燃伤害施加中窗口（目标UUID -> 施加中的点燃数据），供斩杀死效预估解析归属 */
     private static final Map<UUID, IgniteData> IGNITE_APPLYING = new HashMap<>();
     /** 上次处理的游戏刻（用于防止同一刻重复处理） */
     private static long lastProcessedTick = -1;
@@ -273,12 +273,12 @@ public class IgniteManager {
 
         float damage = igniteData.getDamagePerTick();
 
-        // 归属不再由原始伤害预判（原始伤害会被护甲/免伤削减导致误判）：
-        // 施加时不带攻击者（避免非致死时触发仇恨），
-        // 由 ExecuteAttributionHandler 按所有减伤流程后的实际致死结果归属
+        // 施加时不带攻击者（避免非致死时触发仇恨）：
+        // 预估致死时由 ExecuteDamageHandler 取消原伤害并改用归属玩家的
+        // 斩杀伤害源（execute_damage）完成最后一击
         com.gy_mod.gy_trinket.core.modifier.player.knockback.KnockbackManager.markNoKnockback(target.getUUID());
 
-        // 施加期间打标记，供 ExecuteAttributionHandler 解析点燃归属发起者
+        // 施加期间打标记，供 ExecuteDamageHandler 解析点燃归属发起者
         IGNITE_APPLYING.put(target.getUUID(), igniteData);
         try {
             target.invulnerableTime = 0;
@@ -292,7 +292,7 @@ public class IgniteManager {
     }
 
     /**
-     * 获取正在施加的点燃伤害的归属发起者（供减伤后致死归属事件解析）
+     * 获取正在施加的点燃伤害的归属发起者（供斩杀死效预估解析归属）
      */
     public static Entity getCurrentIgniteInitiator(LivingEntity target) {
         IgniteData igniteData = IGNITE_APPLYING.get(target.getUUID());

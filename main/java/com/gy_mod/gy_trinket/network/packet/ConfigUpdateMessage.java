@@ -1,14 +1,11 @@
 package com.gy_mod.gy_trinket.network.packet;
 
-import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
-import com.gy_mod.gy_trinket.core.attribute.ItemAttributeConfig;
+import com.gy_mod.gy_trinket.core.defs.DefsManager;
 import com.gy_mod.gy_trinket.network.NetworkHandler;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.function.Supplier;
 
 public class ConfigUpdateMessage {
@@ -43,16 +40,8 @@ public class ConfigUpdateMessage {
             if (player == null) return;
             if (!player.hasPermissions(2)) return;
 
-            ItemAttributeConfig config = AttributeManager.getItemAttributes(itemId);
-            if (config != null) {
-                config.addAttribute(attributeName, value);
-            } else {
-                Map<String, Double> attrs = new HashMap<>();
-                attrs.put(attributeName, value);
-                AttributeManager.registerItemAttributes(itemId, attrs);
-            }
-
-            Config.saveItemAttributesConfig();
+            // 属性写回覆写层（权威 + 覆写合并基线上 upsert，立即落盘生效）
+            DefsManager.updateItemAttribute(player.server, itemId, attributeName, value);
 
             for (var p : player.server.getPlayerList().getPlayers()) {
                 AttributeManager.recalculateAndCachePlayerAttributes(p);

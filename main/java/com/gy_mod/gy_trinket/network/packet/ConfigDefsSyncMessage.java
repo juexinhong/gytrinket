@@ -1,5 +1,6 @@
 package com.gy_mod.gy_trinket.network.packet;
 
+import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
 import com.gy_mod.gy_trinket.core.defs.DefsManager;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
@@ -8,7 +9,7 @@ import java.util.*;
 import java.util.function.Supplier;
 
 /**
- * S->C 完整定义同步：护盾类型、特殊机制物品、物品->生效机制集合、提示规则、运行时覆盖层。
+ * S->C 完整定义同步：护盾类型、特殊机制物品、物品->生效机制集合、提示规则、运行时覆盖层、护盾类型参数默认值、物品属性。
  * 客户端据此替代数据包读取（专用服务器下客户端无服务端数据包）。
  */
 public class ConfigDefsSyncMessage {
@@ -18,19 +19,25 @@ public class ConfigDefsSyncMessage {
     private final List<DefsManager.TooltipRuleDef> tooltipRules;
     private final Map<String, DefsManager.SpecialMechanicOverride> specialMechanicOverrides;
     private final Map<String, DefsManager.ShieldTypeOverride> shieldTypeOverrides;
+    private final Map<String, Map<String, Double>> shieldTypeParamDefaults;
+    private final Map<String, Map<String, Double>> attributes;
 
     public ConfigDefsSyncMessage(Map<String, Boolean> shieldTypes,
                                  List<String> specialMechanicItems,
                                  Map<String, List<String>> itemToSets,
                                  List<DefsManager.TooltipRuleDef> tooltipRules,
                                  Map<String, DefsManager.SpecialMechanicOverride> specialMechanicOverrides,
-                                 Map<String, DefsManager.ShieldTypeOverride> shieldTypeOverrides) {
+                                 Map<String, DefsManager.ShieldTypeOverride> shieldTypeOverrides,
+                                 Map<String, Map<String, Double>> shieldTypeParamDefaults,
+                                 Map<String, Map<String, Double>> attributes) {
         this.shieldTypes = shieldTypes;
         this.specialMechanicItems = specialMechanicItems;
         this.itemToSets = itemToSets;
         this.tooltipRules = tooltipRules;
         this.specialMechanicOverrides = specialMechanicOverrides;
         this.shieldTypeOverrides = shieldTypeOverrides;
+        this.shieldTypeParamDefaults = shieldTypeParamDefaults;
+        this.attributes = attributes;
     }
 
     public void toBytes(FriendlyByteBuf buf) {
@@ -108,11 +115,6 @@ public class ConfigDefsSyncMessage {
             for (String s : types) {
                 buf.writeUtf(s);
             }
-            List<String> excl = e.getValue().exclusiveTypes();
-            buf.writeVarInt(excl.size());
-            for (String s : excl) {
-                buf.writeUtf(s);
-            }
             // values 段：护盾类型 -> (paramKey -> 覆盖值)；护盾类型数值为"每物品实例独立"，无叠/单语义
             Map<String, Map<String, Double>> values = e.getValue().values();
             int svn = values == null ? 0 : values.size();
@@ -129,6 +131,34 @@ public class ConfigDefsSyncMessage {
                             buf.writeDouble(pe.getValue());
                         }
                     }
+                }
+            }
+        }
+        // shieldTypeParamDefaults：护盾类型 -> (paramKey -> 默认值)（shield_types/*.json 的 shieldValues 段）
+        buf.writeVarInt(shieldTypeParamDefaults.size());
+        for (var e : shieldTypeParamDefaults.entrySet()) {
+            buf.writeUtf(e.getKey());
+            Map<String, Double> defaults = e.getValue();
+            int dn = defaults == null ? 0 : defaults.size();
+            buf.writeVarInt(dn);
+            if (defaults != null) {
+                for (var de : defaults.entrySet()) {
+                    buf.writeUtf(de.getKey());
+                    buf.writeDouble(de.getValue());
+                }
+            }
+        }
+        // attributes：物品 id -> (属性名 -> 数值)（覆写层/权威 item_definitions 生效属性）
+        buf.writeVarInt(attributes.size());
+        for (var e : attributes.entrySet()) {
+            buf.writeUtf(e.getKey());
+            Map<String, Double> attrs = e.getValue();
+            int an = attrs == null ? 0 : attrs.size();
+            buf.writeVarInt(an);
+            if (attrs != null) {
+                for (var ae : attrs.entrySet()) {
+                    buf.writeUtf(ae.getKey());
+                    buf.writeDouble(ae.getValue());
                 }
             }
         }
@@ -210,11 +240,6 @@ public class ConfigDefsSyncMessage {
             for (int j = 0; j < m; j++) {
                 types.add(buf.readUtf());
             }
-            int x = buf.readVarInt();
-            List<String> excl = new ArrayList<>();
-            for (int j = 0; j < x; j++) {
-                excl.add(buf.readUtf());
-            }
             // values 段：护盾类型 -> (paramKey -> 覆盖值)；护盾类型数值为"每物品实例独立"，无叠/单语义
             Map<String, Map<String, Double>> shieldValues = new HashMap<>();
             int svn = buf.readVarInt();
@@ -227,7 +252,29 @@ public class ConfigDefsSyncMessage {
                 }
                 shieldValues.put(typeName, params);
             }
-            this.shieldTypeOverrides.put(k, new DefsManager.ShieldTypeOverride(types, excl, shieldValues));
+            this.shieldTypeOverrides.put(k, new DefsManager.ShieldTypeOverride(types, shieldValues));
+        }
+        n = buf.readVarInt();
+        this.shieldTypeParamDefaults = new HashMap<>();
+        for (int i = 0; i < n; i++) {
+            String typeName = buf.readUtf();
+            int pn = buf.readVarInt();
+            Map<String, Double> params = new HashMap<>();
+            for (int y = 0; y < pn; y++) {
+                params.put(buf.readUtf(), buf.readDouble());
+            }
+            this.shieldTypeParamDefaults.put(typeName, params);
+        }
+        n = buf.readVarInt();
+        this.attributes = new HashMap<>();
+        for (int i = 0; i < n; i++) {
+            String itemId = buf.readUtf();
+            int an = buf.readVarInt();
+            Map<String, Double> attrs = new HashMap<>();
+            for (int y = 0; y < an; y++) {
+                attrs.put(buf.readUtf(), buf.readDouble());
+            }
+            this.attributes.put(itemId, attrs);
         }
     }
 
@@ -235,7 +282,12 @@ public class ConfigDefsSyncMessage {
         NetworkEvent.Context context = contextSupplier.get();
         if (context.getSender() == null) {
             // 客户端接收
-            DefsManager.applyClientSync(shieldTypes, specialMechanicItems, itemToSets, tooltipRules, specialMechanicOverrides, shieldTypeOverrides);
+            DefsManager.applyClientSync(shieldTypes, specialMechanicItems, itemToSets, tooltipRules, specialMechanicOverrides, shieldTypeOverrides, shieldTypeParamDefaults);
+            if (attributes != null && !attributes.isEmpty()) {
+                // 属性静态表：仅在有数据时重建，避免空推送清空配置界面回包已填充的表
+                AttributeManager.clearAllItemAttributes();
+                attributes.forEach((itemId, attrs) -> AttributeManager.registerItemAttributes(itemId, attrs));
+            }
         }
         context.setPacketHandled(true);
     }

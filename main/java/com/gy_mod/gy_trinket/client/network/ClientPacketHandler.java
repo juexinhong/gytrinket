@@ -1,6 +1,5 @@
 package com.gy_mod.gy_trinket.client.network;
 
-import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.config.ConfigValueRegistry;
 import com.gy_mod.gy_trinket.client.screen.AbstractPanelScreen;
 import com.gy_mod.gy_trinket.client.screen.ConfigEntriesScreen;
@@ -94,7 +93,6 @@ public final class ClientPacketHandler {
 
     public static void handleResponseConfigData(ResponseConfigDataMessage msg) {
         syncLocalAttributeManager(msg.itemConfigData);
-        Config.saveItemAttributesConfig();
 
         Minecraft mc = Minecraft.getInstance();
         Screen currentScreen = mc.screen;

@@ -1,0 +1,10 @@
+{
+  "items": {
+    "gytrinket:shield_effect_boost_module": {
+      "attributes": {
+        "shield_effect_percent": 0.1,
+        "shield_effect_radius": 0.25
+      }
+    }
+  }
+}

@@ -5,7 +5,6 @@ import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.config.ConfigValueRegistry;
 import com.gy_mod.gy_trinket.core.defs.DefsManager;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
-import com.gy_mod.gy_trinket.core.attribute.ItemAttributeConfig;
 import com.gy_mod.gy_trinket.core.level.ModLevelManager;
 import com.gy_mod.gy_trinket.core.random_build.RandomBuildManager;
 import com.gy_mod.gy_trinket.core.shield.cooldown.ShieldCooldownManager;
@@ -29,6 +28,7 @@ import net.minecraftforge.network.simple.SimpleChannel;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 public class NetworkHandler {
     private static final String PROTOCOL_VERSION = "1";
@@ -63,7 +63,6 @@ public class NetworkHandler {
         INSTANCE.registerMessage(messageId++, ConfigDeleteItemMessage.class, ConfigDeleteItemMessage::toBytes, ConfigDeleteItemMessage::new, ConfigDeleteItemMessage::handle);
         INSTANCE.registerMessage(messageId++, ConfigAddItemMessage.class, ConfigAddItemMessage::toBytes, ConfigAddItemMessage::new, ConfigAddItemMessage::handle);
         INSTANCE.registerMessage(messageId++, ConfigRemoveAttrMessage.class, ConfigRemoveAttrMessage::toBytes, ConfigRemoveAttrMessage::new, ConfigRemoveAttrMessage::handle);
-        INSTANCE.registerMessage(messageId++, ConfigReorderMessage.class, ConfigReorderMessage::toBytes, ConfigReorderMessage::new, ConfigReorderMessage::handle);
         INSTANCE.registerMessage(messageId++, AttackStateMessage.class, AttackStateMessage::toBytes, AttackStateMessage::new, AttackStateMessage::handle);
         INSTANCE.registerMessage(messageId++, ChargedAttackMessage.class, ChargedAttackMessage::toBytes, ChargedAttackMessage::new, ChargedAttackMessage::handle);
         INSTANCE.registerMessage(messageId++, ItemUseChargeMessage.class, ItemUseChargeMessage::toBytes, ItemUseChargeMessage::new, ItemUseChargeMessage::handle);
@@ -189,8 +188,16 @@ public class NetworkHandler {
             }
         }
 
+        // 护盾实例列表（ShieldInstance 镜像，客户端 HUD 顶条按焦点实例显示池量/冷却）
+        java.util.List<SyncShieldMessage.InstanceShieldData> instances = new ArrayList<>();
+        for (com.gy_mod.gy_trinket.core.shield.ShieldInstance inst : com.gy_mod.gy_trinket.core.shield.ShieldManager.getInstances(uuid)) {
+            instances.add(new SyncShieldMessage.InstanceShieldData(
+                    inst.getItemId(), inst.getShieldTypeName() == null ? "" : inst.getShieldTypeName(),
+                    inst.getCurrentShield(), inst.getMaxShield(), inst.isBroken(),
+                    inst.getCooldownProgress(), inst.getMaxCooldown()));
+        }
         return new SyncShieldMessage(currentShield, maxShield, currentCooldown, maxCooldown, adaptiveArmorReduction,
-            protectedEntityIds, new ArrayList<>(byItem.values()));
+            protectedEntityIds, new ArrayList<>(byItem.values()), instances);
     }
 
     public static void sendShieldCooldownRequestToServer() {
@@ -466,7 +473,9 @@ public class NetworkHandler {
             DefsManager.getServerAllEffectiveSets(),
             DefsManager.getServerTooltipRules(),
             DefsManager.getServerSpecialMechanicOverrides(),
-            DefsManager.getServerShieldTypeOverrides()
+            DefsManager.getServerShieldTypeOverrides(),
+            DefsManager.getServerShieldTypeParamDefaultDoubles(),
+            DefsManager.collectEffectiveItemAttributes()
         );
     }
 
@@ -489,18 +498,25 @@ public class NetworkHandler {
     }
 
     private static ResponseConfigDataMessage buildConfigDataMessage(boolean openScreen) {
+        // 物品列表 = 声明属性的物品（覆写层 + 权威定义） ∪ 注册了特殊机制的物品 ∪ 定义了护盾类型的物品
+        java.util.LinkedHashSet<String> itemIds = new java.util.LinkedHashSet<>(DefsManager.getEffectiveItemAttributeItemIds());
+        itemIds.addAll(DefsManager.getSpecialMechanicItems());
+        itemIds.addAll(DefsManager.getItemShieldTypes().keySet());
+
         ListTag itemConfigList = new ListTag();
-        for (String itemId : AttributeManager.getAllRegisteredItemAttributes()) {
-            ItemAttributeConfig config = AttributeManager.getItemAttributes(itemId);
-            if (config == null) continue;
+        for (String itemId : itemIds) {
             CompoundTag itemTag = new CompoundTag();
             itemTag.putString("itemId", itemId);
             ListTag attrsTag = new ListTag();
-            for (var entry : config.getAttributes().entrySet()) {
-                CompoundTag attrTag = new CompoundTag();
-                attrTag.putString("name", entry.getKey());
-                attrTag.putDouble("value", entry.getValue());
-                attrsTag.add(attrTag);
+            // 有效属性 = 权威定义 + 覆写层合并（服务端权威数据源，客户端 tooltip/UI 显示链）
+            Map<String, DefsManager.ParamValue> effective = DefsManager.getEffectiveItemAttributes(itemId);
+            if (effective != null) {
+                for (var entry : effective.entrySet()) {
+                    CompoundTag attrTag = new CompoundTag();
+                    attrTag.putString("name", entry.getKey());
+                    attrTag.putDouble("value", entry.getValue().value());
+                    attrsTag.add(attrTag);
+                }
             }
             itemTag.put("attributes", attrsTag);
             itemConfigList.add(itemTag);

@@ -1,13 +1,11 @@
 package com.gy_mod.gy_trinket.network.packet;
 
-import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
+import com.gy_mod.gy_trinket.core.defs.DefsManager;
 import com.gy_mod.gy_trinket.network.NetworkHandler;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.function.Supplier;
 
 public class ConfigAddItemMessage {
@@ -35,10 +33,11 @@ public class ConfigAddItemMessage {
             if (!player.hasPermissions(2)) return;
 
             if (itemId != null && !itemId.isEmpty() && !itemId.equals("minecraft:air")) {
-                if (!AttributeManager.isItemAttributeRegistered(itemId)) {
-                    Map<String, Double> attrs = new HashMap<>();
-                    AttributeManager.registerItemAttributes(itemId, attrs);
-                    Config.saveItemAttributesConfig();
+                // 添加物品 = 确保覆写层条目存在（空属性接管；已有权威/覆写属性时幂等忽略）
+                DefsManager.ensureItemOverrideEntry(player.server, itemId);
+
+                for (var p : player.server.getPlayerList().getPlayers()) {
+                    AttributeManager.recalculateAndCachePlayerAttributes(p);
                 }
             }
 

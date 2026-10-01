@@ -1,0 +1,10 @@
+{
+    "items":  {
+                  "gytrinket:ghost_fuselage":  {
+                                                   "mechanic":  true,
+                                                   "sets":  [
+                                                                "ghost_fuselage_items"
+                                                            ]
+                                               }
+              }
+}

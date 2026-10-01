@@ -1,7 +1,7 @@
 package com.gy_mod.gy_trinket.network.packet;
 
-import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
+import com.gy_mod.gy_trinket.core.defs.DefsManager;
 import com.gy_mod.gy_trinket.network.NetworkHandler;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
@@ -32,9 +32,8 @@ public class ConfigDeleteItemMessage {
             if (player == null) return;
             if (!player.hasPermissions(2)) return;
 
-            AttributeManager.removeItemAttributes(itemId);
-
-            Config.saveItemAttributesConfig();
+            // 删除物品属性 = 显式空接管（覆盖为无属性；物品保留在列表，机制/护盾声明不受影响）
+            DefsManager.clearItemAttributes(player.server, itemId);
 
             for (var p : player.server.getPlayerList().getPlayers()) {
                 AttributeManager.recalculateAndCachePlayerAttributes(p);

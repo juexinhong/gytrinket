@@ -1,0 +1,16 @@
+{
+  "items": {
+    "gytrinket:mothership_body": {
+      "mechanic": true,
+      "sets": [
+        "swarm_module_items"
+      ],
+      "attributes": {
+        "shield_percent": 0.15,
+        "player_health_percent": 0.15,
+        "movement_speed_percent": 0.4,
+        "knockback_resistance": 0.2
+      }
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "items": {
+    "gytrinket:aerodynamic_framework_module": {
+      "attributes": {
+        "movement_speed_percent": 0.25,
+        "player_health_independent": -0.1,
+        "player_knockback_percent": -0.2,
+        "knockback_resistance": -0.2
+      }
+    }
+  }
+}

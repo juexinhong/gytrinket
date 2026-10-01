@@ -2,7 +2,7 @@ package com.gy_mod.gy_trinket.client.projectile;
 
 import com.gy_mod.gy_trinket.client.storage.ClientPlayerStoreManager;
 import com.gy_mod.gy_trinket.compat.CuriosCompat;
-import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
+import com.gy_mod.gy_trinket.client.ClientItemAttributes;
 import com.gy_mod.gy_trinket.core.attribute.ItemAttributeConfig;
 import com.gy_mod.gy_trinket.core.projectile.ProjectileSizeManager;
 import net.minecraft.client.player.LocalPlayer;
@@ -117,7 +117,7 @@ public class ClientProjectileScaleCache {
         if (!processed.add(itemId)) {
             return 0.0;
         }
-        ItemAttributeConfig config = AttributeManager.getItemAttributes(itemId);
+        ItemAttributeConfig config = ClientItemAttributes.getItemAttributes(itemId);
         if (config == null) {
             return 0.0;
         }

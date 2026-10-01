@@ -1,0 +1,10 @@
+{
+    "items":  {
+                  "gytrinket:wide_protocol_module":  {
+                                                         "mechanic":  true,
+                                                         "sets":  [
+                                                                      "near_death_protection_items"
+                                                                  ]
+                                                     }
+              }
+}

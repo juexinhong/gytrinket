@@ -1,0 +1,13 @@
+{
+  "items": {
+    "gytrinket:evolution_module": {
+      "mechanic": true,
+      "sets": [
+        "wingman_evolution_module_items"
+      ],
+      "attributes": {
+        "construct_wingman_explosive_count_base": 1
+      }
+    }
+  }
+}

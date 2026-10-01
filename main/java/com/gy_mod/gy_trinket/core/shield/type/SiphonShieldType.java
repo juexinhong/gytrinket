@@ -35,6 +35,14 @@ public class SiphonShieldType implements IShieldType {
         return playerUUID + "|" + itemId;
     }
 
+    /**
+     * 实例级激活条件：该物品的虹吸护盾池实例存在且有池量。
+     * 实例破裂（池量归零）或实例不存在（物品卸下/禁用）→ 效果关闭
+     */
+    private static boolean isInstancePoolEmpty(UUID playerUUID, String itemId) {
+        return ShieldManager.isInstancePoolEmpty(playerUUID, itemId, "siphon");
+    }
+
     /** 虹吸伤害归属引用：玩家 UUID + 提供虹吸的物品 id（数值按该物品实例取） */
     public record SiphonTargetRef(UUID playerUUID, String itemId) {}
 
@@ -93,6 +101,17 @@ public class SiphonShieldType implements IShieldType {
         String itemId = BuiltInRegistries.ITEM.getKey(source.getItem()).toString();
         String key = instanceKey(uuid, itemId);
         MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+
+        // [实例级闸门] 本实例护盾池量归零或实例不存在时：清空实例层数并重算聚合属性（破裂实例不再虹吸、层数加成关闭）
+        if (isInstancePoolEmpty(uuid, itemId)) {
+            SiphonData removed = PLAYER_SIPHON_DATA.remove(key);
+            if (removed != null && removed.stacks > 0) {
+                updateSiphonAttributes(uuid);
+                syncSiphonStacksToClient(player, 0);
+            }
+            return;
+        }
+
         SiphonData data = PLAYER_SIPHON_DATA.computeIfAbsent(key, k -> new SiphonData());
 
         data.tickCounter++;
@@ -151,9 +170,9 @@ public class SiphonShieldType implements IShieldType {
                 KnockbackManager.markNoKnockback(target.getUUID());
                 target.invulnerableTime = 0;
 
-                // 归属不再由伤害前预判（原始伤害会被护甲/免伤削减导致误判）：
-                // 伤害源恒不带玩家，致死归属由 ExecuteAttributionHandler
-                // 在施加窗口内按 LivingDeathEvent 实际致死结果判定
+                // 伤害源恒不带玩家（避免非致死时对玩家触发仇恨）：
+                // 预估致死时由 ExecuteDamageHandler 取消原伤害并改用归属玩家的
+                // 斩杀伤害源（execute_damage）完成最后一击
                 DamageSource siphonSource = ModDamageTypes.getSiphonDamageSource(player.level(), null);
                 DamageAttributionWindow.mark(target, player);
 

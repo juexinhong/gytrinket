@@ -1,0 +1,13 @@
+{
+  "items": {
+    "gytrinket:explosive_shield_module": {
+      "mechanic": true,
+      "sets": [
+        "explosive_shield_items"
+      ],
+      "attributes": {
+        "shield_percent": 0.05
+      }
+    }
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "items": {
+    "gytrinket:defense_drone_module": {
+      "mechanic": true,
+      "sets": [
+        "defense_drone_module_items",
+        "guard_array_required_items"
+      ],
+      "attributes": {
+        "construct_drone_defense_health_percent": 1.5
+      }
+    }
+  }
+}

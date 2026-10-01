@@ -1,6 +1,5 @@
 package com.gy_mod.gy_trinket.network.packet;
 
-import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
 import com.gy_mod.gy_trinket.core.defs.DefsManager;
 import com.gy_mod.gy_trinket.network.NetworkHandler;
@@ -27,7 +26,6 @@ public class ConfigResetMessage {
             DefsManager.resetOverrides(player.server);
 
             AttributeManager.resetToDefaults();
-            Config.resetItemAttributesConfig();
 
             for (var p : player.server.getPlayerList().getPlayers()) {
                 AttributeManager.recalculateAndCachePlayerAttributes(p);

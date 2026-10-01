@@ -112,6 +112,11 @@ public class ReflectShieldType implements IShieldType {
             return;
         }
 
+        // [实例级闸门] 该实例护盾池量归零或实例不存在时：不记录待反射弹射物（破裂实例不再反射）
+        if (ShieldManager.isInstancePoolEmpty(player.getUUID(), itemId, "reflect")) {
+            return;
+        }
+
         if (projectile.getOwner() == player) {
             return;
         }

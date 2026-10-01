@@ -1,7 +1,7 @@
 package com.gy_mod.gy_trinket.core.attribute;
 
-import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.core.TickScheduler;
+import com.gy_mod.gy_trinket.core.defs.DefsManager;
 import com.gy_mod.gy_trinket.core.shield.DisableSystem;
 import com.gy_mod.gy_trinket.gytrinket;
 import com.gy_mod.gy_trinket.event.AttributeDynamicChangeEvent;
@@ -191,14 +191,15 @@ public class AttributeManager {
         }
 
         // 已装备物品 = 光点核心存储 + Curios 饰品栏（光点核心内容扩展）
+        // 属性数据源 = 统一物品定义（覆写层优先 → 权威 item_definitions），同 id 装备多件只生效一份
         for (String itemId : PlayerStoreUtils.getAllEquippedItemIds(playerUUID)) {
-            ItemAttributeConfig itemConfig = ITEM_ATTRIBUTES.get(itemId);
-            if (itemConfig != null) {
+            Map<String, DefsManager.ParamValue> itemAttrs = DefsManager.getEffectiveItemAttributes(itemId);
+            if (itemAttrs != null && !itemAttrs.isEmpty()) {
                 if (DisableSystem.isItemDisabled(playerUUID, itemId)) {
                 } else if (processedItems.contains(itemId)) {
                 } else {
                     processedItems.add(itemId);
-                    applyItemAttributes(itemConfig, staticAttrs);
+                    applyItemAttributes(itemAttrs, staticAttrs);
                 }
             }
         }
@@ -218,12 +219,11 @@ public class AttributeManager {
         return result;
     }
 
-    private static void applyItemAttributes(ItemAttributeConfig itemConfig, Map<String, AttributeValueSet> staticAttrs) {
-        Map<String, Double> attributes = itemConfig.getAttributes();
-
-        for (Map.Entry<String, Double> entry : attributes.entrySet()) {
+    /** 将物品属性贡献累加进玩家静态属性集（仅已注册属性生效） */
+    private static void applyItemAttributes(Map<String, DefsManager.ParamValue> attributes, Map<String, AttributeValueSet> staticAttrs) {
+        for (Map.Entry<String, DefsManager.ParamValue> entry : attributes.entrySet()) {
             String attrName = entry.getKey();
-            double value = entry.getValue();
+            double value = entry.getValue().value();
 
             AttributeDefinition def = ATTRIBUTE_DEFINITIONS.get(attrName);
             if (def != null) {
@@ -471,6 +471,53 @@ public class AttributeManager {
     }
 
     /**
+     * 计算属性组的乘数值：PERCENT 求和 × INDEPENDENT 连乘（静态+动态），不含 BASE 项。
+     * 组不存在时返回 1.0（中性乘数）。
+     * <p>
+     * 用于"基础值来自物品定义、修正来自属性组"的物品级参数缩放
+     * （如护盾实例 shield_base × shield 组乘数）。
+     */
+    public static double getGroupMultiplier(UUID playerUUID, String groupName) {
+        List<String> groupAttributes = ATTRIBUTE_GROUPS.get(groupName);
+        if (groupAttributes == null || groupAttributes.isEmpty()) {
+            return 1.0;
+        }
+
+        double percentSum = 0;
+        double independentProduct = 1.0;
+
+        double dynamicPercentSum = 0;
+        double dynamicIndependentProduct = 1.0;
+
+        Map<String, AttributeValueSet> staticAttrs = PLAYER_STATIC_ATTRIBUTES.get(playerUUID);
+        Map<String, AttributeValueSet> dynamicAttrs = PLAYER_DYNAMIC_ATTRIBUTES.get(playerUUID);
+
+        for (String attrName : groupAttributes) {
+            AttributeDefinition def = ATTRIBUTE_DEFINITIONS.get(attrName);
+            if (def == null) continue;
+
+            AttributeType type = def.getType();
+            double staticValue = getStaticAttributeValue(staticAttrs, attrName, type);
+            double dynamicValue = getDynamicAttributeValue(dynamicAttrs, attrName, type);
+
+            switch (type) {
+                case PERCENT:
+                    percentSum = staticValue;
+                    dynamicPercentSum = dynamicValue;
+                    break;
+                case INDEPENDENT_MULTIPLY:
+                    independentProduct = staticValue;
+                    dynamicIndependentProduct = dynamicValue;
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        return (percentSum + dynamicPercentSum) * (independentProduct * dynamicIndependentProduct);
+    }
+
+    /**
      * 获取属性组最终值，排除指定命名空间的动态属性贡献
      */
     public static double getGroupAttributeExcludingNamespace(UUID playerUUID, String groupName, String excludeNamespace) {
@@ -539,41 +586,12 @@ public class AttributeManager {
         return ITEM_ATTRIBUTES.containsKey(itemId);
     }
 
-    public static void removeItemAttributes(String itemId) {
-        ITEM_ATTRIBUTES.remove(itemId);
-    }
-
     public static void clearAllItemAttributes() {
         ITEM_ATTRIBUTES.clear();
     }
 
-    public static void removeItemAttribute(String itemId, String attributeName) {
-        ItemAttributeConfig config = ITEM_ATTRIBUTES.get(itemId);
-        if (config != null) {
-            config.removeAttribute(attributeName);
-            if (config.getAttributes().isEmpty()) {
-                ITEM_ATTRIBUTES.remove(itemId);
-            }
-        }
-    }
-
     public static void resetToDefaults() {
         ITEM_ATTRIBUTES.clear();
-        Config.loadItemAttributes();
-    }
-
-    public static void reorderItem(int fromIndex, int toIndex) {
-        List<String> keys = new ArrayList<>(ITEM_ATTRIBUTES.keySet());
-        if (fromIndex < 0 || fromIndex >= keys.size() || toIndex < 0 || toIndex >= keys.size()) return;
-        if (fromIndex == toIndex) return;
-        String key = keys.remove(fromIndex);
-        keys.add(toIndex, key);
-        Map<String, ItemAttributeConfig> newMap = new LinkedHashMap<>();
-        for (String k : keys) {
-            newMap.put(k, ITEM_ATTRIBUTES.get(k));
-        }
-        ITEM_ATTRIBUTES.clear();
-        ITEM_ATTRIBUTES.putAll(newMap);
     }
 
     public static Set<String> getAllRegisteredAttributes() {

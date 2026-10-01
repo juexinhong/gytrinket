@@ -6,6 +6,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageType;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.Nullable;
 
@@ -25,6 +26,7 @@ import org.jetbrains.annotations.Nullable;
  *   <li>{@link #INSTANT_DAMAGE} - 瞬时伤害</li>
  *   <li>{@link #PROTOCOL_SHIELD_SELF_DAMAGE} - 协议护盾自伤</li>
  *   <li>{@link #PROTOCOL_PLAYER_SELF_DAMAGE} - 协议玩家自伤</li>
+ *   <li>{@link #EXECUTE_DAMAGE} - 斩杀伤害（致命一击预估，归属玩家完成击杀）</li>
  * </ul>
  * <p>
  * 每个伤害类型都需要对应的JSON数据文件，位于：
@@ -97,6 +99,11 @@ public class ModDamageTypes {
     /** 蜂群电弧伤害 */
     public static final ResourceKey<DamageType> SWARM_DAMAGE = ResourceKey.create(
             Registries.DAMAGE_TYPE, new ResourceLocation(NAMESPACE, "swarm_damage")
+    );
+
+    /** 斩杀伤害（致命一击预估，最终由归属玩家完成击杀） */
+    public static final ResourceKey<DamageType> EXECUTE_DAMAGE = ResourceKey.create(
+            Registries.DAMAGE_TYPE, new ResourceLocation(NAMESPACE, "execute_damage")
     );
 
     // ==================== 伤害来源创建方法 ====================
@@ -342,6 +349,22 @@ public class ModDamageTypes {
                 level.registryAccess().registryOrThrow(Registries.DAMAGE_TYPE).getHolderOrThrow(SWARM_DAMAGE),
                 causingEntity,
                 causingEntity
+        );
+    }
+
+    /**
+     * 创建斩杀伤害来源（直接实体与攻击实体均为归属玩家，
+     * 供其他模组按玩家归属判定击杀者；穿甲穿魔法保护穿抗性，仿照虹吸）
+     *
+     * @param level  世界
+     * @param player 归属玩家
+     * @return 斩杀伤害来源
+     */
+    public static DamageSource getExecuteDamageSource(Level level, Player player) {
+        return new DamageSource(
+                level.registryAccess().registryOrThrow(Registries.DAMAGE_TYPE).getHolderOrThrow(EXECUTE_DAMAGE),
+                player,
+                player
         );
     }
 }

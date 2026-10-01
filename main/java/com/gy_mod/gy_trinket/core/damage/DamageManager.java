@@ -73,7 +73,10 @@ public class DamageManager {
         }
 
         var damageTypeKey = source.typeHolder().unwrapKey();
-        if (damageTypeKey.orElse(null) == ModDamageTypes.FINAL_DAMAGE) {
+        var damageType = damageTypeKey.orElse(null);
+        // FINAL_DAMAGE：本就绕过护盾链；EXECUTE_DAMAGE：斩杀重施加，
+        // 不经护盾链削减，也防止护盾反射与斩杀之间互相往返递归
+        if (damageType == ModDamageTypes.FINAL_DAMAGE || damageType == ModDamageTypes.EXECUTE_DAMAGE) {
             return;
         }
 

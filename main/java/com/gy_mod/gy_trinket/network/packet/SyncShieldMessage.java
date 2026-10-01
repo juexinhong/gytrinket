@@ -18,6 +18,35 @@ public class SyncShieldMessage {
     private int[] protectedEntityIds;
     /** 护盾类型渲染状态：按物品实例一条，多实例各自独立渲染 */
     private List<ItemShieldState> shieldStates;
+    /** 护盾实例列表：HUD 顶条数据源（ShieldInstance 镜像） */
+    private List<InstanceShieldData> instances;
+
+    /** 单个护盾实例的 HUD 状态（ShieldInstance 的客户端镜像：池量 + 破盾 + 冷却进度） */
+    public static class InstanceShieldData {
+        public final String itemId;
+        public final String shieldTypeName;
+        public final double currentShield;
+        public final double maxShield;
+        public final boolean broken;
+        public final double cooldownProgress;
+        public final int maxCooldown;
+
+        public InstanceShieldData(String itemId, String shieldTypeName, double currentShield, double maxShield,
+                                  boolean broken, double cooldownProgress, int maxCooldown) {
+            this.itemId = itemId;
+            this.shieldTypeName = shieldTypeName;
+            this.currentShield = currentShield;
+            this.maxShield = maxShield;
+            this.broken = broken;
+            this.cooldownProgress = cooldownProgress;
+            this.maxCooldown = maxCooldown;
+        }
+
+        /** 冷却充能中：护盾未满（受损或破盾）且冷却未完成 */
+        public boolean isCoolingDown() {
+            return maxCooldown > 0 && cooldownProgress < maxCooldown && currentShield < maxShield;
+        }
+    }
 
     /** 单个物品实例的护盾类型状态（服务端按 itemId 聚合：aura 取或、siphon 求和、amplification 取最大） */
     public static class ItemShieldState {
@@ -44,7 +73,7 @@ public class SyncShieldMessage {
 
     public SyncShieldMessage() {}
 
-    public SyncShieldMessage(double currentShield, double maxShield, int currentCooldown, int maxCooldown, double adaptiveArmorReduction, int[] protectedEntityIds, List<ItemShieldState> shieldStates) {
+    public SyncShieldMessage(double currentShield, double maxShield, int currentCooldown, int maxCooldown, double adaptiveArmorReduction, int[] protectedEntityIds, List<ItemShieldState> shieldStates, List<InstanceShieldData> instances) {
         this.currentShield = currentShield;
         this.maxShield = maxShield;
         this.currentCooldown = currentCooldown;
@@ -52,6 +81,7 @@ public class SyncShieldMessage {
         this.adaptiveArmorReduction = adaptiveArmorReduction;
         this.protectedEntityIds = protectedEntityIds;
         this.shieldStates = shieldStates;
+        this.instances = instances;
     }
 
     public SyncShieldMessage(FriendlyByteBuf buf) {
@@ -69,6 +99,13 @@ public class SyncShieldMessage {
             s.siphonRadius = buf.readDouble();
             s.amplificationRadius = buf.readDouble();
             this.shieldStates.add(s);
+        }
+        int instCount = buf.readVarInt();
+        this.instances = new ArrayList<>(instCount);
+        for (int i = 0; i < instCount; i++) {
+            this.instances.add(new InstanceShieldData(buf.readUtf(), buf.readUtf(),
+                    buf.readDouble(), buf.readDouble(), buf.readBoolean(),
+                    buf.readDouble(), buf.readVarInt()));
         }
     }
 
@@ -91,17 +128,29 @@ public class SyncShieldMessage {
             buf.writeDouble(s.siphonRadius);
             buf.writeDouble(s.amplificationRadius);
         }
+        int instCount = instances != null ? instances.size() : 0;
+        buf.writeVarInt(instCount);
+        for (int i = 0; i < instCount; i++) {
+            InstanceShieldData inst = instances.get(i);
+            buf.writeUtf(inst.itemId);
+            buf.writeUtf(inst.shieldTypeName);
+            buf.writeDouble(inst.currentShield);
+            buf.writeDouble(inst.maxShield);
+            buf.writeBoolean(inst.broken);
+            buf.writeDouble(inst.cooldownProgress);
+            buf.writeVarInt(inst.maxCooldown);
+        }
     }
 
     public void handle(Supplier<NetworkEvent.Context> contextSupplier) {
         NetworkEvent.Context context = contextSupplier.get();
         context.enqueueWork(() -> {
             List<ItemShieldState> states = this.shieldStates;
+            List<InstanceShieldData> instanceData = this.instances;
             DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () ->
                 com.gy_mod.gy_trinket.client.network.ClientNetworkHandler.handleSyncShieldMessage(
-                    currentShield, maxShield, currentCooldown, maxCooldown,
-                    adaptiveArmorReduction,
-                    protectedEntityIds, states));
+                    currentShield, maxShield, adaptiveArmorReduction,
+                    protectedEntityIds, states, instanceData));
         });
         context.setPacketHandled(true);
     }

@@ -1,0 +1,15 @@
+{
+  "items": {
+    "gytrinket:assault_drone_module": {
+      "mechanic": true,
+      "sets": [
+        "assault_drone_module_items",
+        "pursuit_array_required_items"
+      ],
+      "attributes": {
+        "construct_drone_assault_attack_speed_percent": 0.2,
+        "construct_drone_count_base": 1
+      }
+    }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "items": {
+    "gytrinket:taskmaster_module": {
+      "mechanic": true,
+      "sets": [
+        "taskmaster_items"
+      ],
+      "attributes": {
+        "construct_standard_non_weapon_count_percent": 1,
+        "construct_basic_non_weapon_count_percent": 1,
+        "construct_advanced_count_base": 1
+      }
+    }
+  }
+}

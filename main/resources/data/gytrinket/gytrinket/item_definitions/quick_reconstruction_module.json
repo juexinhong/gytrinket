@@ -1,0 +1,11 @@
+{
+  "items": {
+    "gytrinket:quick_reconstruction_module": {
+      "attributes": {
+        "recovery_efficiency_percent": 1.0,
+        "player_health": 10,
+        "coating": 2
+      }
+    }
+  }
+}

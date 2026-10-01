@@ -151,9 +151,9 @@ public class DroneBeamProjectile extends Entity implements GeoEntity {
                     float projectileDamage = totalDamage * 0.5F;
                     float fireDamage = totalDamage * 0.5F;
 
-                    // 归属不再由原始伤害预判（原始伤害会被护甲/免伤削减导致误判）：
-                    // 施加时攻击者恒为无人机本体，致死归属由 ExecuteAttributionHandler
-                    // 按 LivingDeathEvent 实际致死结果判定
+                    // 施加时攻击者恒为无人机本体（避免非致死时对玩家触发仇恨）：
+                    // 预估致死时由 ExecuteDamageHandler 取消原伤害并改用归属玩家的
+                    // 斩杀伤害源（execute_damage）完成最后一击
                     DamageSource projectileDamageSource;
                     DamageSource fireDamageSource;
 

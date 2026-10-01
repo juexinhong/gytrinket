@@ -114,6 +114,23 @@ public class AmplificationShieldType implements IShieldType {
         INSTANCE_MOVE_SPEED_BONUS.keySet().removeIf(key -> key.startsWith(prefix));
     }
 
+    /** 按实例键清理单实例槽位（实例破裂失活：进度归零 → 客户端贴图随确认超时淡出） */
+    private static void clearInstanceSlot(UUID playerUUID, String instanceKey) {
+        TRACKED_THREAT_ENTITIES.remove(instanceKey);
+        TICK_COUNTER.remove(instanceKey);
+        INSTANCE_PROGRESS.remove(instanceKey);
+        INSTANCE_DAMAGE_BONUS.remove(instanceKey);
+        INSTANCE_MOVE_SPEED_BONUS.remove(instanceKey);
+    }
+
+    /**
+     * 实例级激活条件：该物品的增幅护盾池实例存在且有池量。
+     * 实例破裂（池量归零）或实例不存在（物品卸下/禁用）→ 效果关闭
+     */
+    private static boolean isInstancePoolEmpty(UUID playerUUID, String itemId) {
+        return ShieldManager.isInstancePoolEmpty(playerUUID, itemId, "amplification");
+    }
+
     /** 获取基础增幅值（按物品实例取值） */
     private static double getBaseAmplification(String itemId) {
         return DefsManager.resolveShieldTypeValueForItem(currentServer(), itemId,
@@ -215,6 +232,14 @@ public class AmplificationShieldType implements IShieldType {
 
         String itemId = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(source.getItem()).toString();
         String instanceKey = instanceKey(playerUUID, itemId);
+
+        // [实例级闸门] 本实例护盾池量归零或实例不存在时：清空本实例槽位与进度并按剩余实例重算聚合加成。
+        // 旧实现只检查玩家全局护盾值，其他实例有盾时破裂实例的效果（增伤/贴图）无法关闭
+        if (isInstancePoolEmpty(playerUUID, itemId)) {
+            clearInstanceSlot(playerUUID, instanceKey);
+            applyAggregatedBonuses(player);
+            return;
+        }
 
         int tickCounter = TICK_COUNTER.getOrDefault(instanceKey, 0) + 1;
         boolean isCheckTick = tickCounter >= CHECK_INTERVAL;

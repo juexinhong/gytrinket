@@ -1,10 +1,13 @@
 package com.gy_mod.gy_trinket.core.tooltip;
 
+import com.gy_mod.gy_trinket.client.ClientItemAttributes;
 import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.core.attribute.AttributeDefinition;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
 import com.gy_mod.gy_trinket.core.attribute.AttributeType;
+import com.gy_mod.gy_trinket.core.attribute.ItemAttributeConfig;
 import com.gy_mod.gy_trinket.core.defs.DefsManager;
+import com.gy_mod.gy_trinket.core.defs.ShieldValueDefs;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructManager;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructType;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneBullet;
@@ -195,37 +198,29 @@ public class TooltipHandler {
     }
 
     private static void addItemAttributesTooltip(ItemTooltipEvent event, String itemId) {
-        List<? extends String> itemAttributesConfig = Config.ITEM_ATTRIBUTES_CONFIG.get();
+        // 数据源 = 服务端下发的属性静态表，未同步时回退本地 item_definitions（避免必须先开一次配置界面）
+        ItemAttributeConfig config = ClientItemAttributes.getItemAttributes(itemId);
+        if (config == null || config.getAttributes().isEmpty()) {
+            return;
+        }
 
-        for (String configLine : itemAttributesConfig) {
-            if (configLine.startsWith(itemId + "|")) {
-                String attributesPart = configLine.substring(itemId.length() + 1);
-                String[] attrPairs = attributesPart.split("\\|");
+        event.getToolTip().add(Component.literal("").withStyle(ChatFormatting.GRAY));
+        event.getToolTip().add(Component.literal("属性:").withStyle(ChatFormatting.GOLD));
 
-                event.getToolTip().add(Component.literal("").withStyle(ChatFormatting.GRAY));
-                event.getToolTip().add(Component.literal("属性:").withStyle(ChatFormatting.GOLD));
+        for (var entry : config.getAttributes().entrySet()) {
+            String attrName = entry.getKey();
 
-                for (String attrPair : attrPairs) {
-                    String[] parts = attrPair.split("=");
-                    if (parts.length == 2) {
-                        String attrName = parts[0];
-                        String attrValue = parts[1];
+            Component attrTooltip = Component.translatable(TOOLTIP_PREFIX + "attr." + attrName)
+                .withStyle(ChatFormatting.WHITE);
 
-                        Component attrTooltip = Component.translatable(TOOLTIP_PREFIX + "attr." + attrName)
-                            .withStyle(ChatFormatting.WHITE);
-
-                        if (isDefaultTranslation(attrTooltip, TOOLTIP_PREFIX + "attr." + attrName)) {
-                            attrTooltip = Component.literal(attrName).withStyle(ChatFormatting.WHITE);
-                        }
-
-                        event.getToolTip().add(Component.literal("  +").withStyle(ChatFormatting.GREEN)
-                            .append(attrTooltip)
-                            .append(Component.literal(" ").withStyle(ChatFormatting.GRAY))
-                            .append(Component.literal(formatAttributeValue(attrName, attrValue)).withStyle(ChatFormatting.YELLOW)));
-                    }
-                }
-                break;
+            if (isDefaultTranslation(attrTooltip, TOOLTIP_PREFIX + "attr." + attrName)) {
+                attrTooltip = Component.literal(attrName).withStyle(ChatFormatting.WHITE);
             }
+
+            event.getToolTip().add(Component.literal("  +").withStyle(ChatFormatting.GREEN)
+                .append(attrTooltip)
+                .append(Component.literal(" ").withStyle(ChatFormatting.GRAY))
+                .append(Component.literal(formatAttributeValue(attrName, entry.getValue())).withStyle(ChatFormatting.YELLOW)));
         }
     }
 
@@ -234,20 +229,16 @@ public class TooltipHandler {
      * - 百分比/独立乘区属性：值×100，显示为百分数（最多保留两位小数，四舍五入）
      * - 常规属性（BASE）：最多保留两位小数，四舍五入
      */
-    private static String formatAttributeValue(String attrName, String rawValue) {
-        try {
-            double value = Double.parseDouble(rawValue);
-            AttributeType type = getAttributeType(attrName);
+    private static String formatAttributeValue(String attrName, double rawValue) {
+        double value = rawValue;
+        AttributeType type = getAttributeType(attrName);
 
-            if (type == AttributeType.PERCENT || type == AttributeType.INDEPENDENT_MULTIPLY) {
-                // 百分比显示：值×100，最多保留两位小数
-                return formatDecimal(value * 100) + "%";
-            } else {
-                // 常规小数：最多保留两位小数
-                return formatDecimal(value);
-            }
-        } catch (NumberFormatException e) {
-            return rawValue;
+        if (type == AttributeType.PERCENT || type == AttributeType.INDEPENDENT_MULTIPLY) {
+            // 百分比显示：值×100，最多保留两位小数
+            return formatDecimal(value * 100) + "%";
+        } else {
+            // 常规小数：最多保留两位小数
+            return formatDecimal(value);
         }
     }
 
@@ -301,6 +292,9 @@ public class TooltipHandler {
             event.getToolTip().add(Component.literal("  +").withStyle(ChatFormatting.GREEN)
                 .append(typeTooltip));
 
+            // 物品自带的四项基础属性参数（与运行时 resolveShieldParam 取值链同源）
+            addShieldBaseParamsTooltip(event, type, itemId);
+
             addShieldTypeDescriptionTooltip(event, type, itemId);
 
             // 穿盾机制开启时在类型描述下追加提示行（物品级覆盖 pierce_through ≥ 0.5）
@@ -316,6 +310,28 @@ public class TooltipHandler {
         event.getToolTip().add(Component.literal("    ")
                 .append(Component.translatable(TOOLTIP_PREFIX + "shield_pierce_line"))
                 .withStyle(ChatFormatting.YELLOW));
+    }
+
+    /**
+     * 护盾物品自带的四项基础属性参数显示（shield_base / shield_cooldown_time /
+     * shield_hit_cooldown_extend / shield_hit_cooldown_extend_multiplier）。
+     * 数值经 {@link DefsManager#clientResolveShieldParam} 按物品实例解析（与运行时同源），
+     * 未命中任何覆写/定义层时回退 {@link ShieldValueDefs.ParamDef#defaultValue()} 静态默认。
+     */
+    private static void addShieldBaseParamsTooltip(ItemTooltipEvent event, String type, String itemId) {
+        for (ShieldValueDefs.ParamDef def : ShieldValueDefs.getBaseParams()) {
+            double value = DefsManager.clientResolveShieldParam(itemId, type, def.key(), def.defaultValue());
+
+            MutableComponent nameTooltip = Component.translatable(def.nameKey());
+            if (isDefaultTranslation(nameTooltip, def.nameKey())) {
+                nameTooltip = Component.literal(def.key());
+            }
+
+            event.getToolTip().add(Component.literal("    ")
+                .append(nameTooltip.withStyle(ChatFormatting.GRAY))
+                .append(Component.literal(": ").withStyle(ChatFormatting.GRAY))
+                .append(Component.literal(formatDecimal(value)).withStyle(ChatFormatting.AQUA)));
+        }
     }
 
     private static void addShieldTypeDescriptionTooltip(ItemTooltipEvent event, String type, String itemId) {

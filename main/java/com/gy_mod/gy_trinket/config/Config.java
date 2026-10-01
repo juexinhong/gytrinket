@@ -2,7 +2,6 @@ package com.gy_mod.gy_trinket.config;
 
 import com.gy_mod.gy_trinket.gytrinket;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
-import com.gy_mod.gy_trinket.core.attribute.ItemAttributeConfig;
 import com.gy_mod.gy_trinket.core.attribute.AttributeType;
 import com.gy_mod.gy_trinket.core.defs.DefsManager;
 import com.gy_mod.gy_trinket.core.shield.DisableSystem;
@@ -11,8 +10,11 @@ import com.gy_mod.gy_trinket.core.upgrade.UpgradeManager;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.item.DiggerItem;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.SwordItem;
 import net.minecraft.world.item.TridentItem;
@@ -36,9 +38,6 @@ import java.util.Set;
 @Mod.EventBusSubscriber(modid = gytrinket.MODID, bus = Mod.EventBusSubscriber.Bus.MOD)
 public class Config {
     private static final ForgeConfigSpec.Builder BUILDER = new ForgeConfigSpec.Builder();
-
-    // ===== 1. 护盾基础属性 (attributes) =====
-    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> ITEM_ATTRIBUTES_CONFIG;
 
     // ===== 合成禁用 (crafting_disable) =====
     /** 合成禁用模式：0=不禁用，1=禁用本模组命名空间下注册了实际效果的物品合成，2=禁用所有注册了实际效果的物品合成 */
@@ -167,6 +166,9 @@ public class Config {
     // ===== 18.5 弹射物黑名单 (projectile_blacklist) =====
     /** 弹射物黑名单：不参与充能攻击增幅与点射复制的实体类型注册名 */
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> PROJECTILE_BLACKLIST;
+
+    /** 弹射物来源追溯：弹射物加入世界时调用栈命中这些 Java 包名前缀则视为饰品/被动生成，不触发点射 */
+    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> PROJECTILE_SOURCE_TRACE_PACKAGES;
 
     // ===== 19. 精密构造 (precision_construct) =====
     public static final ForgeConfigSpec.DoubleValue PRECISION_CONSTRUCT_BONUS_PER_LEVEL;
@@ -316,121 +318,6 @@ public class Config {
     private static boolean initialized = false;
 
     static {
-        // ===== 1. 护盾基础属性 =====
-        BUILDER.comment("属性系统配置").push("attributes");
-
-        ITEM_ATTRIBUTES_CONFIG = BUILDER.comment(
-            "物品属性配置",
-            "格式：物品ID|属性名=数值|属性名=数值",
-            "使用 | 分隔物品ID和属性，使用 = 分隔属性名和值",
-            "每个物品单独占一行",
-            "示例：minecraft:diamond|shield_base=10.0|shield_percent=0.1"
-        ).defineListAllowEmpty("itemAttributes",
-            List.of(
-                "gytrinket:shield_gy|shield_base=6.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
-                "gytrinket:shield_gy1|shield_base=7.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
-                "gytrinket:shield_gy2|shield_base=8.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
-                "gytrinket:shield_gy3|shield_base=9.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
-
-                "gytrinket:shield_aura_ring|shield_base=8.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
-                "gytrinket:shield_aura_ring1|shield_base=12.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
-                "gytrinket:shield_aura_ring2|shield_base=16.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
-                "gytrinket:shield_aura_ring3|shield_base=20.0|shield_cooldown_time=6.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
-
-                "gytrinket:shield_siphon|shield_base=8.0|shield_cooldown_time=7|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1|shield_effect_percent=-0.3",
-                "gytrinket:shield_siphon1|shield_base=12.0|shield_cooldown_time=7|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1|shield_effect_percent=-0.2",
-                "gytrinket:shield_siphon2|shield_base=16.0|shield_cooldown_time=7|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1|shield_effect_percent=-0.1",
-                "gytrinket:shield_siphon3|shield_base=20.0|shield_cooldown_time=7|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1|shield_effect_percent=0.0",
-
-                "gytrinket:shield_reflect|shield_base=9.6|shield_cooldown_time=7.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
-                "gytrinket:shield_reflect1|shield_base=14.4|shield_cooldown_time=7.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
-                "gytrinket:shield_reflect2|shield_base=19.2|shield_cooldown_time=7.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
-                "gytrinket:shield_reflect3|shield_base=24.0|shield_cooldown_time=7.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
-
-                "gytrinket:shield_amplifier|shield_base=4.0|shield_cooldown_time=6.0|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
-                "gytrinket:shield_amplifier1|shield_base=6.0|shield_cooldown_time=6.0|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
-                "gytrinket:shield_amplifier2|shield_base=8.0|shield_cooldown_time=6.0|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
-                "gytrinket:shield_amplifier3|shield_base=10.0|shield_cooldown_time=6.0|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
-
-                "gytrinket:shield_warp|shield_base=18.0|shield_cooldown_time=10.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
-                "gytrinket:shield_warp1|shield_base=18.0|shield_cooldown_time=8.5|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
-                "gytrinket:shield_warp2|shield_base=18.0|shield_cooldown_time=7.0|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
-                "gytrinket:shield_warp3|shield_base=18.0|shield_cooldown_time=6.0|shield_hit_cooldown_extend=40|shield_hit_cooldown_extend_multiplier=0.1",
-
-                "gytrinket:shield_amplifier_module|shield_percent=0.2",
-                "gytrinket:barrier_shield_module|shield_percent=0.05|shield_cooldown_reduction_percent=-0.05",
-                "gytrinket:reflect_shield_module|shield_percent=0.05",
-                "gytrinket:ultimate_shield_module|shield_base=11.0|shield_damage_reduction=-0.15|shield_effect_percent=0.15|shield_hit_cooldown_extend_final_multiplier=-0.65|player_health_independent=-0.85",
-
-                "gytrinket:shield_cooldown_reduction_module|shield_cooldown_reduction_percent=0.2",
-                "gytrinket:shield_quick_charge_module|shield_cooldown_reduction_percent=0.25|shield_independent=-0.25",
-                "gytrinket:explosive_shield_module|shield_percent=0.05",
-
-                "gytrinket:shield_effect_boost_module|shield_effect_percent=0.1|shield_effect_radius=0.25",
-                "gytrinket:divergent_shield_module|shield_effect_radius=0.5|shield_percent=-0.1|shield_cooldown_reduction_independent=-0.1",
-                "gytrinket:focused_shield_module|shield_effect_percent=0.25|shield_percent=0.05|shield_effect_radius=-0.2",
-
-                "gytrinket:health_boost_module|player_health_percent=0.2",
-                "gytrinket:coating_module|coating=3",
-                "gytrinket:colossus_module|player_health_percent=0.25|player_knockback_percent=0.4|knockback_resistance=0.2|movement_speed_independent=-0.25",
-
-                "gytrinket:bond_module|adaptive_armor_duration=0.2",
-                "gytrinket:core_armor_module|shield_base=1.0|player_health=1.0|shield_self_damage_reduction=-0.2|player_self_damage_reduction=-0.2|adaptive_armor_duration=0.2",
-
-                "gytrinket:regen_module|recovery_efficiency_percent=0.4",
-                "gytrinket:regen_shield_module|recovery_efficiency_percent=0.1",
-
-                "gytrinket:transformation_module|shield_base=1.0|player_health=1.0",
-
-                "gytrinket:fast_shooting_module|attack_speed_percent=0.15",
-                "gytrinket:burst_fire_module|attack_speed_percent=0.2|combo=2",
-
-                "gytrinket:explosion_radius_module|explosion_radius_independent=0.1",
-                "gytrinket:high_explosive_module|explosion_radius_independent=0.2",
-                "gytrinket:implosion_module|explosion_damage_percent=0.35|explosion_radius_independent=-0.3",
-                "gytrinket:giant_star_module|attack_damage_percent=0.15|weapon_projectile_size_percent=0.2|explosion_radius_independent=0.05",
-                "gytrinket:overcharge_module|attack_damage_percent=0.3|weapon_projectile_size_percent=0.12|explosion_radius_independent=0.05|attack_speed_percent=-0.12",
-
-                "gytrinket:thrust_boost_module|movement_speed_percent=0.25",
-                "gytrinket:aerodynamic_framework_module|movement_speed_percent=0.25|player_health_independent=-0.1|player_knockback_percent=-0.2|knockback_resistance=-0.2",
-
-                "gytrinket:precision_construct_module|construct_health_percent=0.25|construct_build_speed_percent=0.10",
-                "gytrinket:shield_transfer_module|shield_damage_reduction=-0.5|player_damage_reduction=-0.1|player_health=2|player_health_percent=0.1",
-
-                "gytrinket:drone_module|",
-                "gytrinket:advanced_engineering_module|construct_drone_count_base=1",
-
-                "gytrinket:assault_drone_module|construct_drone_assault_attack_speed_percent=0.2|construct_drone_count_base=1",
-                "gytrinket:wing_commander_module|construct_drone_count_base=1|construct_commander_health_percent=2.0|construct_commander_damage_percent=2.0",
-
-                "gytrinket:defense_drone_module|construct_drone_defense_health_percent=1.5",
-
-                "gytrinket:interceptor_module|construct_wingman_explosive_count_base=1",
-                "gytrinket:evolution_module|construct_wingman_explosive_count_base=1",
-                "gytrinket:suppression_module|construct_wingman_weapon_attack_speed_percent=0.5|construct_wingman_explosive_count_base=2",
-
-                "gytrinket:self_destruct_module|",
-                "gytrinket:taskmaster_module|construct_standard_non_weapon_count_percent=1|construct_basic_non_weapon_count_percent=1|construct_advanced_count_base=1",
-
-                "gytrinket:guardian|shield_effect_percent=0.10|shield_effect_radius=0.25|shield_damage_reduction=-0.1|attack_speed_percent=-0.1",
-
-                "gytrinket:mothership_body|shield_percent=0.15|player_health_percent=0.15|movement_speed_percent=0.4|knockback_resistance=0.2",
-
-                "gytrinket:engineering_fuselage|construct_standard_count_base=2|construct_advanced_count_base=1|shield_percent=-0.10|player_health=-2",
-
-                "gytrinket:grudge_module|player_health_percent=0.05|attack_damage_percent=0.05|movement_speed_independent=-0.1",
-
-                "gytrinket:apex_apparatus_module|construct_attack_speed_percent=0.30|construct_health_percent=0.30|shield_effect_percent=0.20|construct_build_speed_independent=-0.75",
-
-                "gytrinket:furnace_core_module|construct_non_shield_build_speed_percent=0.30|construct_attack_speed_percent=0.30|construct_move_speed_percent=0.30|construct_orbit_speed_percent=0.30|construct_rotation_speed_percent=0.30",
-
-                "gytrinket:quick_reconstruction_module|recovery_efficiency_percent=1.0|player_health=10|coating=2"
-            ),
-            s -> true
-        );
-
-        BUILDER.pop();
-
         // ===== 合成禁用 (crafting_disable) =====
         BUILDER.comment("合成禁用模式：0=不禁用合成，1=禁用本模组命名空间下注册了本模组实际效果（属性或特殊机制）的物品的合成，2=禁用所有注册了本模组实际效果的物品的合成")
             .push("crafting_disable");
@@ -878,10 +765,23 @@ public class Config {
         PROJECTILE_BLACKLIST = BUILDER.comment(
             "弹射物黑名单（实体类型注册名）",
             "名单中的弹射物不参与本模组的弹射物系统：不会被充能攻击增幅，也不会被点射复制",
-            "默认仅末影珍珠（点射复制会导致多次瞬移，语义混乱且不可控）",
+            "默认末影珍珠（点射复制会导致多次瞬移，语义混乱且不可控）与泰拉饰品星星斗篷落星（饰品受击被动生成，非玩家主动射击）",
             "示例：minecraft:ender_pearl"
         ).defineListAllowEmpty("projectileBlacklist",
-            List.of("minecraft:ender_pearl"),
+            List.of("minecraft:ender_pearl", "terra_curio:star_cloak"),
+            s -> true
+        );
+
+        PROJECTILE_SOURCE_TRACE_PACKAGES = BUILDER.comment(
+            "弹射物来源追溯（Java 包名前缀）",
+            "弹射物加入世界时，若调用栈来自这些包（饰品/被动技能生成弹射物，如泰拉饰品星星斗篷受击落星、蜜蜂斗篷放蜂），",
+            "则不触发弹射物点射：不复制弹射物、不挂攻击冷却禁用物品",
+            "该机制按生成来源整体拦截，自动覆盖目标模组新增的饰品弹射物，无需逐个加入黑名单",
+            "注意：此处填写目标模组的 Java 包名前缀（非模组 id），主动技能弹射物同样会被拦截，",
+            "如需保留主动技能连击请清空对应条目并改用黑名单逐个排除",
+            "默认追溯泰拉饰品（org.confluence.terra_curio）与 lensouls（com.plumejade.lensouls），留空列表则禁用追溯"
+        ).defineListAllowEmpty("projectileSourceTracePackages",
+            List.of("org.confluence.terra_curio", "com.plumejade.lensouls"),
             s -> true
         );
 
@@ -1532,14 +1432,14 @@ public class Config {
 
     private static final Map<String, Boolean> SHIELD_TYPE_COMPATIBILITY = new HashMap<>();
     private static final Map<Item, List<String>> ITEM_SHIELD_TYPES = new HashMap<>();
-    /** 物品级护盾类型独占（不兼容）集合（UI 覆盖层产生）；存在条目 = 该物品兼容性为显式模式 */
-    private static final Map<Item, Set<String>> ITEM_SHIELD_TYPE_EXCLUSIVES = new HashMap<>();
     private static final Map<String, Set<Item>> MODULE_ITEM_SETS = new HashMap<>();
     private static final Set<String> DANGEROUS_ENTITY_SET = new HashSet<>();
     /** 充能物品白名单缓存（长按右键充能）：物品 -> 攻击速度修正值 */
     private static final Map<Item, Double> ITEM_USE_CHARGE_WHITELIST = new HashMap<>();
     /** 弹射物黑名单缓存：不参与充能攻击增幅与点射复制的实体类型 */
     private static final Set<EntityType<?>> PROJECTILE_BLACKLIST_CACHE = new HashSet<>();
+    /** 弹射物来源追溯包名前缀缓存 */
+    private static final Set<String> PROJECTILE_SOURCE_TRACE_CACHE = new HashSet<>();
 
     public static List<String> getItemShieldTypes(ResourceLocation itemId) {
         Item item = ForgeRegistries.ITEMS.getValue(itemId);
@@ -1551,15 +1451,6 @@ public class Config {
 
     public static boolean isShieldTypeCompatible(String typeName) {
         return SHIELD_TYPE_COMPATIBILITY.getOrDefault(typeName, true);
-    }
-
-    /** 物品级兼容判定：物品存在显式兼容覆盖（UI 编辑产生）时以独占集合为准，否则回退类型级默认 */
-    public static boolean isShieldTypeCompatibleForItem(String typeName, Item item) {
-        Set<String> exclusives = ITEM_SHIELD_TYPE_EXCLUSIVES.get(item);
-        if (exclusives != null) {
-            return !exclusives.contains(typeName);
-        }
-        return isShieldTypeCompatible(typeName);
     }
 
     /**
@@ -1632,15 +1523,6 @@ public class Config {
             if (item != null && item != Items.AIR) {
                 ITEM_SHIELD_TYPES.put(item, types);
                 gytrinket.LOGGER.info("注册物品护盾类型: {} -> {}", itemId, types);
-            }
-        });
-
-        // 物品级护盾类型独占集合（UI 覆盖层产生）
-        ITEM_SHIELD_TYPE_EXCLUSIVES.clear();
-        DefsManager.getItemShieldTypeExclusiveOverrides().forEach((itemId, exclusives) -> {
-            Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(itemId));
-            if (item != null && item != Items.AIR) {
-                ITEM_SHIELD_TYPE_EXCLUSIVES.put(item, exclusives);
             }
         });
 
@@ -1783,59 +1665,6 @@ public class Config {
         };
     }
 
-    public static void saveItemAttributesConfig() {
-        java.util.Set<String> registeredItems = AttributeManager.getAllRegisteredItemAttributes();
-        java.util.List<String> configList = new java.util.ArrayList<>();
-        for (String itemId : registeredItems) {
-            ItemAttributeConfig config = AttributeManager.getItemAttributes(itemId);
-            if (config == null || config.getAttributes().isEmpty()) continue;
-            StringBuilder sb = new StringBuilder(itemId);
-            for (var entry : config.getAttributes().entrySet()) {
-                sb.append("|").append(entry.getKey()).append("=").append(entry.getValue());
-            }
-            configList.add(sb.toString());
-        }
-        ITEM_ATTRIBUTES_CONFIG.set(configList);
-        SPEC.save();
-        gytrinket.LOGGER.info("物品属性配置已保存，共 {} 个物品", configList.size());
-    }
-
-    public static void loadItemAttributes() {
-        List<? extends String> itemAttrsList = ITEM_ATTRIBUTES_CONFIG.get();
-        for (String itemConfig : itemAttrsList) {
-            if (!itemConfig.trim().isEmpty()) {
-                String[] itemParts = itemConfig.trim().split("\\|");
-                if (itemParts.length >= 2) {
-                    String itemId = itemParts[0].trim();
-                    Map<String, Double> attrs = new HashMap<>();
-                    for (int i = 1; i < itemParts.length; i++) {
-                        String[] attrParts = itemParts[i].trim().split("=");
-                        if (attrParts.length == 2) {
-                            String attrName = attrParts[0].trim();
-                            try {
-                                double value = Double.parseDouble(attrParts[1].trim());
-                                attrs.put(attrName, value);
-                            } catch (NumberFormatException e) {
-                                gytrinket.LOGGER.warn("无效的属性值：{} for {}", attrParts[1], itemId);
-                            }
-                        }
-                    }
-                    if (!attrs.isEmpty()) {
-                        AttributeManager.registerItemAttributes(itemId, attrs);
-                        gytrinket.LOGGER.info("注册物品属性: {} -> {}", itemId, attrs);
-                    }
-                }
-            }
-        }
-    }
-
-    public static void resetItemAttributesConfig() {
-        ITEM_ATTRIBUTES_CONFIG.set(ITEM_ATTRIBUTES_CONFIG.getDefault());
-        SPEC.save();
-        loadItemAttributes();
-        gytrinket.LOGGER.info("物品属性配置已重置为默认值");
-    }
-
     /**
      * 解析充能物品白名单配置（长按右键充能）
      * 格式：物品注册名=攻击速度修正值（有效攻速 = 4.0 + 修正值）
@@ -1906,11 +1735,74 @@ public class Config {
     }
 
     /**
+     * 解析弹射物来源追溯包名前缀配置
+     * 弹射物加入世界时调用栈命中这些前缀则视为饰品/被动生成，不触发点射
+     */
+    public static void loadProjectileSourceTrace() {
+        PROJECTILE_SOURCE_TRACE_CACHE.clear();
+        for (String entry : PROJECTILE_SOURCE_TRACE_PACKAGES.get()) {
+            String trimmed = entry.trim();
+            if (trimmed.isEmpty()) {
+                continue;
+            }
+            PROJECTILE_SOURCE_TRACE_CACHE.add(trimmed);
+        }
+        gytrinket.LOGGER.info("弹射物来源追溯包名加载完成，共 {} 个前缀", PROJECTILE_SOURCE_TRACE_CACHE.size());
+    }
+
+    /**
+     * 弹射物来源追溯：弹射物加入世界时，调用栈是否命中被追溯的包名前缀
+     * <p>
+     * 用于识别饰品/被动技能生成的弹射物（如泰拉饰品星星斗篷受击落星）：
+     * 此类弹射物 owner 为玩家但并非玩家主动射击，第三方模组也不会打来源标记，
+     * 只能以调用栈追溯生成来源。命中即不触发弹射物点射（不复制、不挂冷却禁用物品）。
+     * <p>
+     * 性能：仅在弹射物点射链路内调用（弹射物归属玩家且连击段数 > 0），栈遍历开销可忽略。
+     */
+    public static boolean isSpawnedByTracedPackage() {
+        if (PROJECTILE_SOURCE_TRACE_CACHE.isEmpty()) {
+            return false;
+        }
+        for (StackTraceElement element : Thread.currentThread().getStackTrace()) {
+            String className = element.getClassName();
+            for (String prefix : PROJECTILE_SOURCE_TRACE_CACHE) {
+                if (className.startsWith(prefix)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
      * 物品是否为武器类（剑/三叉戟）或工具类武器（镐/斧/铲/锄）
      * 这些物品自带攻击速度修正，长按右键充能不受白名单限制
      */
     public static boolean isWeaponLikeItem(Item item) {
         return item instanceof SwordItem || item instanceof TridentItem || item instanceof DiggerItem;
+    }
+
+    /**
+     * 武器形态判定（ItemStack 版）：原版三大类武器直接命中；
+     * 其余物品检查主手属性表——自带攻速修正即视为武器。
+     * <p>
+     * 兜底场景：部分模组武器以「普通 Item + 自定义属性表」形态实现
+     * （override getDefaultAttributeModifiers 提供攻速修正），instanceof 三大类判不中。
+     * 若误判为非武器，攻速口径测量/充能减益会在武器修正之上再叠加默认修正值，
+     * 攻速被双重削减为负值（连击冷却被钳制到连击段数×10秒）
+     * <p>
+     * 局限说明：1.20.1 无 ATTRIBUTE_MODIFIERS 组件，此处读取物品的静态主手属性表，
+     * 经 Forge ItemAttributeModifierEvent 动态注入攻速的物品识别不到（维持原判定）
+     */
+    public static boolean isWeaponLikeItem(ItemStack stack) {
+        if (stack.isEmpty()) {
+            return false;
+        }
+        if (isWeaponLikeItem(stack.getItem())) {
+            return true;
+        }
+        return stack.getItem().getDefaultAttributeModifiers(EquipmentSlot.MAINHAND)
+                .containsKey(Attributes.ATTACK_SPEED);
     }
 
     /**
@@ -1939,10 +1831,10 @@ public class Config {
             return;
         }
         initialized = true;
-        loadItemAttributes();
         loadItemUseChargeWhitelist();
         loadProjectileBlacklist();
-        gytrinket.LOGGER.info("属性系统配置加载完成");
+        loadProjectileSourceTrace();
+        gytrinket.LOGGER.info("配置加载完成");
     }
 
     public static double getReflectRadius() {

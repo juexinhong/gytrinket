@@ -35,6 +35,14 @@ public class AuraShieldType implements IShieldType {
         return playerUUID + "|" + itemId;
     }
 
+    /**
+     * 实例级激活条件：该物品的光环护盾池实例存在且有池量。
+     * 实例破裂（池量归零）或实例不存在（物品卸下/禁用）→ 效果关闭
+     */
+    private static boolean isInstancePoolEmpty(UUID playerUUID, String itemId) {
+        return ShieldManager.isInstancePoolEmpty(playerUUID, itemId, "aura");
+    }
+
     /** 物品实例取值：UI 覆盖优先，未覆盖回退 Config 默认值 */
     private static double valueFor(MinecraftServer server, String itemId, String paramKey, double configDefault) {
         return DefsManager.resolveShieldTypeValueForItem(server, itemId, "aura", paramKey, configDefault);
@@ -112,6 +120,13 @@ public class AuraShieldType implements IShieldType {
 
         double currentShield = ShieldManager.getCurrentShield(uuid);
         if (currentShield <= 0) {
+            AURA_DAMAGING.put(key, false);
+            TICK_COUNTERS.remove(key);
+            return;
+        }
+
+        // [实例级闸门] 本实例护盾池量归零或实例不存在时：光环失活（破裂实例不再攻击敌人、不再经全局护盾扣费）
+        if (isInstancePoolEmpty(uuid, itemId)) {
             AURA_DAMAGING.put(key, false);
             TICK_COUNTERS.remove(key);
             return;

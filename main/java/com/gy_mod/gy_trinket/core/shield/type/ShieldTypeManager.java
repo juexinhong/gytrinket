@@ -167,15 +167,15 @@ public class ShieldTypeManager {
         WarpShieldType.clearPlayerData(playerUUID);
     }
 
-    public static Set<String> updateShieldTypes(UUID playerUUID, Set<String> preDisabledItems) {
+    public static void updateShieldTypes(UUID playerUUID, Set<String> preDisabledItems) {
         MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
         if (server == null) {
-            return Collections.emptySet();
+            return;
         }
 
         ServerPlayer serverPlayer = server.getPlayerList().getPlayer(playerUUID);
         if (serverPlayer == null) {
-            return Collections.emptySet();
+            return;
         }
 
         List<IShieldType.ShieldTypeData> oldTypes = PLAYER_SHIELD_TYPES.getOrDefault(playerUUID, Collections.emptyList());
@@ -186,7 +186,6 @@ public class ShieldTypeManager {
         }
 
         List<IShieldType.ShieldTypeData> newTypes = collectShieldTypes(serverPlayer, preDisabledItems);
-        Set<String> conflictDisabledIds = resolveConflicts(newTypes);
 
         for (IShieldType.ShieldTypeData data : newTypes) {
             if (data.active()) {
@@ -201,16 +200,15 @@ public class ShieldTypeManager {
         }
 
         PLAYER_SHIELD_TYPES.put(playerUUID, newTypes);
-        return conflictDisabledIds;
     }
 
     private static List<IShieldType.ShieldTypeData> collectShieldTypes(Player player, Set<String> preDisabledItems) {
         List<IShieldType.ShieldTypeData> collected = new ArrayList<>();
 
-        // 已装备物品 = 光点核心存储 + Curios 饰品栏（光点核心内容扩展）
+        // 已装备物品 = Curios 饰品栏优先 + 光点核心存储（与护盾实例扫描同序）
         // 实例粒度 = 物品种类：同一物品装备多件只收一次（其声明的每个护盾类型各为一条实例）
         Set<String> seenItemIds = new HashSet<>();
-        for (ItemStack stack : PlayerStoreUtils.getAllEquippedStacks(player)) {
+        for (ItemStack stack : PlayerStoreUtils.getEquippedStacksCuriosFirst(player)) {
             if (stack.isEmpty()) {
                 continue;
             }
@@ -234,53 +232,6 @@ public class ShieldTypeManager {
         }
 
         return collected;
-    }
-
-    private static Set<String> resolveConflicts(List<IShieldType.ShieldTypeData> types) {
-        Set<String> disabledItemIds = new HashSet<>();
-        // 追踪上一个生效的护盾是否为兼容类型
-        // null = 尚未有生效的护盾（第一个护盾总是生效）
-        // true = 上一个生效的是兼容类型，链可以继续
-        // false = 上一个生效的是不兼容类型，链已断裂
-        Boolean lastActiveWasCompatible = null;
-
-        for (int i = 0; i < types.size(); i++) {
-            IShieldType.ShieldTypeData data = types.get(i);
-            String typeName = data.type().getName();
-            // 物品级兼容开关（UI 覆盖层显式值）优先，其次类型级默认
-            net.minecraft.world.item.Item sourceItem = data.source().getItem();
-            boolean isCompatible = Config.isShieldTypeCompatibleForItem(typeName, sourceItem);
-            ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(sourceItem);
-
-            if (lastActiveWasCompatible != null && !lastActiveWasCompatible) {
-                // 链已断裂，后续所有护盾都不生效
-                types.set(i, data.withActive(false));
-                if (itemId != null) {
-                    disabledItemIds.add(itemId.toString());
-                }
-                continue;
-            }
-
-            // lastActiveWasCompatible == null（第一个）或 true（兼容链中）
-            if (isCompatible) {
-                // 兼容类型：生效，链继续
-                lastActiveWasCompatible = true;
-            } else {
-                if (lastActiveWasCompatible == null) {
-                    // 第一个护盾是不兼容类型：生效，但链断裂
-                    lastActiveWasCompatible = false;
-                } else {
-                    // 兼容链中遇到不兼容类型：不生效，链断裂
-                    types.set(i, data.withActive(false));
-                    if (itemId != null) {
-                        disabledItemIds.add(itemId.toString());
-                    }
-                    lastActiveWasCompatible = false;
-                }
-            }
-        }
-
-        return disabledItemIds;
     }
 
     @SubscribeEvent
@@ -316,6 +267,7 @@ public class ShieldTypeManager {
 
         List<IShieldType.ShieldTypeData> types = getPlayerShieldTypes(player.getUUID());
 
+        // 不按类型名去重：兼容时同类型多实例并存，每条 active 条目各 tick 一次（每实例独立数值）
         for (IShieldType.ShieldTypeData data : types) {
             if (data.active()) {
                 // 传入来源物品：护盾类型数值按物品实例独立取值

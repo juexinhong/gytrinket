@@ -90,11 +90,7 @@ public class DataCenterLifecycleHandler {
         // Phase 3: 属性重算完成后，恢复护盾值（此时maxShield已正确计算）
         ShieldData savedShield = PlayerDataCenter.getData(player.getUUID(), "shield");
         if (savedShield != null && savedShield.getCurrentShield() > 0) {
-            double currentMax = ShieldManager.getMaxShield(player.getUUID());
-            if (currentMax > 0) {
-                double restoredCurrent = Math.min(savedShield.getCurrentShield(), currentMax);
-                ShieldManager.setCurrentShield(player.getUUID(), restoredCurrent);
-            }
+            ShieldManager.restoreShield(player.getUUID(), savedShield.getCurrentShield());
         }
 
         // Phase 3.5: 恢复当前血量（属性重算后maxHealth已恢复，此时可以安全设置）

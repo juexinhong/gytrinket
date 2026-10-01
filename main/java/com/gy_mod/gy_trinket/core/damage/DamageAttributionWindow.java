@@ -8,13 +8,15 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * 伤害归属窗口
+ * 伤害施加期归属窗口
  * <p>
- * 施加伤害的同步调用期间（mark → hurt → unmark）临时记录"本次伤害待归属的玩家"。
- * 适用于伤害源本身不带攻击者的场景（模拟爆炸、能量波爆炸、虹吸等）：
- * {@link ExecuteAttributionHandler} 在 LivingDeathEvent 中优先读取窗口标记解析归属。
+ * 模拟爆炸/能量波/虹吸等施加"无攻击者"伤害时（避免非致死时对玩家触发仇恨），
+ * 在施加处临时登记归属玩家；{@link ExecuteDamageHandler} 在
+ * {@link net.minecraftforge.event.entity.living.LivingDamageEvent}
+ * （扣血前）阶段做致命一击预估，伤害足以杀死目标时读取该窗口解析归属玩家，
+ * 取消原伤害并改用归属玩家的斩杀伤害源完成最后一击。
  * <p>
- * 致死事件必然发生在 hurt() 同步调用栈内，因此窗口无需跨 tick 存活；
+ * hurt() 同步执行，事件必然发生在 mark/unmark 之间；
  * unmark 放在 finally 中保证异常时也不泄漏。
  */
 public final class DamageAttributionWindow {

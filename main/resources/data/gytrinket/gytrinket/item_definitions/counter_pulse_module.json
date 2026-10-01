@@ -1,0 +1,10 @@
+{
+    "items":  {
+                  "gytrinket:counter_pulse_module":  {
+                                                         "mechanic":  true,
+                                                         "sets":  [
+                                                                      "counter_pulse_items"
+                                                                  ]
+                                                     }
+              }
+}

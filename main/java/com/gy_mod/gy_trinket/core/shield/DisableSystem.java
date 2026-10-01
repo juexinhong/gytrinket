@@ -77,8 +77,7 @@ public class DisableSystem {
         applyDisableTargets(storeItemIds, disabledItems);
         propagateDependencies(storeItemIds, disabledItems);
 
-        Set<String> shieldDisabled = ShieldTypeManager.updateShieldTypes(playerUUID, disabledItems);
-        disabledItems.addAll(shieldDisabled);
+        ShieldTypeManager.updateShieldTypes(playerUUID, disabledItems);
 
         Set<String> bodyDisabled = BodyTypeManager.updateBodyTypes(playerUUID, disabledItems);
         disabledItems.addAll(bodyDisabled);

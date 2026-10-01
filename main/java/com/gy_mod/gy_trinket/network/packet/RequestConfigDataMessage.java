@@ -19,7 +19,10 @@ public class RequestConfigDataMessage {
             var player = context.getSender();
             if (player != null) {
                 if (!player.hasPermissions(2)) return;
+                // 打开配置界面：先热重载磁盘覆盖文件（分层 override_layer_N.json + UI 文件），保证界面读取磁盘最新状态
+                com.gy_mod.gy_trinket.core.defs.DefsManager.applyOverrides(player.server);
                 NetworkHandler.sendConfigDataToPlayer(player);
+                NetworkHandler.sendDefsSyncToPlayer(player);
             }
         });
         context.setPacketHandled(true);

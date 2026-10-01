@@ -1,0 +1,16 @@
+{
+  "items": {
+    "gytrinket:shield_transfer_module": {
+      "mechanic": true,
+      "sets": [
+        "shield_transfer_items"
+      ],
+      "attributes": {
+        "shield_damage_reduction": -0.5,
+        "player_damage_reduction": -0.1,
+        "player_health": 2,
+        "player_health_percent": 0.1
+      }
+    }
+  }
+}

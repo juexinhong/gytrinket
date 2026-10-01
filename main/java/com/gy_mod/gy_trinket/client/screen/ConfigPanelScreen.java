@@ -77,8 +77,6 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
     /** 护盾类型选择器 overlay 状态 */
     private boolean isSelectingShieldTypes = false;
     private final List<String> shieldTypeSelection = new ArrayList<>();
-    /** 已选护盾类型的兼容开关（true=兼容可共存，false=独占） */
-    private final Map<String, Boolean> shieldTypeCompat = new HashMap<>();
     /** 选中行状态行上的护盾类型文本悬停标记 */
     private boolean hoveredShieldTypeBtn = false;
     /** 特殊机制选择器 overlay 状态（true=添加列表，false=移除列表） */
@@ -193,15 +191,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
         }
         String itemId = itemConfigData.getCompound(selectedItemIndex).getString("itemId");
         shieldTypeSelection.clear();
-        shieldTypeCompat.clear();
-        Map<String, Boolean> typeDefaults = DefsManager.clientShieldTypes();
         shieldTypeSelection.addAll(DefsManager.clientItemShieldTypes(itemId));
-        // 兼容开关初值：物品级覆盖条目存在则以显式值为准，否则回退类型级默认
-        DefsManager.ShieldTypeOverride ov = DefsManager.getClientShieldTypeOverride(itemId);
-        for (String t : shieldTypeSelection) {
-            shieldTypeCompat.put(t, ov != null ? !ov.exclusiveTypes().contains(t)
-                    : typeDefaults.getOrDefault(t, Boolean.TRUE));
-        }
         isSelectingShieldTypes = true;
     }
 
@@ -583,7 +573,6 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
             if (keyCode == 256) { // Esc：取消
                 isSelectingShieldTypes = false;
                 shieldTypeSelection.clear();
-                shieldTypeCompat.clear();
                 return true;
             } else if (keyCode == 257 || keyCode == 335) { // Enter：应用
                 applyShieldTypeSelection();
@@ -620,21 +609,14 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
         return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
-    /** 应用护盾类型选择并发送到服务端（独占类型集合 = 选中且开关为不兼容的子集） */
+    /** 应用护盾类型选择并发送到服务端（护盾全部按实例生效，无兼容/独占语义） */
     private void applyShieldTypeSelection() {
         if (selectedItemIndex >= 0 && selectedItemIndex < itemConfigData.size()) {
             String itemId = itemConfigData.getCompound(selectedItemIndex).getString("itemId");
-            List<String> exclusiveTypes = new ArrayList<>();
-            for (String t : shieldTypeSelection) {
-                if (!shieldTypeCompat.getOrDefault(t, Boolean.TRUE)) {
-                    exclusiveTypes.add(t);
-                }
-            }
-            NetworkHandler.INSTANCE.sendToServer(new ConfigShieldTypesMessage(itemId, new ArrayList<>(shieldTypeSelection), exclusiveTypes, false));
+            NetworkHandler.INSTANCE.sendToServer(new ConfigShieldTypesMessage(itemId, new ArrayList<>(shieldTypeSelection)));
         }
         isSelectingShieldTypes = false;
         shieldTypeSelection.clear();
-        shieldTypeCompat.clear();
     }
 
     @Override
@@ -1406,17 +1388,6 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
             guiGraphics.drawString(font, text, overlayX + 8, listY,
                     hovered ? renderer.getValueColor() : (selected ? renderer.getValueColor() : renderer.getTextColor()));
 
-            // 已选行右侧的兼容/独占切换按钮
-            if (selected) {
-                int[] btn = shieldTypeCompatBtnBounds(overlayX, overlayW, typeName);
-                boolean btnHovered = mouseX >= btn[0] - 1 && mouseX < btn[0] + btn[1]
-                        && mouseY >= listY && mouseY < listY + 10;
-                if (btnHovered) {
-                    guiGraphics.fill(btn[0] - 1, listY - 1, btn[0] + btn[1], listY + 9, 0xFF2A4A8A);
-                }
-                guiGraphics.drawString(font, shieldTypeCompatLabel(typeName), btn[0], listY,
-                        btnHovered ? renderer.getAccentColor() : renderer.getHintColor());
-            }
             listY += 11;
         }
         if (allTypes.isEmpty()) {
@@ -1563,6 +1534,12 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
                 overlayX + 8, overlayY + overlayH - 12, renderer.getHintColor());
     }
 
+    /** 参数显示默认值：基础四项优先取护盾类型定义（服务端同步的 shield_types 数据），未定义回退 ParamDef 硬编码 */
+    private double shieldValueDefaultValue(ShieldValueDefs.ParamDef def) {
+        Double typeDefault = DefsManager.clientShieldTypeParamDefault(shieldValuesType, def.key());
+        return typeDefault != null ? typeDefault : def.defaultValue();
+    }
+
     /** 护盾类型数值编辑器 overlay：护盾类型 tab 切换 + 参数行点击编辑 + 重置/保存（布局与机制数值编辑器一致） */
     private void renderShieldValuesOverlay(GuiGraphics guiGraphics, int mouseX, int mouseY) {
         int overlayW = MECHANIC_VALUES_OVERLAY_W;
@@ -1610,7 +1587,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
                 valueText = shieldValuesDraft.getOrDefault(def.key(), "");
                 valueColor = renderer.getValueColor();
             } else {
-                valueText = formatValue(def.defaultValue())
+                valueText = formatValue(shieldValueDefaultValue(def))
                         + Component.translatable("screen.gytrinket.shield_value_default_tag").getString();
                 valueColor = renderer.getHintColor();
             }
@@ -1671,50 +1648,13 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
         return translated.equals(key) ? typeName : translated;
     }
 
-    /** 兼容/独占切换按钮文案（随该类型在本物品上的开关状态变化） */
-    private String shieldTypeCompatLabel(String typeName) {
-        return Component.translatable(shieldTypeCompat.getOrDefault(typeName, Boolean.TRUE)
-                ? "screen.gytrinket.shield_type_compat_btn"
-                : "screen.gytrinket.shield_type_exclusive_btn").getString();
-    }
-
-    /** 已选中类型行右侧兼容/独占按钮的区域（渲染与点击共用）；返回 {x, width}，右缘距 overlay 右侧 8px */
-    private int[] shieldTypeCompatBtnBounds(int overlayX, int overlayW, String typeName) {
-        int width = font.width(shieldTypeCompatLabel(typeName)) + 4;
-        return new int[]{overlayX + overlayW - 8 - width, width};
-    }
-
-    /** 切换护盾类型选择：兼容类型可共存；独占类型独占选中（清空其他选择） */
+    /** 切换护盾类型选择：护盾全部按实例生效，可多选共存 */
     private void toggleShieldType(String typeName) {
         if (shieldTypeSelection.contains(typeName)) {
             shieldTypeSelection.remove(typeName);
-            shieldTypeCompat.remove(typeName);
             return;
         }
-        // 保持"独占类型独占选中"不变量：选择新类型时，先移除当前开关为不兼容的类型
-        shieldTypeSelection.removeIf(t -> !shieldTypeCompat.getOrDefault(t, Boolean.TRUE));
         shieldTypeSelection.add(typeName);
-        // 新选类型的开关初值取类型级默认（此前被翻转过的沿用已存值）
-        shieldTypeCompat.putIfAbsent(typeName, defaultShieldTypeCompat(typeName));
-    }
-
-    /** 切换已选类型的兼容开关；翻为独占时保持"独占类型独占选中"不变量 */
-    private void toggleShieldTypeCompat(String typeName) {
-        if (!shieldTypeSelection.contains(typeName)) {
-            return;
-        }
-        boolean nowCompatible = !shieldTypeCompat.getOrDefault(typeName, Boolean.TRUE);
-        shieldTypeCompat.put(typeName, nowCompatible);
-        if (!nowCompatible) {
-            shieldTypeSelection.removeIf(t -> !t.equals(typeName));
-            shieldTypeCompat.keySet().removeIf(t -> !t.equals(typeName));
-            shieldTypeCompat.put(typeName, false);
-        }
-    }
-
-    /** 类型级兼容默认值（datapack 定义，缺省视为兼容） */
-    private boolean defaultShieldTypeCompat(String typeName) {
-        return DefsManager.clientShieldTypes().getOrDefault(typeName, Boolean.TRUE);
     }
 
     /** 特殊机制选择器 overlay：单击选择即发送（添加/移除指定机制），支持鼠标滚轮 */
@@ -1897,28 +1837,17 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
                 if (listY + 10 > listBottom) break;
                 if (mouseX >= overlayX + 5 && mouseX < overlayX + overlayW - 5
                         && mouseY >= listY && mouseY < listY + 10) {
-                    String typeName = e.getKey();
-                    // 已选行右侧命中兼容/独占按钮时切换开关，否则切换选择
-                    if (shieldTypeSelection.contains(typeName)) {
-                        int[] btn = shieldTypeCompatBtnBounds(overlayX, overlayW, typeName);
-                        if (mouseX >= btn[0] - 1) {
-                            toggleShieldTypeCompat(typeName);
-                        } else {
-                            toggleShieldType(typeName);
-                        }
-                    } else {
-                        toggleShieldType(typeName);
-                    }
+                    toggleShieldType(e.getKey());
                     return true;
                 }
                 listY += 11;
             }
-            // 底部"保存"按钮：应用类型/兼容选择（与数值编辑器的保存操作统一）
+            // 底部"保存"按钮：应用类型选择（与数值编辑器的保存操作统一）
             if (hoveredShieldTypeSaveBtn) {
                 applyShieldTypeSelection();
                 return true;
             }
-            // 底部"编辑数值"按钮：先自动保存当前类型/兼容选择（含未按过保存的修改），
+            // 底部"编辑数值"按钮：先自动保存当前类型选择（含未按过保存的修改），
             // 再进入所选护盾类型的物品级数值编辑器（tab 用本地选择，避免等待服务端同步）
             if (hoveredShieldValuesBtn && selectedItemIndex >= 0 && selectedItemIndex < itemConfigData.size()) {
                 String itemId = itemConfigData.getCompound(selectedItemIndex).getString("itemId");
@@ -1931,7 +1860,6 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
             if (mouseX < overlayX || mouseX >= overlayX + overlayW || mouseY < overlayY || mouseY >= overlayY + overlayH) {
                 isSelectingShieldTypes = false;
                 shieldTypeSelection.clear();
-                shieldTypeCompat.clear();
             }
             return true;
         }
@@ -2214,8 +2142,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
                 else if (selectedItemIndex > dragFromIndex && selectedItemIndex <= insertIdx) selectedItemIndex--;
                 else if (selectedItemIndex < dragFromIndex && selectedItemIndex >= insertIdx) selectedItemIndex++;
 
-                NetworkHandler.INSTANCE.sendToServer(
-                    new ConfigReorderMessage(dragFromIndex, dragTargetIndex));
+                // 拖拽排序仅作用于本地会话显示（覆写层无顺序语义，服务端广播时恢复权威顺序）
             }
             isDraggingItem = false;
             dragFromIndex = -1;
@@ -2300,7 +2227,6 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
             isDeletingAttr = false;
             isSelectingShieldTypes = false;
             shieldTypeSelection.clear();
-            shieldTypeCompat.clear();
             isSelectingMechanic = false;
         }
         if (isEditing && editingAttrName != null && selectedItemIndex >= 0 && selectedItemIndex < itemConfigData.size()) {

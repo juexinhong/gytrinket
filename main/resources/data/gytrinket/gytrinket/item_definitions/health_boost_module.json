@@ -1,0 +1,9 @@
+{
+  "items": {
+    "gytrinket:health_boost_module": {
+      "attributes": {
+        "player_health_percent": 0.2
+      }
+    }
+  }
+}

@@ -158,6 +158,12 @@ public class ProjectileBurstManager {
             return;
         }
 
+        // 饰品/被动来源弹射物（来源追溯）：如泰拉饰品星星斗篷受击落星，owner 为玩家
+        // 但并非玩家主动射击，不参与点射复制（避免饰品特效误挂攻击冷却禁用物品）
+        if (Config.isSpawnedByTracedPackage()) {
+            return;
+        }
+
         // 记录模板：完整 NBT 快照（含弹射物类型与初始数据）
         CompoundTag template = new CompoundTag();
         template.putString("id", EntityType.getKey(projectile.getType()).toString());

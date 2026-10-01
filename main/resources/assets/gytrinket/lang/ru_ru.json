@@ -32,6 +32,7 @@
   "tooltip.gytrinket.attr.player_health_percent": "Процент здоровья игрока",
   "tooltip.gytrinket.attr.player_health_independent": "Независимый множитель здоровья игрока",
   "tooltip.gytrinket.attr.player_damage_reduction": "Снижение урона игрока",
+  "tooltip.gytrinket.attr.player_damage_reduction_vulnerable": "Уязвимость игрока",
   "tooltip.gytrinket.attr.player_self_damage_reduction": "Снижение собственного урона игрока",
   "tooltip.gytrinket.attr.coating": "Покрытие",
   "tooltip.gytrinket.attr.adaptive_armor_duration": "Длительность адаптивной брони",

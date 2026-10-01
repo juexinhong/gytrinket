@@ -11,7 +11,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
@@ -55,16 +55,16 @@ public class ChargedAttackManager {
     /**
      * 将充能物品白名单攻击速度修正值写入模组属性账本（动态属性，命名空间 charged_attack）
      * 由 AttackSpeedManager 监听账本变化统一投影到原版攻击速度属性
-     * 仅对非武器物品（武器类与工具类武器自带攻速修正，不受限）且修正值非0时写入，
+     * 仅对非武器物品（武器类与组件武器自带攻速修正，不受限）且修正值非0时写入，
      * 武器类或修正值为0时确保移除残留
      */
     private static void applyItemUseChargeSpeedAttribute(ServerPlayer player) {
-        Item held = player.getMainHandItem().getItem();
-        if (Config.isWeaponLikeItem(held)) {
+        ItemStack mainHand = player.getMainHandItem();
+        if (Config.isWeaponLikeItem(mainHand)) {
             removeItemUseChargeSpeedAttribute(player);
             return;
         }
-        double modifierValue = Config.getItemUseChargeSpeedModifier(held);
+        double modifierValue = Config.getItemUseChargeSpeedModifier(mainHand.getItem());
         if (modifierValue == 0) {
             removeItemUseChargeSpeedAttribute(player);
             return;

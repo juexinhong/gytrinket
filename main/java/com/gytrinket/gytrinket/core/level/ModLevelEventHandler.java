@@ -50,6 +50,9 @@ public class ModLevelEventHandler {
             NetworkHandler.sendModLevelSyncToPlayer(player);
             // 同步运行时定义覆盖层（特殊机制/护盾类型）到客户端，重启后面板与提示保持生效状态
             NetworkHandler.sendDefsOverridesToAllPlayers(player);
+            // 登录时单播定义覆盖层+物品属性表，填充客户端 AttributeManager 静态属性表
+            // （tooltip 与客户端属性逻辑无需玩家手动打开一次配置界面；客户端主动拉取为主路径）
+            com.gytrinket.gytrinket.network.packet.ConfigDefsSyncPayload.sendDefinitionsToPlayer(player);
             com.gytrinket.gytrinket.core.random_build.RandomBuildManager.clearPlayerData(player.getUUID());
         }
     }

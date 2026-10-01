@@ -11,11 +11,12 @@ import java.util.UUID;
  * 伤害施加期归属窗口
  * <p>
  * 模拟爆炸/能量波/虹吸等施加"无攻击者"伤害时（避免非致死时对玩家触发仇恨），
- * 在施加处临时登记归属玩家；{@link ExecuteAttributionHandler} 在
- * LivingDeathEvent（所有减伤流程后的实际致死事实）阶段读取该窗口完成归属，
- * 替代旧的"伤害前预判斩杀归属"（预判会被护甲/免伤误导）。
+ * 在施加处临时登记归属玩家；{@link ExecuteDamageHandler} 在
+ * {@link net.neoforged.neoforge.event.entity.living.LivingDamageEvent.Pre}
+ * 阶段做致命一击预估，伤害足以杀死目标时读取该窗口解析归属玩家，
+ * 取消原伤害并改用归属玩家的斩杀伤害源完成最后一击。
  * <p>
- * hurt() 同步执行，致死事件必然发生在 mark/unmark 之间。
+ * hurt() 同步执行，Pre 事件必然发生在 mark/unmark 之间。
  */
 public final class DamageAttributionWindow {
 

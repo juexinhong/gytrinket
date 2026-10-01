@@ -32,6 +32,7 @@
   "tooltip.gytrinket.attr.player_health_percent": "플레이어 체력 퍼센트",
   "tooltip.gytrinket.attr.player_health_independent": "플레이어 체력 독립 배율",
   "tooltip.gytrinket.attr.player_damage_reduction": "플레이어 피해 감소",
+  "tooltip.gytrinket.attr.player_damage_reduction_vulnerable": "플레이어 취약",
   "tooltip.gytrinket.attr.player_self_damage_reduction": "플레이어 자가 피해 감소",
   "tooltip.gytrinket.attr.coating": "코팅",
   "tooltip.gytrinket.attr.adaptive_armor_duration": "적응 아머 지속시간",

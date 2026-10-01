@@ -40,6 +40,7 @@
   "tooltip.gytrinket.attr.player_health_percent": "玩家生命百分比",
   "tooltip.gytrinket.attr.player_health_independent": "玩家生命独立乘区",
   "tooltip.gytrinket.attr.player_damage_reduction": "玩家伤害减免",
+  "tooltip.gytrinket.attr.player_damage_reduction_vulnerable": "玩家易伤",
   "tooltip.gytrinket.attr.player_self_damage_reduction": "玩家自伤减免",
   "tooltip.gytrinket.attr.coating": "镀层",
   "tooltip.gytrinket.attr.adaptive_armor_duration": "适应性装甲持续时间",

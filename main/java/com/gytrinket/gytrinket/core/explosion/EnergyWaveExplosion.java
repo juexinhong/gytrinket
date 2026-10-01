@@ -185,9 +185,9 @@ public class EnergyWaveExplosion {
             entity.invulnerableTime = 0;
         }
 
-        // 归属不再由伤害前预判（原始伤害会被护甲/免伤削减导致误判）：
-        // 玩家施加时在归属窗口内透传原始伤害源，致死归属由 ExecuteAttributionHandler
-        // 按 LivingDeathEvent 实际致死结果判定
+        // 伤害源恒不带玩家（避免非致死时对玩家触发仇恨）：
+        // 预估致死时由 ExecuteDamageHandler 取消原伤害并改用归属玩家的
+        // 斩杀伤害源（execute_damage）完成最后一击
         boolean windowed = owner != null && damageSource.getEntity() != null;
         if (windowed) {
             DamageAttributionWindow.mark(entity, owner);

@@ -1859,6 +1859,26 @@ public class DefsManager {
     }
 
     /**
+     * 客户端：取某物品的生效属性映射（item_definitions registry 合并后的 attributes 段）。
+     * <p>
+     * 该注册表随数据包自动同步到客户端，不依赖自定义网络包；作为客户端静态属性表
+     * （AttributeManager）未收到配置同步时的回退取值来源。access 为 null、无定义、
+     * removed 或无 attributes 段时返回空表。
+     */
+    public static Map<String, Double> clientEffectiveItemAttributes(RegistryAccess access, String itemId) {
+        if (access == null || itemId == null || itemId.isEmpty()) {
+            return Map.of();
+        }
+        ItemDefinition def = clientMergedItemDefinition(access, itemId);
+        if (def == null || def.removed() || def.attributes() == null || def.attributes().isEmpty()) {
+            return Map.of();
+        }
+        Map<String, Double> result = new LinkedHashMap<>();
+        def.attributes().forEach((name, pv) -> result.put(name, pv.value()));
+        return result;
+    }
+
+    /**
      * 客户端：解析玩家某机制参数的生效数值（与 {@link #resolveMechanicValue} 同一语义的客户端镜像）。
      * <p>
      * 供纯客户端效果读取（如幽灵机身移动衰减）：遍历本地装备物品逐件合并——可叠加求和、
@@ -1953,6 +1973,63 @@ public class DefsManager {
         Map<String, ParamValue> params = ov.values().get(shieldType);
         ParamValue pv = params == null ? null : params.get(paramKey);
         return pv != null ? pv.value() : fallback;
+    }
+
+    /**
+     * 客户端：按物品解析护盾实例基础参数生效值（tooltip 显示用）。
+     * 查询顺序与服务端 {@link #resolveShieldParam} 的客户端可见层对齐：
+     * UI 覆写（CLIENT_SHIELD_TYPE_OVERRIDES，同步自服务端 getServerShieldTypeOverrides：
+     * items 统一结构转译段 + 旧护盾类型覆写段）→
+     * 权威物品定义（item_definitions registry，按 key 排序合并，客户端镜像）→
+     * 护盾类型定义默认值（shield_types registry，{@link #clientShieldTypeParamDefault}）→
+     * fallback（调用方传入：{@link com.gytrinket.gytrinket.core.defs.ShieldValueDefs} 静态默认），
+     * 保证物品描述显示的数值与实际生效数值同源
+     */
+    public static double clientResolveShieldParam(RegistryAccess access, String itemId, String shieldTypeName,
+                                                  String paramKey, double fallback) {
+        if (itemId == null) return fallback;
+        // UI 覆写层：优先取声明类型组内的覆盖值，未命中再扫全部组（兼容旧段"任意类型组内同键参数"语义）
+        ShieldTypeOverride ov = CLIENT_SHIELD_TYPE_OVERRIDES.get(itemId);
+        if (ov != null && ov.values() != null) {
+            ParamValue pv = null;
+            if (shieldTypeName != null) {
+                Map<String, ParamValue> params = ov.values().get(shieldTypeName);
+                pv = params == null ? null : params.get(paramKey);
+            }
+            if (pv == null) {
+                for (Map<String, ParamValue> params : ov.values().values()) {
+                    ParamValue cand = params.get(paramKey);
+                    if (cand != null) {
+                        pv = cand;
+                        break;
+                    }
+                }
+            }
+            if (pv != null) return pv.value();
+        }
+        if (access != null) {
+            // 权威物品定义层：文件按 registry key 排序后遍历，后声明覆盖前声明（镜像服务端 loadFrom 合并链）
+            Optional<Registry<ItemDefinitionsFile>> reg = access.registry(ITEM_DEFINITIONS_KEY);
+            if (reg.isPresent()) {
+                List<Map.Entry<ResourceKey<ItemDefinitionsFile>, ItemDefinitionsFile>> entries =
+                        new ArrayList<>(reg.get().entrySet());
+                entries.sort(Map.Entry.comparingByKey());
+                String normalized = normalizeItemId(itemId);
+                for (var e : entries) {
+                    ItemDefinition def = e.getValue().items().get(normalized);
+                    if (def == null) continue;
+                    if (def.removed()) return fallback;
+                    if (def.shieldValues() != null) {
+                        ParamValue pv = def.shieldValues().get(paramKey);
+                        if (pv != null) return pv.value();
+                    }
+                }
+            }
+            // 护盾类型定义默认值层（shield_types/*.json 的 shieldValues 段）
+            Double typeDefault = clientShieldTypeParamDefault(access, shieldTypeName, paramKey);
+            if (typeDefault != null) return typeDefault;
+        }
+        return fallback;
     }
 
     /** 客户端查询：物品的特殊机制覆盖条目（含机制集合与数值覆盖；无覆盖时返回 null） */

@@ -25,7 +25,7 @@ public class BurnManager {
     private static final Map<String, Long> BURN_COOLDOWN = new HashMap<>();
     private static final long BURN_COOLDOWN_TICKS = 5;
     private static long lastProcessedTick = -1;
-    /** 两段式灼烧伤害施加中窗口（目标UUID），供减伤后致死归属事件识别 */
+    /** 两段式灼烧伤害施加中窗口（目标UUID），供斩杀死效预估识别 */
     private static final Set<UUID> BURN_APPLYING = new HashSet<>();
 
     private static String getCooldownKey(UUID targetUUID, String sourceName) {
@@ -119,9 +119,9 @@ public class BurnManager {
     private static void completeBurn(BurnData burnData, LivingEntity target) {
         float finalDamage = Math.max(MIN_BURN_DAMAGE, burnData.getAccumulatedDamage());
 
-        // 归属不再由原始伤害预判（原始伤害会被护甲/免伤削减导致误判）：
-        // 施加时不带攻击者（避免非致死时触发仇恨），
-        // 由 ExecuteAttributionHandler 按所有减伤流程后的实际致死结果归属
+        // 施加时不带攻击者（避免非致死时触发仇恨）：
+        // 预估致死时由 ExecuteDamageHandler 取消原伤害并改用归属玩家的
+        // 斩杀伤害源（execute_damage）完成最后一击
         applyBurnDamage(target, finalDamage);
 
         burnData.reset();
@@ -137,7 +137,7 @@ public class BurnManager {
         com.gytrinket.gytrinket.core.modifier.player.knockback.KnockbackManager.markNoKnockback(target.getUUID());
 
         // 两段式伤害（灼烧伤害源半份 + magic 半份）施加期间打标记，
-        // 供 ExecuteAttributionHandler 识别 magic 半份属于灼烧并按实际致死结果归属
+        // 供 ExecuteDamageHandler 识别 magic 半份属于灼烧以解析归属玩家
         BURN_APPLYING.add(target.getUUID());
         try {
             target.invulnerableTime = 0;
@@ -153,14 +153,14 @@ public class BurnManager {
     }
 
     /**
-     * 灼烧伤害是否正在施加中（两段式施加窗口，供减伤后致死归属事件识别）
+     * 灼烧伤害是否正在施加中（两段式施加窗口，供斩杀死效预估识别）
      */
     public static boolean isBurnApplying(LivingEntity target) {
         return BURN_APPLYING.contains(target.getUUID());
     }
 
     /**
-     * 获取当前灼烧的归属发起者（贡献最多的灼烧源，供减伤后致死归属事件解析）
+     * 获取当前灼烧的归属发起者（贡献最多的灼烧源，供斩杀死效预估解析归属）
      */
     public static Entity getCurrentBurnInitiator(LivingEntity target) {
         BurnData burnData = getBurnData(target);

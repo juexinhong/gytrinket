@@ -172,6 +172,11 @@ public class HostileTargetManager {
      * @return 是否为危险实体
      */
     public static boolean isDangerousEntity(Entity entity) {
+        // 威胁排除名单（第一优先级）：显式排除的实体（如伪无敌 boss）永不计入危险物
+        var excludedKey = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType());
+        if (excludedKey != null && Config.isThreatExcluded(excludedKey.toString())) {
+            return false;
+        }
         // 生物实体加入世界未超过 20 刻：暂不计入危险物名单（弹射物等非生物实体不受此限制）
         if (entity instanceof LivingEntity && entity.tickCount < NEW_LIVING_GRACE_TICKS) {
             return false;
@@ -200,7 +205,20 @@ public class HostileTargetManager {
         if (entity == null || !entity.isAlive()) {
             return false;
         }
-        
+
+        // 威胁排除名单（第一优先级）：伪无敌 boss 等特殊实体显式排除，全类别威胁豁免，
+        // 护盾系统（虹吸/光环/增幅/无人机等）永不将其作为目标
+        var excludedKey = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType());
+        if (excludedKey != null && Config.isThreatExcluded(excludedKey.toString())) {
+            return false;
+        }
+
+        // 生物实体加入世界未超过 20 刻：视为刚生成/加载，不构成任何威胁（MONSTER/仇恨/危险物/标记全类别豁免；
+        // 弹射物等非生物不受限，仍按危险物名单判定）
+        if (entity instanceof LivingEntity && entity.tickCount < NEW_LIVING_GRACE_TICKS) {
+            return false;
+        }
+
         if (player == null) {
             return isDangerousEntity(entity);
         }

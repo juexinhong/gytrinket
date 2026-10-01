@@ -12,8 +12,11 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.item.DiggerItem;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.SwordItem;
 import net.minecraft.world.item.TridentItem;
@@ -168,6 +171,9 @@ public class Config {
     // ===== 18.5 弹射物黑名单 (projectile_blacklist) =====
     /** 弹射物黑名单：不参与充能攻击增幅与点射复制的实体类型注册名 */
     public static final ModConfigSpec.ConfigValue<List<? extends String>> PROJECTILE_BLACKLIST;
+
+    /** 弹射物来源追溯：弹射物加入世界时调用栈命中这些 Java 包名前缀则视为饰品/被动生成，不触发点射 */
+    public static final ModConfigSpec.ConfigValue<List<? extends String>> PROJECTILE_SOURCE_TRACE_PACKAGES;
 
     // ===== 17.5 征途 (journey) =====
 
@@ -679,8 +685,6 @@ public class Config {
         // ===== 17. 强袭 =====
         BUILDER.comment("强袭系统配置").push("assault");
 
-        
-
         ASSAULT_ATTACK_SPEED_PER_STACK = BUILDER.comment(
             "每层强袭提供的攻击速度独立乘区加成",
             "默认0.1（即10%）",
@@ -697,7 +701,7 @@ public class Config {
             "每层强袭对玩家自身造成的伤害",
             "默认0.1",
             "范围：0.01 ~ 10.0"
-        ).defineInRange("selfDamagePerStack", 0.05, 0.01, 10.0);
+        ).defineInRange("selfDamagePerStack", 0.02, 0, 10.0);
 
         ASSAULT_MOVEMENT_SPEED_PENALTY = BUILDER.comment(
             "强袭期间的移动速度独立乘区惩罚",
@@ -830,10 +834,23 @@ public class Config {
         PROJECTILE_BLACKLIST = BUILDER.comment(
             "弹射物黑名单（实体类型注册名）",
             "名单中的弹射物不参与本模组的弹射物系统：不会被充能攻击增幅，也不会被点射复制",
-            "默认仅末影珍珠（点射复制会导致多次瞬移，语义混乱且不可控）",
+            "默认末影珍珠（点射复制会导致多次瞬移，语义混乱且不可控）与泰拉饰品星星斗篷落星（饰品受击被动生成，非玩家主动射击）",
             "示例：minecraft:ender_pearl"
         ).defineListAllowEmpty("projectileBlacklist",
-            List.of("minecraft:ender_pearl"),
+            List.of("minecraft:ender_pearl", "terra_curio:star_cloak"),
+            s -> true
+        );
+
+        PROJECTILE_SOURCE_TRACE_PACKAGES = BUILDER.comment(
+            "弹射物来源追溯（Java 包名前缀）",
+            "弹射物加入世界时，若调用栈来自这些包（饰品/被动技能生成弹射物，如泰拉饰品星星斗篷受击落星、蜜蜂斗篷放蜂），",
+            "则不触发弹射物点射：不复制弹射物、不挂攻击冷却禁用物品",
+            "该机制按生成来源整体拦截，自动覆盖目标模组新增的饰品弹射物，无需逐个加入黑名单",
+            "注意：此处填写目标模组的 Java 包名前缀（非模组 id），主动技能弹射物同样会被拦截，",
+            "如需保留主动技能连击请清空对应条目并改用黑名单逐个排除",
+            "默认追溯泰拉饰品（org.confluence.terra_curio）与 lensouls（com.plumejade.lensouls），留空列表则禁用追溯"
+        ).defineListAllowEmpty("projectileSourceTracePackages",
+            List.of("org.confluence.terra_curio", "com.plumejade.lensouls"),
             s -> true
         );
 
@@ -1575,6 +1592,8 @@ public class Config {
     private static final Set<Item> WEAPONIZED_SHIELD_ITEM_SET = new HashSet<>();
     private static final Set<Item> CONVERSION_ITEM_SET = new HashSet<>();
     private static final Set<String> DANGEROUS_ENTITY_SET = new HashSet<>();
+    /** 威胁排除名单（第一优先级）：名单内实体不构成任何威胁，护盾系统永不将其作为目标（如伪无敌 boss） */
+    private static final Set<String> THREAT_EXCLUDED_ENTITY_SET = new HashSet<>();
     private static final Set<Item> NEAR_DEATH_PROTECTION_ITEM_SET = new HashSet<>();
     private static final Set<Item> NEAR_DEATH_EXPLOSION_ITEM_SET = new HashSet<>();
     private static final Set<Item> SELF_DESTRUCT_ITEM_SET = new HashSet<>();
@@ -1590,6 +1609,8 @@ public class Config {
     private static final Map<Item, Double> ITEM_USE_CHARGE_WHITELIST = new HashMap<>();
     /** 弹射物黑名单缓存：不参与充能攻击增幅与点射复制的实体类型 */
     private static final Set<EntityType<?>> PROJECTILE_BLACKLIST_CACHE = new HashSet<>();
+    /** 弹射物来源追溯包名前缀缓存 */
+    private static final Set<String> PROJECTILE_SOURCE_TRACE_CACHE = new HashSet<>();
     private static final Set<Item> JOURNEY_MODULE_ITEM_SET = new HashSet<>();
     /** 声明为特殊机制的物品集合（special_mechanics 文件夹声明并集），用于快速装备等统一判定 */
     private static final Set<Item> SPECIAL_MECHANIC_ITEM_SET = new HashSet<>();
@@ -1719,11 +1740,72 @@ public class Config {
     }
 
     /**
+     * 解析弹射物来源追溯包名前缀配置
+     * 弹射物加入世界时调用栈命中这些前缀则视为饰品/被动生成，不触发点射
+     */
+    public static void loadProjectileSourceTrace() {
+        PROJECTILE_SOURCE_TRACE_CACHE.clear();
+        for (String entry : PROJECTILE_SOURCE_TRACE_PACKAGES.get()) {
+            String trimmed = entry.trim();
+            if (trimmed.isEmpty()) {
+                continue;
+            }
+            PROJECTILE_SOURCE_TRACE_CACHE.add(trimmed);
+        }
+        gytrinket.LOGGER.info("弹射物来源追溯包名加载完成，共 {} 个前缀", PROJECTILE_SOURCE_TRACE_CACHE.size());
+    }
+
+    /**
+     * 弹射物来源追溯：弹射物加入世界时，调用栈是否命中被追溯的包名前缀
+     * <p>
+     * 用于识别饰品/被动技能生成的弹射物（如泰拉饰品星星斗篷受击落星）：
+     * 此类弹射物 owner 为玩家但并非玩家主动射击，第三方模组也不会打来源标记，
+     * 只能以调用栈追溯生成来源。命中即不触发弹射物点射（不复制、不挂冷却禁用物品）。
+     * <p>
+     * 性能：仅在弹射物点射链路内调用（弹射物归属玩家且连击段数 > 0），栈遍历开销可忽略。
+     */
+    public static boolean isSpawnedByTracedPackage() {
+        if (PROJECTILE_SOURCE_TRACE_CACHE.isEmpty()) {
+            return false;
+        }
+        for (StackTraceElement element : Thread.currentThread().getStackTrace()) {
+            String className = element.getClassName();
+            for (String prefix : PROJECTILE_SOURCE_TRACE_CACHE) {
+                if (className.startsWith(prefix)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
      * 物品是否为武器类（剑/三叉戟）或工具类武器（镐/斧/铲/锄）
      * 这些物品自带攻击速度修正，长按右键充能不受白名单限制
      */
     public static boolean isWeaponLikeItem(Item item) {
         return item instanceof SwordItem || item instanceof TridentItem || item instanceof DiggerItem;
+    }
+
+    /**
+     * 武器形态判定（ItemStack 版）：原版三大类武器直接命中；
+     * 其余物品检查 ATTRIBUTE_MODIFIERS 组件——自带主手攻速修正即视为武器。
+     * <p>
+     * 兜底场景：部分模组武器以「普通 Item + ItemAttributeModifiers 组件」形态实现
+     * （如灾变 Cataclysm_Weapon extends Item，攻速修正 -2.4 全靠组件挂在物品上），
+     * instanceof 三大类判不中。若误判为非武器，攻速口径测量/充能减益会在武器修正
+     * 之上再叠加默认修正值，攻速被双重削减为负值（连击冷却被钳制到连击段数×10秒）
+     */
+    public static boolean isWeaponLikeItem(ItemStack stack) {
+        if (stack.isEmpty()) {
+            return false;
+        }
+        if (isWeaponLikeItem(stack.getItem())) {
+            return true;
+        }
+        return stack.getAttributeModifiers().modifiers().stream()
+                .anyMatch(entry -> entry.attribute().is(Attributes.ATTACK_SPEED)
+                        && entry.slot().test(EquipmentSlot.MAINHAND));
     }
 
     /**
@@ -1752,6 +1834,7 @@ public class Config {
 
         loadItemUseChargeWhitelist();
         loadProjectileBlacklist();
+        loadProjectileSourceTrace();
 
         gytrinket.LOGGER.info("配置加载完成");
     }
@@ -1921,6 +2004,10 @@ public class Config {
         // 危险实体
         DANGEROUS_ENTITY_SET.clear();
         DANGEROUS_ENTITY_SET.addAll(DefsManager.getEntitySet("dangerous_entities"));
+
+        // 威胁排除名单（第一优先级）
+        THREAT_EXCLUDED_ENTITY_SET.clear();
+        THREAT_EXCLUDED_ENTITY_SET.addAll(DefsManager.getEntitySet("threat_excluded_entities"));
 
         // 依赖定义数据的子系统重载
         DisableSystem.loadConfig();
@@ -2321,6 +2408,11 @@ public class Config {
 
     public static boolean isDangerousEntity(String entityId) {
         return DANGEROUS_ENTITY_SET.contains(entityId);
+    }
+
+    /** 威胁排除名单（第一优先级）：名单内实体不构成任何威胁，护盾系统永不将其作为目标 */
+    public static boolean isThreatExcluded(String entityId) {
+        return THREAT_EXCLUDED_ENTITY_SET.contains(entityId);
     }
 
     public static double getAmplificationBaseAmplification() {

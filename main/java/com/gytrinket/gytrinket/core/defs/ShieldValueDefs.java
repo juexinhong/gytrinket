@@ -43,6 +43,11 @@ public final class ShieldValueDefs {
         PARAMS.put(shieldType, List.of(defs));
     }
 
+    /** 四项基础属性参数定义（tooltip 显示复用，编辑器展示顺序一致） */
+    public static ParamDef[] getBaseParams() {
+        return BASE_PARAMS;
+    }
+
     /** 基础四项 + 类型行为参数合并（基础项在前，编辑器优先展示） */
     private static ParamDef[] withBase(ParamDef... effectParams) {
         ParamDef[] all = new ParamDef[BASE_PARAMS.length + effectParams.length];

@@ -40,6 +40,7 @@
   "tooltip.gytrinket.attr.player_health_percent": "Player Health Percentage",
   "tooltip.gytrinket.attr.player_health_independent": "Player Health Independent Multiplier",
   "tooltip.gytrinket.attr.player_damage_reduction": "Player Damage Reduction",
+  "tooltip.gytrinket.attr.player_damage_reduction_vulnerable": "Player Vulnerability",
   "tooltip.gytrinket.attr.player_self_damage_reduction": "Player Self Damage Reduction",
   "tooltip.gytrinket.attr.coating": "Coating",
   "tooltip.gytrinket.attr.adaptive_armor_duration": "Adaptive Armor Duration",

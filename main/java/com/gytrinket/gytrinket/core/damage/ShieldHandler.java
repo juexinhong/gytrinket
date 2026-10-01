@@ -72,7 +72,7 @@ public class ShieldHandler implements DamageHandler {
             return;
         }
 
-        // 逐实例吸收：实例列表序 = 装备扫描序（Curios 优先，全局池末位）
+        // 逐实例吸收：实例列表序 = 装备扫描序（Curios 优先）
         double remaining = originalDamage;
         boolean allHitPierce = true;
         for (ShieldInstance instance : instances) {
@@ -84,9 +84,11 @@ public class ShieldHandler implements DamageHandler {
             }
             double pool = instance.getCurrentShield();
             if (pool >= remaining) {
+                boolean wasCooling = instance.isCoolingDown();
                 instance.setCurrentShield(pool - remaining);
-                // 受损（未破盾）即进入冷却充能：进度清零重新计时
-                if (instance.getCurrentShield() < instance.getMaxShield()) {
+                // 首次受损进入冷却充能：进度清零重新计时；
+                // 充能中再受损只扣池量不重置进度（受击延长由 applyHitExtension 按配置处理，extend=0 时受击不影响充能）
+                if (instance.getCurrentShield() < instance.getMaxShield() && !wasCooling) {
                     instance.restartCooldown(ShieldManager.computeMaxCooldown(shieldOwnerUUID, instance.getItemId(),
                             instance.getShieldTypeName()));
                 }

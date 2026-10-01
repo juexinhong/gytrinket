@@ -35,7 +35,8 @@ final class BurstFireSupport {
 
     /**
      * 借用属性系统捕获当前有效攻速（修正值施加方式与右键充能一致）：
-     * 1. 主手物品为武器 → 不施加（武器自带攻速已在属性中生效）
+     * 1. 主手物品为武器（原版三大类，或组件自带主手攻速修正——如灾变 Cataclysm_Weapon
+     *    extends Item 的组件武器）→ 不施加（武器自带攻速已在属性中生效）
      * 2. 主手物品命中充能物品白名单 → 临时施加白名单攻速修正值
      * 3. 其余（含空手）→ 临时施加默认攻速修正值
      * 读取属性最终攻速（自动叠加急迫等玩家身上所有攻速修饰符）后立即移除临时修饰符
@@ -48,7 +49,7 @@ final class BurstFireSupport {
     static double captureEffectiveAttackSpeed(ServerPlayer player) {
         ItemStack mainHand = player.getMainHandItem();
         // 非武器（含空手）按充能逻辑取修正值：白名单命中取白名单值，未命中自动返回默认值
-        double speedModifier = (mainHand.isEmpty() || !Config.isWeaponLikeItem(mainHand.getItem()))
+        double speedModifier = mainHand.isEmpty() || !Config.isWeaponLikeItem(mainHand)
                 ? Config.getItemUseChargeSpeedModifier(mainHand.getItem())
                 : 0;
 

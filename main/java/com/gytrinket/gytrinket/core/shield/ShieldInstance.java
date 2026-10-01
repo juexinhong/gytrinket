@@ -4,11 +4,11 @@ import com.gytrinket.gytrinket.gytrinket;
 import net.minecraft.world.item.ItemStack;
 
 /**
- * 护盾实例：每个提供护盾的物品实例（或全局池）独立维护池量、破盾状态与冷却进度。
+ * 护盾实例：每个提供护盾的物品实例独立维护池量、破盾状态与冷却进度。
  * <p>
  * 实例粒度 = 物品种类 × 护盾类型（相同物品 id 去重只生效一个实例）；
- * 全局池实例承接"shield 属性组总值 − Σ物品实例上限"的差额（总池守恒），
- * 其 itemId 为 {@link #GLOBAL_POOL_ITEM_ID}、shieldTypeName 为 null。
+ * globalPool 标志与 {@link #GLOBAL_POOL_ITEM_ID} 仅保留用于旧存档快照兼容，
+ * 现行逻辑不再创建全局池实例（无护盾类型物品的护盾值均摊共享给各实例上限）。
  */
 public class ShieldInstance {
 

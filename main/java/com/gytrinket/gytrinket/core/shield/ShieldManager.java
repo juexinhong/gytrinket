@@ -33,7 +33,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 护盾多实例管理：每个提供护盾的物品实例（每物品 × 每类型一条）独立维护池量与冷却，
- * 全局池实例承接 shield 组值超出物品实例上限之和的差额（总池守恒）。
+ * 无护盾类型物品提供的护盾值（shield 组值超出物品实例上限之和的差额）均摊共享给所有实例上限。
  * <p>
  * 对外聚合 API（getCurrentShield/getMaxShield/getShieldData/addShield 等）保持 Σ 语义，
  * 旧调用点无需修改。
@@ -43,7 +43,7 @@ public class ShieldManager {
 
     private static final String SLOT_KEY = "shield";
 
-    /** 玩家 -> 护盾实例列表（列表序 = 装备扫描序，Curios 优先，全局池末位） */
+    /** 玩家 -> 护盾实例列表（列表序 = 装备扫描序，Curios 优先） */
     private static final Map<UUID, List<ShieldInstance>> INSTANCES = new ConcurrentHashMap<>();
 
     /** 登录暂存的存档护盾快照：实例重建时按 identityKey 迁移状态（登录早期写入，避免属性重算先把槽位覆盖为 0） */
@@ -162,29 +162,19 @@ public class ShieldManager {
             }
         }
 
-        // 全局池实例：shield 组值 − Σ物品实例上限，总池守恒；仅当存在护盾物品且差额为正时建立
+        // shield 组值超出物品实例上限之和的差额（无护盾类型物品提供的护盾值）：
+        // 均摊共享给所有护盾类型实例的上限（总池守恒），不再创建独立的全局池幽灵实例
         if (!newInstances.isEmpty()) {
             double instanceMaxSum = 0;
             for (ShieldInstance instance : newInstances) {
                 instanceMaxSum += instance.getMaxShield();
             }
-            double globalMax = AttributeManager.getGroupAttribute(playerUUID, "shield") - instanceMaxSum;
-            if (globalMax > 0) {
-                String identityKey = ShieldInstance.GLOBAL_POOL_ITEM_ID + "|";
-                ShieldInstance global = new ShieldInstance(ShieldInstance.GLOBAL_POOL_ITEM_ID, null, null, true,
-                        globalMax, newInstances.get(0).getMaxCooldown());
-                ShieldInstance old = oldByIdentity.remove(identityKey);
-                if (old != null) {
-                    global.restoreState(old.getCurrentShield(), old.isBroken(),
-                            old.getCooldownProgress(), old.getMaxCooldown());
-                } else if (pendingByIdentity != null) {
-                    ShieldData.InstanceSnapshot snapshot = pendingByIdentity.remove(identityKey);
-                    if (snapshot != null) {
-                        global.restoreState(snapshot.current(), snapshot.broken(),
-                                snapshot.cooldownProgress(), snapshot.maxCooldown());
-                    }
+            double sharedBonus = AttributeManager.getGroupAttribute(playerUUID, "shield") - instanceMaxSum;
+            if (sharedBonus > 0) {
+                double perInstance = sharedBonus / newInstances.size();
+                for (ShieldInstance instance : newInstances) {
+                    instance.setMaxShield(instance.getMaxShield() + perInstance);
                 }
-                newInstances.add(global);
             }
         }
 

@@ -100,6 +100,8 @@ public class NetworkHandler {
         registrar.playToServer(SetInterceptorAttackModePayload.TYPE, SetInterceptorAttackModePayload.STREAM_CODEC, SetInterceptorAttackModePayload::handle);
         registrar.playToClient(SyncInterceptorAttackModePayload.TYPE, SyncInterceptorAttackModePayload.STREAM_CODEC, SyncInterceptorAttackModePayload::handle);
         registrar.playToClient(ConfigDefsSyncPayload.TYPE, ConfigDefsSyncPayload.STREAM_CODEC, ConfigDefsSyncPayload::handle);
+        // 客户端进入世界时主动拉取定义覆盖层与物品属性表（定义同步）
+        registrar.playToServer(ClientSyncRequestPayload.TYPE, ClientSyncRequestPayload.STREAM_CODEC, ClientSyncRequestPayload::handle);
         registrar.playToServer(SetInterceptorAmmoPayload.TYPE, SetInterceptorAmmoPayload.STREAM_CODEC, SetInterceptorAmmoPayload::handle);
         registrar.playToServer(GhostFuselageAttackPayload.TYPE, GhostFuselageAttackPayload.STREAM_CODEC, GhostFuselageAttackPayload::handle);
         registrar.playToServer(RequestRandomBuildPayload.TYPE, RequestRandomBuildPayload.STREAM_CODEC, RequestRandomBuildPayload::handle);

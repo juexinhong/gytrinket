@@ -32,6 +32,7 @@
   "tooltip.gytrinket.attr.player_health_percent": "プレイヤー体力パーセンテージ",
   "tooltip.gytrinket.attr.player_health_independent": "プレイヤー体力独立乗算",
   "tooltip.gytrinket.attr.player_damage_reduction": "プレイヤーダメージ軽減",
+  "tooltip.gytrinket.attr.player_damage_reduction_vulnerable": "プレイヤー脆弱化",
   "tooltip.gytrinket.attr.player_self_damage_reduction": "プレイヤー自己ダメージ軽減",
   "tooltip.gytrinket.attr.coating": "コーティング",
   "tooltip.gytrinket.attr.adaptive_armor_duration": "アダプティブアーマー持続時間",

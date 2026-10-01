@@ -142,10 +142,10 @@ public class ShieldCooldownManager {
 
         for (ShieldInstance instance : coolingInstances) {
             String itemId = instance.getItemId();
-            double extend = DefsManager.resolveShieldParam(null, itemId, instance.getShieldTypeName(),
+            double extend = DefsManager.resolveShieldParam(ServerLifecycleHooks.getCurrentServer(), itemId, instance.getShieldTypeName(),
                     "shield_hit_cooldown_extend",
                     AttributeManager.getPlayerAttribute(playerUUID, "shield_hit_cooldown_extend")) * extendMultiplier;
-            double multiplier = DefsManager.resolveShieldParam(null, itemId, instance.getShieldTypeName(),
+            double multiplier = DefsManager.resolveShieldParam(ServerLifecycleHooks.getCurrentServer(), itemId, instance.getShieldTypeName(),
                     "shield_hit_cooldown_extend_multiplier",
                     AttributeManager.getPlayerAttribute(playerUUID, "shield_hit_cooldown_extend_multiplier")) * multMultiplier;
 
@@ -183,26 +183,12 @@ public class ShieldCooldownManager {
         }
     }
 
-    /** 冷却缩减属性变化：非全局实例按新上限折算进度，全局池跟随首个物品实例 */
+    /** 冷却缩减属性变化：各实例按新上限折算进度 */
     private static void recalcCooldowns(UUID playerUUID) {
-        int firstShieldMaxCooldown = -1;
         List<ShieldInstance> instances = ShieldManager.getInstances(playerUUID);
         for (ShieldInstance instance : instances) {
-            if (instance.isGlobalPool()) {
-                continue;
-            }
             int newMax = ShieldManager.computeMaxCooldown(playerUUID, instance.getItemId(), instance.getShieldTypeName());
             instance.updateMaxCooldown(newMax);
-            if (firstShieldMaxCooldown < 0) {
-                firstShieldMaxCooldown = newMax;
-            }
-        }
-        if (firstShieldMaxCooldown >= 0) {
-            for (ShieldInstance instance : instances) {
-                if (instance.isGlobalPool()) {
-                    instance.updateMaxCooldown(firstShieldMaxCooldown);
-                }
-            }
         }
     }
 

@@ -32,6 +32,7 @@
   "tooltip.gytrinket.attr.player_health_percent": "Spieler-Gesundheit Prozentsatz",
   "tooltip.gytrinket.attr.player_health_independent": "Spieler-Gesundheit unabhängiger Multiplikator",
   "tooltip.gytrinket.attr.player_damage_reduction": "Spieler-Schadensreduktion",
+  "tooltip.gytrinket.attr.player_damage_reduction_vulnerable": "Spieler-Verwundbarkeit",
   "tooltip.gytrinket.attr.player_self_damage_reduction": "Spieler-Eigenschadensreduktion",
   "tooltip.gytrinket.attr.coating": "Beschichtung",
   "tooltip.gytrinket.attr.adaptive_armor_duration": "Adaptive-Rüstung-Dauer",

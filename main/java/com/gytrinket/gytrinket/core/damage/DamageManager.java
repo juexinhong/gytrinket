@@ -72,7 +72,11 @@ public class DamageManager {
         }
 
         var damageTypeKey = source.typeHolder().unwrapKey();
-        if (damageTypeKey.orElse(null) == ModDamageTypes.FINAL_DAMAGE) {
+        if (damageTypeKey.orElse(null) == ModDamageTypes.FINAL_DAMAGE
+                || damageTypeKey.orElse(null) == ModDamageTypes.EXECUTE_DAMAGE) {
+            // FINAL_DAMAGE：已按护盾链处理完毕的最终伤害，不再重复介入
+            // EXECUTE_DAMAGE：斩杀伤害必须一击必杀，不进入护盾链削减，
+            // 也避免 斩杀→FINAL_DAMAGE→斩杀 的往返递归
             return;
         }
 

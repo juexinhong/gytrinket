@@ -1,16 +1,16 @@
 package com.gytrinket.gytrinket.core.tooltip;
 
+import com.gytrinket.gytrinket.client.ClientItemAttributes;
 import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.attribute.AttributeDefinition;
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
 import com.gytrinket.gytrinket.core.attribute.AttributeType;
 import com.gytrinket.gytrinket.core.attribute.ItemAttributeConfig;
 import com.gytrinket.gytrinket.core.defs.DefsManager;
+import com.gytrinket.gytrinket.core.defs.ShieldValueDefs;
 import com.gytrinket.gytrinket.core.entity.construct.ConstructManager;
 import com.gytrinket.gytrinket.gytrinket;
 import com.gytrinket.gytrinket.core.entity.construct.ConstructType;
-import com.gytrinket.gytrinket.core.entity.construct.drone.DroneBullet;
-import com.gytrinket.gytrinket.core.entity.construct.drone.DroneConstructTypes;
 import com.gytrinket.gytrinket.core.entity.construct.swarm.SwarmConstructTypes;
 import com.gytrinket.gytrinket.core.entity.construct.wingman.WingmanConstructTypes;
 import net.minecraft.ChatFormatting;
@@ -199,8 +199,8 @@ public class TooltipHandler {
     }
 
     private static void addItemAttributesTooltip(ItemTooltipEvent event, String itemId) {
-        // 数据源 = 客户端同步的物品属性（运行时覆盖层；权威 item_definitions 属性展示由配置同步合并提供）
-        ItemAttributeConfig config = AttributeManager.getItemAttributes(itemId);
+        // 数据源 = 客户端同步的物品属性（运行时覆盖层），未同步时回退数据包 item_definitions 属性段
+        ItemAttributeConfig config = ClientItemAttributes.getItemAttributes(itemId);
         if (config == null || config.getAttributes().isEmpty()) {
             return;
         }
@@ -210,11 +210,18 @@ public class TooltipHandler {
 
         for (var entry : config.getAttributes().entrySet()) {
             String attrName = entry.getKey();
+            double attrValue = entry.getValue();
 
-            Component attrTooltip = Component.translatable(TOOLTIP_PREFIX + "attr." + attrName)
+            // 玩家伤害减免为正数时实际是易伤（受到伤害提高），物品描述切换显示名
+            String attrKey = TOOLTIP_PREFIX + "attr." + attrName;
+            if (attrName.equals("player_damage_reduction") && attrValue > 0) {
+                attrKey = TOOLTIP_PREFIX + "attr.player_damage_reduction_vulnerable";
+            }
+
+            Component attrTooltip = Component.translatable(attrKey)
                 .withStyle(ChatFormatting.WHITE);
 
-            if (isDefaultTranslation(attrTooltip, TOOLTIP_PREFIX + "attr." + attrName)) {
+            if (isDefaultTranslation(attrTooltip, attrKey)) {
                 attrTooltip = Component.literal(attrName).withStyle(ChatFormatting.WHITE);
             }
 
@@ -293,6 +300,9 @@ public class TooltipHandler {
             event.getToolTip().add(Component.literal("  +").withStyle(ChatFormatting.GREEN)
                 .append(typeTooltip));
 
+            // 物品自带的四项基础属性参数（与运行时 resolveShieldParam 取值链同源）
+            addShieldBaseParamsTooltip(event, type, itemId);
+
             addShieldTypeDescriptionTooltip(event, type, itemId);
 
             // 穿盾机制开启时在类型描述下追加提示行（物品级覆盖 pierce_through ≥ 0.5）
@@ -308,6 +318,29 @@ public class TooltipHandler {
         event.getToolTip().add(Component.literal("    ")
                 .append(Component.translatable(TOOLTIP_PREFIX + "shield_pierce_line"))
                 .withStyle(ChatFormatting.YELLOW));
+    }
+
+    /**
+     * 护盾物品自带的四项基础属性参数显示（shield_base / shield_cooldown_time /
+     * shield_hit_cooldown_extend / shield_hit_cooldown_extend_multiplier）。
+     * 数值经 {@link DefsManager#clientResolveShieldParam} 按物品实例解析（与运行时同源），
+     * 未命中任何覆写/定义层时回退 {@link ShieldValueDefs.ParamDef#defaultValue()} 静态默认。
+     */
+    private static void addShieldBaseParamsTooltip(ItemTooltipEvent event, String type, String itemId) {
+        var access = getClientRegistryAccess();
+        for (ShieldValueDefs.ParamDef def : ShieldValueDefs.getBaseParams()) {
+            double value = DefsManager.clientResolveShieldParam(access, itemId, type, def.key(), def.defaultValue());
+
+            MutableComponent nameTooltip = Component.translatable(def.nameKey());
+            if (isDefaultTranslation(nameTooltip, def.nameKey())) {
+                nameTooltip = Component.literal(def.key());
+            }
+
+            event.getToolTip().add(Component.literal("    ")
+                .append(nameTooltip.withStyle(ChatFormatting.GRAY))
+                .append(Component.literal(": ").withStyle(ChatFormatting.GRAY))
+                .append(Component.literal(formatDecimal(value)).withStyle(ChatFormatting.AQUA)));
+        }
     }
 
     /**

@@ -560,8 +560,8 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
                 t.invulnerableTime = 0;
 
                 // 蜂群电弧伤害（自定义伤害类型，归属蜂群构造体）；
-                // 已取消斩杀2倍增伤，致死归属改由 ExecuteAttributionHandler 按
-                // 所有减伤流程后的实际致死结果判定（避免高护甲/免伤敌人的误判）
+                // 预估致死时由 ExecuteDamageHandler 取消原伤害并改用归属玩家的
+                // 斩杀伤害源（execute_damage）完成最后一击
                 DamageSource source = ModDamageTypes.getSwarmDamageSource(t.level(), swarm);
                 t.hurt(source, mergedDamage);
 

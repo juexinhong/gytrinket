@@ -10,4 +10,5 @@ public class ModParticles {
     public static final DeferredRegister<ParticleType<?>> PARTICLE_TYPES = DeferredRegister.create(BuiltInRegistries.PARTICLE_TYPE, "gytrinket");
 
     public static final DeferredHolder<ParticleType<?>, SimpleParticleType> REFLECT_SHIELD_PARTICLE = PARTICLE_TYPES.register("reflect_shield", () -> new SimpleParticleType(false));
+
 }

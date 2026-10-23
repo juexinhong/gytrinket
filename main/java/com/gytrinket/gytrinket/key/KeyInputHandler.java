@@ -34,7 +34,6 @@ public class KeyInputHandler {
 
     public static void onRegisterKeyMappings(RegisterKeyMappingsEvent event) {
         event.register(attributeKey);
-        gytrinket.LOGGER.info("属性显示按键绑定已注册：H 键");
     }
 
     @SubscribeEvent

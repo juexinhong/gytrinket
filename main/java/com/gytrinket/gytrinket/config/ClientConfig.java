@@ -164,6 +164,5 @@ public class ClientConfig {
             return;
         }
         initialized = true;
-        gytrinket.LOGGER.info("客户端配置加载完成");
     }
 }

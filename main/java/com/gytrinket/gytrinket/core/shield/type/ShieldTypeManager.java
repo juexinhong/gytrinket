@@ -34,12 +34,10 @@ public class ShieldTypeManager {
         registerType(new ReflectShieldType());
         registerType(new AmplificationShieldType());
         registerType(new WarpShieldType());
-        gytrinket.LOGGER.info("护盾类型管理器初始化完成，已注册类型：{}", REGISTERED_TYPES.keySet());
     }
 
     public static void registerType(IShieldType type) {
         REGISTERED_TYPES.put(type.getName(), type);
-        gytrinket.LOGGER.info("注册护盾类型: {}", type.getName());
     }
 
     public static IShieldType getType(String name) {
@@ -247,7 +245,6 @@ public class ShieldTypeManager {
             ReflectShieldType.clearPlayerData(playerId);
             AmplificationShieldType.clearPlayerData(playerId);
             WarpShieldType.clearPlayerData(playerId);
-            gytrinket.LOGGER.debug("玩家 {} 退出，清理护盾类型数据", playerId);
         }
     }
 

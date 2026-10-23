@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -45,9 +46,31 @@ public class ShieldManager {
 
     /** 玩家 -> 护盾实例列表（列表序 = 装备扫描序，Curios 优先） */
     private static final Map<UUID, List<ShieldInstance>> INSTANCES = new ConcurrentHashMap<>();
-
     /** 登录暂存的存档护盾快照：实例重建时按 identityKey 迁移状态（登录早期写入，避免属性重算先把槽位覆盖为 0） */
     private static final Map<UUID, ShieldData> PENDING_RESTORE = new ConcurrentHashMap<>();
+    /** 上次重建的护盾相关输入快照：仅这些输入变化才真正重建实例，其余属性变动直接跳过（保留实例对象与冷却进度） */
+    private static final Map<UUID, ShieldRebuildInputs> LAST_REBUILD_INPUTS = new ConcurrentHashMap<>();
+
+    /**
+     * 护盾重建输入快照：实例列表与上限只由这些输入决定——
+     * 组乘数（shield_percent/shield_independent 静态+动态聚合）、转化固定修正（shield_flat）、
+     * 冷却减免组聚合值、冷却时间回退值、装备物品集合、禁用物品集合。全等则跳过重建。
+     */
+    private record ShieldRebuildInputs(double groupMultiplier, double shieldFlat, double shieldConvertLoss,
+                                       double cooldownReduction, double cooldownTimeFallback,
+                                       Set<String> equippedItemIds, Set<String> disabledItemIds) {
+        static ShieldRebuildInputs capture(UUID playerUUID) {
+            Set<String> disabled = DisableSystem.getDisabledItems(playerUUID);
+            return new ShieldRebuildInputs(
+                    AttributeManager.getGroupMultiplier(playerUUID, "shield"),
+                    AttributeManager.getPlayerAttribute(playerUUID, "shield_flat"),
+                    AttributeManager.getPlayerAttribute(playerUUID, "shield_convert_loss"),
+                    AttributeManager.getGroupAttribute(playerUUID, "shield_cooldown_reduction"),
+                    AttributeManager.getPlayerAttribute(playerUUID, "shield_cooldown_time"),
+                    new HashSet<>(PlayerStoreUtils.getAllEquippedItemIds(playerUUID)),
+                    disabled != null ? disabled : Set.of());
+        }
+    }
 
     private ShieldManager() {}
 
@@ -90,11 +113,65 @@ public class ShieldManager {
     }
 
     /**
+     * 转化基准：全部护盾实例转化前价值总和 =（Σ实例自带底数 + 模块底数总和）× 组乘数。
+     * 与 rebuildInstances 同一套扫描规则（Curios 优先、同 id 去重、禁用跳过），
+     * 不含任何转化固定修正（shield_flat），供转化机制做固定值换算与双向比较基准。
+     */
+    public static double computePreConversionShieldTotal(UUID playerUUID) {
+        ServerPlayer player = CuriosCompat.getServerPlayer(playerUUID);
+        List<ItemStack> stacks = player != null
+                ? PlayerStoreUtils.getEquippedStacksCuriosFirst(player)
+                : PlayerStoreUtils.getEquippedStacks(playerUUID);
+
+        double moduleBaseSum = 0;
+        double instanceBaseSum = 0;
+        Set<String> countedItemIds = new HashSet<>();
+        for (ItemStack stack : stacks) {
+            if (stack.isEmpty()) {
+                continue;
+            }
+            String itemId = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
+            if (!countedItemIds.add(itemId)) {
+                continue;
+            }
+            if (DisableSystem.isItemDisabled(playerUUID, itemId)) {
+                continue;
+            }
+            if (!Config.getItemShieldTypes(ResourceLocation.parse(itemId)).isEmpty()) {
+                // 护盾类型物品：自带底数来自实例参数
+                for (String typeName : Config.getItemShieldTypes(ResourceLocation.parse(itemId))) {
+                    double baseShield = DefsManager.resolveShieldParam(ServerLifecycleHooks.getCurrentServer(), itemId, typeName,
+                            "shield_base", 0.0);
+                    if (baseShield > 0) {
+                        instanceBaseSum += baseShield;
+                    }
+                }
+                continue;
+            }
+            Map<String, DefsManager.ParamValue> attrs = DefsManager.getEffectiveItemAttributes(itemId);
+            if (attrs != null && attrs.containsKey("shield_base")) {
+                moduleBaseSum += attrs.get("shield_base").value();
+            }
+        }
+        return (instanceBaseSum + moduleBaseSum) * AttributeManager.getGroupMultiplier(playerUUID, "shield");
+    }
+
+    /**
      * 重建实例列表：装备扫描（Curios 优先、同物品 id 去重、禁用跳过）→ 每护盾类型一条实例
      * → 全局池承接 shield 组值差额；旧实例状态按 identityKey 迁移（内存旧实例优先，
      * 登录场景无内存实例时改用存档实例快照迁移，实现退出重进恢复池量/破盾/冷却）。
      */
     public static void rebuildInstances(UUID playerUUID) {
+        // 快照自检：护盾相关输入（乘区/冷却聚合值/装备/禁用）未变化时直接跳过——
+        // 非护盾属性（伤害/攻速等）变动引发的全量属性重算不再触碰护盾实例，
+        // 实例对象原样保留，冷却进度与护盾值天然不受干扰
+        ShieldRebuildInputs inputs = ShieldRebuildInputs.capture(playerUUID);
+        boolean hasPendingRestore = PENDING_RESTORE.containsKey(playerUUID);
+        if (!hasPendingRestore && inputs.equals(LAST_REBUILD_INPUTS.get(playerUUID))) {
+            return;
+        }
+        LAST_REBUILD_INPUTS.put(playerUUID, inputs);
+
         List<ShieldInstance> oldInstances = INSTANCES.get(playerUUID);
         Map<String, ShieldInstance> oldByIdentity = new HashMap<>();
         if (oldInstances != null) {
@@ -121,8 +198,37 @@ public class ShieldManager {
                 ? PlayerStoreUtils.getEquippedStacksCuriosFirst(player)
                 : PlayerStoreUtils.getEquippedStacks(playerUUID);
 
+        // 模块类物品（非护盾类型物品）的 shield_base 底数总和：所有提供护盾值底数的物品相加，
+        // 之后平均分配给已激活的护盾实例（同 id 多件只生效一份、禁用物品不计）
+        double moduleBaseSum = 0;
+        Set<String> countedModuleIds = new HashSet<>();
+        for (ItemStack stack : stacks) {
+            if (stack.isEmpty()) {
+                continue;
+            }
+            String itemId = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
+            if (!countedModuleIds.add(itemId)) {
+                continue;
+            }
+            if (DisableSystem.isItemDisabled(playerUUID, itemId)) {
+                continue;
+            }
+            if (!Config.getItemShieldTypes(ResourceLocation.parse(itemId)).isEmpty()) {
+                continue; // 护盾类型物品的底数来自实例参数，不参与分配
+            }
+            Map<String, DefsManager.ParamValue> attrs = DefsManager.getEffectiveItemAttributes(itemId);
+            if (attrs != null && attrs.containsKey("shield_base")) {
+                moduleBaseSum += attrs.get("shield_base").value();
+            }
+        }
+
         List<ShieldInstance> newInstances = new ArrayList<>();
         Set<String> seenItemIds = new HashSet<>();
+        // 状态迁移延后执行：先定稿实例上限（加分配后乘组乘数），再恢复旧状态——
+        // 否则 restoreState 以未分配的 raw 上限 clamp 当前护盾值（满盾被截断为 raw 底数，
+        // 被误判为受损 → 充能/冷却重置；任何属性变动都会触发重建，症状为冷却反复清零）
+        Map<ShieldInstance, ShieldInstance> oldToRestore = new LinkedHashMap<>();
+        Map<ShieldInstance, ShieldData.InstanceSnapshot> snapshotToRestore = new LinkedHashMap<>();
 
         for (ItemStack stack : stacks) {
             if (stack.isEmpty()) {
@@ -136,46 +242,63 @@ public class ShieldManager {
                 continue;
             }
 
-            double groupMultiplier = AttributeManager.getGroupMultiplier(playerUUID, "shield");
-
             for (String typeName : Config.getItemShieldTypes(ResourceLocation.parse(itemId))) {
-                double maxShield = DefsManager.resolveShieldParam(ServerLifecycleHooks.getCurrentServer(), itemId, typeName,
-                        "shield_base", 0.0) * groupMultiplier;
-                if (maxShield <= 0) {
+                double baseShield = DefsManager.resolveShieldParam(ServerLifecycleHooks.getCurrentServer(), itemId, typeName,
+                        "shield_base", 0.0);
+                if (baseShield <= 0) {
                     continue;
                 }
                 int maxCooldown = computeMaxCooldown(playerUUID, itemId, typeName);
                 String identityKey = itemId + "|" + (typeName == null ? "" : typeName);
-                ShieldInstance instance = new ShieldInstance(itemId, typeName, stack, false, maxShield, maxCooldown);
+                ShieldInstance instance = new ShieldInstance(itemId, typeName, stack, false, baseShield, maxCooldown);
                 ShieldInstance old = oldByIdentity.remove(identityKey);
                 if (old != null) {
-                    instance.restoreState(old.getCurrentShield(), old.isBroken(),
-                            old.getCooldownProgress(), old.getMaxCooldown());
+                    oldToRestore.put(instance, old);
                 } else if (pendingByIdentity != null) {
                     ShieldData.InstanceSnapshot snapshot = pendingByIdentity.remove(identityKey);
                     if (snapshot != null) {
-                        instance.restoreState(snapshot.current(), snapshot.broken(),
-                                snapshot.cooldownProgress(), snapshot.maxCooldown());
+                        snapshotToRestore.put(instance, snapshot);
                     }
                 }
                 newInstances.add(instance);
             }
         }
 
-        // shield 组值超出物品实例上限之和的差额（无护盾类型物品提供的护盾值）：
-        // 均摊共享给所有护盾类型实例的上限（总池守恒），不再创建独立的全局池幽灵实例
+        // 护盾值计算：每实例护盾值 = (实例底数 + 模块底数总和 / 已激活实例数) × 组乘数 + 转化固定修正均摊
+        //（百分比属性和与独立乘区属性经组乘数统一作用，分配发生在乘区之前；
+        //  shield_flat 为 POST_ADD 固定值，加在乘区之后、不受乘区缩放，均摊到各实例上限）
         if (!newInstances.isEmpty()) {
-            double instanceMaxSum = 0;
-            for (ShieldInstance instance : newInstances) {
-                instanceMaxSum += instance.getMaxShield();
+            double groupMultiplier = AttributeManager.getGroupMultiplier(playerUUID, "shield");
+            double perInstanceShare = moduleBaseSum / newInstances.size();
+            double perInstanceFlat = AttributeManager.getPlayerAttribute(playerUUID, "shield_flat") / newInstances.size();
+            double lossTotal = AttributeManager.getPlayerAttribute(playerUUID, "shield_convert_loss");
+            // 转化前各实例价值（乘后、不含任何转化 flat）：盾转血损耗按其占比分布，100% 时全部实例恰好清零
+            double preValueTotal = 0;
+            double[] preValues = new double[newInstances.size()];
+            for (int i = 0; i < newInstances.size(); i++) {
+                preValues[i] = (newInstances.get(i).getMaxShield() + perInstanceShare) * groupMultiplier;
+                preValueTotal += preValues[i];
             }
-            double sharedBonus = AttributeManager.getGroupAttribute(playerUUID, "shield") - instanceMaxSum;
-            if (sharedBonus > 0) {
-                double perInstance = sharedBonus / newInstances.size();
-                for (ShieldInstance instance : newInstances) {
-                    instance.setMaxShield(instance.getMaxShield() + perInstance);
-                }
+            for (int i = 0; i < newInstances.size(); i++) {
+                ShieldInstance instance = newInstances.get(i);
+                double lossShare = preValueTotal > 0 ? lossTotal * preValues[i] / preValueTotal : 0;
+                // 钳 0：损耗占比合计可能超过实例价值（比例配置 >100% 时），负上限无意义
+                instance.setMaxShield(Math.max(0, preValues[i] + perInstanceFlat + lossShare));
             }
+        }
+
+        // 状态迁移（上限已定稿，恢复值按最终上限 clamp，冷却进度按新旧上限比例折算保留）
+        for (Map.Entry<ShieldInstance, ShieldInstance> entry : oldToRestore.entrySet()) {
+            ShieldInstance instance = entry.getKey();
+            ShieldInstance old = entry.getValue();
+            instance.restoreState(old.getCurrentShield(), old.isBroken(),
+                    old.getCooldownProgress(), old.getMaxCooldown());
+        }
+        for (Map.Entry<ShieldInstance, ShieldData.InstanceSnapshot> entry : snapshotToRestore.entrySet()) {
+            ShieldInstance instance = entry.getKey();
+            ShieldData.InstanceSnapshot snapshot = entry.getValue();
+            instance.restoreState(snapshot.current(), snapshot.broken(),
+                    snapshot.cooldownProgress(), snapshot.maxCooldown());
         }
 
         // 旧存档兼容：存档仅聚合值无实例明细时，按池量比例分配到全部实例（解除破盾、进度清零）
@@ -349,7 +472,9 @@ public class ShieldManager {
 
         if (attrName.equals("shield_base") ||
             attrName.equals("shield_percent") ||
-            attrName.equals("shield_independent")) {
+            attrName.equals("shield_independent") ||
+            attrName.equals("shield_flat") ||
+            attrName.equals("shield_convert_loss")) {
             rebuildInstances(playerUUID);
             saveAggregateToSlot(playerUUID);
             syncShieldToClient(playerUUID);
@@ -361,6 +486,7 @@ public class ShieldManager {
         // 登出前落盘最终状态（含冷却 tick 推进后的进度，变更入口之外的推进不会触发槽位同步）
         saveAggregateToSlot(playerUUID);
         INSTANCES.remove(playerUUID);
+        LAST_REBUILD_INPUTS.remove(playerUUID);
     }
 
     private static void syncShieldToClient(UUID playerUUID) {

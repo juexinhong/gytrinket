@@ -107,6 +107,11 @@ public class ModDamageTypes {
             Registries.DAMAGE_TYPE, ResourceLocation.fromNamespaceAndPath(NAMESPACE, "execute_damage")
     );
 
+    /** 陨石撞击伤害（玩家/生物被陨石撞到，以及陨石自身受到的碰撞伤害） */
+    public static final ResourceKey<DamageType> METEOR_IMPACT = ResourceKey.create(
+            Registries.DAMAGE_TYPE, ResourceLocation.fromNamespaceAndPath(NAMESPACE, "meteor_impact")
+    );
+
     // ==================== 伤害来源创建方法 ====================
 
     /**
@@ -369,6 +374,19 @@ public class ModDamageTypes {
                 level.registryAccess().registryOrThrow(Registries.DAMAGE_TYPE).getHolderOrThrow(EXECUTE_DAMAGE),
                 player,
                 player
+        );
+    }
+
+    /**
+     * 创建陨石撞击伤害来源。
+     * <p>
+     * 直接实体与攻击实体都用陨石本身，以便死亡消息显示“被陨石撞击”。
+     */
+    public static DamageSource getMeteorImpactDamageSource(Level level, Entity meteor) {
+        return new DamageSource(
+                level.registryAccess().registryOrThrow(Registries.DAMAGE_TYPE).getHolderOrThrow(METEOR_IMPACT),
+                meteor,
+                meteor
         );
     }
 }

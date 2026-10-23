@@ -45,7 +45,6 @@ public class TooltipHandler {
         for (DefsManager.TooltipRuleDef def : DefsManager.clientTooltipRules(getClientRegistryAccess())) {
             tooltipRules.add(new TooltipConfig(def));
         }
-        gytrinket.LOGGER.info("工具提示规则已加载：{} 条", tooltipRules.size());
     }
 
     @SubscribeEvent
@@ -191,10 +190,11 @@ public class TooltipHandler {
             addTooltip(event, config.getTitleKey(), config.getTitleColor());
         }
 
+        String descKey = config.selectDescriptionKey(itemId);
         if (config.needsFormatting()) {
-            addFormattedTooltip(event, itemId, config.getDescriptionKey(), ChatFormatting.GRAY, config.getFormatter());
-        } else if (config.getDescriptionKey() != null) {
-            addTooltip(event, config.getDescriptionKey(), ChatFormatting.GRAY);
+            addFormattedTooltip(event, itemId, descKey, ChatFormatting.GRAY, config.getFormatter());
+        } else if (descKey != null) {
+            addTooltip(event, descKey, ChatFormatting.GRAY);
         }
     }
 

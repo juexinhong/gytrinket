@@ -1,0 +1,33 @@
+modLoader="javafml"
+loaderVersion="[4.0.42,)"
+license="All Rights Reserved"
+
+[[mods]]
+modId="gytrinket_observer"
+version="${mod_version}"
+displayName="Gytrinket Observer"
+description='''
+Observation and control tooling: server HTTP API (/status /block /region /command /top /dump),
+/obs commands, client HTTP API + file console for camera/screenshot/FOV/HUD.
+'''
+
+[[dependencies.gytrinket_observer]]
+    modId="neoforge"
+    type="required"
+    versionRange="[21.1.233,)"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.gytrinket_observer]]
+    modId="minecraft"
+    type="required"
+    versionRange="[1.21.1,1.22)"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.gytrinket_observer]]
+    modId="gytrinket"
+    type="required"
+    versionRange="[1.2.2,)"
+    ordering="AFTER"
+    side="BOTH"

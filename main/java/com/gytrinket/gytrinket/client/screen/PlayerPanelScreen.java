@@ -55,7 +55,8 @@ public class PlayerPanelScreen extends AbstractPanelScreen {
     private List<String> randomPool = new ArrayList<>();
     private int hoveredPoolIndex = -1;
 
-    /** 升级点文本悬停区域与惩罚标记（renderLevelInfo 更新，renderTooltip 使用） */
+    /** 升级点文本悬停区域与惩罚标记（renderLevelInfo 更新，renderTooltip 使用）；代币模式下该位置显示代币（Shift+悬停显示升级点） */
+    private boolean tokenPointsHoverShown = false;
     private int upgradePointsTextX, upgradePointsTextY, upgradePointsTextW;
     private boolean upgradePointsPenalized;
     private com.gytrinket.gytrinket.client.screen.SciFiButton refreshButton;
@@ -474,26 +475,31 @@ public class PlayerPanelScreen extends AbstractPanelScreen {
         float progress = xpNeeded > 0 ? (float) upgradeExp / xpNeeded : 0.0f;
         renderer.drawProgressBar(g, colX + 4, barY, colWidth - 8, 4, progress, renderer.getAccentColor());
 
-        // 升级点：存在构建池消耗惩罚（倍数 > 1 且非代币模式）时，显示"可从构建池获取物品次数"，悬停显示真实值
+        // 升级点/代币行：代币机制启用时以点点光辉数量取代升级点显示（Shift+悬停查看升级点）；
+        // 非代币模式维持升级点显示（存在构建池消耗惩罚且倍数 > 1 时显示"可获取次数"，悬停显示真实值）
+        boolean tokenMode = com.gytrinket.gytrinket.config.Config.isRandomBuildTokenEnabled();
         int equipCost = RandomBuildManager.getEquipUpgradePointCost();
-        this.upgradePointsPenalized = !Config.isRandomBuildTokenEnabled() && equipCost > 1;
-        int shownPoints = this.upgradePointsPenalized ? upgradePoints / equipCost : upgradePoints;
-        String pointsStr = Component.translatable("screen.gytrinket.upgrade_points").getString() + ": " + shownPoints;
-        drawText(g, pointsStr, colX + 4, barY + 8, renderer.getTextColor());
+        this.upgradePointsPenalized = !tokenMode && equipCost > 1;
+        String pointsStr;
+        int pointsColor;
+        if (tokenMode) {
+            pointsStr = Component.translatable("screen.gytrinket.token").getString() + ": " + tokenCount;
+            pointsColor = renderer.getValueColor();
+        } else {
+            int shownPoints = this.upgradePointsPenalized ? upgradePoints / equipCost : upgradePoints;
+            pointsStr = Component.translatable("screen.gytrinket.upgrade_points").getString() + ": " + shownPoints;
+            pointsColor = renderer.getTextColor();
+        }
+        drawText(g, pointsStr, colX + 4, barY + 8, pointsColor);
+        this.tokenPointsHoverShown = tokenMode;
         this.upgradePointsTextX = colX + 4;
         this.upgradePointsTextY = barY + 8;
         this.upgradePointsTextW = font.width(pointsStr);
 
-        // 刷新点（青色数值，放在升级点右侧右对齐，实时读取客户端缓存）
+        // 刷新点（青色数值，放在右侧右对齐，实时读取客户端缓存）
         String randomStr = Component.translatable("screen.gytrinket.random_points").getString() + ": "
                 + com.gytrinket.gytrinket.client.datacenter.ClientDataCenter.getRandomPoints();
         drawText(g, randomStr, colX + colWidth - 4 - font.width(randomStr), barY + 8, renderer.getValueColor());
-
-        // 代币机制启用时：显示背包持有的代币数量（消耗代币而非升级点）
-        if (com.gytrinket.gytrinket.config.Config.isRandomBuildTokenEnabled()) {
-            String tokenStr = Component.translatable("screen.gytrinket.token").getString() + ": " + tokenCount;
-            drawText(g, tokenStr, colX + 4, barY + 16, renderer.getValueColor());
-        }
     }
 
     private void renderTooltip(GuiGraphics guiGraphics, int mouseX, int mouseY) {
@@ -519,16 +525,35 @@ public class PlayerPanelScreen extends AbstractPanelScreen {
             }
             return;
         }
-        // 升级点惩罚：悬停升级点文本时显示真实升级点数值与单次消耗
-        if (this.upgradePointsPenalized
-                && mouseX >= this.upgradePointsTextX && mouseX < this.upgradePointsTextX + this.upgradePointsTextW
+        // 升级点/代币文本悬停区域（代币模式显示代币，Shift+悬停显示升级点；非代币模式显示惩罚 tooltip）
+        if (mouseX >= this.upgradePointsTextX && mouseX < this.upgradePointsTextX + this.upgradePointsTextW
                 && mouseY >= this.upgradePointsTextY && mouseY < this.upgradePointsTextY + 9) {
-            int cost = RandomBuildManager.getEquipUpgradePointCost();
-            guiGraphics.renderTooltip(font, java.util.List.of(
-                    Component.translatable("screen.gytrinket.upgrade_points_real", upgradePoints),
-                    Component.translatable("screen.gytrinket.upgrade_points_cost", cost)
-                            .withStyle(net.minecraft.ChatFormatting.GRAY)),
-                    java.util.Optional.empty(), mouseX, mouseY);
+            if (this.tokenPointsHoverShown) {
+                // 代币模式：Shift+悬停显示升级点数量（构建池消耗惩罚说明一并展示）
+                if (hasShiftDown()) {
+                    int cost = RandomBuildManager.getEquipUpgradePointCost();
+                    java.util.List<Component> lines = new java.util.ArrayList<>();
+                    lines.add(Component.translatable("screen.gytrinket.upgrade_points_real", upgradePoints));
+                    if (cost > 1) {
+                        lines.add(Component.translatable("screen.gytrinket.upgrade_points_cost", cost)
+                                .withStyle(net.minecraft.ChatFormatting.GRAY));
+                    }
+                    guiGraphics.renderTooltip(font, lines, java.util.Optional.empty(), mouseX, mouseY);
+                } else {
+                    guiGraphics.renderTooltip(font, java.util.List.of(
+                            Component.translatable("screen.gytrinket.token_shift_hint")
+                                    .withStyle(net.minecraft.ChatFormatting.GRAY)),
+                            java.util.Optional.empty(), mouseX, mouseY);
+                }
+            } else if (this.upgradePointsPenalized) {
+                // 升级点模式：悬停显示真实升级点数值与单次消耗
+                int cost = RandomBuildManager.getEquipUpgradePointCost();
+                guiGraphics.renderTooltip(font, java.util.List.of(
+                        Component.translatable("screen.gytrinket.upgrade_points_real", upgradePoints),
+                        Component.translatable("screen.gytrinket.upgrade_points_cost", cost)
+                                .withStyle(net.minecraft.ChatFormatting.GRAY)),
+                        java.util.Optional.empty(), mouseX, mouseY);
+            }
         }
     }
 }

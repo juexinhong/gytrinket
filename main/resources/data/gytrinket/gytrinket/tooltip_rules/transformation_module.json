@@ -1,1 +1,1 @@
-{"itemSet":"conversion_items","titleKey":"transformation_module","descKey":"transformation_module_desc","color":"light_purple","params":[{"type":"percent","source":"conversionRatio"}]}
+{"itemSet":"conversion_items","titleKey":"transformation_module","descKey":"transformation_module_desc","color":"light_purple","params":[{"type":"percent","source":"conversionRatio"}],"branches":[{"param":"conversionDirection","value":1.0,"descKey":"transformation_module_desc_s2h"},{"param":"conversionDirection","value":2.0,"descKey":"transformation_module_desc_h2s"}]}

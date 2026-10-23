@@ -82,13 +82,8 @@ public class InterceptorChargedHandler implements InterceptorAttackModeHandler {
                 double reach = getMeleeReach(wingman);
                 if (dist > reach && progress < getMaxChargeDurationTicks()) {
                     // 目标超出范围，继续充能（不释放）
-                    InterceptorDebug.logFast(wingman, "charged_wait_" + wingman.getId(),
-                            "充能等待接近: dist=" + String.format("%.1f", dist)
-                            + " reach=" + String.format("%.1f", reach)
-                            + " progress=" + progress + "/" + getMaxChargeDurationTicks());
                 } else if (progress >= getMaxChargeDurationTicks()) {
                     // 超过6秒，放弃充能
-                    InterceptorDebug.logStateChange(wingman, "充能超时放弃: progress=" + progress);
                     cancelCharge(wingman);
                 } else {
                     // 目标在范围内，释放充能攻击
@@ -104,13 +99,9 @@ public class InterceptorChargedHandler implements InterceptorAttackModeHandler {
     @Override
     public boolean onPreAttack(WingmanConstructEntity wingman, LivingEntity target, ItemStack weapon, Player owner) {
         if (isCharging(wingman)) {
-            InterceptorDebug.logFast(wingman, "charged_charging_" + wingman.getId(),
-                    "充能中: progress=" + getChargeProgress(wingman) + "/" + getChargeDurationTicks()
-                    + " chargeValue=" + String.format("%.2f", getChargeValue(wingman)));
             return false;
         }
         startCharge(wingman);
-        InterceptorDebug.logStateChange(wingman, "充能开始: 3秒充能 target=" + target.getName().getString());
         return false;
     }
 
@@ -263,9 +254,6 @@ public class InterceptorChargedHandler implements InterceptorAttackModeHandler {
             double conversionRatio = DefsManager.resolveMechanicValue(owner.getServer(), ownerUUID,
                     "grudge_items", "conversion_ratio", Config.getGrudgeConversionRatio());
             grudgeRate = totalLost * conversionRatio;
-            InterceptorDebug.logStateChange(wingman, "积怨充能: healthLost=" + String.format("%.1f", healthLost)
-                    + " shieldLost=" + String.format("%.1f", shieldLost)
-                    + " grudgeRate=" + String.format("%.2f", grudgeRate));
         }
 
         // 更新记录值
@@ -306,10 +294,6 @@ public class InterceptorChargedHandler implements InterceptorAttackModeHandler {
 
         // 伤害加成 = (1 + 充能值)，与玩家公式一致
         float damageBonus = (float) chargeValue;
-
-        InterceptorDebug.logStateChange(wingman, "充能释放: chargeValue=" + String.format("%.2f", chargeValue)
-                + " damageBonus=" + String.format("%.0f%%", damageBonus * 100)
-                + " weapon=" + weapon.getItem());
 
         // 临时提升攻击伤害属性
         var attackDamageAttr = wingman.getAttribute(Attributes.ATTACK_DAMAGE);

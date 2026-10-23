@@ -51,13 +51,11 @@ public class ShieldCooldownManager {
     public static void registerModifier(IShieldCooldownModifier modifier) {
         MODIFIERS.add(modifier);
         MODIFIERS.sort(Comparator.comparingInt(IShieldCooldownModifier::getPriority));
-        gytrinket.LOGGER.info("注册冷却修饰器: {}", modifier.getName());
     }
 
     public static boolean unregisterModifier(String modifierName) {
         boolean removed = MODIFIERS.removeIf(m -> m.getName().equals(modifierName));
         if (removed) {
-            gytrinket.LOGGER.info("移除冷却修饰器: {}", modifierName);
         }
         return removed;
     }

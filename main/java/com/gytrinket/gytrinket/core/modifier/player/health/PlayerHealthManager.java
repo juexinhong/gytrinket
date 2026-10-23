@@ -22,20 +22,19 @@ import java.util.concurrent.ConcurrentHashMap;
 @EventBusSubscriber(modid = gytrinket.MODID)
 public class PlayerHealthManager {
 
-    
-    
+
+
     private static final ResourceLocation HEALTH_BASE_MODIFIER_ID = ResourceLocation.fromNamespaceAndPath("gytrinket", "health_base");
     private static final ResourceLocation HEALTH_PERCENT_MODIFIER_ID = ResourceLocation.fromNamespaceAndPath("gytrinket", "health_percent");
+    private static final ResourceLocation HEALTH_FLAT_MODIFIER_ID = ResourceLocation.fromNamespaceAndPath("gytrinket", "health_flat");
 
     private static final Map<UUID, Float> PLAYER_MAX_HEALTH_MAP = new ConcurrentHashMap<>();
+    /** 未加转化固定修正的乘后最大生命（转化机制的比较基准，避免从含修正的 maxHealth 反推失真） */
+    private static final Map<UUID, Float> PLAYER_NO_FLAT_MAX_HEALTH_MAP = new ConcurrentHashMap<>();
 
     @SubscribeEvent
     public static void onAttributesCalculated(PlayerAttributesCalculatedEvent event) {
         UUID playerUUID = event.getPlayerUUID();
-
-        double healthBase = AttributeManager.getPlayerAttribute(playerUUID, "player_health");
-        double healthPercent = AttributeManager.getPlayerAttribute(playerUUID, "player_health_percent");
-        double healthIndependent = AttributeManager.getPlayerAttribute(playerUUID, "player_health_independent");
 
         ServerPlayer player = event.getPlayer();
         if (player == null) {
@@ -49,31 +48,7 @@ public class PlayerHealthManager {
             return;
         }
 
-        double totalMultiplier = healthPercent * healthIndependent;
-
-        AttributeInstance attribute = player.getAttribute(Attributes.MAX_HEALTH);
-        if (attribute == null) {
-            return;
-        }
-
-        ModifierHelper.removeAllModModifiers(attribute);
-
-        if (healthBase != 0) {
-            AttributeModifier baseModifier = new AttributeModifier(HEALTH_BASE_MODIFIER_ID, healthBase, AttributeModifier.Operation.ADD_VALUE);
-            attribute.addTransientModifier(baseModifier);
-        }
-
-        if (totalMultiplier != 1.0) {
-            AttributeModifier percentModifier = new AttributeModifier(HEALTH_PERCENT_MODIFIER_ID, totalMultiplier - 1, AttributeModifier.Operation.ADD_MULTIPLIED_BASE);
-            attribute.addTransientModifier(percentModifier);
-        }
-
-        float maxHealth = player.getMaxHealth();
-        PLAYER_MAX_HEALTH_MAP.put(playerUUID, maxHealth);
-
-        if (player.getHealth() > maxHealth) {
-            player.setHealth(maxHealth);
-        }
+        applyHealthModifiers(playerUUID, player);
     }
 
     @SubscribeEvent
@@ -81,7 +56,8 @@ public class PlayerHealthManager {
         UUID playerUUID = event.getPlayerUUID();
         String attrName = event.getAttributeName();
 
-        if (!attrName.equals("player_health_percent") && !attrName.equals("player_health_independent")) {
+        if (!attrName.equals("player_health_percent") && !attrName.equals("player_health_independent")
+                && !attrName.equals("player_health_flat")) {
             return;
         }
 
@@ -95,9 +71,23 @@ public class PlayerHealthManager {
             return;
         }
 
+        applyHealthModifiers(playerUUID, player);
+    }
+
+    /**
+     * 计算并应用生命修饰符：
+     * 底数/百分比乘区（player_health、player_health_percent、player_health_independent）
+     * + 转化固定修正 player_health_flat（POST_ADD 语义："在所有计算之后加固定值"）。
+     * <p>
+     * 固定修正经 ADD_MULTIPLIED_TOTAL 反推实现：最终 = noFlat × (1 + flat/noFlat) = noFlat + flat，
+     * 其中 noFlat 为底数/乘区修饰符加入后、固定修正加入前的属性现值（含其他模组修饰符）。
+     * noFlat 作为比较基准记录，供转化机制直接读取（避免从含修正的 maxHealth 反推导致的除零/失真）。
+     */
+    private static void applyHealthModifiers(UUID playerUUID, ServerPlayer player) {
         double healthBase = AttributeManager.getPlayerAttribute(playerUUID, "player_health");
         double healthPercent = AttributeManager.getPlayerAttribute(playerUUID, "player_health_percent");
         double healthIndependent = AttributeManager.getPlayerAttribute(playerUUID, "player_health_independent");
+        double healthFlat = AttributeManager.getPlayerAttribute(playerUUID, "player_health_flat");
 
         double totalMultiplier = healthPercent * healthIndependent;
 
@@ -118,8 +108,19 @@ public class PlayerHealthManager {
             attribute.addTransientModifier(percentModifier);
         }
 
+        // 未加转化固定修正的乘后值（转化机制比较基准）：直接读属性现值——
+        // 本模组底数/乘区修饰符已加入，其他模组的生命修饰符天然保留在内
+        double noFlat = attribute.getValue();
+
+        // 转化固定修正：final = noFlat + flat，经 ADD_MULTIPLIED_TOTAL 反推为末尾固定加法
+        if (healthFlat != 0 && noFlat > 0.0001) {
+            AttributeModifier flatModifier = new AttributeModifier(HEALTH_FLAT_MODIFIER_ID, healthFlat / noFlat, AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL);
+            attribute.addTransientModifier(flatModifier);
+        }
+
         float maxHealth = player.getMaxHealth();
         PLAYER_MAX_HEALTH_MAP.put(playerUUID, maxHealth);
+        PLAYER_NO_FLAT_MAX_HEALTH_MAP.put(playerUUID, (float) noFlat);
 
         if (player.getHealth() > maxHealth) {
             player.setHealth(maxHealth);
@@ -151,11 +152,18 @@ public class PlayerHealthManager {
         if (!(event.getEntity() instanceof ServerPlayer player)) {
             return;
         }
-        PLAYER_MAX_HEALTH_MAP.remove(player.getUUID());
+        UUID playerUUID = player.getUUID();
+        PLAYER_MAX_HEALTH_MAP.remove(playerUUID);
+        PLAYER_NO_FLAT_MAX_HEALTH_MAP.remove(playerUUID);
     }
 
     public static float getPlayerMaxHealth(UUID playerUUID) {
         return PLAYER_MAX_HEALTH_MAP.getOrDefault(playerUUID, 20.0f);
+    }
+
+    /** 未加转化固定修正的乘后最大生命（转化机制比较基准用） */
+    public static float getNoFlatMaxHealth(UUID playerUUID) {
+        return PLAYER_NO_FLAT_MAX_HEALTH_MAP.getOrDefault(playerUUID, 20.0f);
     }
 
     /**
@@ -164,7 +172,7 @@ public class PlayerHealthManager {
      * 1. 取玩家 MAX_HEALTH 属性值并剔除本模组的生命修饰符（其他模组的修饰符保留），
      *    得到"原版最大生命值"：高于 20 时限为 20，低于 20 则使用低值；
      * 2. 再叠加本模组的生命修改属性：
-     *    (原版最大生命 + player_health) × player_health_percent × player_health_independent。
+     *    (原版最大生命 + player_health) × player_health_percent × player_health_independent + player_health_flat。
      * <p>
      * 例：原版最大生命 20（其他模组 +20 不计入，限为 20），本模组 45% 生命提升 -> 20 × 1.45 = 29。
      */
@@ -190,14 +198,17 @@ public class PlayerHealthManager {
         double healthBase = AttributeManager.getPlayerAttribute(playerUUID, "player_health");
         double percentMultiplier = AttributeManager.getPlayerAttribute(playerUUID, "player_health_percent")
                 * AttributeManager.getPlayerAttribute(playerUUID, "player_health_independent");
-        return (vanillaMax + healthBase) * percentMultiplier;
+        return (vanillaMax + healthBase) * percentMultiplier
+                + AttributeManager.getPlayerAttribute(playerUUID, "player_health_flat");
     }
 
     public static void clearPlayerData(UUID playerUUID) {
         PLAYER_MAX_HEALTH_MAP.remove(playerUUID);
+        PLAYER_NO_FLAT_MAX_HEALTH_MAP.remove(playerUUID);
     }
 
     public static void clearAllData() {
         PLAYER_MAX_HEALTH_MAP.clear();
+        PLAYER_NO_FLAT_MAX_HEALTH_MAP.clear();
     }
 }

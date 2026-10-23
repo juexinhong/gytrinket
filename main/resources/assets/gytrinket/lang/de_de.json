@@ -170,7 +170,7 @@
   "tooltip.gytrinket.advanced_engineering_effect": "Jedes Spieler-Level gewährt %.1f%% unabhängiger Multiplikator Drohnen-Gesundheit und Drohnen-Schaden",
 
   "tooltip.gytrinket.assault": "Sturmangriff",
-  "tooltip.gytrinket.assault_effect": "Linksklick halten für Auto-Angriff. Angriffsgeschwindigkeit steigt allmählich. Nimmt Eigenschaden (steigt mit Angriffsgeschwindigkeit). -60% Bewegungsgeschwindigkeit während des Sturmangriffs",
+  "tooltip.gytrinket.assault_effect": "Linksklick halten für Auto-Angriff. Jeder Angriff gewinnt einen Sturm-Stapel und verursacht Eigenschaden in Höhe Stapel×%s%%. Pro Stapel %s%% Angriffstempo. Bewegungsgeschwindigkeit ist während des Sturmangriffs um %s%% reduziert.",
   "tooltip.gytrinket.charged_attack": "Aufgeladener Angriff",
   "tooltip.gytrinket.charged_attack_effect": "Linksklick halten zum Aufladen, loslassen zum Angreifen. Aufladung hat kein Limit, wird aber durch Abzug begrenzt. Schaden = aktueller Schaden + Aufladewert. -20% Bewegungsgeschwindigkeit beim Aufladen",
   "tooltip.gytrinket.projectile_explosion": "Projektil-Explosion",

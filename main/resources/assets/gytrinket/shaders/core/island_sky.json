@@ -1,0 +1,25 @@
+{
+    "blend": {
+        "func": "add",
+        "srcrgb": "one",
+        "dstrgb": "zero"
+    },
+    "vertex": "gytrinket:island_sky",
+    "fragment": "gytrinket:island_sky",
+    "samplers": [
+        { "name": "SkyDepth" }
+    ],
+    "uniforms": [
+        { "name": "ModelViewMat", "type": "matrix4x4", "count": 16, "values": [ 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0 ] },
+        { "name": "SkyTime", "type": "float", "count": 1, "values": [ 0.0 ] },
+        { "name": "PixelAngle", "type": "float", "count": 1, "values": [ 0.001 ] },
+        { "name": "SkyDepthEnabled", "type": "float", "count": 1, "values": [ 0.0 ] },
+        { "name": "SkyTanHalfFov", "type": "float", "count": 1, "values": [ 0.7 ] },
+        { "name": "SkyAspect", "type": "float", "count": 1, "values": [ 1.7777778 ] },
+        { "name": "SkyHorizonElev", "type": "float", "count": 1, "values": [ 0.0 ] },
+        { "name": "SkyCameraRight", "type": "float", "count": 3, "values": [ 1.0, 0.0, 0.0 ] },
+        { "name": "SkyCameraUp", "type": "float", "count": 3, "values": [ 0.0, 1.0, 0.0 ] },
+        { "name": "SkyCameraForward", "type": "float", "count": 3, "values": [ 0.0, 0.0, 1.0 ] },
+        { "name": "SkyFogColor", "type": "float", "count": 3, "values": [ 0.048, 0.075, 0.115 ] }
+    ]
+}

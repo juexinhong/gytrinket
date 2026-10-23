@@ -31,8 +31,6 @@ public class ModLevelManager {
 
         int newLevel = data.getModLevel();
         if (newLevel != oldLevel) {
-            gytrinket.LOGGER.debug("玩家 {} 光点经验+{}，光点等级 {} -> {}",
-                    playerUUID, amount, oldLevel, newLevel);
             NeoForge.EVENT_BUS.post(new ModLevelChangeEvent(playerUUID, oldLevel, newLevel));
             syncToClient(playerUUID);
         }

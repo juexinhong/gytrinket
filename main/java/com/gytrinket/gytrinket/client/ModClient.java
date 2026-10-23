@@ -9,6 +9,8 @@ import com.gytrinket.gytrinket.client.effect.particle.ShieldParticleTickEvent;
 import com.gytrinket.gytrinket.client.shader.ModShaders;
 import com.gytrinket.gytrinket.core.entity.construct.drone.ModEntities;
 import com.gytrinket.gytrinket.core.entity.construct.drone.DroneRenderer;
+import com.gytrinket.gytrinket.core.entity.meteor.MeteorEntities;
+import com.gytrinket.gytrinket.core.entity.meteor.client.MeteorRenderer;
 import com.gytrinket.gytrinket.core.entity.construct.drone.DroneBulletRenderer;
 import com.gytrinket.gytrinket.core.entity.construct.drone.client.renderer.DroneBeamRenderer;
 import com.gytrinket.gytrinket.core.entity.construct.drone.client.renderer.ArmorShardRenderer;
@@ -111,6 +113,14 @@ public class ModClient {
             ),
             ModShaders::setLightningVolShader
         );
+        event.registerShader(
+            new ShaderInstance(
+                event.getResourceProvider(),
+                ResourceLocation.fromNamespaceAndPath(com.gytrinket.gytrinket.gytrinket.MODID, "island_sky"),
+                DefaultVertexFormat.POSITION
+            ),
+            ModShaders::setIslandSkyShader
+        );
     }
 
     /**
@@ -135,6 +145,11 @@ public class ModClient {
         event.registerEntityRenderer(ModEntities.EXPLOSIVE_PROJECTILE.get(), ExplosiveProjectileRenderer::new);
         // 注册蜂群渲染器
         event.registerEntityRenderer(ModEntities.SWARM_CONSTRUCT.get(), SwarmRenderer::new);
+        // 注册陨石渲染器（四种变体共用同一个渲染器）
+        event.registerEntityRenderer(MeteorEntities.METEOR_SMALL.get(), MeteorRenderer::new);
+        event.registerEntityRenderer(MeteorEntities.METEOR_MEDIUM.get(), MeteorRenderer::new);
+        event.registerEntityRenderer(MeteorEntities.METEOR_LARGE.get(), MeteorRenderer::new);
+        event.registerEntityRenderer(MeteorEntities.METEOR_HUGE.get(), MeteorRenderer::new);
     }
 
     /**

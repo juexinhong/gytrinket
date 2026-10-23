@@ -56,7 +56,6 @@ public class UpgradeManager {
                     continue;
                 }
                 UPGRADE_MAP.computeIfAbsent(baseItem, k -> new ArrayList<>()).add(upgradedItem);
-                gytrinket.LOGGER.info("注册升级路径: {} -> {}", baseId, upgradeId);
             }
         });
     }
@@ -79,7 +78,6 @@ public class UpgradeManager {
                 }
             }
         }
-        gytrinket.LOGGER.info("升级系统反向索引构建完成，共{}种材料", MATERIAL_TO_TARGETS.size());
     }
 
     public static void markDirty(UUID playerUUID) {

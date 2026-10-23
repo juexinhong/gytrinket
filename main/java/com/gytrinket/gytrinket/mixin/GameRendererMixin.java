@@ -3,14 +3,16 @@ package com.gytrinket.gytrinket.mixin;
 import com.gytrinket.gytrinket.client.MixinBridge;
 import com.gytrinket.gytrinket.client.shield.ShieldHudRenderer;
 import com.gytrinket.gytrinket.client.shield.type.SiphonClientData;
+import com.gytrinket.gytrinket.client.world.IslandSky;
 import com.mojang.blaze3d.vertex.PoseStack;
+import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.renderer.GameRenderer;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-@Mixin(GameRenderer.class)
+@Mixin(value = GameRenderer.class, priority = 500)
 public class GameRendererMixin {
 
     @Inject(method = "bobHurt", at = @At("HEAD"), cancellable = true)
@@ -29,5 +31,15 @@ public class GameRendererMixin {
         if (MixinBridge.isSuppressBobHurt()) {
             ci.cancel();
         }
+    }
+
+    /**
+     * Shader packs finalize their composite at the TAIL of GameRenderer.renderLevel.
+     * Draw the island sky after that with a low mixin priority so it is not
+     * overwritten by the pack's final pass.
+     */
+    @Inject(method = "renderLevel", at = @At("TAIL"))
+    private void gytrinket$afterLevel(DeltaTracker deltaTracker, CallbackInfo ci) {
+        IslandSky.onGameRendererTail();
     }
 }

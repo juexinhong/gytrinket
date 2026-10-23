@@ -170,7 +170,7 @@
   "tooltip.gytrinket.advanced_engineering_effect": "プレイヤーレベル1ごとに%.1f%%の独立乗算ドローン体力とドローンダメージを提供します",
 
   "tooltip.gytrinket.assault": "アサルト",
-  "tooltip.gytrinket.assault_effect": "左クリック長押しで自動攻撃します。攻撃速度が徐々に増加します。自己ダメージを受けます（攻撃速度に応じて増加）。アサルト中は移動速度-60%",
+  "tooltip.gytrinket.assault_effect": "左クリック長押しで自動攻撃します。攻撃ごとにアサルト1スタックを獲得し、スタック数×%s%%の自己ダメージを受けます。スタックごとに攻撃速度+%s%%。アサルト中は移動速度-%s%%。",
   "tooltip.gytrinket.charged_attack": "チャージドアタック",
   "tooltip.gytrinket.charged_attack_effect": "左クリック長押しでチャージし、離すと攻撃します。チャージに上限はありませんが、ドラッグに制限されます。ダメージ＝現在のダメージ＋チャージ値。チャージ中は移動速度-20%",
   "tooltip.gytrinket.projectile_explosion": "投射物爆発",

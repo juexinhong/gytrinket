@@ -446,15 +446,17 @@ public class NetworkHandler {
     }
 
     private static ResponseConfigDataPayload buildConfigDataMessage(boolean openScreen) {
-        // 物品列表 = 声明属性的物品（覆写层 + 权威定义） ∪ 注册了特殊机制的物品 ∪ 定义了护盾类型的物品
+        // 物品列表 = 声明属性的物品（覆写层 + 权威定义） ∪ 注册了特殊机制的物品 ∪ 定义了护盾类型的物品 ∪ UI 禁用态物品（供再次删除回退）
         java.util.LinkedHashSet<String> itemIds = new java.util.LinkedHashSet<>(DefsManager.getEffectiveItemAttributeItemIds());
         itemIds.addAll(DefsManager.getSpecialMechanicItems());
         itemIds.addAll(DefsManager.getItemShieldTypes().keySet());
+        itemIds.addAll(DefsManager.getUiDisabledItemIds());
 
         ListTag itemConfigList = new ListTag();
         for (String itemId : itemIds) {
             CompoundTag itemTag = new CompoundTag();
             itemTag.putString("itemId", itemId);
+            itemTag.putBoolean("uiDisabled", DefsManager.isUiDisabledItem(itemId));
             ListTag attrsTag = new ListTag();
             // 有效属性 = 权威定义 + 覆写层合并（服务端权威数据源，客户端 tooltip/UI 显示链）
             Map<String, DefsManager.ParamValue> effective = DefsManager.getEffectiveItemAttributes(itemId);

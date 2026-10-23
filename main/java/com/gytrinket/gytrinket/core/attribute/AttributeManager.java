@@ -62,12 +62,10 @@ public class AttributeManager {
             }
         }
 
-        gytrinket.LOGGER.info("注册属性: {} (类型: {}, 组: {})", name, type, group);
     }
 
     public static void registerItemAttributes(String itemId, ItemAttributeConfig config) {
         ITEM_ATTRIBUTES.put(itemId, config);
-        gytrinket.LOGGER.info("注册物品属性: {} -> {}", itemId, config.getAttributes());
     }
 
     public static void registerItemAttributes(String itemId, Map<String, Double> attributes) {
@@ -134,6 +132,7 @@ public class AttributeManager {
             case BASE -> 0;
             case PERCENT -> 1;
             case INDEPENDENT_MULTIPLY -> 1;
+            case POST_ADD -> 0;
         };
     }
 
@@ -142,6 +141,7 @@ public class AttributeManager {
             case BASE -> 0;
             case PERCENT -> 0;
             case INDEPENDENT_MULTIPLY -> 1;
+            case POST_ADD -> 0;
         };
     }
 
@@ -150,6 +150,7 @@ public class AttributeManager {
             case BASE -> staticValue + dynamicValue;
             case PERCENT -> staticValue + dynamicValue;
             case INDEPENDENT_MULTIPLY -> staticValue * dynamicValue;
+            case POST_ADD -> staticValue + dynamicValue;
         };
     }
 
@@ -417,6 +418,8 @@ public class AttributeManager {
         double dynamicPercentSum = 0;
         double dynamicIndependentProduct = 1.0;
 
+        double postAddSum = 0;
+
         boolean hasBase = false;
 
         Map<String, AttributeValueSet> staticAttrs = PLAYER_STATIC_ATTRIBUTES.get(playerUUID);
@@ -443,6 +446,9 @@ public class AttributeManager {
                     independentProduct = staticValue;
                     dynamicIndependentProduct = dynamicValue;
                     break;
+                case POST_ADD:
+                    postAddSum += staticValue + dynamicValue;
+                    break;
             }
         }
 
@@ -450,11 +456,11 @@ public class AttributeManager {
         double independentTotal = independentProduct * dynamicIndependentProduct;
 
         if (hasBase) {
-            return baseSum * percentTotal * independentTotal;
+            return baseSum * percentTotal * independentTotal + postAddSum;
         } else if (percentSum != 0 || dynamicPercentSum != 0) {
-            return percentTotal * independentTotal;
+            return percentTotal * independentTotal + postAddSum;
         } else {
-            return independentTotal;
+            return independentTotal + postAddSum;
         }
     }
 
@@ -517,6 +523,7 @@ public class AttributeManager {
         double independentProduct = 1.0;
         double dynamicPercentSum = 0;
         double dynamicIndependentProduct = 1.0;
+        double postAddSum = 0;
         boolean hasBase = false;
 
         Map<String, AttributeValueSet> staticAttrs = PLAYER_STATIC_ATTRIBUTES.get(playerUUID);
@@ -534,15 +541,16 @@ public class AttributeManager {
                 case BASE: baseSum += staticValue; hasBase = true; break;
                 case PERCENT: percentSum = staticValue; dynamicPercentSum = dynamicValue; break;
                 case INDEPENDENT_MULTIPLY: independentProduct = staticValue; dynamicIndependentProduct = dynamicValue; break;
+                case POST_ADD: postAddSum += staticValue + dynamicValue; break;
             }
         }
 
         double percentTotal = percentSum + dynamicPercentSum;
         double independentTotal = independentProduct * dynamicIndependentProduct;
 
-        if (hasBase) return baseSum * percentTotal * independentTotal;
-        else if (percentSum != 0 || dynamicPercentSum != 0) return percentTotal * independentTotal;
-        else return independentTotal;
+        if (hasBase) return baseSum * percentTotal * independentTotal + postAddSum;
+        else if (percentSum != 0 || dynamicPercentSum != 0) return percentTotal * independentTotal + postAddSum;
+        else return independentTotal + postAddSum;
     }
 
     public static void clearPlayerDynamicAttributes(UUID playerUUID) {
@@ -592,7 +600,6 @@ public class AttributeManager {
             return;
         }
         recalculateAndCachePlayerAttributes(player);
-        gytrinket.LOGGER.debug("玩家 {} 重生，重新计算属性", player.getUUID());
     }
 
     /**
@@ -700,6 +707,9 @@ public class AttributeManager {
                             .reduce(1, (a, b) -> a * b);
                     yield product;
                 }
+                case POST_ADD -> {
+                    yield typeValues.values().stream().mapToDouble(Double::doubleValue).sum();
+                }
             };
         }
 
@@ -718,6 +728,9 @@ public class AttributeManager {
                             .mapToDouble(v -> 1 + v)
                             .reduce(1, (a, b) -> a * b);
                     yield product;
+                }
+                case POST_ADD -> {
+                    yield typeValues.values().stream().mapToDouble(Double::doubleValue).sum();
                 }
             };
         }
@@ -738,6 +751,9 @@ public class AttributeManager {
                 case INDEPENDENT_MULTIPLY -> typeValues.entrySet().stream()
                         .filter(e -> !e.getKey().startsWith(excludePrefix))
                         .mapToDouble(e -> 1 + e.getValue()).reduce(1, (a, b) -> a * b);
+                case POST_ADD -> typeValues.entrySet().stream()
+                        .filter(e -> !e.getKey().startsWith(excludePrefix))
+                        .mapToDouble(Map.Entry::getValue).sum();
             };
         }
 

@@ -29,13 +29,8 @@ public class MeleeWeaponMode implements InterceptorWeaponMode {
         double reachDistance = getReachDistance(attacker);
         double distance = attacker.distanceTo(target);
         if (distance > reachDistance) {
-            InterceptorDebug.logFast(attacker, "melee_oor_" + attacker.getId(),
-                    "近战超出范围: dist=" + String.format("%.1f", distance) + " reach=" + String.format("%.1f", reachDistance));
             return;
         }
-
-        InterceptorDebug.logAttackStep(attacker, "melee_exec", "近战攻击: weapon=" + weapon.getItem()
-                + " dist=" + String.format("%.1f", distance));
 
         // 临时将武器设入主手槽，使 doHurtTarget 能读取武器属性和附魔
         ItemStack weaponCopy = weapon.copy();
@@ -47,7 +42,6 @@ public class MeleeWeaponMode implements InterceptorWeaponMode {
         target.invulnerableTime = 0;
 
         boolean hit = attacker.doHurtTarget(target);
-        InterceptorDebug.logAttackResult(attacker, "近战结果: hit=" + hit);
 
         if (hit) {
             // 拦截机不消耗武器耐久

@@ -68,7 +68,6 @@ public class DataCenterLifecycleHandler {
         PlayerDataCenter.registerSlot(new ShieldDataSlot());
         PlayerDataCenter.registerSlot(new HealthDataSlot());
 
-        gytrinket.LOGGER.info("PlayerDataCenter 数据槽注册完成");
     }
 
     @SubscribeEvent
@@ -117,7 +116,6 @@ public class DataCenterLifecycleHandler {
 
         com.gytrinket.gytrinket.event.LightPointStoreSyncHandler.sendDataSnapshotToClient(serverPlayer);
 
-        gytrinket.LOGGER.debug("玩家 {} 登录，数据中心初始化完成", player.getUUID());
     }
 
     @SubscribeEvent
@@ -147,7 +145,6 @@ public class DataCenterLifecycleHandler {
         InterceptorWeaponManager.clearPlayerData(player.getUUID());
         InterceptorAttackModeManager.clearPlayerData(serverPlayer);
 
-        gytrinket.LOGGER.debug("玩家 {} 退出，数据中心清理完成", player.getUUID());
     }
 
     @SubscribeEvent
@@ -197,10 +194,7 @@ public class DataCenterLifecycleHandler {
             handler.setStackInSlot(i, ItemStack.EMPTY);
         }
 
-        gytrinket.LOGGER.info("困难模式：玩家 {} 死亡，光点核心物品已清空", player.getUUID());
-
         ModLevelManager.resetData(player.getUUID());
-        gytrinket.LOGGER.info("困难模式：玩家 {} 死亡，光点等级已重置", player.getUUID());
     }
 
     // ===== 构造体/无人机数据保存/加载（使用Attachment替代SavedData） =====

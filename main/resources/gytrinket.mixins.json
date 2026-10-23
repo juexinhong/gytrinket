@@ -9,13 +9,17 @@
     "GameRendererMixin",
     "MinecraftClientMixin",
     "MouseHandlerMixin",
-    "ParticleEngineAccessor"
+    "ParticleEngineAccessor",
+    "ClientLevelMixin"
   ],
   "mixins": [
+    "HolderReferenceAccessor",
     "LivingEntityMixin",
     "MovementSpeedSwimMixin",
     "PlayerMixin",
-    "TargetingConditionsMixin"
+    "TargetingConditionsMixin",
+    "WorldDimensionsMixin",
+    "LevelMixin"
   ],
   "injectors": {
     "defaultRequire": 1

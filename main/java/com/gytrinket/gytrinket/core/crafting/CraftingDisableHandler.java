@@ -1,6 +1,7 @@
 package com.gytrinket.gytrinket.core.crafting;
 
 import com.gytrinket.gytrinket.config.Config;
+import com.gytrinket.gytrinket.core.random_build.PoolRefundRecipe;
 import com.gytrinket.gytrinket.core.upgrade.UpgradeManager;
 import com.gytrinket.gytrinket.event.QuickEquipEvent;
 import com.gytrinket.gytrinket.gytrinket;
@@ -105,12 +106,15 @@ public class CraftingDisableHandler {
         }
         if (removed > 0) {
             recipeManager.replaceRecipes(kept);
-            gytrinket.LOGGER.info("合成禁用：模式 {}，移除 {} 个配方", mode, removed);
         }
     }
 
     /** 判定配方输出物品是否应被禁用合成 */
     private static boolean isCraftingDisabled(RecipeHolder<?> holder, RegistryAccess access, int mode) {
+        // 反悔配方（构建池物品 → 点点光辉）不受合成禁用影响：无论禁用模式如何，反悔机制始终可用
+        if (holder.value() instanceof PoolRefundRecipe) {
+            return false;
+        }
         ItemStack result = holder.value().getResultItem(access);
         if (result.isEmpty()) {
             return false;

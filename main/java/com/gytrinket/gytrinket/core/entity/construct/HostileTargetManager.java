@@ -37,9 +37,6 @@ import java.util.concurrent.ConcurrentHashMap;
 @EventBusSubscriber(modid = com.gytrinket.gytrinket.gytrinket.MODID)
 public class HostileTargetManager {
 
-    /** 生物实体加入世界的危险物豁免期（tick）：期内不计入危险物名单（弹射物等非生物不受限） */
-    private static final int NEW_LIVING_GRACE_TICKS = 20;
-
     private static final Map<UUID, Map<UUID, Long>> PLAYER_MARKED_ENTITIES = new ConcurrentHashMap<>();
 
     @SubscribeEvent
@@ -163,10 +160,6 @@ public class HostileTargetManager {
      * 判断实体是否为配置中的危险实体
      * <p>
      * 危险实体列表在Config中配置，包括箭矢、烈焰弹、药水瓶等。
-     * <p>
-     * 前置条件：生物实体（LivingEntity）加入世界未超过 {@link #NEW_LIVING_GRACE_TICKS} 刻时
-     * 不计入危险物（刚生成/区块重载的实体状态未稳定，避免瞬判）；
-     * 弹射物等非生物实体不受此限制，照常按名单判定。
      *
      * @param entity 待判断的实体
      * @return 是否为危险实体
@@ -175,10 +168,6 @@ public class HostileTargetManager {
         // 威胁排除名单（第一优先级）：显式排除的实体（如伪无敌 boss）永不计入危险物
         var excludedKey = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType());
         if (excludedKey != null && Config.isThreatExcluded(excludedKey.toString())) {
-            return false;
-        }
-        // 生物实体加入世界未超过 20 刻：暂不计入危险物名单（弹射物等非生物实体不受此限制）
-        if (entity instanceof LivingEntity && entity.tickCount < NEW_LIVING_GRACE_TICKS) {
             return false;
         }
         var key = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType());
@@ -206,16 +195,24 @@ public class HostileTargetManager {
             return false;
         }
 
+        // 原版无敌排除（最优先）：旁观者、创造模式玩家、invulnerable NBT 标签实体一律不作为威胁
+        // ——攻击它们注定无效。创造玩家的无敌不在 isInvulnerableTo 中判定
+        // （Player.hurt 的独立分支检查 abilities.invulnerable），必须显式检查 abilities 标志
+        if (entity.isSpectator()) {
+            return false;
+        }
+        if (entity instanceof Player targetPlayer && targetPlayer.getAbilities().invulnerable) {
+            return false;
+        }
+        if (entity instanceof LivingEntity livingEntity
+                && livingEntity.isInvulnerableTo(entity.level().damageSources().generic())) {
+            return false;
+        }
+
         // 威胁排除名单（第一优先级）：伪无敌 boss 等特殊实体显式排除，全类别威胁豁免，
         // 护盾系统（虹吸/光环/增幅/无人机等）永不将其作为目标
         var excludedKey = net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType());
         if (excludedKey != null && Config.isThreatExcluded(excludedKey.toString())) {
-            return false;
-        }
-
-        // 生物实体加入世界未超过 20 刻：视为刚生成/加载，不构成任何威胁（MONSTER/仇恨/危险物/标记全类别豁免；
-        // 弹射物等非生物不受限，仍按危险物名单判定）
-        if (entity instanceof LivingEntity && entity.tickCount < NEW_LIVING_GRACE_TICKS) {
             return false;
         }
 

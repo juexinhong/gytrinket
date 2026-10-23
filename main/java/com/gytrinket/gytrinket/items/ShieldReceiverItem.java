@@ -3,7 +3,6 @@ package com.gytrinket.gytrinket.items;
 import com.gytrinket.gytrinket.core.shield_transfer.ShieldTransferManager;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.InteractionResult;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
@@ -21,41 +20,6 @@ public class ShieldReceiverItem extends Item {
 
     public ShieldReceiverItem(Properties properties) {
         super(properties);
-    }
-
-    @Override
-    public InteractionResult interactLivingEntity(ItemStack stack, Player player, LivingEntity target, InteractionHand hand) {
-        if (player.level().isClientSide()) {
-            return InteractionResult.PASS;
-        }
-
-        // 检查玩家是否装备了护盾移植模块
-        if (!ShieldTransferManager.hasShieldTransferItem(player.getUUID())) {
-            player.sendSystemMessage(Component.translatable("message.gytrinket.shield_receiver.need_transfer_module"));
-            return InteractionResult.FAIL;
-        }
-
-        // 检查目标实体是否是玩家自己
-        if (target == player) {
-            player.sendSystemMessage(Component.translatable("message.gytrinket.shield_receiver.cannot_add_self"));
-            return InteractionResult.FAIL;
-        }
-
-        // 检查目标实体是否已经被当前玩家保护（内存记录或实体标签，标签随实体复制/重建保留）
-        boolean isProtected = ShieldTransferManager.isEntityProtected(player.getUUID(), target.getUUID())
-                || player.getUUID().equals(ShieldTransferManager.getEntityTransferTagOwner(target));
-
-        if (isProtected) {
-            // 移除实体的护盾保护
-            ShieldTransferManager.removeProtectionForEntity(player.getUUID(), target.getUUID());
-            player.sendSystemMessage(Component.translatable("message.gytrinket.shield_receiver.target_removed"));
-        } else {
-            // 添加实体的护盾保护
-            ShieldTransferManager.transferShieldToEntity(player, target);
-            player.sendSystemMessage(Component.translatable("message.gytrinket.shield_receiver.target_added"));
-        }
-
-        return InteractionResult.SUCCESS;
     }
 
     @Override

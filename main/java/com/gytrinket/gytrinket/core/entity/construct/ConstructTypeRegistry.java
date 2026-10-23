@@ -1,9 +1,5 @@
 package com.gytrinket.gytrinket.core.entity.construct;
 
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.event.server.ServerStartingEvent;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -42,7 +38,6 @@ import java.util.List;
  * ConstructTypeRegistry.register(new MyConstructRegistry());
  * </pre>
  */
-@EventBusSubscriber(modid = "gytrinket", bus = EventBusSubscriber.Bus.GAME)
 public class ConstructTypeRegistry {
     /** 已注册的注册器列表 */
     private static final List<IConstructRegistry> REGISTRIES = new ArrayList<>();
@@ -63,18 +58,6 @@ public class ConstructTypeRegistry {
         for (IConstructRegistry registry : REGISTRIES) {
             registry.register();
         }
-    }
-
-    /**
-     * 服务器启动时调用
-     * <p>
-     * 触发所有已注册注册器的 register() 方法
-     *
-     * @param event 服务器启动事件
-     */
-    @SubscribeEvent
-    public static void onServerStarting(ServerStartingEvent event) {
-        // 这里我们已经在 setup() 中执行过了，所以不再重复执行
     }
 
     /**

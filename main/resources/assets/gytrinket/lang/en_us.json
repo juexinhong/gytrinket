@@ -23,6 +23,9 @@
   "tooltip.gytrinket.swarm_module": "Mothership Body",
   "tooltip.gytrinket.adaptive_armor_shield_effect": "Bond",
   "tooltip.gytrinket.attr.shield_base": "Shield Value",
+  "tooltip.gytrinket.attr.shield_flat": "Shield Flat Bonus",
+  "tooltip.gytrinket.attr.shield_convert_loss": "Shield Conversion Loss",
+  "tooltip.gytrinket.attr.player_health_flat": "Health Flat Bonus",
   "tooltip.gytrinket.attr.shield_percent": "Shield Value Percentage",
   "tooltip.gytrinket.attr.shield_independent": "Shield Value Independent Multiplier",
   "tooltip.gytrinket.attr.shield_cooldown_reduction_percent": "Shield Cooldown Reduction Percentage",
@@ -176,7 +179,7 @@
   "tooltip.gytrinket.advanced_engineering_effect": "Each player level provides %.1f%% independent multiplier drone health and drone damage",
 
   "tooltip.gytrinket.assault": "Assault",
-  "tooltip.gytrinket.assault_effect": "Hold left click to auto-attack. Attack speed gradually increases. Takes self-damage (increases with attack speed). -60% movement speed while assaulting",
+  "tooltip.gytrinket.assault_effect": "Hold left click to auto-attack. Each attack gains one Assault stack and deals self-damage of stacks*%s%%. Each stack grants %s%% attack speed. Movement speed is reduced by %s%% while assaulting.",
   "tooltip.gytrinket.charged_attack": "Charged Attack",
   "tooltip.gytrinket.charged_attack_effect": "Hold left click to charge, release to attack. Charge has no cap but is limited by drag. Damage = current damage + charge value. -20% movement speed while charging",
   "tooltip.gytrinket.projectile_explosion": "Projectile Explosion",
@@ -260,6 +263,8 @@
   "item.gytrinket.transformation_module": "Transformation Module",
   "tooltip.gytrinket.transformation_module": "Conversion",
   "tooltip.gytrinket.transformation_module_desc": "Transforms %.0f%% of shield value into player health or vice versa (transforms the lower value toward the higher value)",
+  "tooltip.gytrinket.transformation_module_desc_s2h": "Converts %.0f%% of shield value into player health",
+  "tooltip.gytrinket.transformation_module_desc_h2s": "Converts %.0f%% of player health into shield value",
   "item.gytrinket.binary_protocol_module": "Binary Protocol Module",
 
   "item.gytrinket.fast_shooting_module": "Fast Shooting Module",
@@ -887,10 +892,15 @@
   "gui.gytrinket.mechanic_value.wingman_evolution_module.bonus_per_level": "Bonus/Level",
   "gui.gytrinket.mechanic_value.wingman_nano_regen_module.regen_percent": "Regen Percent/s",
   "gui.gytrinket.mechanic_value.conversion.conversion_ratio": "Conversion Ratio",
+  "gui.gytrinket.mechanic_value.conversion.conversion_direction": "Direction (0=both/1=shield->health/2=health->shield)",
   "gui.gytrinket.mechanic_value.barrier.barrier_max_damage": "Max Damage per Hit",
   "gui.gytrinket.mechanic_value.shield_transfer.penalty_per_entity": "Penalty per Entity",
   "gui.gytrinket.mechanic_value.electric_discharge.burn_duration": "Burn Duration (ticks)",
   "gui.gytrinket.mechanic_value.electric_discharge.burn_charge": "Burn Charge",
+  "gui.gytrinket.mechanic_value.assault.attack_speed_per_stack": "Attack Speed per Stack",
+  "gui.gytrinket.mechanic_value.assault.self_damage_per_stack": "Self Damage per Stack",
+  "gui.gytrinket.mechanic_value.assault.overflow_damage_efficiency": "Overflow Conversion Efficiency",
+  "gui.gytrinket.mechanic_value.assault.move_speed_penalty": "Movement Speed Penalty",
   "gui.gytrinket.mechanic_value.explosive_shield.radius": "Explosion Radius",
   "gui.gytrinket.mechanic_value.explosive_shield.base_damage": "Base Damage",
   "gui.gytrinket.mechanic_value.weaponized_shield.radius": "Search Radius",
@@ -967,6 +977,7 @@
   "screen.gytrinket.random_pool": "Random Build Pool",
   "screen.gytrinket.random_points": "Refresh Points",
   "screen.gytrinket.token": "Token",
+  "screen.gytrinket.token_shift_hint": "Hold Shift to view upgrade points",
   "screen.gytrinket.refresh_pool": "Refresh",
 
   "hud.gytrinket.random_build.hint": "Press %s to open the upgrade panel",
@@ -1402,6 +1413,7 @@
   "death.attack.gytrinket.processed_damage.player": "%1$s was killed by %2$s's processed damage",
   "death.attack.gytrinket.protocol_player_self_hurt.self": "%1$s was killed by protocol player self-harm",
   "death.attack.gytrinket.protocol_shield_self_hurt.self": "%1$s was killed by protocol shield self-harm",
+  "death.attack.gytrinket.meteor_impact": "%1$s was struck by a meteor",
 
   "message.gytrinket.shield_added_to_core": "Shield added to Light Point Core",
   "message.gytrinket.shield_swapped": "Shields swapped successfully",
@@ -1441,5 +1453,9 @@
   "entity.gytrinket.drone_beam": "Drone Beam",
   "entity.gytrinket.drone_bullet": "Drone Bullet",
   "entity.gytrinket.fragment_shield": "Fragment Shield",
-  "entity.gytrinket.shield_stance": "Shield Stance"
+  "entity.gytrinket.shield_stance": "Shield Stance",
+  "entity.gytrinket.meteor_small": "Small Meteor",
+  "entity.gytrinket.meteor_medium": "Medium Meteor",
+  "entity.gytrinket.meteor_large": "Large Meteor",
+  "entity.gytrinket.meteor_huge": "Huge Meteor"
 }

@@ -3,6 +3,7 @@ package com.gytrinket.gytrinket;
 import com.mojang.logging.LogUtils;
 import com.gytrinket.gytrinket.blocks.ModBlockEntities;
 import com.gytrinket.gytrinket.blocks.ModBlocks;
+import com.gytrinket.gytrinket.core.world.ModChunkGenerators;
 import com.gytrinket.gytrinket.config.ClientConfig;
 import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.TickScheduler;
@@ -15,6 +16,7 @@ import com.gytrinket.gytrinket.core.entity.construct.ConstructTypeRegistry;
 import com.gytrinket.gytrinket.core.entity.construct.drone.DroneRegistry;
 import com.gytrinket.gytrinket.core.entity.construct.drone.ModEntities;
 import com.gytrinket.gytrinket.core.entity.construct.drone.behavior.DroneSpecialBehaviorManager;
+import com.gytrinket.gytrinket.core.entity.meteor.MeteorEntities;
 import com.gytrinket.gytrinket.core.entity.construct.drone.behavior.NearDeathProtectionBehavior;
 import com.gytrinket.gytrinket.core.entity.construct.drone.behavior.NearDeathExplosionBehavior;
 import com.gytrinket.gytrinket.core.entity.construct.drone.behavior.ReshapingBehavior;
@@ -26,9 +28,9 @@ import com.gytrinket.gytrinket.core.entity.construct.wingman.WingmanRegistry;
 import com.gytrinket.gytrinket.core.shield.type.ReflectShieldType;
 import com.gytrinket.gytrinket.core.shield.type.ShieldTypeManager;
 import com.gytrinket.gytrinket.core.sound.ModSounds;
-import com.gytrinket.gytrinket.event.LightPointStoreEventHandler;
 import com.gytrinket.gytrinket.items.ModCreativeModeTabs;
 import com.gytrinket.gytrinket.items.ModItems;
+import com.gytrinket.gytrinket.registry.ModRecipes;
 import com.gytrinket.gytrinket.items.ModMenus;
 import com.gytrinket.gytrinket.network.NetworkHandler;
 import com.gytrinket.gytrinket.storage.datacenter.DataCenterLifecycleHandler;
@@ -55,13 +57,16 @@ public class gytrinket {
         ModCreativeModeTabs.register(modEventBus);
         ModParticles.PARTICLE_TYPES.register(modEventBus);
         ModEntities.register(modEventBus);
+        MeteorEntities.register(modEventBus);
         ModAttachments.register(modEventBus);
         ModMenus.MENUS.register(modEventBus);
         ModSounds.SOUND_EVENTS.register(modEventBus);
+        ModChunkGenerators.CHUNK_GENERATORS.register(modEventBus);
+        com.gytrinket.gytrinket.core.world.ModWorldgen.register(modEventBus);
+        ModRecipes.SERIALIZERS.register(modEventBus);
 
         NeoForge.EVENT_BUS.register(TickScheduler.class);
         NeoForge.EVENT_BUS.register(InvincibilityMarkerManager.class);
-        NeoForge.EVENT_BUS.register(new LightPointStoreEventHandler());
         NeoForge.EVENT_BUS.register(DataCenterLifecycleHandler.class);
         NeoForge.EVENT_BUS.register(AttributeManager.class);
         NeoForge.EVENT_BUS.register(ShieldTypeManager.class);
@@ -77,19 +82,14 @@ public class gytrinket {
         modEventBus.addListener(this::registerEntityAttributes);
         modEventBus.addListener(NetworkHandler::registerMessages);
 
-        LOGGER.info("光点饰品模组初始化完成");
     }
 
     private void setup(final FMLCommonSetupEvent event) {
         DataCenterLifecycleHandler.init();
-        LOGGER.info("数据中心初始化完成");
 
         DamageManager.init();
-        LOGGER.info("伤害管理器初始化完成");
         LastDamageManager.init();
-        LOGGER.info("最终伤害管理器初始化完成");
         ShieldTypeManager.init();
-        LOGGER.info("护盾类型管理器初始化完成");
 
         // 注册无人机构造体类型
         ConstructTypeRegistry.register(new DroneRegistry());

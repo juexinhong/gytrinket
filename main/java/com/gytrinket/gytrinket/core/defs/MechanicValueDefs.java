@@ -108,10 +108,13 @@ public final class MechanicValueDefs {
                         Config::getWingmanNanoRegenPercent)
         );
 
-        // ===== 生命护盾转化 (conversion) =====
+        // ===== 生命护盾转化 (conversion，实例化机制：每个来源物品一个转化实例) =====
         register("conversion_items",
                 new ParamDef("conversion_ratio", nameKey("conversion_items", "conversion_ratio"),
-                        () -> Config.CONVERSION_RATIO.get())
+                        () -> Config.CONVERSION_RATIO.get()),
+                // 转化方向：0=双向比较（默认，较少一方按比例转化给较多一方），1=仅护盾转生命，2=仅生命转护盾
+                new ParamDef("conversion_direction", nameKey("conversion_items", "conversion_direction"),
+                        () -> 0.0)
         );
 
         // ===== 结界 (barrier) =====
@@ -132,6 +135,18 @@ public final class MechanicValueDefs {
                         () -> Config.getElectricDischargeBurnDuration()),
                 new ParamDef("burn_charge", nameKey("electric_discharge_items", "burn_charge"),
                         Config::getElectricDischargeBurnCharge)
+        );
+
+        // ===== 强袭 (assault，非实例化：走默认叠/单合并策略) =====
+        register("assault_items",
+                new ParamDef("attack_speed_per_stack", nameKey("assault_items", "attack_speed_per_stack"),
+                        Config::getAssaultAttackSpeedPerStack),
+                new ParamDef("self_damage_per_stack", nameKey("assault_items", "self_damage_per_stack"),
+                        Config::getAssaultSelfDamagePerStack),
+                new ParamDef("overflow_damage_efficiency", nameKey("assault_items", "overflow_damage_efficiency"),
+                        Config::getAssaultOverflowDamageEfficiency),
+                new ParamDef("move_speed_penalty", nameKey("assault_items", "move_speed_penalty"),
+                        Config::getAssaultMovementSpeedPenalty)
         );
 
         // ===== 湮灭护盾 (explosive_shield) =====
@@ -340,7 +355,8 @@ public final class MechanicValueDefs {
 
     /** 实例化机制集合：每个来源物品一个实例，参数按物品独立解析（无叠/单合并语义） */
     private static final List<String> INSTANCE_SETS = List.of(
-            "reflect_damage_items", "drone_module_items", "swarm_module_items", "wingman_module_items");
+            "reflect_damage_items", "drone_module_items", "swarm_module_items", "wingman_module_items",
+            "conversion_items");
 
     /** 是否为实例化机制集合（参数按物品独立解析，编辑器不显示叠/单切换） */
     public static boolean isInstanceSet(String mechanicSet) {

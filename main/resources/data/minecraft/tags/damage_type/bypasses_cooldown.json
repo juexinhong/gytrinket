@@ -10,6 +10,7 @@
     "gytrinket:final_damage",
     "gytrinket:drone_bullet",
     "gytrinket:siphon_damage",
-    "gytrinket:construct_self_damage"
+    "gytrinket:construct_self_damage",
+    "gytrinket:meteor_impact"
   ]
 }

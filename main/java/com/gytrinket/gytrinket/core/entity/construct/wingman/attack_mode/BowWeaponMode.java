@@ -30,8 +30,6 @@ public class BowWeaponMode implements InterceptorWeaponMode {
     @Override
     public void executeAttack(WingmanConstructEntity attacker, LivingEntity target, ItemStack weapon, Player owner) {
         if (!isWeapon(weapon)) {
-            InterceptorDebug.logSlow(attacker, "bow_not_weapon_" + attacker.getId(),
-                    "非弓箭武器: " + weapon.getItem());
             return;
         }
 
@@ -42,9 +40,6 @@ public class BowWeaponMode implements InterceptorWeaponMode {
         if (ammoStack.isEmpty()) {
             ammoStack = new ItemStack(Items.ARROW);
         }
-
-        InterceptorDebug.logAttackStep(attacker, "bow_exec", "弓箭攻击: weapon=" + weapon.getItem()
-                + " ammo=" + ammoStack.getItem() + " dist=" + String.format("%.1f", attacker.distanceTo(target)));
 
         // 用 vanilla 的 ProjectileUtil.getMobArrow 创建箭矢，自动应用力量/火矢等附魔
         float chargeFactor = 1.0F;

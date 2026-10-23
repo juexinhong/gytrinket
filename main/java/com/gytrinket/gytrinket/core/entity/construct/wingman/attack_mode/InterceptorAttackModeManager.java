@@ -91,8 +91,6 @@ public class InterceptorAttackModeManager {
         String modeName = wingman.getInterceptorAttackMode().getSerializedName();
         InterceptorWeaponMode mode = WEAPON_MODES.get(modeName);
         if (mode == null) {
-            InterceptorDebug.logSlow(wingman, "no_weapon_mode_" + wingman.getId(),
-                    "未找到武器模式: modeName=" + modeName + " 已注册=" + WEAPON_MODES.keySet());
         }
         return mode;
     }
@@ -117,12 +115,8 @@ public class InterceptorAttackModeManager {
                                             ItemStack weapon, Player owner) {
         InterceptorWeaponMode weaponMode = getCurrentWeaponMode(wingman);
         if (weaponMode != null) {
-            InterceptorDebug.logAttackStep(wingman, "weapon_exec", "武器模式执行: mode=" + weaponMode.getSerializedName()
-                    + " weapon=" + weapon.getItem() + " target=" + target.getName().getString());
             weaponMode.executeAttack(wingman, target, weapon, owner);
         } else {
-            InterceptorDebug.logSlow(wingman, "no_mode_exec_" + wingman.getId(),
-                    "executeWeaponAttack: 武器模式为null，跳过攻击");
         }
     }
 
@@ -159,9 +153,6 @@ public class InterceptorAttackModeManager {
 
         // 只在模块集合变化时输出
         if (!newModules.equals(oldModules)) {
-            InterceptorDebug.logStateChange(wingman, "模块模式变化: " + oldModules + " -> " + newModules
-                    + " (玩家模式: assault=" + playerModes.hasAssault + " burst=" + playerModes.hasBurstFire
-                    + " charged=" + playerModes.hasChargedAttack + ")");
         }
 
         for (String oldModule : oldModules) {

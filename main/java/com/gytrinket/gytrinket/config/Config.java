@@ -194,8 +194,6 @@ public class Config {
 
     // ===== 21. 追击阵列/突击无人机 (pursuit_array) =====
 
-
-
     public static final ModConfigSpec.DoubleValue DRONE_BASE_HEALTH;
     public static final ModConfigSpec.DoubleValue DRONE_BASE_DAMAGE;
     public static final ModConfigSpec.IntValue DRONE_MAX_COUNT;
@@ -664,14 +662,10 @@ public class Config {
         // ===== 14. 效率 =====
         BUILDER.comment("攻击冷却效率系统配置").push("attack_cooldown_efficiency");
 
-        
-
         BUILDER.pop();
 
         // ===== 15. 转化 =====
         BUILDER.comment("转化效果配置").push("conversion");
-
-        
 
         CONVERSION_RATIO = BUILDER.comment(
             "转化效果的转化比例",
@@ -767,8 +761,6 @@ public class Config {
         // ===== 18. 充能攻击 =====
         BUILDER.comment("充能攻击系统配置").push("charged_attack");
 
-        
-
         CHARGED_ATTACK_BASE_CHARGE_RATE = BUILDER.comment(
             "充能攻击基础充能速率（每tick充能值）",
             "实际充能速率 = 基础速率 * 攻击速度加成",
@@ -859,8 +851,6 @@ public class Config {
         // ===== 19. 精妙构造 =====
         BUILDER.comment("精妙构造系统配置").push("precision_construct");
 
-        
-
         PRECISION_CONSTRUCT_BONUS_PER_LEVEL = BUILDER.comment(
             "精妙构造每级提供的构建速度独立乘区加成",
             "0.0025表示每级0.25%",
@@ -871,8 +861,6 @@ public class Config {
 
         // ===== 20. 护盾移植 =====
         BUILDER.comment("护盾移植系统配置").push("shield_transfer");
-
-        
 
         SHIELD_TRANSFER_EFFECT_PENALTY_PER_ENTITY = BUILDER.comment(
             "护盾移植每保护一个实体降低的护盾效果和护盾效果半径百分比",
@@ -885,12 +873,6 @@ public class Config {
 
         // ===== 21. 追击阵列/突击无人机 =====
         BUILDER.comment("追击阵列/突击无人机配置").push("pursuit_array");
-
-        
-
-        
-
-        
 
         DRONE_BASE_HEALTH = BUILDER.comment(
             "无人机基础最大生命值"
@@ -936,8 +918,6 @@ public class Config {
         // ===== 21.6 僚机 =====
         BUILDER.comment("僚机构造体配置").push("wingman");
 
-        
-
         WINGMAN_BASE_HEALTH = BUILDER.comment(
             "僚机基础最大生命值"
         ).defineInRange("wingmanBaseHealth", 24.0, 1.0, 1000.0);
@@ -970,8 +950,6 @@ public class Config {
             "爆破弹销毁时爆炸半径（格）"
         ).defineInRange("wingmanExplosionRadius", 2.0, 0.1, 10.0);
 
-        
-
         WINGMAN_INTERCEPTOR_CHARGE_DURATION_TICKS = BUILDER.comment(
             "拦截机充能攻击基础充能时间（tick）",
             "默认60（3秒），范围：10 ~ 600"
@@ -988,21 +966,15 @@ public class Config {
             "默认2.0，范围：0.5 ~ 10.0"
         ).defineInRange("wingmanInterceptorChargedSweepBaseRange", 2.0, 0.5, 10.0);
 
-        
-
         WINGMAN_EVOLUTION_BONUS_PER_LEVEL = BUILDER.comment(
             "僚机进化：每级光点等级提供的属性加成百分比",
             "默认：0.00625（0.625%），范围：0.0 ~ 1.0"
         ).defineInRange("wingmanEvolutionBonusPerLevel", 0.00625, 0.0, 1.0);
 
-        
-
         WINGMAN_NANO_REGEN_PERCENT = BUILDER.comment(
             "僚机纳米再生：每秒恢复最大生命值的百分比",
             "默认：0.02（2%），范围：0.0 ~ 1.0"
         ).defineInRange("wingmanNanoRegenPercent", 0.02, 0.0, 1.0);
-
-        
 
         WINGMAN_SHOCKWAVE_DAMAGE_MULTIPLIER = BUILDER.comment(
             "震撼弹模块：爆破弹爆炸伤害倍率",
@@ -1018,8 +990,6 @@ public class Config {
 
         // ===== 21.7 蜂群 (swarm) =====
         BUILDER.comment("蜂群构造体配置").push("swarm");
-
-        
 
         SWARM_BASE_HEALTH = BUILDER.comment(
             "蜂群基础最大生命值（支持小数）"
@@ -1082,8 +1052,6 @@ public class Config {
         // ===== 22. 宽限协议 =====
         BUILDER.comment("濒死保护系统配置").push("near_death_protection");
 
-        
-
         NEAR_DEATH_PROTECTION_COOLDOWN = BUILDER.comment(
             "宽限协议冷却时间（tick）",
             "触发濒死保护后的冷却时间，期间无法再次触发",
@@ -1101,8 +1069,6 @@ public class Config {
         // ===== 23. 高等工程 =====
         BUILDER.comment("高等工程系统配置").push("advanced_engineering");
 
-        
-
         ADVANCED_ENGINEERING_BONUS_PER_LEVEL = BUILDER.comment(
             "高等工程每级提供的无人机生命和伤害独立乘区加成",
             "0.01表示每级1%",
@@ -1113,8 +1079,6 @@ public class Config {
 
         // ===== 24. 最后指令 =====
         BUILDER.comment("濒死自爆系统配置").push("near_death_explosion");
-
-        
 
         NEAR_DEATH_EXPLOSION_INVINCIBLE_DURATION = BUILDER.comment(
             "最后指令无敌持续时间（tick）",
@@ -1158,8 +1122,6 @@ public class Config {
 
         // ===== 24.5 自毁装置 =====
         BUILDER.comment("自毁装置系统配置").push("self_destruct");
-
-        
 
         SELF_DESTRUCT_BASE_DAMAGE = BUILDER.comment(
             "自毁装置基础爆炸伤害",
@@ -1239,8 +1201,6 @@ public class Config {
         // ===== 26. 指挥官 =====
         BUILDER.comment("指挥官系统配置").push("commander");
 
-        
-
         COMMANDER_MAX_COUNT = BUILDER.comment(
             "指挥官最大数量",
             "同一玩家的无人机中最多同时存在的指挥官数量"
@@ -1267,8 +1227,6 @@ public class Config {
         // ===== 28. 弧形屏障 =====
         BUILDER.comment("弧形屏障系统配置").push("arc_barrier");
 
-        
-
         ARC_BARRIER_POSITION_DEVIATION_THRESHOLD = BUILDER.comment(
             "弧形屏障位置偏差阈值（格）",
             "用于判断防御无人机是否在玩家与伤害源之间",
@@ -1280,8 +1238,6 @@ public class Config {
 
         // ===== 29. 反制脉冲 =====
         BUILDER.comment("反制脉冲系统配置").push("counter_pulse");
-
-        
 
         COUNTER_PULSE_COOLDOWN = BUILDER.comment(
             "反制脉冲冷却时间（tick）",
@@ -1314,8 +1270,6 @@ public class Config {
         // ===== 30. 重塑 =====
         BUILDER.comment("重塑系统配置").push("reshaping");
 
-        
-
         RESHAPING_HEAL_RATE = BUILDER.comment(
             "重塑防御无人机生命恢复速率",
             "每秒恢复最大生命值的百分比",
@@ -1339,8 +1293,6 @@ public class Config {
 
         // ===== 31. 充能护盾 =====
         BUILDER.comment("充能护盾系统配置").push("charged_shield");
-
-        
 
         CHARGED_SHIELD_CHARGE_RATIO = BUILDER.comment(
             "充能值转化为护盾加成的比率",
@@ -1374,8 +1326,6 @@ public class Config {
 
         // ===== 35. 幽灵机身 =====
         BUILDER.comment("幽灵机身配置").push("ghost_fuselage");
-
-        
 
         GHOST_FUSELAGE_STEALTH_SPEED_BONUS_PER_LEVEL = BUILDER.comment(
             "每级光点等级增加的隐身速度百分比",
@@ -1429,8 +1379,6 @@ public class Config {
 
         // ===== 36. 积怨 =====
         BUILDER.comment("积怨系统配置").push("grudge");
-
-        
 
         GRUDGE_CONVERSION_RATIO = BUILDER.comment(
             "积怨转化比率",
@@ -1702,7 +1650,6 @@ public class Config {
                 gytrinket.LOGGER.warn("无效的攻击速度修正值：{} for {}", parts[1], parts[0]);
             }
         }
-        gytrinket.LOGGER.info("充能物品白名单加载完成，共 {} 个物品", ITEM_USE_CHARGE_WHITELIST.size());
     }
 
     /**
@@ -1729,7 +1676,6 @@ public class Config {
             }
             PROJECTILE_BLACKLIST_CACHE.add(entityType);
         }
-        gytrinket.LOGGER.info("弹射物黑名单加载完成，共 {} 个实体类型", PROJECTILE_BLACKLIST_CACHE.size());
     }
 
     /**
@@ -1752,7 +1698,6 @@ public class Config {
             }
             PROJECTILE_SOURCE_TRACE_CACHE.add(trimmed);
         }
-        gytrinket.LOGGER.info("弹射物来源追溯包名加载完成，共 {} 个前缀", PROJECTILE_SOURCE_TRACE_CACHE.size());
     }
 
     /**
@@ -1827,7 +1772,6 @@ public class Config {
         // 每次加载配置时检查配置文件完整性：缺失项补充默认值（保留用户已有值）
         checkAndCompleteConfig(event.getConfig());
         if (initialized) {
-            gytrinket.LOGGER.info("配置已初始化，跳过重复加载");
             return;
         }
         initialized = true;
@@ -1836,7 +1780,6 @@ public class Config {
         loadProjectileBlacklist();
         loadProjectileSourceTrace();
 
-        gytrinket.LOGGER.info("配置加载完成");
     }
 
     /**
@@ -1856,7 +1799,6 @@ public class Config {
             }
             if (hasMissingConfigKeys(configPath)) {
                 SPEC.save();
-                gytrinket.LOGGER.info("配置文件存在缺失项，已补充默认值并保存：{}", configPath.getFileName());
             }
         } catch (Exception e) {
             gytrinket.LOGGER.warn("配置完整性检查失败：{}", e.getMessage());
@@ -1943,7 +1885,6 @@ public class Config {
             Item item = BuiltInRegistries.ITEM.get(ResourceLocation.parse(itemId));
             if (item != null && item != Items.AIR) {
                 ITEM_SHIELD_TYPES.put(item, types);
-                gytrinket.LOGGER.info("注册物品护盾类型: {} -> {}", itemId, types);
             }
         });
 
@@ -1999,7 +1940,6 @@ public class Config {
                 SPECIAL_MECHANIC_ITEM_SET.add(item);
             }
         }
-        gytrinket.LOGGER.info("注册特殊机制物品集合: {} 项", SPECIAL_MECHANIC_ITEM_SET.size());
 
         // 危险实体
         DANGEROUS_ENTITY_SET.clear();
@@ -2014,8 +1954,6 @@ public class Config {
         UpgradeManager.loadConfig();
         ShieldTypeManager.init();
 
-        gytrinket.LOGGER.info("定义类数据已应用：物品集合 {} 项，护盾类型 {} 项，属性定义 {} 项",
-                BODY_ITEM_SET.size(), SHIELD_TYPE_COMPATIBILITY.size(), DefsManager.getAttributeDefs().size());
     }
 
     private static void loadItemSetFromDefs(Set<Item> targetSet, String setName, String logLabel) {
@@ -2024,7 +1962,6 @@ public class Config {
             Item item = BuiltInRegistries.ITEM.get(ResourceLocation.parse(itemId));
             if (item != null && item != Items.AIR) {
                 targetSet.add(item);
-                gytrinket.LOGGER.info("注册{}物品: {}", logLabel, itemId);
             }
         }
     }
@@ -2058,6 +1995,9 @@ public class Config {
             case "counterPulseMaxChargeLevel" -> COUNTER_PULSE_MAX_CHARGE_LEVEL.get();
             case "precisionConstructBonusPerLevel" -> PRECISION_CONSTRUCT_BONUS_PER_LEVEL.get();
             case "advancedEngineeringBonusPerLevel" -> ADVANCED_ENGINEERING_BONUS_PER_LEVEL.get();
+            case "assaultAttackSpeedPerStack" -> getAssaultAttackSpeedPerStack();
+            case "assaultSelfDamagePerStack" -> getAssaultSelfDamagePerStack();
+            case "assaultMovementSpeedPenalty" -> getAssaultMovementSpeedPenalty();
             case "commanderMaxCount" -> COMMANDER_MAX_COUNT.get();
             case "commanderAppointDelay" -> COMMANDER_APPOINT_DELAY.get();
             case "chargedShieldChargeRatio" -> getChargedShieldChargeRatio();
@@ -2316,7 +2256,6 @@ public class Config {
     public static boolean isFurnaceCoreItem(Item item) {
         return FURNACE_CORE_ITEM_SET.contains(item);
     }
-
 
     public static boolean isTaskmasterItem(Item item) {
         return TASKMASTER_ITEM_SET.contains(item);

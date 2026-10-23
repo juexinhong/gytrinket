@@ -52,9 +52,6 @@ public class InterceptorAssaultHandler implements InterceptorAttackModeHandler {
         int stacks = getAssaultStacks(wingman) + 1;
         setAssaultStacks(wingman, stacks);
 
-        InterceptorDebug.logAttackResult(wingman, "强袭叠层: stacks=" + stacks
-                + " selfDmg=" + String.format("%.1f", Config.getAssaultSelfDamagePerStack() * stacks));
-
         // 自伤
         float selfDamage = (float) (Config.getAssaultSelfDamagePerStack() * stacks);
         if (selfDamage > 0) {
@@ -83,10 +80,8 @@ public class InterceptorAssaultHandler implements InterceptorAttackModeHandler {
     @Override
     public void onTargetChanged(WingmanConstructEntity wingman, LivingEntity oldTarget, LivingEntity newTarget) {
         if (newTarget == null) {
-            InterceptorDebug.logStateChange(wingman, "强袭: 目标丢失，退出强袭 stacks=" + getAssaultStacks(wingman));
             resetAssault(wingman);
         } else if (oldTarget != null && oldTarget != newTarget) {
-            InterceptorDebug.logStateChange(wingman, "强袭: 更换目标，重置层数 stacks=" + getAssaultStacks(wingman));
             resetAssault(wingman);
         }
     }

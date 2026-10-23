@@ -23,6 +23,9 @@
   "tooltip.gytrinket.swarm_module": "母舰机身",
   "tooltip.gytrinket.adaptive_armor_shield_effect": "联结",
   "tooltip.gytrinket.attr.shield_base": "护盾值",
+  "tooltip.gytrinket.attr.shield_flat": "护盾固定加值",
+  "tooltip.gytrinket.attr.shield_convert_loss": "护盾转化扣减",
+  "tooltip.gytrinket.attr.player_health_flat": "生命固定加值",
   "tooltip.gytrinket.attr.shield_percent": "护盾值百分比",
   "tooltip.gytrinket.attr.shield_independent": "护盾值独立乘区",
   "tooltip.gytrinket.attr.shield_cooldown_reduction_percent": "护盾冷却缩减百分比",
@@ -133,7 +136,7 @@
   "tooltip.gytrinket.binary_protocol_effect": "护盾受到伤害时，玩家替护盾承受%d%%伤害（或相反）",
   
   "tooltip.gytrinket.assault": "强袭",
-  "tooltip.gytrinket.assault_effect": "按住左键自动攻击，攻击速度逐渐提高。并受到自伤（随攻击速度提高而提高）。处于强袭时-60%移速",
+  "tooltip.gytrinket.assault_effect": "按住左键自动攻击。每次攻击获得一层强袭，并受到强袭层数*%s%%的自伤。每层强袭提供%s%%攻击速度。强袭期间移速降低%s%%。",
 
   "tooltip.gytrinket.charged_attack": "充能攻击",
   "tooltip.gytrinket.charged_attack_effect": "按住左键充能，松开释放攻击。充能无上限但受阻力制衡，伤害=当前伤害+充能值。充能时-20%移速",
@@ -263,6 +266,8 @@
   "item.gytrinket.transformation_module": "转化模块",
   "tooltip.gytrinket.transformation_module": "转化",
   "tooltip.gytrinket.transformation_module_desc": "将%.0f%%的护盾值转化为玩家生命或相反（将低值向高值转化）",
+  "tooltip.gytrinket.transformation_module_desc_s2h": "定向转化%.0f%%护盾为玩家生命",
+  "tooltip.gytrinket.transformation_module_desc_h2s": "定向转化%.0f%%玩家生命为护盾",
   "item.gytrinket.binary_protocol_module": "二原协议模块",
   
   "item.gytrinket.fast_shooting_module": "快速射击模块",
@@ -893,10 +898,15 @@
   "gui.gytrinket.mechanic_value.wingman_evolution_module.bonus_per_level": "每级加成",
   "gui.gytrinket.mechanic_value.wingman_nano_regen_module.regen_percent": "每秒再生比例",
   "gui.gytrinket.mechanic_value.conversion.conversion_ratio": "转化比例",
+  "gui.gytrinket.mechanic_value.conversion.conversion_direction": "转化方向(0双向/1盾转生命/2生命转盾)",
   "gui.gytrinket.mechanic_value.barrier.barrier_max_damage": "单次伤害上限",
   "gui.gytrinket.mechanic_value.shield_transfer.penalty_per_entity": "每实体惩罚",
   "gui.gytrinket.mechanic_value.electric_discharge.burn_duration": "灼烧持续(tick)",
   "gui.gytrinket.mechanic_value.electric_discharge.burn_charge": "灼烧充能",
+  "gui.gytrinket.mechanic_value.assault.attack_speed_per_stack": "每层攻击速度",
+  "gui.gytrinket.mechanic_value.assault.self_damage_per_stack": "每层自伤",
+  "gui.gytrinket.mechanic_value.assault.overflow_damage_efficiency": "溢出转化效率",
+  "gui.gytrinket.mechanic_value.assault.move_speed_penalty": "移动速度惩罚",
   "gui.gytrinket.mechanic_value.explosive_shield.radius": "爆炸半径",
   "gui.gytrinket.mechanic_value.explosive_shield.base_damage": "基础伤害",
   "gui.gytrinket.mechanic_value.weaponized_shield.radius": "搜索半径",
@@ -973,6 +983,7 @@
   "screen.gytrinket.random_pool": "随机构建池",
   "screen.gytrinket.random_points": "刷新点",
   "screen.gytrinket.token": "点点光辉",
+  "screen.gytrinket.token_shift_hint": "按住 Shift 查看升级点",
   "screen.gytrinket.refresh_pool": "刷新",
 
   "hud.gytrinket.random_build.hint": "按下 %s 键打开升级界面",
@@ -1103,5 +1114,11 @@
   "entity.gytrinket.drone_bullet": "无人机子弹",
   "entity.gytrinket.drone_beam": "无人机光束",
   "entity.gytrinket.explosive_projectile": "爆破弹",
-  "entity.gytrinket.armor_shard": "装甲碎片"
+  "entity.gytrinket.armor_shard": "装甲碎片",
+  "entity.gytrinket.meteor_small": "小型陨石",
+  "entity.gytrinket.meteor_medium": "中型陨石",
+  "entity.gytrinket.meteor_large": "大型陨石",
+  "entity.gytrinket.meteor_huge": "特大型陨石",
+
+  "death.attack.gytrinket.meteor_impact": "%1$s 被陨石撞击"
 }

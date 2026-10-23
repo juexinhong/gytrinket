@@ -29,8 +29,6 @@ public class gytrinketClient {
     @SubscribeEvent
     static void onClientSetup(FMLClientSetupEvent event) {
         // Some client setup code
-        gytrinket.LOGGER.info("HELLO FROM CLIENT SETUP");
-        gytrinket.LOGGER.info("MINECRAFT NAME >> {}", Minecraft.getInstance().getUser().getName());
     }
 
     /**

@@ -19,8 +19,6 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 import org.joml.Matrix4f;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -37,14 +35,11 @@ import java.util.Map;
 @EventBusSubscriber(modid = gytrinket.MODID, value = Dist.CLIENT)
 public class ChargedSweepRenderer {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger("GyTrinket-Debug");
-
     private static final List<ChargedSweepRenderData> ACTIVE_SWEEPS = new ArrayList<>();
 
     private ChargedSweepRenderer() {}
 
     public static void addSweep(ChargedSweepRenderData data) {
-        LOGGER.info("addSweep: pos=({},{},{}) scale={} yaw={}", data.x(), data.y(), data.z(), data.scale(), data.yaw());
         ACTIVE_SWEEPS.add(data);
     }
 
@@ -56,8 +51,6 @@ public class ChargedSweepRenderer {
         if (ACTIVE_SWEEPS.isEmpty()) {
             return;
         }
-
-        LOGGER.info("rendering {} sweeps", ACTIVE_SWEEPS.size());
 
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null || mc.player == null) {

@@ -53,10 +53,8 @@ public class InterceptorBurstHandler implements InterceptorAttackModeHandler {
         // 使用 lastTrackedTarget 而非 getTarget()，因为僚机不使用原版 setTarget()
         LivingEntity target = wingman.getLastTrackedTarget();
         if (target != null && target.isAlive()) {
-            InterceptorDebug.logStateChange(wingman, "点射连发攻击: remaining=" + remaining + " target=" + target.getName().getString());
             executeBurstAttack(wingman, target, owner);
         } else {
-            InterceptorDebug.logStateChange(wingman, "点射连发中断: 目标丢失 remaining=" + remaining);
             finishBurst(wingman, owner);
         }
     }
@@ -65,8 +63,6 @@ public class InterceptorBurstHandler implements InterceptorAttackModeHandler {
     public boolean onPreAttack(WingmanConstructEntity wingman, LivingEntity target, ItemStack weapon, Player owner) {
         // 连发进行中，不允许新的攻击触发
         if (wingman.getPersistentData().getInt(BURST_REMAINING_KEY) > 0) {
-            InterceptorDebug.logFast(wingman, "burst_active_" + wingman.getId(),
-                    "点射连发中: remaining=" + wingman.getPersistentData().getInt(BURST_REMAINING_KEY));
             return false;
         }
 
@@ -83,9 +79,6 @@ public class InterceptorBurstHandler implements InterceptorAttackModeHandler {
 
         // 连击锁定：连发期间临时提升reach+3
         wingman.setBurstLock(true);
-
-        InterceptorDebug.logStateChange(wingman, "点射触发: combo=" + comboBonus
-                + " totalShots=" + (1 + comboBonus) + " 属性连击值=" + AttributeManager.getPlayerAttribute(owner.getUUID(), "combo"));
 
         return true;
     }
@@ -194,9 +187,6 @@ public class InterceptorBurstHandler implements InterceptorAttackModeHandler {
 
         // 清除连击锁定
         wingman.setBurstLock(false);
-
-        InterceptorDebug.logStateChange(wingman, "点射连发结束: totalCombo=" + totalCombo
-                + " baseWeaponCd=" + baseWeaponCooldown + " totalCd=" + totalCooldown);
 
         wingman.getPersistentData().remove(BURST_REMAINING_KEY);
         wingman.getPersistentData().remove(BURST_COOLDOWN_KEY);

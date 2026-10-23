@@ -48,12 +48,15 @@ public class TokenItem extends Item {
      * 带自定义 NBT 的 token 一旦进背包便无法与其他 token 堆叠，且上浮途中引擎拾取不走我们的清理。
      * 实体被拾取/销毁后条目由弱引用自动回收；跨存档重载后实体重建，仅重新计 2 秒保护期，无害。
      */
-    private static final Map<ItemEntity, Long> DROP_TICKS = new WeakHashMap<>();
+    private static final Map<ItemEntity, Long> SERVER_DROP_TICKS = new WeakHashMap<>();
     /**
-     * 开始上浮的 game time（双端各自记录，按实体弱引用回收）：当前速度直接由经过时间推导，
-     * 无条目即未在上浮中，被埋后重新开始加速时从初始速度起步。
+     * 开始上浮的 game time。客户端与服务端各自持有独立表：
+     * 单机内置服务器下两边 tick 线程会同时调用 onEntityItemUpdate，共享一个 WeakHashMap
+     * 会产生并发修改；分表后每个表只被对应侧的 tick 线程访问。
+     * 弱引用键：物品被拾取/销毁后自动回收，不阻止实体 GC。
      */
-    private static final Map<ItemEntity, Long> FLOAT_START_TICKS = new WeakHashMap<>();
+    private static final Map<ItemEntity, Long> SERVER_FLOAT_START_TICKS = new WeakHashMap<>();
+    private static final Map<ItemEntity, Long> CLIENT_FLOAT_START_TICKS = new WeakHashMap<>();
 
     public TokenItem(Properties properties) {
         super(properties);
@@ -72,7 +75,7 @@ public class TokenItem extends Item {
     /**
      * 掉落物寿命（ItemEntity 构造时调用一次）：拉到引擎上限。
      * 原版 age 是 short（32767 溢出会变负导致隐式永生），引擎允许的最大安全值即
-     * Short.MAX_VALUE - 1 = 32766 tick ≈ 27.3 分钟（过期判定 age 达到即销毁，不会溢出）。
+     * Short.MAX_VALUE - 1 = 32766 tick ≈ 27.3 分钟（过期段自身也 clamp 到这个值）。
      * 注意：上浮接管期间跳过原版 tick，age 暂停计数——被埋的物品不计时，露面后才开始走。
      */
     @Override
@@ -88,9 +91,10 @@ public class TokenItem extends Item {
     @Override
     public boolean onEntityItemUpdate(ItemStack stack, ItemEntity entity) {
         Level level = entity.level();
+        Map<ItemEntity, Long> floatStartTicks = floatStartMap(level);
         if (!hasBlockAbove(level, entity)) {
             // 头顶露空，上浮结束：清除起点，下次被埋时从 0 重新加速，交还原版物理
-            FLOAT_START_TICKS.remove(entity);
+            floatStartTicks.remove(entity);
             return false;
         }
         if (!level.isClientSide) {
@@ -101,7 +105,7 @@ public class TokenItem extends Item {
         // 由"开始上浮时刻"直接推导，双端独立计算结果天然一致；
         // 停止判定仍每 tick 进行，避免高速时 0.5 秒的检查间隔冲出方块顶过远
         long now = level.getGameTime();
-        long startTick = FLOAT_START_TICKS.computeIfAbsent(entity, k -> now);
+        long startTick = floatStartTicks.computeIfAbsent(entity, k -> now);
         long elapsed = now - startTick;
         long steps = elapsed / ACCEL_INTERVAL_TICKS;
         double frac = (elapsed % ACCEL_INTERVAL_TICKS) / (double) ACCEL_INTERVAL_TICKS;
@@ -117,12 +121,17 @@ public class TokenItem extends Item {
         return true;
     }
 
+    /** 按逻辑侧取独立的上浮起始表，避免单机内置服务器的双线程共享 WeakHashMap。 */
+    private static Map<ItemEntity, Long> floatStartMap(Level level) {
+        return level.isClientSide ? CLIENT_FLOAT_START_TICKS : SERVER_FLOAT_START_TICKS;
+    }
+
     /**
      * 吸附拾取（仅服务端）：上浮穿透期间物品碰撞箱在方块内，玩家正常走近碰不到，
      * 主动把附近玩家拉入 playerTouch（内部自检背包容量，满了留在地上）。
      */
     private static void attractNearbyPlayers(ItemEntity entity, Level level) {
-        long dropTick = DROP_TICKS.computeIfAbsent(entity, k -> level.getGameTime());
+        long dropTick = SERVER_DROP_TICKS.computeIfAbsent(entity, k -> level.getGameTime());
         if (level.getGameTime() - dropTick < PICKUP_GRACE_TICKS) {
             return; // 刚丢出 2 秒内不吸附
         }

@@ -1522,7 +1522,6 @@ public class Config {
             Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(itemId));
             if (item != null && item != Items.AIR) {
                 ITEM_SHIELD_TYPES.put(item, types);
-                gytrinket.LOGGER.info("注册物品护盾类型: {} -> {}", itemId, types);
             }
         });
 
@@ -1588,8 +1587,6 @@ public class Config {
         UpgradeManager.loadConfig();
         ShieldTypeManager.init();
 
-        gytrinket.LOGGER.info("定义类数据已应用：物品集合 {} 项，护盾类型 {} 项，属性定义 {} 项",
-                MODULE_ITEM_SETS.size(), SHIELD_TYPE_COMPATIBILITY.size(), DefsManager.getAttributeDefs().size());
     }
 
     /** 从 datapack 物品集合填充指定模块的物品集合（与 loadItemSetFromDefs 的模块名一致） */
@@ -1600,7 +1597,6 @@ public class Config {
             Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(itemId));
             if (item != null && item != Items.AIR) {
                 itemSet.add(item);
-                gytrinket.LOGGER.info("注册{}物品: {}", moduleName, itemId);
             }
         }
     }
@@ -1634,6 +1630,9 @@ public class Config {
             case "counterPulseMaxChargeLevel" -> COUNTER_PULSE_MAX_CHARGE_LEVEL.get();
             case "precisionConstructBonusPerLevel" -> PRECISION_CONSTRUCT_BONUS_PER_LEVEL.get();
             case "advancedEngineeringBonusPerLevel" -> ADVANCED_ENGINEERING_BONUS_PER_LEVEL.get();
+            case "assaultAttackSpeedPerStack" -> getAssaultAttackSpeedPerStack();
+            case "assaultSelfDamagePerStack" -> getAssaultSelfDamagePerStack();
+            case "assaultMovementSpeedPenalty" -> getAssaultMovementSpeedPenalty();
             case "commanderMaxCount" -> COMMANDER_MAX_COUNT.get();
             case "commanderAppointDelay" -> COMMANDER_APPOINT_DELAY.get();
             case "chargedShieldChargeRatio" -> getChargedShieldChargeRatio();
@@ -1697,7 +1696,6 @@ public class Config {
                 gytrinket.LOGGER.warn("无效的攻击速度修正值：{} for {}", parts[1], parts[0]);
             }
         }
-        gytrinket.LOGGER.info("充能物品白名单加载完成，共 {} 个物品", ITEM_USE_CHARGE_WHITELIST.size());
     }
 
     /**
@@ -1724,7 +1722,6 @@ public class Config {
             }
             PROJECTILE_BLACKLIST_CACHE.add(entityType);
         }
-        gytrinket.LOGGER.info("弹射物黑名单加载完成，共 {} 个实体类型", PROJECTILE_BLACKLIST_CACHE.size());
     }
 
     /**
@@ -1747,7 +1744,6 @@ public class Config {
             }
             PROJECTILE_SOURCE_TRACE_CACHE.add(trimmed);
         }
-        gytrinket.LOGGER.info("弹射物来源追溯包名加载完成，共 {} 个前缀", PROJECTILE_SOURCE_TRACE_CACHE.size());
     }
 
     /**
@@ -1827,14 +1823,12 @@ public class Config {
             return;
         }
         if (initialized) {
-            gytrinket.LOGGER.info("配置已初始化，跳过重复加载");
             return;
         }
         initialized = true;
         loadItemUseChargeWhitelist();
         loadProjectileBlacklist();
         loadProjectileSourceTrace();
-        gytrinket.LOGGER.info("配置加载完成");
     }
 
     public static double getReflectRadius() {

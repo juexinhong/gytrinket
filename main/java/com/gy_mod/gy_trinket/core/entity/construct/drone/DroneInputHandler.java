@@ -46,8 +46,6 @@ public class DroneInputHandler {
     public static void onRegisterKeyMappings(RegisterKeyMappingsEvent event) {
         event.register(arraySwitchKey);
         event.register(executeToggleKey);
-        gytrinket.LOGGER.info("阵列切换按键绑定已注册：Tab 键");
-        gytrinket.LOGGER.info("斩杀归属切换按键绑定已注册：I 键");
     }
 
     @SubscribeEvent

@@ -1,0 +1,10 @@
+{
+  "type": "gytrinket:island",
+  "generator": {
+    "type": "gytrinket:island",
+    "biome_source": {
+      "type": "minecraft:fixed",
+      "biome": "gytrinket:island"
+    }
+  }
+}

@@ -1019,16 +1019,22 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
             }
 
             Item item = BuiltInRegistries.ITEM.get(new ResourceLocation(itemId));
+            boolean uiDisabled = itemTag.getBoolean("uiDisabled");
             if (item != null) {
                 ItemStack itemStack = new ItemStack(item);
                 guiGraphics.renderItem(itemStack, panelX + 10, y + 1);
                 String itemName = itemStack.getHoverName().getString();
-                guiGraphics.drawString(font, itemName, panelX + 28, y + 3, renderer.getTextColor());
+                if (uiDisabled) {
+                    itemName = itemName + " [已禁用]";
+                }
+                guiGraphics.drawString(font, itemName, panelX + 28, y + 3,
+                        uiDisabled ? renderer.getHintColor() : renderer.getTextColor());
                 if (mouseInClip && mouseX >= panelX + 10 && mouseX < panelX + 26 && mouseY >= y + 1 && mouseY < y + 17) {
                     hoveredItemStack = itemStack;
                 }
             } else {
-                guiGraphics.drawString(font, itemId, panelX + 10, y + 3, renderer.getTextColor());
+                guiGraphics.drawString(font, uiDisabled ? itemId + " [已禁用]" : itemId, panelX + 10, y + 3,
+                        uiDisabled ? renderer.getHintColor() : renderer.getTextColor());
             }
 
             int delX = panelX + panelWidth - 22;

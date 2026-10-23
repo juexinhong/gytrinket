@@ -15,6 +15,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.SwordItem;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import net.minecraftforge.entity.PartEntity;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -98,9 +99,16 @@ public class ChargedAttackSweepHandler {
         float baseDamage = (float) player.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE);
         float chargedDamage = baseDamage * (1.0F + (float) chargeValue);
 
+        // 体节主目标：伤害经体节路由到父实体，无敌帧清除与横扫排除均按父实体处理
+        LivingEntity primaryLiving = primaryTarget instanceof LivingEntity livingTarget
+                ? livingTarget
+                : primaryTarget instanceof PartEntity<?> part && part.getParent() instanceof LivingEntity parent
+                        ? parent
+                        : null;
+
         // 移除无敌时间确保伤害生效
-        if (primaryTarget instanceof LivingEntity livingTarget) {
-            livingTarget.invulnerableTime = 0;
+        if (primaryLiving != null) {
+            primaryLiving.invulnerableTime = 0;
         }
 
         boolean hitLiving = primaryTarget.hurt(player.damageSources().playerAttack(player), chargedDamage);
@@ -123,7 +131,7 @@ public class ChargedAttackSweepHandler {
         // 先收集横扫目标到集合，避免遍历时伤害导致并发修改
         List<LivingEntity> sweepTargets = new ArrayList<>();
         for (LivingEntity livingEntity : nearbyEntities) {
-            if (livingEntity == primaryTarget || livingEntity == player) {
+            if (livingEntity == primaryTarget || livingEntity == primaryLiving || livingEntity == player) {
                 continue;
             }
             if (player.isAlliedTo(livingEntity)) {
@@ -219,6 +227,26 @@ public class ChargedAttackSweepHandler {
         double closestDistance = reachDistance;
 
         for (Entity entity : entities) {
+            // 多体节兼容：体节实体不注册进 level 实体列表，getEntities 只返回父实体，只扫父实体 AABB
+            // 会漏掉伸出的头/颈/节段。服务端直接持有体节引用（无 ID 解析问题），命中体节时以体节为主目标，
+            // 伤害经体节路由到父实体（暮色森林父实体 hurt 拒绝普通伤害，必须走体节），不能回退为父实体
+            Entity[] parts = entity.getParts();
+            if (parts != null && parts.length > 0) {
+                for (Entity part : parts) {
+                    if (part == null || !part.isAlive()) {
+                        continue;
+                    }
+                    if (!isEntityHitByBeam(part, eyePos, endPos)) {
+                        continue;
+                    }
+                    double partAlongAxis = part.getBoundingBox().getCenter().subtract(eyePos).dot(lookVec);
+                    if (partAlongAxis < closestDistance) {
+                        closestDistance = partAlongAxis;
+                        closestEntity = part;
+                    }
+                }
+            }
+
             if (!isEntityHitByBeam(entity, eyePos, endPos)) {
                 continue;
             }

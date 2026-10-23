@@ -146,7 +146,7 @@
     "tooltip.gytrinket.advanced_engineering":  "고급 엔지니어링",
     "tooltip.gytrinket.advanced_engineering_effect":  "플레이어 레벨당 %.1f%% 독립 배율 드론 체력 및 드론 피해를 제공합니다",
     "tooltip.gytrinket.assault":  "강습",
-    "tooltip.gytrinket.assault_effect":  "좌클릭 유지 시 자동 공격합니다. 공격 속도가 점차 증가합니다. 자가 피해를 받습니다 (공격 속도에 비례하여 증가). 강습 중 이동 속도 -60%",
+    "tooltip.gytrinket.assault_effect":  "좌클릭 유지 시 자동 공격합니다. 공격마다 강습 1스택을 얻고 스택 수×%s%%의 자가 피해를 받습니다. 스택당 공격 속도 +%s%%. 강습 중 이동 속도 -%s%%.",
     "tooltip.gytrinket.charged_attack":  "차지 공격",
     "tooltip.gytrinket.charged_attack_effect":  "좌클릭 유지 시 차지, 놓으면 공격합니다. 차지에 상한이 없지만 드래그에 의해 제한됩니다. 피해 = 현재 피해 + 차지 수치. 차지 중 이동 속도 -20%",
     "tooltip.gytrinket.projectile_explosion":  "발사체 폭발",

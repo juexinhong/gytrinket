@@ -29,7 +29,6 @@ public class PlayerDataStorage extends SavedData {
                 gytrinket.LOGGER.warn("无法解析玩家UUID: {}", key);
             }
         }
-        gytrinket.LOGGER.debug("从SavedData加载了 {} 个玩家的持久化数据", storage.playerDataMap.size());
         return storage;
     }
 

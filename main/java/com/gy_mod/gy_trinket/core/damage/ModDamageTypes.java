@@ -106,6 +106,11 @@ public class ModDamageTypes {
             Registries.DAMAGE_TYPE, new ResourceLocation(NAMESPACE, "execute_damage")
     );
 
+    /** 陨石撞击伤害。 */
+    public static final ResourceKey<DamageType> METEOR_IMPACT = ResourceKey.create(
+            Registries.DAMAGE_TYPE, new ResourceLocation(NAMESPACE, "meteor_impact")
+    );
+
     // ==================== 伤害来源创建方法 ====================
 
     /**
@@ -301,6 +306,15 @@ public class ModDamageTypes {
         return new DamageSource(
                 level.registryAccess().registryOrThrow(Registries.DAMAGE_TYPE).getHolderOrThrow(PROTOCOL_PLAYER_SELF_DAMAGE),
                 directEntity
+        );
+    }
+
+    /** 陨石撞击伤害来源。 */
+    public static DamageSource getMeteorImpactDamageSource(Level level, Entity meteor) {
+        return new DamageSource(
+                level.registryAccess().registryOrThrow(Registries.DAMAGE_TYPE).getHolderOrThrow(METEOR_IMPACT),
+                meteor,
+                meteor
         );
     }
 

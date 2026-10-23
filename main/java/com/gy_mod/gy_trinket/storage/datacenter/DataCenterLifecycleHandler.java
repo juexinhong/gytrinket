@@ -64,7 +64,6 @@ public class DataCenterLifecycleHandler {
         PlayerDataCenter.registerSlot(new ModLevelDataSlot());
         PlayerDataCenter.registerSlot(new com.gy_mod.gy_trinket.core.random_build.RandomBuildDataSlot());
 
-        gytrinket.LOGGER.info("PlayerDataCenter 数据槽注册完成");
     }
 
     @SubscribeEvent
@@ -114,7 +113,6 @@ public class DataCenterLifecycleHandler {
 
         com.gy_mod.gy_trinket.event.LightPointStoreSyncHandler.sendDataSnapshotToClient(serverPlayer);
 
-        gytrinket.LOGGER.debug("玩家 {} 登录，数据中心初始化完成", player.getUUID());
     }
 
     @SubscribeEvent
@@ -144,7 +142,6 @@ public class DataCenterLifecycleHandler {
         InterceptorWeaponManager.clearPlayerData(player.getUUID());
         InterceptorAttackModeManager.clearPlayerData(serverPlayer);
 
-        gytrinket.LOGGER.debug("玩家 {} 退出，数据中心清理完成", player.getUUID());
     }
 
     @SubscribeEvent
@@ -189,7 +186,6 @@ public class DataCenterLifecycleHandler {
             handler.setStackInSlot(i, ItemStack.EMPTY);
         }
 
-        gytrinket.LOGGER.info("困难模式：玩家 {} 死亡，光点核心物品已清空", player.getUUID());
     }
 
     private static void saveConstructAndDroneData(ServerPlayer player) {
@@ -450,35 +446,30 @@ public class DataCenterLifecycleHandler {
 
             persistentData.remove("gy_trinket.current_shield");
             persistentData.remove("gy_trinket.max_shield");
-            gytrinket.LOGGER.debug("迁移旧版护盾数据到SavedData");
         }
 
         if (persistentData.contains("gy_trinket:light_point_store")) {
             existingData.put("light_point_store", persistentData.getCompound("gy_trinket:light_point_store"));
             persistentData.remove("gy_trinket:light_point_store");
             migrated = true;
-            gytrinket.LOGGER.debug("迁移旧版光点核心数据到SavedData");
         }
 
         if (persistentData.contains("gy_trinket:construct_manager")) {
             existingData.put("construct_manager", persistentData.getCompound("gy_trinket:construct_manager"));
             persistentData.remove("gy_trinket:construct_manager");
             migrated = true;
-            gytrinket.LOGGER.debug("迁移旧版构造体数据到SavedData");
         }
 
         if (persistentData.contains("gy_trinket:drone_array")) {
             existingData.put("drone_array", persistentData.getCompound("gy_trinket:drone_array"));
             persistentData.remove("gy_trinket:drone_array");
             migrated = true;
-            gytrinket.LOGGER.debug("迁移旧版无人机阵列数据到SavedData");
         }
 
         if (persistentData.contains("gy_trinket:shield_transfer")) {
             existingData.put("shield_transfer", persistentData.getCompound("gy_trinket:shield_transfer"));
             persistentData.remove("gy_trinket:shield_transfer");
             migrated = true;
-            gytrinket.LOGGER.debug("迁移旧版护盾移植数据到SavedData");
         }
 
         if (migrated) {

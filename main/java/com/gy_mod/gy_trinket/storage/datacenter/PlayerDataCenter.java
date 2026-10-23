@@ -28,7 +28,6 @@ public class PlayerDataCenter {
         }
         SLOT_REGISTRY.put(slot.getKey(), slot);
         rebuildSortedSlots();
-        gytrinket.LOGGER.debug("注册数据槽: {} (持久化: {}, 优先级: {})", slot.getKey(), slot.isPersistent(), slot.getPriority());
     }
 
     private static void rebuildSortedSlots() {
@@ -159,7 +158,6 @@ public class PlayerDataCenter {
             lock.writeLock().unlock();
         }
 
-        gytrinket.LOGGER.debug("玩家 {} 登录，数据从SavedData恢复完成", uuid);
     }
 
     public static void onLogout(Player player) {
@@ -242,7 +240,6 @@ public class PlayerDataCenter {
             PLAYER_LOCKS.remove(uuid);
         }
 
-        gytrinket.LOGGER.debug("玩家 {} 退出，数据保存到SavedData并清理完成", uuid);
     }
 
     public static void onRespawn(Player player) {
@@ -322,7 +319,6 @@ public class PlayerDataCenter {
             oldLock.writeLock().unlock();
         }
 
-        gytrinket.LOGGER.debug("玩家数据克隆: {} -> {}", oldUUID, newUUID);
     }
 
     public static CompoundTag buildSnapshot(UUID playerUUID) {

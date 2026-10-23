@@ -62,6 +62,9 @@ public class ConstructManager {
 
     private final Set<UUID> buildingDisabledPlayers = ConcurrentHashMap.newKeySet();
 
+    /** 构造体增删/死亡后标记，下一次 tick 再做超限清理；另有低频兜底。 */
+    private final Set<UUID> cleanupDirtyPlayers = ConcurrentHashMap.newKeySet();
+
     /** 构造体类型构建条件检查器：类型ID -> 检查函数（玩家是否满足该类型的构建条件） */
     private final Map<String, Predicate<Player>> buildConditionCheckers = new ConcurrentHashMap<>();
 
@@ -96,6 +99,7 @@ public class ConstructManager {
         activeConstructEntities.computeIfAbsent(playerUUID, k -> new ConcurrentHashMap<>())
             .computeIfAbsent(constructId, k -> new ConcurrentHashMap<>())
             .put(entity.getUUID(), entity);
+        cleanupDirtyPlayers.add(playerUUID);
         
         MinecraftForge.EVENT_BUS.post(
             new com.gy_mod.gy_trinket.core.shield_transfer.event.PlayerConstructListChangedEvent(playerUUID, entity, 
@@ -107,6 +111,7 @@ public class ConstructManager {
      * 注销构造体实体
      */
     public void unregisterConstructEntity(UUID playerUUID, String constructId, UUID entityUUID) {
+        cleanupDirtyPlayers.add(playerUUID);
         Map<String, Map<UUID, net.minecraft.world.entity.Entity>> playerConstructs = activeConstructEntities.get(playerUUID);
         if (playerConstructs != null) {
             Map<UUID, net.minecraft.world.entity.Entity> entities = playerConstructs.get(constructId);
@@ -367,6 +372,7 @@ public class ConstructManager {
     }
 
     public void removeConstruct(UUID playerUUID, UUID entityUUID) {
+        cleanupDirtyPlayers.add(playerUUID);
         Map<String, List<ConstructData>> constructs = playerConstructs.get(playerUUID);
         if (constructs == null) {
             return;
@@ -377,6 +383,7 @@ public class ConstructManager {
     }
 
     public void markConstructDead(UUID playerUUID, String constructId, UUID entityUUID) {
+        cleanupDirtyPlayers.add(playerUUID);
         Map<String, List<ConstructData>> constructs = playerConstructs.get(playerUUID);
         if (constructs == null) {
             return;
@@ -745,7 +752,13 @@ public class ConstructManager {
     public void tick(Player player) {
         UUID playerUUID = player.getUUID();
 
-        cleanupExcessConstructs(player);
+        // 事件驱动为主：构造体增删/死亡后下一 tick 清理一次；
+        // 每 20 tick 兜底一次，处理属性上限变化等不会触发增删事件的情况。
+        // cleanupExcessConstructs 只统计 player.level().dimension()：
+        // 玩家跨维度时，旧维度构造体不在本次统计内，会原样保留。
+        if (cleanupDirtyPlayers.remove(playerUUID) || player.tickCount % 20 == 0) {
+            cleanupExcessConstructs(player);
+        }
 
         Map<String, ConstructBuilder> builders = playerBuilders.get(playerUUID);
         if (builders != null && !builders.isEmpty()) {

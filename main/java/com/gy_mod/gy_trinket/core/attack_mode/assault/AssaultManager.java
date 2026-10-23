@@ -72,10 +72,14 @@ public class AssaultManager {
 
         data.stacks++;
 
-        double attackSpeedBonus = com.gy_mod.gy_trinket.config.Config.getAssaultAttackSpeedPerStack() * data.stacks;
+        double attackSpeedBonus = com.gy_mod.gy_trinket.core.defs.DefsManager.resolveMechanicValue(player.getServer(), player.getUUID(),
+                "assault_items", "attack_speed_per_stack",
+                com.gy_mod.gy_trinket.config.Config.getAssaultAttackSpeedPerStack()) * data.stacks;
         AttributeManager.setDynamicAttribute(uuid, "assault", "attack_speed_independent", attackSpeedBonus);
 
-        float selfDamage = (float) (com.gy_mod.gy_trinket.config.Config.getAssaultSelfDamagePerStack() * data.stacks);
+        float selfDamage = (float) (com.gy_mod.gy_trinket.core.defs.DefsManager.resolveMechanicValue(player.getServer(), player.getUUID(),
+                "assault_items", "self_damage_per_stack",
+                com.gy_mod.gy_trinket.config.Config.getAssaultSelfDamagePerStack()) * data.stacks);
         if (selfDamage > 0) {
             KnockbackManager.markNoKnockback(uuid);
             player.hurt(ModDamageTypes.getPlayerSelfDamageSource(player.level()), selfDamage);
@@ -134,7 +138,9 @@ public class AssaultManager {
 
         // 按比例等价换算：溢出攻速相对上限的频率提升 = 溢出攻速 / 上限
         double damagePercent = (overflow / ATTACK_SPEED_CAP)
-                * com.gy_mod.gy_trinket.config.Config.getAssaultOverflowDamageEfficiency();
+                * com.gy_mod.gy_trinket.core.defs.DefsManager.resolveMechanicValue(player.getServer(), uuid,
+                        "assault_items", "overflow_damage_efficiency",
+                        com.gy_mod.gy_trinket.config.Config.getAssaultOverflowDamageEfficiency());
         if (damagePercent > 0) {
             AttributeManager.setDynamicAttribute(uuid, OVERFLOW_NAMESPACE, "attack_damage_percent", damagePercent);
         } else {

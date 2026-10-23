@@ -31,7 +31,6 @@ public class DisableSystem {
         DefsManager.getDisableTargets().forEach((itemId, targets) -> {
             if (!targets.isEmpty()) {
                 ITEM_DISABLE_TARGETS.put(itemId, new HashSet<>(targets));
-                gytrinket.LOGGER.info("注册禁用目标: {} -> {}", itemId, targets);
             }
         });
 
@@ -39,7 +38,6 @@ public class DisableSystem {
         DefsManager.getDependencies().forEach((itemId, deps) -> {
             if (!deps.isEmpty()) {
                 ITEM_DEPENDENCIES.put(itemId, new HashSet<>(deps));
-                gytrinket.LOGGER.info("注册物品依赖(OR): {} -> {}", itemId, deps);
             }
         });
 
@@ -47,7 +45,6 @@ public class DisableSystem {
         DefsManager.getDisableCategories().forEach((itemId, categories) -> {
             if (!categories.isEmpty()) {
                 ITEM_DISABLE_CATEGORIES.put(itemId, new HashSet<>(categories));
-                gytrinket.LOGGER.info("注册类别禁用: {} -> {}", itemId, categories);
             }
         });
 
@@ -55,13 +52,9 @@ public class DisableSystem {
         DefsManager.getDependenciesAll().forEach((itemId, groups) -> {
             if (!groups.isEmpty()) {
                 ITEM_DEPENDENCIES_ALL.put(itemId, groups);
-                gytrinket.LOGGER.info("注册物品依赖(AND/OR组): {} -> {}", itemId, groups);
             }
         });
 
-        gytrinket.LOGGER.info("禁用系统配置加载完成，禁用目标: {} 项，OR依赖: {} 项，类别禁用: {} 项，AND依赖: {} 项",
-                ITEM_DISABLE_TARGETS.size(), ITEM_DEPENDENCIES.size(),
-                ITEM_DISABLE_CATEGORIES.size(), ITEM_DEPENDENCIES_ALL.size());
     }
 
     public static void updateDisabledItems(UUID playerUUID) {

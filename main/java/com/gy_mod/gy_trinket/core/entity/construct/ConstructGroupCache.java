@@ -135,15 +135,11 @@ public final class ConstructGroupCache {
             return new NeighborData(snapshot.positions, snapshot.velocities);
         }
 
-        List<Vec3> filteredPositions = new ArrayList<>(snapshot.positions.size() - 1);
-        List<Vec3> filteredVelocities = new ArrayList<>(snapshot.velocities.size() - 1);
-        for (int i = 0; i < snapshot.positions.size(); i++) {
-            if (i != selfIndex) {
-                filteredPositions.add(snapshot.positions.get(i));
-                filteredVelocities.add(snapshot.velocities.get(i));
-            }
-        }
-        return new NeighborData(filteredPositions, filteredVelocities);
+        // 以只读视图跳过自身，不再为每个构造体每 tick 复制两份邻居列表。
+        // 顺序、数量和取值与原过滤列表完全一致，Boid 计算行为不变。
+        return new NeighborData(
+                new SkipIndexList(snapshot.positions, selfIndex),
+                new SkipIndexList(snapshot.velocities, selfIndex));
     }
 
     // ===== 索敌结果快照 =====
@@ -349,6 +345,27 @@ public final class ConstructGroupCache {
         }
     }
 
+    /** 只读跳过指定下标的列表视图；避免每实体每 tick 复制邻居列表。 */
+    private static final class SkipIndexList extends AbstractList<Vec3> {
+        private final List<Vec3> source;
+        private final int skipIndex;
+
+        private SkipIndexList(List<Vec3> source, int skipIndex) {
+            this.source = source;
+            this.skipIndex = skipIndex;
+        }
+
+        @Override
+        public Vec3 get(int index) {
+            return this.source.get(index < this.skipIndex ? index : index + 1);
+        }
+
+        @Override
+        public int size() {
+            return Math.max(0, this.source.size() - 1);
+        }
+    }
+
     public static final class CachedTargetSnapshot {
         public final List<LivingEntity> targets;
         public final Vec3 queryCenter;
@@ -407,4 +424,3 @@ public final class ConstructGroupCache {
         }
     }
 }
-

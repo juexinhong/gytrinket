@@ -32,8 +32,8 @@ public class ConfigDeleteItemMessage {
             if (player == null) return;
             if (!player.hasPermissions(2)) return;
 
-            // 删除物品属性 = 显式空接管（覆盖为无属性；物品保留在列表，机制/护盾声明不受影响）
-            DefsManager.clearItemAttributes(player.server, itemId);
+            // UI 删除物品（三态）：无数据文件→真删除；有数据文件→写禁用态；已禁用→回退数据文件版本
+            DefsManager.deleteItemOverride(player.server, itemId);
 
             for (var p : player.server.getPlayerList().getPlayers()) {
                 AttributeManager.recalculateAndCachePlayerAttributes(p);

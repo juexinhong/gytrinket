@@ -1,5 +1,6 @@
 package com.gy_mod.gy_trinket.event;
 
+import com.gy_mod.gy_trinket.core.TickScheduler;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
 import com.gy_mod.gy_trinket.gytrinket;
 import net.minecraft.server.MinecraftServer;
@@ -9,10 +10,18 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.server.ServerLifecycleHooks;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Mod.EventBusSubscriber(modid = gytrinket.MODID)
 public class PlayerUpdateManager {
+
+    /** 同一 tick 内多次核心内容变化合并为一次全量重算。 */
+    private static final Set<UUID> PENDING_UPDATES = ConcurrentHashMap.newKeySet();
+    private static boolean debounceSchedulerRegistered = false;
 
     private PlayerUpdateManager() {}
 
@@ -35,7 +44,34 @@ public class PlayerUpdateManager {
         
         ServerPlayer player = server.getPlayerList().getPlayer(event.getPlayerUUID());
         if (player != null) {
-            triggerPlayerUpdate(player);
+            PENDING_UPDATES.add(player.getUUID());
+            ensureDebounceScheduler();
+        }
+    }
+
+    private static void ensureDebounceScheduler() {
+        if (debounceSchedulerRegistered) {
+            return;
+        }
+        debounceSchedulerRegistered = true;
+        TickScheduler.register("player_update_debounce", 1, PlayerUpdateManager::processPendingUpdates);
+    }
+
+    private static void processPendingUpdates(long currentTick) {
+        if (PENDING_UPDATES.isEmpty()) {
+            return;
+        }
+        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+        if (server == null) {
+            return;
+        }
+        List<UUID> players = new ArrayList<>(PENDING_UPDATES);
+        PENDING_UPDATES.removeAll(players);
+        for (UUID playerUUID : players) {
+            ServerPlayer player = server.getPlayerList().getPlayer(playerUUID);
+            if (player != null) {
+                triggerPlayerUpdate(player);
+            }
         }
     }
 }

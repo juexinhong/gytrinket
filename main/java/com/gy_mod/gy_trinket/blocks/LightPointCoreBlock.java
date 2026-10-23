@@ -16,6 +16,7 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
+import com.gy_mod.gy_trinket.core.world.IslandTeleporter;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -88,6 +89,13 @@ public class LightPointCoreBlock extends BaseEntityBlock {
      */
     @Override
     public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hit) {
+        // 潜行右键：在主世界与孤岛维度之间往返传送（不走存储菜单）
+        if (player.isShiftKeyDown()) {
+            if (!level.isClientSide) {
+                IslandTeleporter.toggleDimension(player);
+            }
+            return InteractionResult.sidedSuccess(level.isClientSide);
+        }
         // 只在服务端打开菜单
         if (!level.isClientSide) {
             BlockEntity blockEntity = level.getBlockEntity(pos);

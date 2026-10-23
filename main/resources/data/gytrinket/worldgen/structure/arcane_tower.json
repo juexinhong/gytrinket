@@ -1,0 +1,9 @@
+﻿{
+  "type": "gytrinket:ruined_tower",
+  "biomes": [
+    "minecraft:plains"
+  ],
+  "step": "surface_structures",
+  "spawn_overrides": {},
+  "terrain_adaptation": "beard_thin"
+}

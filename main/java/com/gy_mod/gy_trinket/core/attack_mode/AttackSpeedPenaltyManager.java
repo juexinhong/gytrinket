@@ -110,7 +110,10 @@ public class AttackSpeedPenaltyManager {
             return;
         }
 
-        applyOrRemoveModifier(speedAttribute, ASSAULT_PENALTY_UUID, MODIFIER_PREFIX + "assault", currentState.assault, Config.getAssaultMovementSpeedPenalty());
+        // 物品级数值覆盖：取装备物品的叠/单合并值，未覆盖回退 Config 默认
+        applyOrRemoveModifier(speedAttribute, ASSAULT_PENALTY_UUID, MODIFIER_PREFIX + "assault", currentState.assault,
+                DefsManager.resolveMechanicValue(player.getServer(), uuid, "assault_items",
+                        "move_speed_penalty", Config.getAssaultMovementSpeedPenalty()));
         applyOrRemoveModifier(speedAttribute, CHARGED_PENALTY_UUID, MODIFIER_PREFIX + "charged", currentState.charged, Config.getChargedAttackMovementSpeedPenalty());
         // 物品级数值覆盖：取首个生效物品的覆盖值，未覆盖回退 Config 默认
         applyOrRemoveModifier(speedAttribute, CHARGED_SHIELD_PENALTY_UUID, MODIFIER_PREFIX + "charged_shield", currentState.chargedShield,

@@ -59,10 +59,8 @@ public class ShaderModCompat {
             try {
                 irisIsRenderingShadowPassMethod = irisApiClass.getMethod("isRenderingShadowPass");
             } catch (NoSuchMethodException ignored) {}
-            LOGGER.info("Detected Iris API: net.irisshaders.iris.api.v0.IrisApi");
             return;
         } catch (Exception e) {
-            LOGGER.debug("Irisshaders API not found, trying coderbot...");
         }
 
         // 尝试 net.coderbot.iris.api.v0.IrisApi（旧版 Oculus）
@@ -73,9 +71,7 @@ public class ShaderModCompat {
             try {
                 irisIsRenderingShadowPassMethod = oculusApiClass.getMethod("isRenderingShadowPass");
             } catch (NoSuchMethodException ignored) {}
-            LOGGER.info("Detected Oculus API: net.coderbot.iris.api.v0.IrisApi");
         } catch (Exception e) {
-            LOGGER.debug("Coderbot API not found either.");
         }
 
         // 检测阴影渲染状态类（备用路径）

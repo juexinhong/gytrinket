@@ -7,7 +7,9 @@
     "LivingEntityMixin",
     "MovementSpeedSwimMixin",
     "PlayerMixin",
-    "TargetingConditionsMixin"
+    "TargetingConditionsMixin",
+    "LevelMixin",
+    "WorldDimensionsMixin"
   ],
   "client": [
     "LivingEntityClientMixin",
@@ -15,7 +17,8 @@
     "MinecraftClientMixin",
     "MouseHandlerMixin",
     "ParticleEngineAccessor",
-    "EntityRenderDispatcherMixin"
+    "EntityRenderDispatcherMixin",
+    "ClientLevelMixin"
   ],
   "injectors": {
     "defaultRequire": 1

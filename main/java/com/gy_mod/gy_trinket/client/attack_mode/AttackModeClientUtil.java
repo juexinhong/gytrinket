@@ -16,6 +16,7 @@ import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
+import net.minecraftforge.entity.PartEntity;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -119,6 +120,28 @@ public class AttackModeClientUtil {
                 continue;
             }
 
+            // 多体节实体兼容（暮色森林 Hydra/Naga/SnowQueen 等体节）：
+            // 体节实体不注册进 level 实体列表，getEntities 只返回父实体，只扫父实体 AABB
+            // 会漏掉伸出的头/颈/节段。命中体节时以体节为目标——服务端
+            // ServerLevel.getEntityOrPart 按体节 ID 解析攻击包，伤害经体节路由到父实体
+            // （暮色森林父实体 hurt 拒绝普通伤害，必须走体节），不能回退为父实体
+            Entity[] parts = entity.getParts();
+            if (parts != null && parts.length > 0) {
+                for (Entity part : parts) {
+                    if (part == null || !part.isAlive()) {
+                        continue;
+                    }
+                    if (!ChargedAttackSweepHandler.isEntityHitByBeam(part, eyePos, endPos)) {
+                        continue;
+                    }
+                    double partAlongAxis = part.getBoundingBox().getCenter().subtract(eyePos).dot(lookVec);
+                    if (partAlongAxis < closestDistance) {
+                        closestDistance = partAlongAxis;
+                        closestEntity = part;
+                    }
+                }
+            }
+
             if (!ChargedAttackSweepHandler.isEntityHitByBeam(entity, eyePos, endPos)) {
                 continue;
             }
@@ -161,9 +184,38 @@ public class AttackModeClientUtil {
     }
 
     /**
+     * 判断目标是否可被玩家近战攻击
+     * <p>
+     * LivingEntity 本体可直接攻击；多体节实体的体节（PartEntity）不是 LivingEntity，
+     * 但暮色森林等模组父实体 hurt 拒绝普通伤害、必须经体节路由，命中体节时需放行
+     * （原版末影龙体节 ID 为父ID+序号的确定性分配，服务端 dragonParts 可解析）
+     */
+    public static boolean isMeleeAttackable(Entity target) {
+        if (target instanceof LivingEntity) {
+            return true;
+        }
+        return target instanceof PartEntity<?> part
+                && part.getParent() instanceof LivingEntity;
+    }
+
+    /**
      * 判断实体是否应被跳过（不作为攻击目标）
+     * <p>
+     * 原版无敌排除（最优先）：旁观者、创造模式玩家、invulnerable NBT 标签实体——攻击它们
+     * 注定无效。创造玩家的无敌不在 isInvulnerableTo 中判定（Player.hurt 的独立分支检查
+     * abilities.invulnerable），必须显式检查 abilities 标志
      */
     public static boolean shouldSkipEntity(Entity entity) {
+        if (entity.isSpectator()) {
+            return true;
+        }
+        if (entity instanceof Player targetPlayer && targetPlayer.getAbilities().invulnerable) {
+            return true;
+        }
+        if (entity instanceof LivingEntity livingEntity
+                && livingEntity.isInvulnerableTo(entity.level().damageSources().generic())) {
+            return true;
+        }
         return entity instanceof com.gy_mod.gy_trinket.core.entity.construct.drone.DroneConstructEntity;
     }
 

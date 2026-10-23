@@ -189,7 +189,21 @@ public class HostileTargetManager {
         if (entity == null || !entity.isAlive()) {
             return false;
         }
-        
+
+        // 原版无敌排除（最优先）：旁观者、创造模式玩家、invulnerable NBT 标签实体一律不作为威胁
+        // ——攻击它们注定无效。创造玩家的无敌不在 isInvulnerableTo 中判定
+        // （Player.hurt 的独立分支检查 abilities.invulnerable），必须显式检查 abilities 标志
+        if (entity.isSpectator()) {
+            return false;
+        }
+        if (entity instanceof Player targetPlayer && targetPlayer.getAbilities().invulnerable) {
+            return false;
+        }
+        if (entity instanceof LivingEntity livingEntity
+                && livingEntity.isInvulnerableTo(entity.level().damageSources().generic())) {
+            return false;
+        }
+
         if (player == null) {
             return isDangerousEntity(entity);
         }

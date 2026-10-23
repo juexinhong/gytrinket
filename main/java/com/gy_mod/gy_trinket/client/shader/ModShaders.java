@@ -73,5 +73,18 @@ public class ModShaders {
     public static ShaderInstance getLightningVolShader() {
         return lightningVolShader;
     }
+
+    // ===== IslandSky 着色器（孤岛维度全程序化星云天空） =====
+
+    private static ShaderInstance islandSkyShader;
+
+    public static void setIslandSkyShader(ShaderInstance shader) {
+        islandSkyShader = shader;
+    }
+
+    @Nullable
+    public static ShaderInstance getIslandSkyShader() {
+        return islandSkyShader;
+    }
 }
 

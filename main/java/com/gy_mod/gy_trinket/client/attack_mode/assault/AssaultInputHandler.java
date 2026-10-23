@@ -104,8 +104,9 @@ public class AssaultInputHandler {
             }
 
             // 仅查找生物目标：忽略原版准星指向的非生物无效目标（展示框/画等），继续光束查找最近生物
+            // 多体节兼容：体节（PartEntity）不是 LivingEntity，但父实体是——命中体节时直接以体节为目标
             Entity target = AttackModeClientUtil.findTargetInCrosshair(player, true);
-            if (target instanceof LivingEntity) {
+            if (AttackModeClientUtil.isMeleeAttackable(target)) {
                 minecraft.gameMode.attack(player, target);
 
                 NetworkHandler.INSTANCE.sendToServer(new AssaultAttackMessage());

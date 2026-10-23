@@ -19,7 +19,6 @@ public class DroneSpecialBehaviorManager {
 
     public void registerBehavior(IDroneSpecialBehavior behavior) {
         registeredBehaviors.put(behavior.getId(), behavior);
-        gytrinket.LOGGER.info("注册无人机特殊行为: {}", behavior.getId());
     }
 
     public IDroneSpecialBehavior getBehavior(String id) {

@@ -4,6 +4,7 @@ import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.core.defs.DefsManager;
 import net.minecraft.ChatFormatting;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -25,6 +26,7 @@ public class TooltipConfig {
             Map.entry("wingmanEvolutionBonusPerLevel", new String[]{"wingman_evolution_module_items", "bonus_per_level"}),
             Map.entry("wingmanNanoRegenPercent", new String[]{"wingman_nano_regen_module_items", "regen_percent"}),
             Map.entry("conversionRatio", new String[]{"conversion_items", "conversion_ratio"}),
+            Map.entry("conversionDirection", new String[]{"conversion_items", "conversion_direction"}),
             Map.entry("barrierMaxDamage", new String[]{"barrier_items", "barrier_max_damage"}),
             Map.entry("shieldTransferEffectPenaltyPerEntity", new String[]{"shield_transfer_items", "penalty_per_entity"}),
             Map.entry("electricDischargeBurnDuration", new String[]{"electric_discharge_items", "burn_duration"}),
@@ -53,7 +55,10 @@ public class TooltipConfig {
             Map.entry("grudgeConversionRatio", new String[]{"grudge_items", "conversion_ratio"}),
             Map.entry("grudgeFadePercent", new String[]{"grudge_items", "fade_percent"}),
             Map.entry("grudgeFadeBase", new String[]{"grudge_items", "fade_base"}),
-            Map.entry("grudgeMovementSpeedPenalty", new String[]{"grudge_items", "move_speed_penalty"})
+            Map.entry("grudgeMovementSpeedPenalty", new String[]{"grudge_items", "move_speed_penalty"}),
+            Map.entry("assaultAttackSpeedPerStack", new String[]{"assault_items", "attack_speed_per_stack"}),
+            Map.entry("assaultSelfDamagePerStack", new String[]{"assault_items", "self_damage_per_stack"}),
+            Map.entry("assaultMovementSpeedPenalty", new String[]{"assault_items", "move_speed_penalty"})
     );
 
     private final String itemSetName;
@@ -62,6 +67,12 @@ public class TooltipConfig {
     private final ChatFormatting titleColor;
     private final TooltipFormatter formatter;
 
+    /** 描述分支（按物品机制参数覆盖值切换描述键），普通构造为空 */
+    private List<DescriptionBranch> branches = List.of();
+
+    /** 描述分支：物品机制参数值等于 value 时改用 descriptionKey */
+    public record DescriptionBranch(String paramName, double value, String descriptionKey) {}
+
     /**
      * 从数据驱动的工具提示规则构建
      */
@@ -69,6 +80,13 @@ public class TooltipConfig {
         this(def.itemSet(), def.titleKey(), def.descriptionKey(),
                 ChatFormatting.getByName(def.color()),
                 def.params().isEmpty() ? null : (id) -> resolveParams(id, def.params()));
+        if (!def.branches().isEmpty()) {
+            List<DescriptionBranch> bs = new ArrayList<>();
+            for (DefsManager.TooltipBranch b : def.branches()) {
+                bs.add(new DescriptionBranch(b.paramName(), b.value(), b.descriptionKey()));
+            }
+            this.branches = List.copyOf(bs);
+        }
     }
 
     /**
@@ -103,6 +121,19 @@ public class TooltipConfig {
     }
 
     public String getDescriptionKey() {
+        return descriptionKey;
+    }
+
+    /**
+     * 按物品机制参数选择描述键：分支参数的覆盖值与 value 相等时命中（无覆盖视为 0）。
+     * 用于同一机制按方向等参数切换文案。
+     */
+    public String selectDescriptionKey(String itemId) {
+        for (DescriptionBranch branch : branches) {
+            if (Math.abs(mechanicValue(itemId, branch.paramName(), 0.0) - branch.value()) < 1.0E-4) {
+                return branch.descriptionKey();
+            }
+        }
         return descriptionKey;
     }
 

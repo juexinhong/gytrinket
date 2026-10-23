@@ -13,8 +13,10 @@ import com.gy_mod.gy_trinket.storage.datacenter.PlayerDataCenter;
 import net.minecraft.advancements.Advancement;
 import net.minecraft.advancements.critereon.InventoryChangeTrigger;
 import net.minecraft.advancements.critereon.ItemPredicate;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.items.ItemStackHandler;
@@ -470,15 +472,11 @@ public class RandomBuildManager {
                         && matchesInventoryTrigger(t, stack)) {
                     matched++;
                     boolean awarded = player.getAdvancements().award(advancement, criterionEntry.getKey());
-                    gytrinket.LOGGER.info("进度触发：{} criterion={} 物品={} award={}",
-                            advancement.getId(), criterionEntry.getKey(), stack.getItem(), awarded);
                 }
             }
         }
         if (matched > 0) {
-            gytrinket.LOGGER.info("进度触发扫描：物品={} 匹配 {} 个 criterion", stack.getItem(), matched);
         } else {
-            gytrinket.LOGGER.info("进度触发扫描：物品={} 未匹配到 inventory_changed criterion", stack.getItem());
         }
     }
 
@@ -521,6 +519,49 @@ public class RandomBuildManager {
         } catch (RuntimeException e) {
             return null;
         }
+    }
+
+    /** 获取配置的代币物品堆栈（反悔配方产物）；配置无效时返回空堆栈 */
+    public static ItemStack getTokenStack() {
+        Item token = getTokenItem();
+        return token == null ? ItemStack.EMPTY : new ItemStack(token, 1);
+    }
+
+    /** 是否为配置的代币物品本身 */
+    public static boolean isTokenItem(Item item) {
+        Item token = getTokenItem();
+        return token != null && token == item;
+    }
+
+    // ==================== 构建池物品标签 ====================
+
+    /**
+     * 构建池物品标签（data/gytrinket/tags/items/random_build_pool.json）。
+     * <p>
+     * 判定 {@link #isRandomBuildPoolItem} = 标签成员 ∪ 护盾（含 + 系列）/机身/模块。
+     * 标签文件用于额外声明数据驱动之外的物品（类似原版物品标签行为）。
+     */
+    public static final TagKey<Item> RANDOM_BUILD_POOL_TAG =
+            TagKey.create(Registries.ITEM, new ResourceLocation(gytrinket.MODID, "random_build_pool"));
+
+    /**
+     * 是否为构建池物品（反悔配方可转化范围）：全部护盾（含 + 系列强化护盾）/机身/模块，
+     * 或构建池标签声明的物品。范围大于随机构建池的洗入范围（洗入仅限基础护盾，排除 + 系列）。
+     * <p>
+     * 排除仅饰品栏生效的饰品（与随机构建池候选的排除机制一致：效果由 Curios 穿戴提供，
+     * 刷入光点核心会失效，也不应被反悔转化）。反悔配方（物品 → 点点光辉）以此判定可合成物品。
+     */
+    public static boolean isRandomBuildPoolItem(Item item) {
+        // 排除仅饰品栏生效的饰品：与随机构建池候选排除机制一致
+        if (isTrinketItem(item)) return false;
+        if (item.builtInRegistryHolder().is(RANDOM_BUILD_POOL_TAG)) {
+            return true;
+        }
+        ResourceLocation rl = ForgeRegistries.ITEMS.getKey(item);
+        if (rl == null) return false;
+        String itemId = rl.toString();
+        // 护盾类用完整判定（含 + 系列强化护盾）：构建池不洗入强化护盾，但反悔转化允许
+        return isShieldItem(itemId, item) || isBodyItem(item) || isModuleItem(itemId, item);
     }
 
     /** 统计玩家背包中持有的代币数量 */

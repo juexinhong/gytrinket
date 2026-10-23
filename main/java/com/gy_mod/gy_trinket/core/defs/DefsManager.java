@@ -202,15 +202,25 @@ public class DefsManager {
         ).apply(inst, TooltipParam::new));
     }
 
-    /** 工具提示规则条目：{ "itemSet": "...", "titleKey": "...", "descKey": "...", "color": "...", "params": [...] } */
-    public record TooltipRuleDef(String itemSet, String titleKey, String descriptionKey, String color, List<TooltipParam> params) {
+    /** 工具提示规则条目：{ "itemSet": "...", "titleKey": "...", "descKey": "...", "color": "...", "params": [...], "branches": [...] } */
+    public record TooltipRuleDef(String itemSet, String titleKey, String descriptionKey, String color, List<TooltipParam> params, List<TooltipBranch> branches) {
         static final Codec<TooltipRuleDef> CODEC = RecordCodecBuilder.create(inst -> inst.group(
                 Codec.STRING.fieldOf("itemSet").forGetter(TooltipRuleDef::itemSet),
                 Codec.STRING.fieldOf("titleKey").forGetter(TooltipRuleDef::titleKey),
                 Codec.STRING.fieldOf("descKey").forGetter(TooltipRuleDef::descriptionKey),
                 Codec.STRING.fieldOf("color").forGetter(TooltipRuleDef::color),
-                TooltipParam.CODEC.listOf().optionalFieldOf("params", List.of()).forGetter(TooltipRuleDef::params)
+                TooltipParam.CODEC.listOf().optionalFieldOf("params", List.of()).forGetter(TooltipRuleDef::params),
+                TooltipBranch.CODEC.listOf().optionalFieldOf("branches", List.of()).forGetter(TooltipRuleDef::branches)
         ).apply(inst, TooltipRuleDef::new));
+    }
+
+    /** 描述分支：物品机制参数（Config source 名）的覆盖值等于 value 时，描述改用该键（用于按转化方向等参数切换文案） */
+    public record TooltipBranch(String paramName, double value, String descriptionKey) {
+        static final Codec<TooltipBranch> CODEC = RecordCodecBuilder.create(inst -> inst.group(
+                Codec.STRING.fieldOf("param").forGetter(TooltipBranch::paramName),
+                Codec.DOUBLE.fieldOf("value").forGetter(TooltipBranch::value),
+                Codec.STRING.fieldOf("descKey").forGetter(TooltipBranch::descriptionKey)
+        ).apply(inst, TooltipBranch::new));
     }
 
     /**
@@ -242,6 +252,9 @@ public class DefsManager {
 
     /** UI 覆盖文件拥有的条目（items 段的物品 id）：统一物品级覆盖的保存范围（旧段条目加载时升级为本集合） */
     private static final Set<String> ITEM_UI_OWNED = new HashSet<>();
+
+    /** 数据包 item_definitions 声明的物品 id（纯数据文件来源，不含 UI 覆写；删除功能判定用） */
+    private static final Set<String> ITEM_DATA_PACK_IDS = new HashSet<>();
 
     /** 机制参数覆盖值：数值 + 是否可叠加（false = 各物品独立比对取最大，true = 多物品求和） */
     public record ParamValue(double value, boolean stackable) {
@@ -340,6 +353,11 @@ public class DefsManager {
         /** 全空定义（未覆盖任何字段） */
         public static ItemDefinition empty() {
             return new ItemDefinition(null, false, null, null, null, null, null);
+        }
+
+        /** UI 禁用态定义（removed=true，本模组对该物品无任何效果） */
+        public static ItemDefinition removedState() {
+            return new ItemDefinition(null, true, null, null, null, null, null);
         }
 
         /** 上层（base）与覆盖（ov）合并：标量/列表直接覆盖；shieldValues/attributes 按键合并；values 按机制集合键整体替换 */
@@ -608,6 +626,7 @@ public class DefsManager {
         }
 
         // 统一物品定义合并：item_definitions 数据文件（按 key 排序防多文件同物品顺序不定）+ SERVER_ITEM_OVERRIDES
+        ITEM_DATA_PACK_IDS.clear();
         List<Map.Entry<ResourceLocation, Resource>> itemDefEntries = new ArrayList<>(
                 resourceManager.listResources("gytrinket/item_definitions", p -> p.getPath().endsWith(".json")).entrySet());
         itemDefEntries.sort(Map.Entry.comparingByKey());
@@ -615,7 +634,9 @@ public class DefsManager {
             ItemDefinitionsFile file = parseResource(e.getValue(), ItemDefinitionsFile.CODEC);
             if (file == null) continue;
             for (var item : file.items().entrySet()) {
-                ITEM_DEFINITIONS.merge(normalizeItemId(item.getKey()), item.getValue(), ItemDefinition::merge);
+                String id = normalizeItemId(item.getKey());
+                ITEM_DATA_PACK_IDS.add(id);
+                ITEM_DEFINITIONS.merge(id, item.getValue(), ItemDefinition::merge);
             }
         }
         for (var e : SERVER_ITEM_OVERRIDES.entrySet()) {
@@ -657,11 +678,6 @@ public class DefsManager {
                 }
             }
         }
-
-        gytrinket.LOGGER.info("定义类数据加载完成：物品集合 {} 项，护盾类型 {} 项，物品护盾类型 {} 项，属性定义 {} 项，禁用目标 {} 项，依赖 {} 项，类别禁用 {} 项，AND依赖 {} 项，模块树 {} 棵，升级路径 {} 项，工具提示规则 {} 项",
-                ITEM_SETS.size(), SHIELD_TYPES.size(), ITEM_SHIELD_TYPES.size(),
-                ATTRIBUTE_DEFS.size(), DISABLE_TARGETS.size(), DEPENDENCIES.size(),
-                DISABLE_CATEGORIES.size(), DEPENDENCIES_ALL.size(), MODULE_TREES.size(), UPGRADE_PATHS.size(), TOOLTIP_RULES.size());
 
         // 仅当加载到实际数据时才视为完成；否则保持可重试（客户端资源管理器可能尚未就绪）
         clientLoaded = !ITEM_SETS.isEmpty() || !SHIELD_TYPES.isEmpty() || !TOOLTIP_RULES.isEmpty() || !ATTRIBUTE_DEFS.isEmpty();
@@ -1037,7 +1053,6 @@ public class DefsManager {
             loadSingleOverridesFile(file, false);
         }
         if (!layeredFiles.isEmpty()) {
-            gytrinket.LOGGER.info("已读取分层定义覆盖文件 {} 个", layeredFiles.size());
         }
         // UI 覆盖文件最后加载（最高优先级）
         loadSingleOverridesFile(getOverridesFile(server), true);
@@ -1308,7 +1323,6 @@ public class DefsManager {
             Path file = getOverridesFile(server);
             Files.createDirectories(file.getParent());
             Files.writeString(file, new com.google.gson.GsonBuilder().setPrettyPrinting().create().toJson(root), StandardCharsets.UTF_8);
-            gytrinket.LOGGER.info("已保存定义覆盖文件: {}", file);
         } catch (Exception e) {
             gytrinket.LOGGER.error("保存定义覆盖文件失败", e);
         }
@@ -1726,6 +1740,60 @@ public class DefsManager {
         writeItemAttributeOverride(server, itemId, new LinkedHashMap<>());
     }
 
+    /**
+     * UI 删除物品（三态循环）：
+     * <ul>
+     * <li>当前为 UI 禁用态（覆写 removed=true）→ 移除覆写条目：有数据文件版本时回退数据文件效果，
+     *     否则物品回到未注册状态</li>
+     * <li>有数据文件版本（item_definitions 数据文件）→ 写 UI 禁用态（removed=true，本模组对该物品无任何效果）；
+     *     禁用态经统一 items 合并派生链生效（机制声明/护盾类型从派生缓存移除，属性/参数查询全部短路）</li>
+     * <li>无数据文件（仅 UI 覆写层）→ 真删除：整个移除覆写条目与旧段遗留覆盖，物品回到未注册状态</li>
+     * </ul>
+     */
+    public static void deleteItemOverride(MinecraftServer server, String itemId) {
+        if (itemId == null || itemId.isEmpty()) {
+            return;
+        }
+        ItemDefinition override = SERVER_ITEM_OVERRIDES.get(itemId);
+        if (override != null && override.removed()) {
+            removeItemOverrideEntry(itemId);
+        } else if (ITEM_DATA_PACK_IDS.contains(itemId)) {
+            SERVER_ITEM_OVERRIDES.put(itemId, ItemDefinition.removedState());
+            ITEM_UI_OWNED.add(itemId);
+        } else {
+            removeItemOverrideEntry(itemId);
+        }
+        saveOverridesToFile(server);
+        applyOverrides(server);
+    }
+
+    /** 移除物品的全部 UI 覆写痕迹：统一 items 条目 + 旧段遗留覆盖（机制/护盾类型），彻底回退到数据文件或未注册状态 */
+    private static void removeItemOverrideEntry(String itemId) {
+        SERVER_ITEM_OVERRIDES.remove(itemId);
+        ITEM_UI_OWNED.remove(itemId);
+        SERVER_SPECIAL_MECHANIC_OVERRIDES.remove(itemId);
+        SPECIAL_MECHANIC_UI_OWNED.remove(itemId);
+        SERVER_SHIELD_TYPE_OVERRIDES.remove(itemId);
+        SHIELD_TYPE_UI_OWNED.remove(itemId);
+    }
+
+    /** 物品当前是否为 UI 禁用态（覆写 removed=true；禁用态物品保留在配置列表中供再次删除回退） */
+    public static boolean isUiDisabledItem(String itemId) {
+        ItemDefinition override = SERVER_ITEM_OVERRIDES.get(itemId);
+        return override != null && override.removed();
+    }
+
+    /** 全部 UI 禁用态物品 id（配置同步列表补充禁用态物品用） */
+    public static Set<String> getUiDisabledItemIds() {
+        Set<String> ids = new LinkedHashSet<>();
+        for (var e : SERVER_ITEM_OVERRIDES.entrySet()) {
+            if (e.getValue().removed()) {
+                ids.add(e.getKey());
+            }
+        }
+        return ids;
+    }
+
     /** 编辑操作：确保物品存在于配置列表（UI 添加物品；已声明属性时幂等忽略） */
     public static void ensureItemOverrideEntry(MinecraftServer server, String itemId) {
         if (itemId == null || itemId.isEmpty()) {
@@ -1918,6 +1986,19 @@ public class DefsManager {
     public static void applyOverrides(MinecraftServer server) {
         loadOverridesFromFile(server);
         loadFrom(server.getResourceManager());
+        // 清理孤儿禁用态：物品曾被 UI 禁用，但数据文件已不再定义该物品（禁用失去基线意义），
+        // 移除条目使 UI 直接不显示（等价于对该物品执行一次「已禁用态再删除」的回退动作）
+        pruneOrphanDisabledOverrides();
+    }
+
+    /** 清理孤儿禁用态条目（removed=true 且数据文件无定义）：仅禁用态会孤立（UI 自建物品无数据文件但有实际定义，不会进入禁用态） */
+    private static void pruneOrphanDisabledOverrides() {
+        for (String itemId : new ArrayList<>(SERVER_ITEM_OVERRIDES.keySet())) {
+            ItemDefinition override = SERVER_ITEM_OVERRIDES.get(itemId);
+            if (override != null && override.removed() && !ITEM_DATA_PACK_IDS.contains(itemId)) {
+                removeItemOverrideEntry(itemId);
+            }
+        }
     }
 
     /** 重置运行时覆盖：清空内存覆盖 + 删除覆盖文件，恢复数据包默认定义（「恢复默认」按钮使用） */

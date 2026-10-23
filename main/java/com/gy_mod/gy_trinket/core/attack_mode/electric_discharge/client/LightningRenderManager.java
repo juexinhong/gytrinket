@@ -310,8 +310,6 @@ public class LightningRenderManager {
             }
         }
 
-        com.gy_mod.gy_trinket.gytrinket.LOGGER.debug("[LRN] renderData jobs={}", jobs.size());
-
         jobs.sort((a, b) -> Float.compare(a.alpha, b.alpha));
 
         // 两趟渲染：先画泛光底层（0），再画不透明的核心层（1）覆盖其上。

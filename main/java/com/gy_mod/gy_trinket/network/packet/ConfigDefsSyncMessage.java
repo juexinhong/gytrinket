@@ -76,6 +76,12 @@ public class ConfigDefsSyncMessage {
                 buf.writeBoolean(p.literal() != null);
                 buf.writeDouble(p.literal() == null ? 0.0 : p.literal());
             }
+            buf.writeVarInt(rule.branches().size());
+            for (DefsManager.TooltipBranch b : rule.branches()) {
+                buf.writeUtf(b.paramName());
+                buf.writeDouble(b.value());
+                buf.writeUtf(b.descriptionKey());
+            }
         }
         // specialMechanicOverrides
         buf.writeVarInt(specialMechanicOverrides.size());
@@ -202,7 +208,15 @@ public class ConfigDefsSyncMessage {
                 Double pliteral = buf.readBoolean() ? buf.readDouble() : null;
                 params.add(new DefsManager.TooltipParam(ptype, psource, ptext, pliteral));
             }
-            this.tooltipRules.add(new DefsManager.TooltipRuleDef(itemSet, titleKey, descKey, color, params));
+            int bn = buf.readVarInt();
+            List<DefsManager.TooltipBranch> branches = new ArrayList<>();
+            for (int j = 0; j < bn; j++) {
+                String bparam = buf.readUtf();
+                double bvalue = buf.readDouble();
+                String bdesc = buf.readUtf();
+                branches.add(new DefsManager.TooltipBranch(bparam, bvalue, bdesc));
+            }
+            this.tooltipRules.add(new DefsManager.TooltipRuleDef(itemSet, titleKey, descKey, color, params, branches));
         }
         n = buf.readVarInt();
         this.specialMechanicOverrides = new HashMap<>();

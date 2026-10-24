@@ -41,5 +41,7 @@ public class GameRendererMixin {
     @Inject(method = "renderLevel", at = @At("TAIL"))
     private void gytrinket$afterLevel(DeltaTracker deltaTracker, CallbackInfo ci) {
         IslandSky.onGameRendererTail();
+        // 天空是最后补画的，会盖掉 AFTER_LEVEL 阶段的护盾粒子 —— 在它之后再补一次
+        com.gytrinket.gytrinket.client.effect.particle.ShieldParticleRenderEvent.renderAfterSky();
     }
 }

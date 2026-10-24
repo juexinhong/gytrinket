@@ -151,6 +151,20 @@ public final class IslandSky {
                     || Boolean.getBoolean("gytrinket.testForceSkyWithShaders"));
     }
 
+    /**
+     * 这一帧孤岛天空会不会在 {@code renderLevel} 末尾补画一次。
+     * <p>
+     * 会补画就说明它**盖在一切之上**（包括 {@code AFTER_LEVEL} 画的护盾粒子），
+     * 所以粒子要等它画完再补一遍。只有开光影、且当前在孤岛维度时才成立。
+     */
+    public static boolean willPaintAfterLevel() {
+        ClientLevel level = Minecraft.getInstance().level;
+        if (level == null || !level.dimension().equals(IslandTeleporter.ISLAND_DIMENSION)) {
+            return false;
+        }
+        return forceSkyWithShaders() && skyVisible;
+    }
+
     private static void ensurePrepared() {
         Minecraft minecraft = Minecraft.getInstance();
         ClientLevel level = minecraft.level;
@@ -170,8 +184,7 @@ public final class IslandSky {
      * composite there, so this is the only point where the custom sky is
      * guaranteed to be on top of the pack's own overworld sky.
      */
-    public static void onGameRendererTail() {
-        if (!forceSkyWithShaders()) {
+    public static void onGameRendererTail() {        if (!forceSkyWithShaders()) {
             return;
         }
         ensurePrepared();

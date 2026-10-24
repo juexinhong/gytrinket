@@ -25,6 +25,8 @@ public class ShieldParticleRenderEvent {
     private static Matrix4f savedProjectionMatrix = null;
     private static Matrix4f savedModelViewMatrix = null;
     private static Matrix4f savedPoseStackMatrix = null;
+    /** AFTER_PARTICLES 时保存的插值时间，补画时直接复用，省得再查 API */
+    private static float savedPartialTicks = 0.0F;
 
     public static void init() {
         NeoForge.EVENT_BUS.addListener(ShieldParticleRenderEvent::onRenderLevel);
@@ -43,7 +45,13 @@ public class ShieldParticleRenderEvent {
                 savedProjectionMatrix = new Matrix4f(RenderSystem.getProjectionMatrix());
                 savedModelViewMatrix = new Matrix4f(RenderSystem.getModelViewStack());
                 savedPoseStackMatrix = new Matrix4f(event.getPoseStack().last().pose());
+                savedPartialTicks = event.getPartialTick().getGameTimeDeltaPartialTick(false);
             } else if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_LEVEL) {
+                // 孤岛维度 + 光影：天空会在 renderLevel 末尾补画，会盖住这里画的粒子，
+                // 所以本帧跳过，交给 renderAfterSky() 在天空之后补画
+                if (com.gytrinket.gytrinket.client.world.IslandSky.willPaintAfterLevel()) {
+                    return;
+                }
                 // Iris composite之后：使用保存的矩阵渲染
                 float partialTicks = event.getPartialTick().getGameTimeDeltaPartialTick(false);
                 PoseStack poseStack = event.getPoseStack();
@@ -58,5 +66,25 @@ public class ShieldParticleRenderEvent {
 
             ShieldParticleRenderer.render(poseStack, null, event.getCamera(), partialTicks);
         }
+    }
+
+    /**
+     * 孤岛天空画完之后再补一遍粒子。
+     * <p>
+     * 为什么需要：孤岛天空是在 {@code GameRenderer.renderLevel} 的 TAIL 补画的
+     * （为了压过光影包的 composite），它会盖住 {@code AFTER_LEVEL} 阶段画的一切。
+     * 所以那个维度里开了光影时，粒子要等天空画完再补一次。
+     */
+    public static void renderAfterSky() {
+        if (ShaderModCompat.isRenderingShadows()) return;
+        if (!ClientConfig.SHIELD_PARTICLE_VOLUMETRIC_RENDERING.get()) return;
+        if (!com.gytrinket.gytrinket.client.world.IslandSky.willPaintAfterLevel()) return;
+        if (savedProjectionMatrix == null || savedModelViewMatrix == null || savedPoseStackMatrix == null) return;
+
+        net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
+        if (mc.level == null) return;
+        ShieldParticleRenderer.renderWithSavedMatrices(new PoseStack(), null,
+                mc.gameRenderer.getMainCamera(), savedPartialTicks,
+                savedProjectionMatrix, savedModelViewMatrix, savedPoseStackMatrix);
     }
 }

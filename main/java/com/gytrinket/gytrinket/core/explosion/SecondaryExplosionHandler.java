@@ -1,6 +1,5 @@
 package com.gytrinket.gytrinket.core.explosion;
 
-import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.damage.ModDamageTypes;
 import com.gytrinket.gytrinket.core.defs.DefsManager;
 import com.gytrinket.gytrinket.gytrinket;
@@ -161,14 +160,20 @@ public class SecondaryExplosionHandler {
             return;
         }
 
-        // 基础爆炸参数（config secondary_explosion 节可配置）；之后由 SimulatedExplosion 应用属性组增幅
+        // 基础爆炸参数（projectile_explosion 机制 values 段可配置）；之后由 SimulatedExplosion 应用属性组增幅
         var server = owner.getServer();
         float explosionDamage = (float) (recordedDamage * DefsManager.resolveMechanicValue(server, owner.getUUID(),
-                "projectile_explosion_items", "damage_fraction", Config.SECONDARY_EXPLOSION_DAMAGE_FRACTION.get()));
+                "projectile_explosion_items", "damage_fraction",
+                com.gytrinket.gytrinket.core.defs.MechanicValueDefs.defaultValueOf(
+                        "projectile_explosion_items", "damage_fraction", 0.15)));
         double explosionRadius = DefsManager.resolveMechanicValue(server, owner.getUUID(),
-                "projectile_explosion_items", "radius_base", Config.SECONDARY_EXPLOSION_RADIUS_BASE.get())
+                "projectile_explosion_items", "radius_base",
+                com.gytrinket.gytrinket.core.defs.MechanicValueDefs.defaultValueOf(
+                        "projectile_explosion_items", "radius_base", 2.0))
                 + explosionDamage * DefsManager.resolveMechanicValue(server, owner.getUUID(),
-                "projectile_explosion_items", "radius_per_damage", Config.SECONDARY_EXPLOSION_RADIUS_DAMAGE_FRACTION.get());
+                "projectile_explosion_items", "radius_per_damage",
+                com.gytrinket.gytrinket.core.defs.MechanicValueDefs.defaultValueOf(
+                        "projectile_explosion_items", "radius_per_damage", 0.5));
 
         // 爆心 = 记录的命中点（最高伤害那次命中时受击者的位置），而非弹射物移除位置
         Vec3 explosionPos = new Vec3(

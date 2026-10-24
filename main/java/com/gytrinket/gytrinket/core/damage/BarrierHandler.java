@@ -55,7 +55,8 @@ public class BarrierHandler implements DamageHandler {
         // 只在伤害仍高于上限时钳制，避免把已减免的伤害重新抬高覆盖掉
         float currentDamage = context.getCurrentDamage();
         float maxDamage = (float) DefsManager.resolveMechanicValue(player.getServer(), playerUUID,
-                "barrier_items", "barrier_max_damage", Config.BARRIER_MAX_DAMAGE.get().doubleValue());
+                "barrier_items", "barrier_max_damage",
+                com.gytrinket.gytrinket.core.defs.MechanicValueDefs.defaultValueOf("barrier_items", "barrier_max_damage", 5.0));
         if (currentDamage > maxDamage) {
             context.setCurrentDamage(maxDamage);
         }

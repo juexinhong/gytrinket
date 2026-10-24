@@ -1,10 +1,38 @@
 {
-    "items":  {
-                  "gytrinket:wingman_module":  {
-                                                   "mechanic":  true,
-                                                   "sets":  [
-                                                                "wingman_module_items"
-                                                            ]
-                                               }
-              }
+  "items": {
+    "gytrinket:wingman_module": {
+      "mechanic": true,
+      "sets": [
+        "wingman_module_items"
+      ],
+      "values": {
+        "wingman_module_items": {
+          "build_time": {
+            "value": 500.0,
+            "stackable": false
+          },
+          "base_health": {
+            "value": 24.0,
+            "stackable": false
+          },
+          "base_damage": {
+            "value": 0.5,
+            "stackable": false
+          },
+          "base_count": {
+            "value": 1.0,
+            "stackable": false
+          },
+          "attack_interval": {
+            "value": 1.0,
+            "stackable": false
+          },
+          "attack_range": {
+            "value": 20.0,
+            "stackable": false
+          }
+        }
+      }
+    }
+  }
 }

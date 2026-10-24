@@ -46,7 +46,7 @@ public class EvolutionManager {
     /**
      * 应用进化模块加成：根据光点等级设置僚机生命值和攻击速度百分比。
      * <p>
-     * 玩家拥有进化模块物品时，每级光点等级提供 {@link Config#getWingmanEvolutionBonusPerLevel()} 的加成。
+     * 玩家拥有进化模块物品时，每级光点等级提供物品级 {@code bonus_per_level} 的加成。
      * 无物品时移除动态属性。
      *
      * @param player 服务端玩家
@@ -62,7 +62,9 @@ public class EvolutionManager {
 
         int modLevel = Math.max(0, ModLevelManager.getModLevel(playerUUID));
         double bonusPerLevel = DefsManager.resolveMechanicValue(player.getServer(), playerUUID,
-                "wingman_evolution_module_items", "bonus_per_level", Config.getWingmanEvolutionBonusPerLevel());
+                "wingman_evolution_module_items", "bonus_per_level",
+                com.gytrinket.gytrinket.core.defs.MechanicValueDefs.defaultValueOf(
+                        "wingman_evolution_module_items", "bonus_per_level", 0.00625));
         double bonus = modLevel * bonusPerLevel;
 
         AttributeManager.setDynamicAttribute(playerUUID, NAMESPACE, ATTR_HEALTH_PERCENT, bonus);

@@ -9,6 +9,26 @@
         "player_health_percent": 0.05,
         "attack_damage_percent": 0.05,
         "movement_speed_independent": -0.1
+      },
+      "values": {
+        "grudge_items": {
+          "conversion_ratio": {
+            "value": 0.2,
+            "stackable": false
+          },
+          "fade_base": {
+            "value": 1e-05,
+            "stackable": false
+          },
+          "fade_percent": {
+            "value": 0.02,
+            "stackable": false
+          },
+          "move_speed_penalty": {
+            "value": -0.15,
+            "stackable": true
+          }
+        }
       }
     }
   }

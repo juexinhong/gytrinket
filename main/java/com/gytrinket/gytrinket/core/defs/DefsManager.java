@@ -462,13 +462,15 @@ public class DefsManager {
 
                 @Override
                 protected void apply(Void prepared, ResourceManager resourceManager, ProfilerFiller profilerFiller) {
-                    loadFrom(registryAccess);
+                    // 用本次重载的新 ResourceManager 直接读取 item_definitions：
+                    // 自定义 datapack registry 在 /reload 时不会重建，不能依赖 registryAccess 取最新文件
+                    loadFrom(registryAccess, resourceManager);
                 }
             });
         }
     }
 
-    private static void loadFrom(RegistryAccess access) {
+    private static void loadFrom(RegistryAccess access, ResourceManager resourceManager) {
         // 每次定义加载（世界启动/重载/手动应用）先读入运行时覆盖文件，保证持久化与优先级
         MinecraftServer server = net.neoforged.neoforge.server.ServerLifecycleHooks.getCurrentServer();
         if (server != null) {
@@ -616,19 +618,15 @@ public class DefsManager {
             reg.forEach(TOOLTIP_RULES::add);
         });
 
-        // 统一物品定义合并：item_definitions registry（按 key 排序防多文件同物品顺序不定）+ 顶层 SERVER_ITEM_OVERRIDES
+        // 统一物品定义合并：资源管理器直读 item_definitions（/reload 后的最新文件）
+        // + 顶层 SERVER_ITEM_OVERRIDES。资源管理器不可用时回退 registry 快照。
         ITEM_DATA_PACK_IDS.clear();
-        access.registry(ITEM_DEFINITIONS_KEY).ifPresent(reg -> {
-            List<Map.Entry<ResourceKey<ItemDefinitionsFile>, ItemDefinitionsFile>> entries = new ArrayList<>(reg.entrySet());
-            entries.sort(Map.Entry.comparingByKey());
-            for (var e : entries) {
-                for (var item : e.getValue().items().entrySet()) {
-                    String id = normalizeItemId(item.getKey());
-                    ITEM_DATA_PACK_IDS.add(id);
-                    ITEM_DEFINITIONS.merge(id, item.getValue(), ItemDefinition::merge);
-                }
-            }
-        });
+        Map<String, ItemDefinition> dataDefinitions = resourceManager != null
+                ? loadItemDefinitionsFromResources(resourceManager)
+                : loadItemDefinitionsFromRegistry(access);
+        for (var e : dataDefinitions.entrySet()) {
+            ITEM_DEFINITIONS.merge(e.getKey(), e.getValue(), ItemDefinition::merge);
+        }
         for (var e : SERVER_ITEM_OVERRIDES.entrySet()) {
             ITEM_DEFINITIONS.merge(e.getKey(), e.getValue(), ItemDefinition::merge);
         }
@@ -668,6 +666,59 @@ public class DefsManager {
 
         // 填充 Config 集合并触发依赖定义数据的子系统重载
         Config.applyDefs();
+    }
+
+    /**
+     * 从资源管理器直接读取 {@code data/<ns>/gytrinket/item_definitions/*.json}。
+     * <p>
+     * 不经过 datapack registry：1.21.1 的 {@code /reload} 只重建战利品表等 RELOADABLE 层，
+     * 自定义 datapack registry 不会重建，{@code server.registryAccess()} 仍是启动时的快照。
+     * 这里使用本次重载传入的 ResourceManager，因此文件改完后 {@code /reload} 即可生效；
+     * 文件按资源位置排序后合并，保持"后声明覆盖前声明"的语义。
+     */
+    private static Map<String, ItemDefinition> loadItemDefinitionsFromResources(ResourceManager resourceManager) {
+        Map<String, ItemDefinition> result = new LinkedHashMap<>();
+        var files = resourceManager.listResources("gytrinket/item_definitions",
+                location -> location.getPath().endsWith(".json"));
+        List<ResourceLocation> locations = new ArrayList<>(files.keySet());
+        locations.sort((a, b) -> a.toString().compareTo(b.toString()));
+        for (ResourceLocation location : locations) {
+            try (var reader = files.get(location).openAsReader()) {
+                com.google.gson.JsonObject root = com.google.gson.JsonParser.parseReader(reader).getAsJsonObject();
+                if (!root.has("items") || !root.get("items").isJsonObject()) {
+                    continue;
+                }
+                for (var entry : root.getAsJsonObject("items").entrySet()) {
+                    ItemDefinition def = parseItemDefinition(entry.getValue());
+                    if (def == null) {
+                        continue;
+                    }
+                    String itemId = normalizeItemId(entry.getKey());
+                    ITEM_DATA_PACK_IDS.add(itemId);
+                    result.merge(itemId, def, ItemDefinition::merge);
+                }
+            } catch (Exception e) {
+                gytrinket.LOGGER.error("读取 item_definitions 资源失败: {}", location, e);
+            }
+        }
+        return result;
+    }
+
+    /** 回退：从 datapack registry 快照读取 item_definitions（资源管理器不可用时，如早期启动阶段） */
+    private static Map<String, ItemDefinition> loadItemDefinitionsFromRegistry(RegistryAccess access) {
+        Map<String, ItemDefinition> result = new LinkedHashMap<>();
+        access.registry(ITEM_DEFINITIONS_KEY).ifPresent(reg -> {
+            List<Map.Entry<ResourceKey<ItemDefinitionsFile>, ItemDefinitionsFile>> entries = new ArrayList<>(reg.entrySet());
+            entries.sort(Map.Entry.comparingByKey());
+            for (var e : entries) {
+                for (var item : e.getValue().items().entrySet()) {
+                    String id = normalizeItemId(item.getKey());
+                    ITEM_DATA_PACK_IDS.add(id);
+                    result.merge(id, item.getValue(), ItemDefinition::merge);
+                }
+            }
+        });
+        return result;
     }
 
     /** items 覆写条目是否显式接管该物品的机制声明（removed 撤销，或 mechanic 非 null） */
@@ -1083,11 +1134,21 @@ public class DefsManager {
                 DefsManager::effectiveMechanicValuesOf, mechanicSet, paramKey, fallback);
     }
 
-    /** 物品级机制数值覆盖查询（统一 items 覆写优先，旧段覆盖回退；供多物品合并管线取值） */
+    /**
+     * 物品级机制数值查询（供多物品合并管线取值）。
+     * <p>
+     * 优先返回统一物品定义合并视图（item_definitions 数据包 values 段 + UI 覆写），
+     * 其次旧段覆写（SERVER_SPECIAL_MECHANIC_OVERRIDES），两者皆无返回 null。
+     * 数据文件因此可以直接在物品的 {@code values} 段声明机制参数，与 UI 覆盖同权。
+     */
     private static Map<String, Map<String, ParamValue>> effectiveMechanicValuesOf(String itemId) {
-        ItemDefinition item = SERVER_ITEM_OVERRIDES.get(itemId);
+        ItemDefinition item = ITEM_DEFINITIONS.get(itemId);
         if (item != null && !item.removed() && item.values() != null) {
             return item.values();
+        }
+        ItemDefinition own = SERVER_ITEM_OVERRIDES.get(itemId);
+        if (own != null && !own.removed() && own.values() != null) {
+            return own.values();
         }
         SpecialMechanicOverride ov = SERVER_SPECIAL_MECHANIC_OVERRIDES.get(itemId);
         return ov != null && !ov.removed() ? ov.values() : null;
@@ -1096,24 +1157,40 @@ public class DefsManager {
     /**
      * 服务端：按物品实例解析护盾类型参数值（单物品直接查询，不跨物品合并）。
      * <p>
-     * 护盾类型数值为"每物品实例独立"：兼容时多实例并存、各用各的数值；
-     * 不兼容时由冲突链决定生效实例。因此取值始终以具体物品为锚点，
-     * 未定义该类型覆盖参数时返回 fallback（Config 默认值）。
+     * 查询顺序：统一物品定义（item_definitions 数据包 + UI 覆写合并后的权威视图，
+     * 物品级数值优先）→ 旧段护盾类型覆写
+     * （SERVER_SHIELD_TYPE_OVERRIDES，兼容历史格式）→ 护盾类型定义默认值
+     * （shield_types/*.json 的 shieldValues 段）→ fallback。
+     * <p>
+     * 护盾类型数值为"每物品实例独立"：多实例并存、各用各的数值，因此取值始终以具体物品为锚点。
+     * 数据文件可直接在物品的 {@code shieldValues} 段声明这些参数（如光环的
+     * {@code radius / damage / trigger_frequency / shield_cost}），无需再写入全局 Config。
      */
     public static double resolveShieldTypeValueForItem(MinecraftServer server, String itemId,
                                                        String shieldType, String paramKey, double fallback) {
         if (server == null || itemId == null) return fallback;
-        // 统一 items 覆写优先：shieldValues 拍平结构按参数键查询（忽略类型分组）
-        ItemDefinition item = SERVER_ITEM_OVERRIDES.get(itemId);
-        if (item != null && item.shieldValues() != null) {
-            ParamValue pv = item.shieldValues().get(paramKey);
+        // 物品级定义优先：shieldValues 为拍平结构，按参数键查询（忽略类型分组）
+        ItemDefinition item = ITEM_DEFINITIONS.get(itemId);
+        if (item == null) item = SERVER_ITEM_OVERRIDES.get(itemId);
+        if (item != null) {
+            if (item.removed()) return fallback;
+            ParamValue pv = item.shieldValues() != null ? item.shieldValues().get(paramKey) : null;
             if (pv != null) return pv.value();
         }
+        // 旧段护盾类型覆写（未被统一 items 条目接管的遗留格式）
         ShieldTypeOverride ov = SERVER_SHIELD_TYPE_OVERRIDES.get(itemId);
-        if (ov == null) return fallback;
-        Map<String, ParamValue> params = ov.values().get(shieldType);
-        ParamValue pv = params == null ? null : params.get(paramKey);
-        return pv != null ? pv.value() : fallback;
+        if (ov != null) {
+            Map<String, ParamValue> params = ov.values().get(shieldType);
+            ParamValue pv = params == null ? null : params.get(paramKey);
+            if (pv != null) return pv.value();
+        }
+        // 护盾类型级默认值（shield_types/*.json 的 shieldValues 段）
+        if (shieldType != null) {
+            Map<String, ParamValue> typeDefaults = SHIELD_TYPE_PARAM_DEFAULTS.get(shieldType);
+            ParamValue pv = typeDefaults == null ? null : typeDefaults.get(paramKey);
+            if (pv != null) return pv.value();
+        }
+        return fallback;
     }
 
     /**
@@ -1245,15 +1322,26 @@ public class DefsManager {
      * 服务端：按物品实例解析特殊机制参数值（单物品直接查询，不跨物品合并）。
      * <p>
      * 实例化特殊机制（仿护盾类型）：每件提供该机制的物品独立触发、各用各的数值；
-     * 未定义该物品覆盖参数时返回 fallback（Config 默认值）。
+     * 查询顺序：统一物品定义（数据包 values 段 + UI 覆写）→ 旧段覆写 → fallback。
+     * 数据文件可直接在物品的 {@code values.<机制集合>} 段声明参数。
      */
     public static double resolveMechanicValueForItem(MinecraftServer server, String itemId,
                                                      String mechanicSet, String paramKey, double fallback) {
         if (server == null || itemId == null) return fallback;
-        // 统一 items 覆写优先
-        ItemDefinition item = SERVER_ITEM_OVERRIDES.get(itemId);
-        if (item != null && !item.removed() && item.values() != null) {
-            Map<String, ParamValue> params = item.values().get(mechanicSet);
+        // 统一 items 定义优先（含数据包 values 段与 UI 覆写）
+        ItemDefinition item = ITEM_DEFINITIONS.get(itemId);
+        if (item != null) {
+            if (item.removed()) return fallback;
+            Map<String, ParamValue> params = item.values() != null ? item.values().get(mechanicSet) : null;
+            if (params != null) {
+                ParamValue pv = params.get(paramKey);
+                if (pv != null) return pv.value();
+                return fallback;
+            }
+        }
+        ItemDefinition own = SERVER_ITEM_OVERRIDES.get(itemId);
+        if (own != null && !own.removed() && own.values() != null) {
+            Map<String, ParamValue> params = own.values().get(mechanicSet);
             ParamValue pv = params == null ? null : params.get(paramKey);
             if (pv != null) return pv.value();
             return fallback;
@@ -1312,19 +1400,30 @@ public class DefsManager {
         return Math.max(stackableSum, bestNonStackable);
     }
 
-    /** 拷贝物品既有的机制数值覆盖（统一 items 覆写优先，旧段覆盖回退；内层 map 深拷贝） */
+    /**
+     * 拷贝物品既有的机制数值（编辑基线，内层 map 深拷贝）。
+     * <p>
+     * 合并顺序：旧段覆写 → 统一 items 覆写 → 统一物品定义合并视图（item_definitions 数据包 values
+     * + UI 覆写）。后两者按机制集合整体替换，因此数据文件声明的机制参数在 UI 只改其中一个键时
+     * 不会被丢掉（保存时提交该集合的完整参数组）。
+     */
     private static Map<String, Map<String, ParamValue>> copyExistingValues(String itemId) {
         Map<String, Map<String, ParamValue>> values = new LinkedHashMap<>();
-        ItemDefinition item = SERVER_ITEM_OVERRIDES.get(itemId);
-        if (item != null && item.values() != null) {
-            for (var e : item.values().entrySet()) {
-                values.put(e.getKey(), new LinkedHashMap<>(e.getValue()));
-            }
-            return values;
-        }
         SpecialMechanicOverride existing = SERVER_SPECIAL_MECHANIC_OVERRIDES.get(itemId);
         if (existing != null && !existing.removed()) {
             for (var e : existing.values().entrySet()) {
+                values.put(e.getKey(), new LinkedHashMap<>(e.getValue()));
+            }
+        }
+        ItemDefinition own = SERVER_ITEM_OVERRIDES.get(itemId);
+        if (own != null && !own.removed() && own.values() != null) {
+            for (var e : own.values().entrySet()) {
+                values.put(e.getKey(), new LinkedHashMap<>(e.getValue()));
+            }
+        }
+        ItemDefinition merged = ITEM_DEFINITIONS.get(itemId);
+        if (merged != null && !merged.removed() && merged.values() != null) {
+            for (var e : merged.values().entrySet()) {
                 values.put(e.getKey(), new LinkedHashMap<>(e.getValue()));
             }
         }
@@ -1648,7 +1747,9 @@ public class DefsManager {
     /** 应用运行时覆盖：读取覆盖文件 -> 重新加载定义（含覆盖合并）-> 触发 Config.applyDefs 及各子系统刷新（编辑后立即调用） */
     public static void applyOverrides(MinecraftServer server) {
         loadOverridesFromFile(server);
-        loadFrom(server.registryAccess());
+        // 使用当前 ResourceManager 直读 item_definitions：UI「恢复默认」/手动应用也能读到
+        // /reload 后或磁盘上最新的数据文件，而不是启动时的 registry 快照
+        loadFrom(server.registryAccess(), server.getResourceManager());
         // 清理孤儿禁用态：物品曾被 UI 禁用，但数据文件已不再定义该物品（禁用失去基线意义），
         // 移除条目使 UI 直接不显示（等价于对该物品执行一次「已禁用态再删除」的回退动作）
         pruneOrphanDisabledOverrides();
@@ -1962,18 +2063,34 @@ public class DefsManager {
      * 客户端：解析玩家某机制参数的生效数值（与 {@link #resolveMechanicValue} 同一语义的客户端镜像）。
      * <p>
      * 供纯客户端效果读取（如幽灵机身移动衰减）：遍历本地装备物品逐件合并——可叠加求和、
-     * 不可叠加比对取最大；未覆盖物品按 fallback（Config 默认）不可叠加参与。player 为 null 或未装备时返回 fallback。
+     * 不可叠加比对取最大；未覆盖物品按 fallback（Config 默认）不可叠加参与。
+     * 物品级数值来源 = item_definitions 数据包 values 段（随数据包同步）+ 客户端 UI 覆写。
+     * player 为 null 或未装备时返回 fallback。
      */
     public static double clientResolveMechanicValue(Player player, String mechanicSet, String paramKey, double fallback) {
         if (player == null) return fallback;
+        RegistryAccess access = player.level() != null ? player.level().registryAccess() : null;
         return mergeMechanicValue(player.getUUID(), PlayerStoreUtils.getAllEquippedStacks(player),
-                itemId -> clientSpecialMechanicSets(player.level() != null ? player.level().registryAccess() : null, itemId)
-                        .contains(mechanicSet),
-                itemId -> {
-                    SpecialMechanicOverride ov = CLIENT_SPECIAL_MECHANIC_OVERRIDES.get(itemId);
-                    return ov == null || ov.removed() ? null : ov.values();
-                },
+                itemId -> clientSpecialMechanicSets(access, itemId).contains(mechanicSet),
+                itemId -> clientEffectiveMechanicValues(access, itemId),
                 mechanicSet, paramKey, fallback);
+    }
+
+    /**
+     * 客户端：物品的机制数值合并视图（item_definitions 数据包 values 段 + UI 覆写）。
+     * UI 覆写按机制集合整体替换数据包声明，与服务端 {@link ItemDefinition#merge} 语义一致。
+     */
+    private static Map<String, Map<String, ParamValue>> clientEffectiveMechanicValues(RegistryAccess access, String itemId) {
+        Map<String, Map<String, ParamValue>> merged = new LinkedHashMap<>();
+        ItemDefinition def = access == null ? null : clientMergedItemDefinition(access, itemId);
+        if (def != null && !def.removed() && def.values() != null) {
+            merged.putAll(def.values());
+        }
+        SpecialMechanicOverride ov = CLIENT_SPECIAL_MECHANIC_OVERRIDES.get(itemId);
+        if (ov != null && !ov.removed() && ov.values() != null) {
+            merged.putAll(ov.values());
+        }
+        return merged;
     }
 
     /** 客户端查询：护盾类型名 -> 是否兼容（shield_types 定义） */
@@ -2042,17 +2159,52 @@ public class DefsManager {
 
     /**
      * 客户端：按物品解析护盾类型参数生效值（tooltip 描述用）。
-     * 有物品级覆盖取覆盖值，否则回退 fallback（Config 默认值）——
-     * 与服务端 {@link #resolveShieldTypeValueForItem} 语义一致，
-     * 保证物品描述显示的数值与实际生效数值相同
+     * <p>
+     * 查询顺序与服务端 {@link #resolveShieldTypeValueForItem} 对齐：
+     * UI 覆写（CLIENT_SHIELD_TYPE_OVERRIDES）→ item_definitions 数据包物品级定义
+     * （随数据包同步，{@code shieldValues} 段）→ 护盾类型定义默认值 → fallback，
+     * 保证物品描述显示的数值与实际生效数值同源。
      */
-    public static double clientShieldTypeValueForItem(String itemId, String shieldType,
+    public static double clientShieldTypeValueForItem(RegistryAccess access, String itemId, String shieldType,
                                                       String paramKey, double fallback) {
+        if (itemId == null) return fallback;
         ShieldTypeOverride ov = CLIENT_SHIELD_TYPE_OVERRIDES.get(itemId);
-        if (ov == null) return fallback;
-        Map<String, ParamValue> params = ov.values().get(shieldType);
-        ParamValue pv = params == null ? null : params.get(paramKey);
-        return pv != null ? pv.value() : fallback;
+        if (ov != null) {
+            Map<String, ParamValue> params = ov.values().get(shieldType);
+            ParamValue pv = params == null ? null : params.get(paramKey);
+            if (pv != null) return pv.value();
+        }
+        ItemDefinition def = access == null ? null : clientMergedItemDefinition(access, itemId);
+        if (def != null) {
+            if (def.removed()) return fallback;
+            ParamValue pv = def.shieldValues() != null ? def.shieldValues().get(paramKey) : null;
+            if (pv != null) return pv.value();
+        }
+        if (access != null) {
+            Double typeDefault = clientShieldTypeParamDefault(access, shieldType, paramKey);
+            if (typeDefault != null) return typeDefault;
+        }
+        return fallback;
+    }
+
+    /**
+     * 客户端：物品护盾类型参数的"默认值"（忽略 UI 覆写，仅取 item_definitions 数据包物品级定义 →
+     * 护盾类型默认值 → fallback）。供配置面板展示"未覆盖时实际使用的数据文件数值"。
+     */
+    public static double clientShieldValueDefault(RegistryAccess access, String itemId, String shieldType,
+                                                  String paramKey, double fallback) {
+        if (itemId == null) return fallback;
+        ItemDefinition def = access == null ? null : clientMergedItemDefinition(access, itemId);
+        if (def != null) {
+            if (def.removed()) return fallback;
+            ParamValue pv = def.shieldValues() != null ? def.shieldValues().get(paramKey) : null;
+            if (pv != null) return pv.value();
+        }
+        if (access != null) {
+            Double typeDefault = clientShieldTypeParamDefault(access, shieldType, paramKey);
+            if (typeDefault != null) return typeDefault;
+        }
+        return fallback;
     }
 
     /**
@@ -2119,16 +2271,29 @@ public class DefsManager {
 
     /**
      * 客户端：按物品解析特殊机制参数生效值（tooltip/客户端模拟用）。
-     * 有物品级覆盖取覆盖值，否则回退 fallback ——
-     * 与服务端 {@link #resolveMechanicValueForItem} 语义一致，
-     * 保证物品描述显示的数值与实际生效数值相同
+     * <p>
+     * 物品级数值来源 = item_definitions 数据包 {@code values} 段（随数据包同步）+ 客户端 UI 覆写；
+     * 两者按机制集合整体替换，均未声明时回退 fallback。与服务端
+     * {@link #resolveMechanicValueForItem} 语义一致，保证物品描述显示的数值与实际生效数值相同。
      */
-    public static double clientResolveMechanicValueForItem(String itemId, String mechanicSet,
+    public static double clientResolveMechanicValueForItem(RegistryAccess access, String itemId, String mechanicSet,
                                                            String paramKey, double fallback) {
         if (itemId == null) return fallback;
-        SpecialMechanicOverride ov = CLIENT_SPECIAL_MECHANIC_OVERRIDES.get(itemId);
-        if (ov == null || ov.removed()) return fallback;
-        Map<String, ParamValue> params = ov.values().get(mechanicSet);
+        Map<String, ParamValue> params = clientEffectiveMechanicValues(access, itemId).get(mechanicSet);
+        ParamValue pv = params == null ? null : params.get(paramKey);
+        return pv != null ? pv.value() : fallback;
+    }
+
+    /**
+     * 客户端：物品机制参数的"默认值"（忽略 UI 覆写，仅取 item_definitions 数据包 values 段 → fallback）。
+     * 供配置面板展示"未覆盖时实际使用的数据文件数值"。
+     */
+    public static double clientMechanicValueDefault(RegistryAccess access, String itemId, String mechanicSet,
+                                                    String paramKey, double fallback) {
+        if (itemId == null) return fallback;
+        ItemDefinition def = access == null ? null : clientMergedItemDefinition(access, itemId);
+        if (def == null || def.removed() || def.values() == null) return fallback;
+        Map<String, ParamValue> params = def.values().get(mechanicSet);
         ParamValue pv = params == null ? null : params.get(paramKey);
         return pv != null ? pv.value() : fallback;
     }

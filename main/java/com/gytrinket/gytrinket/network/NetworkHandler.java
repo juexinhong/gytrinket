@@ -120,11 +120,18 @@ public class NetworkHandler {
 
     // ======================== Helper send methods ========================
 
+    /** 每次"一次受击"的编号：同一批粒子共用一个 id，客户端靠它判断新一圈 */
+    private static int shieldBurstCounter = 0;
+
+    public static int nextShieldBurstId() {
+        return ++shieldBurstCounter;
+    }
+
     public static void sendShieldParticleToPlayer(ServerPlayer player, net.minecraft.world.entity.Entity trackedEntity,
                                                    double x, double y, double z,
                                                    double dirX, double dirY, double dirZ,
                                                    double originX, double originY, double originZ,
-                                                   int delayTicks) {
+                                                   int delayTicks, int burstId) {
         double originOffsetX = originX - trackedEntity.getX();
         double originOffsetY = originY - trackedEntity.getY();
         double originOffsetZ = originZ - trackedEntity.getZ();
@@ -133,7 +140,7 @@ public class NetworkHandler {
         double offsetZ = z - originZ;
 
         PacketDistributor.sendToPlayersTrackingEntityAndSelf(player,
-            new ShieldParticlePacket(trackedEntity.getId(), originOffsetX, originOffsetY, originOffsetZ, offsetX, offsetY, offsetZ, dirX, dirY, dirZ, delayTicks));
+            new ShieldParticlePacket(trackedEntity.getId(), originOffsetX, originOffsetY, originOffsetZ, offsetX, offsetY, offsetZ, dirX, dirY, dirZ, delayTicks, burstId));
     }
 
     public static void sendShieldSyncToPlayer(ServerPlayer player, double currentShield, double maxShield) {
@@ -159,16 +166,17 @@ public class NetworkHandler {
             if ("aura".equals(typeName)) {
                 if (com.gytrinket.gytrinket.core.shield.type.AuraShieldType.isAuraDamagingForItem(uuid, itemId)) state.auraDamaging = true;
                 state.auraRadius = DefsManager.resolveShieldTypeValueForItem(player.getServer(), itemId,
-                        "aura", "radius", Config.AURA_RADIUS.get()) * shieldEffectRadius;
+                        "aura", "radius", com.gytrinket.gytrinket.core.defs.ShieldValueDefs.defaultValueOf("aura", "radius", 3.5)) * shieldEffectRadius;
             } else if ("siphon".equals(typeName)) {
                 state.siphonStacks += com.gytrinket.gytrinket.core.shield.type.SiphonShieldType.getSiphonStacksForItem(uuid, itemId);
                 state.siphonRadius = DefsManager.resolveShieldTypeValueForItem(player.getServer(), itemId,
-                        "siphon", "radius", Config.SIPHON_RADIUS.get()) * shieldEffectRadius;
+                        "siphon", "radius", com.gytrinket.gytrinket.core.defs.ShieldValueDefs.defaultValueOf("siphon", "radius", 4.0)) * shieldEffectRadius;
             } else if ("amplification".equals(typeName)) {
                 state.amplificationProgress = Math.max(state.amplificationProgress,
                     com.gytrinket.gytrinket.core.shield.type.AmplificationShieldType.getProgressForItem(uuid, itemId));
                 state.amplificationRadius = DefsManager.resolveShieldTypeValueForItem(player.getServer(), itemId,
-                        "amplification", "check_radius", Config.getAmplificationCheckRadius()) * shieldEffectRadius;
+                        "amplification", "check_radius",
+                        com.gytrinket.gytrinket.core.defs.ShieldValueDefs.defaultValueOf("amplification", "check_radius", 5.0)) * shieldEffectRadius;
             }
         }
         // 护盾实例列表（ShieldInstance 镜像，客户端 HUD 顶条按焦点实例显示池量/冷却）

@@ -26,6 +26,16 @@ import java.nio.file.Path;
  * shot name                 截图到 screenshots/name.png
  * build variant x y z       在坐标砌民居（variant 0..3，3 为别墅）
  * clear x0 y0 z0 x1 y1 z1   清空区域
+ * srv  &lt;命令&gt;               直接执行一条服务端命令
+ * hud  0|1                  隐藏/显示 HUD
+ * reload                    重载资源包（改完着色器后热更新）
+ * shielddemo [x y z]        搭护盾粒子观察台并把镜头摆好
+ * shieldstop                收掉观察台
+ * shieldauto 0|1            自动循环生成粒子
+ * shieldfreeze 0|1          冻结/解冻粒子年龄（固定姿态截图用）
+ * shieldage n               把所有粒子年龄固定到第 n 刻
+ * shieldburst               立刻生成一次受击粒子
+ * shieldclear               清空当前粒子
  * </pre>
  */
 @EventBusSubscriber(modid = gytrinket.MODID, value = Dist.CLIENT)
@@ -40,6 +50,7 @@ public final class ClientConsole {
         if (mc.player == null || mc.level == null) {
             return;
         }
+        ShieldDemoHarness.tick(mc);
         Path file = mc.gameDirectory.toPath().resolve("gytrinket_cmd.txt");
         if (!Files.exists(file)) {
             return;
@@ -165,7 +176,73 @@ public final class ClientConsole {
                     java.nio.file.Path out = mc.gameDirectory.toPath().resolve("gytrinket_" + name + ".nbt");
                     net.minecraft.nbt.NbtIo.writeCompressed(tag, out);
                     gytrinket.LOGGER.info("[cmd] dumped {} ({} blocks)", out.toAbsolutePath(), tag.getList("blocks", 10).size());
-                }                default -> gytrinket.LOGGER.warn("[cmd] unknown {}", p[0]);
+                }
+                case "srv" -> {
+                    String command = line.substring(3).trim();
+                    var server = mc.getSingleplayerServer();
+                    var source = ShieldDemoHarness.serverSource(mc);
+                    if (server != null && source != null && !command.isEmpty()) {
+                        server.execute(() -> server.getCommands().performPrefixedCommand(source, command));
+                        gytrinket.LOGGER.info("[cmd] srv {}", command);
+                    }
+                }
+                case "hud" -> {
+                    // hud 0 隐藏 HUD（干净截图），hud 1 显示
+                    mc.options.hideGui = p.length < 2 || "0".equals(p[1]);
+                    gytrinket.LOGGER.info("[cmd] hud hidden={}", mc.options.hideGui);
+                }
+                case "reload" -> {
+                    mc.reloadResourcePacks();
+                    gytrinket.LOGGER.info("[cmd] reload resource packs");
+                }
+                case "shielddemo" -> {
+                    if (p.length >= 4) {
+                        ShieldDemoHarness.start(mc,
+                                Double.parseDouble(p[1]), Double.parseDouble(p[2]), Double.parseDouble(p[3]),
+                                p.length > 4 ? Double.parseDouble(p[4]) : 3.2D,
+                                p.length > 5 ? Double.parseDouble(p[5]) : 38.0D);
+                    } else {
+                        ShieldDemoHarness.start(mc,
+                                Math.floor(mc.player.getX()) + 0.5D,
+                                Math.floor(mc.player.getY()) + 0.05D,
+                                Math.floor(mc.player.getZ()) + 0.5D,
+                                3.2D, 38.0D);
+                    }
+                    gytrinket.LOGGER.info("[cmd] shielddemo");
+                }
+                case "shieldstop" -> {
+                    ShieldDemoHarness.stop(mc);
+                    gytrinket.LOGGER.info("[cmd] shieldstop");
+                }
+                case "shieldauto" -> {
+                    ShieldDemoHarness.setAuto(p.length > 1 && !"0".equals(p[1]));
+                    gytrinket.LOGGER.info("[cmd] shieldauto {}", p.length > 1 ? p[1] : "1");
+                }
+                case "shieldfreeze" -> {
+                    ShieldDemoHarness.setFreeze(p.length > 1 && !"0".equals(p[1]));
+                    gytrinket.LOGGER.info("[cmd] shieldfreeze {}", p.length > 1 ? p[1] : "1");
+                }
+                case "shieldage" -> {
+                    ShieldDemoHarness.setAge(p.length > 1 ? Integer.parseInt(p[1]) : 8);
+                    gytrinket.LOGGER.info("[cmd] shieldage {}", p.length > 1 ? p[1] : "8");
+                }
+                case "shieldburst" -> {
+                    ShieldDemoHarness.burst(mc);
+                    gytrinket.LOGGER.info("[cmd] shieldburst");
+                }
+                case "shieldorbit" -> {
+                    ShieldDemoHarness.orbit(mc,
+                            p.length > 1 ? Double.parseDouble(p[1]) : 38.0D,
+                            p.length > 2 ? Double.parseDouble(p[2]) : 3.2D,
+                            p.length > 3 ? Double.parseDouble(p[3]) : 1.15D);
+                    gytrinket.LOGGER.info("[cmd] shieldorbit");
+                }
+                case "shieldclear" -> {
+                    com.gytrinket.gytrinket.client.effect.particle.ShieldParticleRenderManager
+                            .getInstance().clear();
+                    gytrinket.LOGGER.info("[cmd] shieldclear");
+                }
+                default -> gytrinket.LOGGER.warn("[cmd] unknown {}", p[0]);
             }
         } catch (Exception e) {
             gytrinket.LOGGER.warn("[cmd] failed: {} ({})", line, e.getMessage());

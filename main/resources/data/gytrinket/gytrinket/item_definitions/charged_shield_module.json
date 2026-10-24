@@ -1,10 +1,30 @@
 {
-    "items":  {
-                  "gytrinket:charged_shield_module":  {
-                                                          "mechanic":  true,
-                                                          "sets":  [
-                                                                       "charged_shield_items"
-                                                                   ]
-                                                      }
-              }
+  "items": {
+    "gytrinket:charged_shield_module": {
+      "mechanic": true,
+      "sets": [
+        "charged_shield_items"
+      ],
+      "values": {
+        "charged_shield_items": {
+          "charge_ratio": {
+            "value": 0.1,
+            "stackable": false
+          },
+          "max_bonus": {
+            "value": 0.8,
+            "stackable": false
+          },
+          "decay_rate": {
+            "value": 0.08,
+            "stackable": false
+          },
+          "move_speed_penalty": {
+            "value": -0.15,
+            "stackable": true
+          }
+        }
+      }
+    }
+  }
 }

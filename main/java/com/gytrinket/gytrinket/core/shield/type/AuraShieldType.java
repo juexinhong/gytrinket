@@ -1,10 +1,10 @@
 package com.gytrinket.gytrinket.core.shield.type;
 
-import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
 import com.gytrinket.gytrinket.core.burn.BurnManager;
 import com.gytrinket.gytrinket.core.burn.IBurnSource;
 import com.gytrinket.gytrinket.core.defs.DefsManager;
+import com.gytrinket.gytrinket.core.defs.ShieldValueDefs;
 import com.gytrinket.gytrinket.core.entity.construct.HostileTargetManager;
 import com.gytrinket.gytrinket.core.ignite.IIgniteSource;
 import com.gytrinket.gytrinket.core.ignite.IgniteManager;
@@ -124,8 +124,8 @@ public class AuraShieldType implements IShieldType {
         }
 
         int tickCounter = TICK_COUNTERS.getOrDefault(itemKey, 0) + 1;
-        int triggerFrequency = (int) DefsManager.resolveShieldTypeValueForItem(player.getServer(), itemId,
-                "aura", "trigger_frequency", Config.AURA_TRIGGER_FREQUENCY.get());
+        int triggerFrequency = Math.max(1, (int) DefsManager.resolveShieldTypeValueForItem(player.getServer(), itemId,
+                "aura", "trigger_frequency", ShieldValueDefs.defaultValueOf("aura", "trigger_frequency", 5.0)));
         if (tickCounter < triggerFrequency) {
             TICK_COUNTERS.put(itemKey, tickCounter);
             return;
@@ -140,8 +140,8 @@ public class AuraShieldType implements IShieldType {
         }
 
         double shieldEffectRadius = AttributeManager.getGroupAttribute(player.getUUID(), "shield_effect_radius");
-        double baseRadius = DefsManager.resolveShieldTypeValueForItem(player.getServer(), itemId,
-                "aura", "radius", Config.AURA_RADIUS.get());
+        double baseRadius = Math.max(0.0, DefsManager.resolveShieldTypeValueForItem(player.getServer(), itemId,
+                "aura", "radius", ShieldValueDefs.defaultValueOf("aura", "radius", 3.5)));
         double radius = baseRadius * shieldEffectRadius;
 
         float totalShieldCost = 0;
@@ -162,8 +162,8 @@ public class AuraShieldType implements IShieldType {
 
             for (LivingEntity target : entities) {
                 hasEnemies = true;
-                double chargeRate = DefsManager.resolveShieldTypeValueForItem(player.getServer(), itemId,
-                        "aura", "damage", Config.AURA_DAMAGE.get());
+                double chargeRate = Math.max(0.0, DefsManager.resolveShieldTypeValueForItem(player.getServer(), itemId,
+                        "aura", "damage", ShieldValueDefs.defaultValueOf("aura", "damage", 0.75)));
                 double shieldEffect = AttributeManager.getGroupAttribute(player.getUUID(), "shield_effect");
                 float charge = (float)(chargeRate * shieldEffect);
                 
@@ -172,8 +172,8 @@ public class AuraShieldType implements IShieldType {
             }
 
             if (!entities.isEmpty()) {
-                double baseShieldCost = DefsManager.resolveShieldTypeValueForItem(player.getServer(), itemId,
-                        "aura", "shield_cost", Config.AURA_SHIELD_COST.get());
+                double baseShieldCost = Math.max(0.0, DefsManager.resolveShieldTypeValueForItem(player.getServer(), itemId,
+                        "aura", "shield_cost", ShieldValueDefs.defaultValueOf("aura", "shield_cost", 0.042)));
                 totalShieldCost += baseShieldCost * entities.size();
             }
         }

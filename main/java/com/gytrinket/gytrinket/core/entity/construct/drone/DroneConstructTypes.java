@@ -29,8 +29,10 @@ public class DroneConstructTypes {
                 .categories(ConstructCategory.createOtherCategories(ConstructCategory.Tier.STANDARD))
                 .tags(Set.of("drone"))
                 .buildTime(100)
-                .maxHealth(Config.getDroneBaseHealth())
-                .maxCount(Config.getDroneMaxCount())
+                .maxHealth(com.gytrinket.gytrinket.core.defs.MechanicValueDefs.defaultValueOf(
+                        "drone_module_items", "base_health", 5.0))
+                .maxCount((int) com.gytrinket.gytrinket.core.defs.MechanicValueDefs.defaultValueOf(
+                        "drone_module_items", "base_count", 3.0))
                 .constructFactory((player, type) -> createDroneConstruct(player, null))
                 .entityRestorer(new DroneEntityRestorer())
                 .build());
@@ -53,7 +55,9 @@ public class DroneConstructTypes {
         if (hasAssault) effects.add(new AssaultEffect());
         if (hasDefense) effects.add(new DefenseEffect());
 
-        double maxHealth = type != null ? type.getMaxHealth() : Config.getDroneBaseHealth();
+        double maxHealth = type != null ? type.getMaxHealth()
+                : com.gytrinket.gytrinket.core.defs.MechanicValueDefs.defaultValueOf(
+                        "drone_module_items", "base_health", 5.0);
         return new DroneConstruct(DRONE, arrayType, effects, player, maxHealth, instanceKey);
     }
 

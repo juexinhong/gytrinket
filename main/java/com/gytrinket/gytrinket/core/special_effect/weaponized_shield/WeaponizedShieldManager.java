@@ -79,12 +79,14 @@ public class WeaponizedShieldManager {
 
         double shieldEffectRadius = AttributeManager.getGroupAttribute(playerUUID, "shield_effect_radius");
         double baseRadius = DefsManager.resolveMechanicValue(player.getServer(), playerUUID,
-                "weaponized_shield_items", "radius", Config.WEAPONIZED_SHIELD_RADIUS.get());
+                "weaponized_shield_items", "radius",
+                com.gytrinket.gytrinket.core.defs.MechanicValueDefs.defaultValueOf("weaponized_shield_items", "radius", 4.0));
         double radius = baseRadius * shieldEffectRadius;
 
         double shieldEffect = AttributeManager.getGroupAttribute(playerUUID, "shield_effect");
         float baseVulnerability = (float) DefsManager.resolveMechanicValue(player.getServer(), playerUUID,
-                "weaponized_shield_items", "vulnerability", Config.WEAPONIZED_SHIELD_VULNERABILITY.get().doubleValue());
+                "weaponized_shield_items", "vulnerability",
+                com.gytrinket.gytrinket.core.defs.MechanicValueDefs.defaultValueOf("weaponized_shield_items", "vulnerability", 0.2));
         float vulnerabilityValue = (float)(baseVulnerability * shieldEffect);
 
         Set<UUID> currentTargets = new HashSet<>();

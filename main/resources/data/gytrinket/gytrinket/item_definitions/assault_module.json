@@ -1,10 +1,30 @@
 {
-    "items":  {
-                  "gytrinket:assault_module":  {
-                                                   "mechanic":  true,
-                                                   "sets":  [
-                                                                "assault_items"
-                                                            ]
-                                               }
-              }
+  "items": {
+    "gytrinket:assault_module": {
+      "mechanic": true,
+      "sets": [
+        "assault_items"
+      ],
+      "values": {
+        "assault_items": {
+          "attack_speed_per_stack": {
+            "value": 0.1,
+            "stackable": false
+          },
+          "self_damage_per_stack": {
+            "value": 0.02,
+            "stackable": false
+          },
+          "overflow_damage_efficiency": {
+            "value": 1,
+            "stackable": false
+          },
+          "move_speed_penalty": {
+            "value": -0.6,
+            "stackable": true
+          }
+        }
+      }
+    }
+  }
 }

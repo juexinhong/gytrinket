@@ -1,10 +1,26 @@
 {
-    "items":  {
-                  "gytrinket:counter_pulse_module":  {
-                                                         "mechanic":  true,
-                                                         "sets":  [
-                                                                      "counter_pulse_items"
-                                                                  ]
-                                                     }
-              }
+  "items": {
+    "gytrinket:counter_pulse_module": {
+      "mechanic": true,
+      "sets": [
+        "counter_pulse_items"
+      ],
+      "values": {
+        "counter_pulse_items": {
+          "explosion_radius": {
+            "value": 1.3,
+            "stackable": false
+          },
+          "explosion_damage": {
+            "value": 1,
+            "stackable": false
+          },
+          "cooldown": {
+            "value": 60,
+            "stackable": false
+          }
+        }
+      }
+    }
+  }
 }

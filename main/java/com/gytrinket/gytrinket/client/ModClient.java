@@ -93,7 +93,7 @@ public class ModClient {
             new ShaderInstance(
                 event.getResourceProvider(),
                 ResourceLocation.fromNamespaceAndPath(com.gytrinket.gytrinket.gytrinket.MODID, "shield_glass"),
-                DefaultVertexFormat.POSITION_TEX_COLOR
+                DefaultVertexFormat.POSITION_TEX_COLOR_NORMAL
             ),
             ModShaders::setShieldGlassShader
         );

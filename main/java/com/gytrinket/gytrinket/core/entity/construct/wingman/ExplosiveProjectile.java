@@ -40,7 +40,8 @@ public class ExplosiveProjectile extends ThrowableItemProjectile {
         super(type, level);
         this.noPhysics = true;
         this.setNoGravity(true);
-        this.damage = (float) Config.getWingmanExplosiveDamage();
+        this.damage = (float) com.gytrinket.gytrinket.core.defs.MechanicValueDefs.defaultValueOf(
+                "wingman_module_items", "base_damage", 0.5);
     }
 
     public ExplosiveProjectile(Level level, LivingEntity owner, float damage) {

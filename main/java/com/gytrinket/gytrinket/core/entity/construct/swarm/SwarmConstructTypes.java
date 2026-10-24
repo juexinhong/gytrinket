@@ -37,9 +37,12 @@ public class SwarmConstructTypes {
                 .name("蜂群")
                 .categories(ConstructCategory.createOtherCategories(ConstructCategory.Tier.BASIC))
                 .tags(Set.of("swarm"))
-                .buildTime(Config.getSwarmBuildTime())
-                .maxHealth(Config.getSwarmBaseHealth())
-                .maxCount(Config.getSwarmMaxCount())
+                .buildTime((int) com.gytrinket.gytrinket.core.defs.MechanicValueDefs.defaultValueOf(
+                        "swarm_module_items", "build_time", 20.0))
+                .maxHealth(com.gytrinket.gytrinket.core.defs.MechanicValueDefs.defaultValueOf(
+                        "swarm_module_items", "base_health", 1.6))
+                .maxCount((int) com.gytrinket.gytrinket.core.defs.MechanicValueDefs.defaultValueOf(
+                        "swarm_module_items", "base_count", 4.0))
                 .constructFactory((player, type) -> createSwarmConstruct(player, type, null))
                 .entityRestorer(new SwarmEntityRestorer())
                 .build());
@@ -56,7 +59,9 @@ public class SwarmConstructTypes {
                                                       @javax.annotation.Nullable ConstructType type,
                                                       @javax.annotation.Nullable String instanceKey) {
         int tier = rollTier();
-        double maxHealth = type != null ? type.getMaxHealth() : Config.getSwarmBaseHealth();
+        double maxHealth = type != null ? type.getMaxHealth()
+                : com.gytrinket.gytrinket.core.defs.MechanicValueDefs.defaultValueOf(
+                        "swarm_module_items", "base_health", 1.6);
         return new SwarmConstruct(SWARM, player, maxHealth, tier, instanceKey);
     }
 

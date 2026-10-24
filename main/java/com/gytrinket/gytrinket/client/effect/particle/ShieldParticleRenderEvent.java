@@ -48,7 +48,7 @@ public class ShieldParticleRenderEvent {
                 float partialTicks = event.getPartialTick().getGameTimeDeltaPartialTick(false);
                 PoseStack poseStack = event.getPoseStack();
 
-                ShieldParticleRenderer.renderWithSavedMatrices(poseStack, null, null, partialTicks,
+                ShieldParticleRenderer.renderWithSavedMatrices(poseStack, null, event.getCamera(), partialTicks,
                         savedProjectionMatrix, savedModelViewMatrix, savedPoseStackMatrix);
             }
         } else if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_PARTICLES) {
@@ -56,7 +56,7 @@ public class ShieldParticleRenderEvent {
             float partialTicks = event.getPartialTick().getGameTimeDeltaPartialTick(false);
             PoseStack poseStack = event.getPoseStack();
 
-            ShieldParticleRenderer.render(poseStack, null, null, partialTicks);
+            ShieldParticleRenderer.render(poseStack, null, event.getCamera(), partialTicks);
         }
     }
 }

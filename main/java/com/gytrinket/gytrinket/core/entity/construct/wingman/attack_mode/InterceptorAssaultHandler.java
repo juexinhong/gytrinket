@@ -53,7 +53,8 @@ public class InterceptorAssaultHandler implements InterceptorAttackModeHandler {
         setAssaultStacks(wingman, stacks);
 
         // 自伤
-        float selfDamage = (float) (Config.getAssaultSelfDamagePerStack() * stacks);
+        float selfDamage = (float) (com.gytrinket.gytrinket.core.defs.MechanicValueDefs.defaultValueOf(
+                "assault_items", "self_damage_per_stack", 0.02) * stacks);
         if (selfDamage > 0) {
             wingman.hurt(ModDamageTypes.getPlayerSelfDamageSource(wingman.level()), selfDamage);
         }
@@ -65,7 +66,8 @@ public class InterceptorAssaultHandler implements InterceptorAttackModeHandler {
         if (stacks <= 0) return baseCooldown;
 
         // 每层提供10%攻击速度（减少冷却）
-        double attackSpeedBonus = Config.getAssaultAttackSpeedPerStack() * stacks;
+        double attackSpeedBonus = com.gytrinket.gytrinket.core.defs.MechanicValueDefs.defaultValueOf(
+                "assault_items", "attack_speed_per_stack", 0.1) * stacks;
         // 攻击速度加成是独立乘区，冷却 = 基础冷却 / (1 + 加成)
         double modifiedCooldown = baseCooldown / (1.0 + attackSpeedBonus);
         return Math.max(2, (int) modifiedCooldown);

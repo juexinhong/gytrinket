@@ -325,7 +325,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
         mechanicValueEditBuffer = "";
     }
 
-    /** 重置参数：移除覆盖标记，回退 Config 默认值显示 */
+    /** 重置参数：移除覆盖标记，回退物品定义 / 类型默认值显示 */
     private void resetMechanicValue(String paramKey) {
         if (mechanicValueEditIndex >= 0 && mechanicValueEditIndex < mechanicValuesParamKeys.size()
                 && mechanicValuesParamKeys.get(mechanicValueEditIndex).equals(paramKey)) {
@@ -460,7 +460,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
         shieldValueEditBuffer = "";
     }
 
-    /** 重置参数：移除覆盖标记，回退 Config 默认值显示 */
+    /** 重置参数：移除覆盖标记，回退物品定义 / 类型默认值显示 */
     private void resetShieldValue(String paramKey) {
         if (shieldValueEditIndex >= 0 && shieldValueEditIndex < shieldValuesParamKeys.size()
                 && shieldValuesParamKeys.get(shieldValueEditIndex).equals(paramKey)) {
@@ -1525,7 +1525,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
             tabX += font.width(label) + 4;
         }
 
-        // 参数行：覆盖值高亮；未覆盖显示 Config 默认值（带"默认"标记）；行数过多时滚动显示，底部为保存/提示预留区
+        // 参数行：覆盖值高亮；未覆盖显示物品定义默认值（带"默认"标记）；行数过多时滚动显示，底部为保存/提示预留区
         List<MechanicValueDefs.ParamDef> defs = MechanicValueDefs.getParams(mechanicValuesSet);
         int listTop = overlayY + MECHANIC_VALUES_PARAMS_TOP;
         int listBottom = overlayY + overlayH - MECHANIC_VALUES_LIST_BOTTOM_MARGIN;
@@ -1561,7 +1561,8 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
                 valueText = mechanicValuesDraft.getOrDefault(def.key(), "");
                 valueColor = renderer.getValueColor();
             } else {
-                valueText = formatValue(def.defaultValue())
+                valueText = formatValue(DefsManager.clientMechanicValueDefault(getClientRegistryAccess(),
+                        mechanicValuesItemId, mechanicValuesSet, def.key(), def.defaultValue()))
                         + Component.translatable("screen.gytrinket.mechanic_value_default_tag").getString();
                 valueColor = renderer.getHintColor();
             }
@@ -1651,10 +1652,14 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
         return defs.size() + (defs.isEmpty() ? 1 : 0) + 1;
     }
 
-    /** 参数显示默认值：基础四项优先取护盾类型定义（shield_types 同步 registry），未定义回退 ParamDef 硬编码 */
+    /**
+     * 参数显示默认值：物品定义（item_definitions 数据包 shieldValues）优先，
+     * 其次护盾类型定义（shield_types 同步 registry），最后回退 ParamDef 硬编码。
+     * 仅忽略 UI 覆写，用于"未覆盖"行的实际生效数值展示。
+     */
     private double shieldValueDefaultValue(ShieldValueDefs.ParamDef def) {
-        Double typeDefault = DefsManager.clientShieldTypeParamDefault(getClientRegistryAccess(), shieldValuesType, def.key());
-        return typeDefault != null ? typeDefault : def.defaultValue();
+        return DefsManager.clientShieldValueDefault(getClientRegistryAccess(), shieldValuesItemId,
+                shieldValuesType, def.key(), def.defaultValue());
     }
 
     /** 护盾类型数值编辑器 overlay：护盾类型 tab 切换 + 参数行点击编辑 + 重置/保存（布局与机制数值编辑器一致） */
@@ -1683,7 +1688,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
             tabX += font.width(label) + 4;
         }
 
-        // 参数行：覆盖值高亮；未覆盖显示 Config 默认值（带"默认"标记）；行数过多时滚动显示，底部为保存/提示预留区
+        // 参数行：覆盖值高亮；未覆盖显示物品定义默认值（带"默认"标记）；行数过多时滚动显示，底部为保存/提示预留区
         List<ShieldValueDefs.ParamDef> defs = ShieldValueDefs.getParams(shieldValuesType);
         int listTop = overlayY + MECHANIC_VALUES_PARAMS_TOP;
         int listBottom = overlayY + overlayH - MECHANIC_VALUES_LIST_BOTTOM_MARGIN;

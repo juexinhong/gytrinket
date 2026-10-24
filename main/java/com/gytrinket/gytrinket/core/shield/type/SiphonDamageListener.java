@@ -1,7 +1,7 @@
 package com.gytrinket.gytrinket.core.shield.type;
 
-import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.defs.DefsManager;
+import com.gytrinket.gytrinket.core.defs.ShieldValueDefs;
 import com.gytrinket.gytrinket.core.shield.ShieldManager;
 import com.gytrinket.gytrinket.core.damage.ModDamageTypes;
 import com.gytrinket.gytrinket.gytrinket;
@@ -41,9 +41,9 @@ public class SiphonDamageListener {
         }
 
         float damageAmount = event.getNewDamage();
-        double healRatio = DefsManager.resolveShieldTypeValueForItem(
+        double healRatio = Math.max(0.0, DefsManager.resolveShieldTypeValueForItem(
                 net.neoforged.neoforge.server.ServerLifecycleHooks.getCurrentServer(), ref.itemId(),
-                "siphon", "heal_ratio", Config.SIPHON_HEAL_RATIO.get());
+                "siphon", "heal_ratio", ShieldValueDefs.defaultValueOf("siphon", "heal_ratio", 0.3)));
         double shieldRecovery = damageAmount * healRatio;
 
         if (shieldRecovery > 0) {

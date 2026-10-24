@@ -62,7 +62,55 @@ public final class ObserverCommands {
                 .then(Commands.literal("exec")
                         .then(Commands.argument("file", StringArgumentType.word())
                                 .executes(context -> exec(context.getSource(),
-                                        StringArgumentType.getString(context, "file"))))));
+                                        StringArgumentType.getString(context, "file")))))
+                .then(Commands.literal("defs")
+                        .then(Commands.argument("item", StringArgumentType.greedyString())
+                                .executes(context -> defs(context.getSource(),
+                                        StringArgumentType.getString(context, "item")))))
+                .then(Commands.literal("reloaddefs")
+                        .executes(context -> reloadDefs(context.getSource()))));
+    }
+
+    /** 从当前 ResourceManager 重读 item_definitions 并立即应用（开发期改数据文件后无需重启） */
+    private static int reloadDefs(CommandSourceStack source) {
+        com.gytrinket.gytrinket.core.defs.DefsManager.applyOverrides(source.getServer());
+        source.sendSuccess(() -> Component.literal("item_definitions 已从资源管理器重新读取并应用"), false);
+        return 1;
+    }
+
+    /**
+     * 打印物品的数据驱动定义解析结果（服务端视角）：
+     * 护盾类型列表 + 每个护盾类型参数的实际取值 + 机制集合 + 机制参数实际取值。
+     * fallback 用 NaN 标记，解析结果仍为 NaN 表示数据文件/类型定义/UI 覆写都没有声明该键。
+     */
+    private static int defs(CommandSourceStack source, String item) {
+        var server = source.getServer();
+        StringBuilder out = new StringBuilder("item=").append(item).append('\n');
+        List<String> types = com.gytrinket.gytrinket.core.defs.DefsManager.getItemShieldTypes()
+                .getOrDefault(item, List.of());
+        out.append("shieldTypes=").append(types).append('\n');
+        for (String type : types) {
+            for (var def : com.gytrinket.gytrinket.core.defs.ShieldValueDefs.getParams(type)) {
+                double value = com.gytrinket.gytrinket.core.defs.DefsManager.resolveShieldTypeValueForItem(
+                        server, item, type, def.key(), Double.NaN);
+                out.append("  shield.").append(type).append('.').append(def.key()).append('=')
+                        .append(Double.isNaN(value) ? "unset" : Double.toString(value)).append('\n');
+            }
+        }
+        List<String> sets = com.gytrinket.gytrinket.core.defs.DefsManager
+                .getEffectiveSpecialMechanicSets(server, item);
+        out.append("mechanicSets=").append(sets).append('\n');
+        for (String set : sets) {
+            for (var def : com.gytrinket.gytrinket.core.defs.MechanicValueDefs.getParams(set)) {
+                double value = com.gytrinket.gytrinket.core.defs.DefsManager.resolveMechanicValueForItem(
+                        server, item, set, def.key(), Double.NaN);
+                out.append("  mechanic.").append(set).append('.').append(def.key()).append('=')
+                        .append(Double.isNaN(value) ? "unset" : Double.toString(value)).append('\n');
+            }
+        }
+        String text = out.toString();
+        source.sendSuccess(() -> Component.literal(text), false);
+        return 1;
     }
 
     private static int status(CommandSourceStack source) {

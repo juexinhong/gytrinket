@@ -187,17 +187,26 @@ public class TooltipConfig {
     }
 
     /**
-     * 参数原始数值：物品覆盖值优先，未覆盖时回退 Config 配置值
+     * 参数原始数值：物品定义值优先；未定义时优先取机制注册表的静态默认，
+     * 再回退 Config 值（尚未迁移的机制）。避免已迁移机制在 Config 项删除后显示 0。
      */
     private static double rawValue(String itemId, String source) {
+        String[] mapping = MECHANIC_VALUE_SOURCES.get(source);
         Object configValue = Config.getValue(source);
         double fallback = configValue instanceof Number number ? number.doubleValue() : 0.0D;
+        if (mapping != null) {
+            Double registered = com.gytrinket.gytrinket.core.defs.MechanicValueDefs
+                    .getDefaultValue(mapping[0], mapping[1]);
+            if (registered != null) {
+                fallback = registered;
+            }
+        }
         return mechanicValue(itemId, source, fallback);
     }
 
     /**
-     * 机制参数取值（tooltip 显示"当前定义的值"）：若映射表命中且当前物品定义了覆盖值，
-     * 返回覆盖值；否则返回传入的默认值。
+     * 机制参数取值（tooltip 显示"当前定义的值"）：映射表命中时按物品解析
+     * item_definitions 数据包 {@code values} 段 + 客户端 UI 覆写，未声明回退传入默认值。
      * 供数据驱动参数解析与硬编码模块 tooltip 共用。
      */
     public static double mechanicValue(String itemId, String source, double fallback) {
@@ -205,15 +214,8 @@ public class TooltipConfig {
         if (mapping == null) {
             return fallback;
         }
-        DefsManager.SpecialMechanicOverride override = DefsManager.getClientSpecialMechanicOverride(itemId);
-        if (override == null || override.removed() || override.values() == null) {
-            return fallback;
-        }
-        Map<String, DefsManager.ParamValue> params = override.values().get(mapping[0]);
-        if (params == null) {
-            return fallback;
-        }
-        DefsManager.ParamValue pv = params.get(mapping[1]);
-        return pv != null ? pv.value() : fallback;
+        net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
+        net.minecraft.core.RegistryAccess access = mc.level != null ? mc.level.registryAccess() : null;
+        return DefsManager.clientResolveMechanicValueForItem(access, itemId, mapping[0], mapping[1], fallback);
     }
 }

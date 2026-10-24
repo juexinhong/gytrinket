@@ -6,7 +6,11 @@
         "shield_base": 8.0,
         "shield_cooldown_time": 6.5,
         "shield_hit_cooldown_extend": 40.0,
-        "shield_hit_cooldown_extend_multiplier": 0.1
+        "shield_hit_cooldown_extend_multiplier": 0.1,
+        "trigger_frequency": 5.0,
+        "radius": 3.5,
+        "damage": 0.75,
+        "shield_cost": 0.042
       }
     }
   }

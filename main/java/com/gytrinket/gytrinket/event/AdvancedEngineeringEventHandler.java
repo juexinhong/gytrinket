@@ -1,6 +1,5 @@
 package com.gytrinket.gytrinket.event;
 
-import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
 import com.gytrinket.gytrinket.core.defs.DefsManager;
 import com.gytrinket.gytrinket.core.level.ModLevelManager;
@@ -40,7 +39,9 @@ public class AdvancedEngineeringEventHandler {
         // 装备时按当前光点等级计算加成：倍率 = 1 + 等级 × 每级加成（物品级数值覆盖：取首个生效物品的覆盖值）
         int level = Math.max(0, ModLevelManager.getModLevel(playerUUID));
         double bonusPerLevel = DefsManager.resolveMechanicValue(player.getServer(), playerUUID,
-                "advanced_engineering_items", "bonus_per_level", Config.ADVANCED_ENGINEERING_BONUS_PER_LEVEL.get());
+                "advanced_engineering_items", "bonus_per_level",
+                com.gytrinket.gytrinket.core.defs.MechanicValueDefs.defaultValueOf(
+                        "advanced_engineering_items", "bonus_per_level", 0.01));
         double bonus = level * bonusPerLevel;
 
         AttributeManager.setDynamicAttribute(playerUUID, NAMESPACE, "construct_drone_health_independent", bonus);

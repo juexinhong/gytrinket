@@ -55,7 +55,9 @@ public class NanoRegenManager {
             if (!hasNanoRegenModule(playerUUID)) continue;
 
             double regenPercent = DefsManager.resolveMechanicValue(server, playerUUID,
-                    "wingman_nano_regen_module_items", "regen_percent", Config.getWingmanNanoRegenPercent());
+                    "wingman_nano_regen_module_items", "regen_percent",
+                    com.gytrinket.gytrinket.core.defs.MechanicValueDefs.defaultValueOf(
+                            "wingman_nano_regen_module_items", "regen_percent", 0.02));
 
             Map<UUID, Entity> wingmanEntities = ConstructManager.getInstance()
                     .getActiveConstructEntities(playerUUID, WingmanConstructTypes.WINGMAN);

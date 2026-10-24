@@ -102,10 +102,14 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
 
     public SwarmConstructEntity(EntityType<? extends PathfinderMob> type, Level level) {
         super(type, level);
-        this.baseMaxHealth = Config.getSwarmBaseHealth();
-        this.baseAttackDamage = Config.getSwarmBaseDamage();
+        this.baseMaxHealth = com.gytrinket.gytrinket.core.defs.MechanicValueDefs.defaultValueOf(
+                "swarm_module_items", "base_health", 1.6);
+        this.baseAttackDamage = com.gytrinket.gytrinket.core.defs.MechanicValueDefs.defaultValueOf(
+                "swarm_module_items", "base_damage", 0.08);
         // 攻击冷却错峰：创建时随机偏移初始冷却，避免所有蜂群同一帧攻击
-        this.attackCooldown = level.random.nextInt(Math.max(1, (int)(Config.getSwarmAttackInterval() * 20)));
+        this.attackCooldown = level.random.nextInt(Math.max(1, (int)(
+                com.gytrinket.gytrinket.core.defs.MechanicValueDefs.defaultValueOf(
+                        "swarm_module_items", "attack_interval", 1.5) * 20)));
     }
 
     public SwarmConstructEntity(Level level, UUID ownerUUID, SwarmConstruct swarmConstruct) {
@@ -142,7 +146,7 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
         String key = getInstanceKey();
         if (key == null) return fallback;
         if (this.level().isClientSide) {
-            return SwarmInstanceParams.resolveClient(key, paramKey);
+            return SwarmInstanceParams.resolveClient(this.level().registryAccess(), key, paramKey);
         }
         net.minecraft.server.MinecraftServer server = net.neoforged.neoforge.server.ServerLifecycleHooks.getCurrentServer();
         if (server == null || getOwnerUUID() == null) return fallback;
@@ -157,7 +161,8 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
     /** 蜂群基础攻击间隔（秒）：物品级定义优先，否则 Config 默认 */
     public float getBaseAttackInterval() {
         float iv = getInstanceAttackInterval();
-        return iv > 0 ? iv : (float) Config.getSwarmAttackInterval();
+        return iv > 0 ? iv : (float) com.gytrinket.gytrinket.core.defs.MechanicValueDefs.defaultValueOf(
+                "swarm_module_items", "attack_interval", 1.5);
     }
 
     /** 实例攻击范围（格）；0 表示未定义，沿用 Config 默认 */
@@ -168,7 +173,8 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
     /** 蜂群基础攻击范围（格）：物品级定义优先，否则 Config 默认 */
     public float getBaseAttackRange() {
         float range = getInstanceAttackRange();
-        return range > 0 ? range : (float) Config.getSwarmAttackRange();
+        return range > 0 ? range : (float) com.gytrinket.gytrinket.core.defs.MechanicValueDefs.defaultValueOf(
+                "swarm_module_items", "attack_range", 4.0);
     }
 
     /** 实例索敌范围（格）；0 表示未定义，沿用 Config 默认 */
@@ -179,7 +185,8 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
     /** 蜂群基础索敌范围（格）：物品级定义优先，否则 Config 默认 */
     public float getBaseSearchRange() {
         float range = getInstanceSearchRange();
-        return range > 0 ? range : (float) Config.getSwarmSearchRange();
+        return range > 0 ? range : (float) com.gytrinket.gytrinket.core.defs.MechanicValueDefs.defaultValueOf(
+                "swarm_module_items", "search_range", 20.0);
     }
 
     /** 蜂群移速倍率：属性倍率 × 物品级倍率（默认 1.0） */
@@ -675,9 +682,13 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
         double tierMult = getTierMultiplier();
         double overflowMult = MothershipManager.getOverflowMultiplier(getOwnerUUID());
         // 物品级实例参数优先（实例键为空回退 Config 默认），再叠加等阶与溢出倍率
-        this.baseMaxHealth = resolveInstanceParam(SwarmInstanceParams.KEY_BASE_HEALTH, Config.getSwarmBaseHealth())
+        this.baseMaxHealth = resolveInstanceParam(SwarmInstanceParams.KEY_BASE_HEALTH,
+                        com.gytrinket.gytrinket.core.defs.MechanicValueDefs.defaultValueOf(
+                                "swarm_module_items", "base_health", 1.6))
                 * tierMult * overflowMult;
-        this.baseAttackDamage = resolveInstanceParam(SwarmInstanceParams.KEY_BASE_DAMAGE, Config.getSwarmBaseDamage())
+        this.baseAttackDamage = resolveInstanceParam(SwarmInstanceParams.KEY_BASE_DAMAGE,
+                        com.gytrinket.gytrinket.core.defs.MechanicValueDefs.defaultValueOf(
+                                "swarm_module_items", "base_damage", 0.08))
                 * tierMult * overflowMult;
         super.applyAttributeModifiers();
     }

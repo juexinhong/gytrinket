@@ -153,7 +153,9 @@ public class ConversionEffectManager {
             String namespace = DYNAMIC_ATTRIBUTE_KEY + ":" + itemId;
 
             double ratio = DefsManager.resolveMechanicValueForItem(server, itemId, MECHANIC_SET,
-                    KEY_CONVERSION_RATIO, Config.CONVERSION_RATIO.get());
+                    KEY_CONVERSION_RATIO,
+                    com.gytrinket.gytrinket.core.defs.MechanicValueDefs.defaultValueOf(
+                            MECHANIC_SET, KEY_CONVERSION_RATIO, 0.3));
             int direction = (int) Math.round(DefsManager.resolveMechanicValueForItem(server, itemId, MECHANIC_SET,
                     KEY_CONVERSION_DIRECTION, DIRECTION_BOTH));
 

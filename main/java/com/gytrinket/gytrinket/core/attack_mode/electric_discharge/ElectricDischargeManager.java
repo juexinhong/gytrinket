@@ -151,8 +151,9 @@ public class ElectricDischargeManager {
 
         UUID lightningUuid = UUID.randomUUID();
         List<LightningBurnTarget> burnTargets = new ArrayList<>();
-        int burnDuration = (int) DefsManager.resolveMechanicValue(player.getServer(), player.getUUID(),
-                "electric_discharge_items", "burn_duration", Config.getElectricDischargeBurnDuration());
+        int burnDuration = Math.max(1, (int) DefsManager.resolveMechanicValue(player.getServer(), player.getUUID(),
+                "electric_discharge_items", "burn_duration",
+                com.gytrinket.gytrinket.core.defs.MechanicValueDefs.defaultValueOf("electric_discharge_items", "burn_duration", 10.0)));
 
         for (LivingEntity entity : hitEntities) {
             burnTargets.add(new LightningBurnTarget(entity, player, burnDuration));
@@ -193,7 +194,8 @@ public class ElectricDischargeManager {
 
                 // 计算灼烧充能
                 float baseBurnCharge = (float) DefsManager.resolveMechanicValue(target.attacker.getServer(), target.attacker.getUUID(),
-                        "electric_discharge_items", "burn_charge", Config.getElectricDischargeBurnCharge());
+                        "electric_discharge_items", "burn_charge",
+                        com.gytrinket.gytrinket.core.defs.MechanicValueDefs.defaultValueOf("electric_discharge_items", "burn_charge", 0.5));
                 // 计算灼烧充能（使用不含模组修正的基础攻击速度）
                 double attackSpeedBase = AttackSpeedManager.getBaseAttackSpeed(target.attacker);
                 double attackSpeedMultiplier = attackSpeedBase;

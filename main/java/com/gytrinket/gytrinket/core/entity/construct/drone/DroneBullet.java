@@ -38,9 +38,10 @@ import software.bernie.geckolib.util.GeckoLibUtil;
  * 无物理模式：子弹穿过方块，每刻自行检测实体碰撞。
  */
 public class DroneBullet extends ThrowableItemProjectile implements GeoEntity {
-    /** 子弹基础伤害（实际值由Config决定） */
+    /** 子弹基础伤害（实际值由物品级 base_damage 决定） */
     public static float getBaseDamage() {
-        return (float) Config.getDroneBaseDamage();
+        return (float) com.gytrinket.gytrinket.core.defs.MechanicValueDefs.defaultValueOf(
+                "drone_module_items", "base_damage", 0.3);
     }
 
     private static final EntityDataAccessor<Boolean> FROM_DRONE = SynchedEntityData.defineId(DroneBullet.class, EntityDataSerializers.BOOLEAN);

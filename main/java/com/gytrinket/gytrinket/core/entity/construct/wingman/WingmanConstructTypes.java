@@ -28,8 +28,10 @@ public class WingmanConstructTypes {
                 .categories(ConstructCategory.createOtherCategories(ConstructCategory.Tier.ADVANCED))
                 .tags(Set.of("wingman"))
                 .buildTime(500) // 25秒 = 500tick
-                .maxHealth(Config.getWingmanBaseHealth())
-                .maxCount(Config.getWingmanMaxCount())
+                .maxHealth(com.gytrinket.gytrinket.core.defs.MechanicValueDefs.defaultValueOf(
+                        "wingman_module_items", "base_health", 24.0))
+                .maxCount((int) com.gytrinket.gytrinket.core.defs.MechanicValueDefs.defaultValueOf(
+                        "wingman_module_items", "base_count", 1.0))
                 .constructFactory((player, type) -> createWingmanConstruct(player, type, null))
                 .entityRestorer(new WingmanEntityRestorer())
                 .build());
@@ -45,7 +47,9 @@ public class WingmanConstructTypes {
     public static WingmanConstruct createWingmanConstruct(net.minecraft.world.entity.player.Player player,
                                                           @javax.annotation.Nullable ConstructType type,
                                                           @javax.annotation.Nullable String instanceKey) {
-        double maxHealth = type != null ? type.getMaxHealth() : Config.getWingmanBaseHealth();
+        double maxHealth = type != null ? type.getMaxHealth()
+                : com.gytrinket.gytrinket.core.defs.MechanicValueDefs.defaultValueOf(
+                        "wingman_module_items", "base_health", 24.0);
         return new WingmanConstruct(WINGMAN, player, maxHealth, instanceKey);
     }
 

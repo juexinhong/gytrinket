@@ -11,7 +11,8 @@ public record ShieldParticlePacket(
     double originOffsetX, double originOffsetY, double originOffsetZ,
     double offsetX, double offsetY, double offsetZ,
     double dirX, double dirY, double dirZ,
-    int delayTicks
+    int delayTicks,
+    int burstId
 ) implements CustomPacketPayload {
 
     public static final Type<ShieldParticlePacket> TYPE = new Type<>(
@@ -25,6 +26,7 @@ public record ShieldParticlePacket(
                 buf.readDouble(), buf.readDouble(), buf.readDouble(),
                 buf.readDouble(), buf.readDouble(), buf.readDouble(),
                 buf.readDouble(), buf.readDouble(), buf.readDouble(),
+                buf.readVarInt(),
                 buf.readVarInt()
             );
         }
@@ -42,6 +44,7 @@ public record ShieldParticlePacket(
             buf.writeDouble(msg.dirY);
             buf.writeDouble(msg.dirZ);
             buf.writeVarInt(msg.delayTicks);
+            buf.writeVarInt(msg.burstId);
         }
     };
 
@@ -54,12 +57,12 @@ public record ShieldParticlePacket(
                 com.gytrinket.gytrinket.client.effect.particle.ShieldParticleTimerManager.getInstance()
                     .addPendingParticle(payload.entityId, payload.originOffsetX, payload.originOffsetY, payload.originOffsetZ,
                         payload.offsetX, payload.offsetY, payload.offsetZ,
-                        payload.dirX, payload.dirY, payload.dirZ, payload.delayTicks);
+                        payload.dirX, payload.dirY, payload.dirZ, payload.delayTicks, payload.burstId);
             } else {
                 com.gytrinket.gytrinket.client.effect.particle.ShieldParticleRenderManager.getInstance()
                     .addParticle(payload.entityId, payload.originOffsetX, payload.originOffsetY, payload.originOffsetZ,
                         payload.offsetX, payload.offsetY, payload.offsetZ,
-                        payload.dirX, payload.dirY, payload.dirZ);
+                        payload.dirX, payload.dirY, payload.dirZ, payload.burstId);
             }
         });
     }

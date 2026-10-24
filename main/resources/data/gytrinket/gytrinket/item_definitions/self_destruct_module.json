@@ -1,10 +1,22 @@
 {
-    "items":  {
-                  "gytrinket:self_destruct_module":  {
-                                                         "mechanic":  true,
-                                                         "sets":  [
-                                                                      "self_destruct_items"
-                                                                  ]
-                                                     }
-              }
+  "items": {
+    "gytrinket:self_destruct_module": {
+      "mechanic": true,
+      "sets": [
+        "self_destruct_items"
+      ],
+      "values": {
+        "self_destruct_items": {
+          "base_damage": {
+            "value": 1,
+            "stackable": false
+          },
+          "base_radius": {
+            "value": 1,
+            "stackable": false
+          }
+        }
+      }
+    }
+  }
 }

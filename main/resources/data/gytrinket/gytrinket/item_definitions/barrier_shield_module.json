@@ -5,6 +5,11 @@
       "sets": [
         "barrier_items"
       ],
+      "values": {
+        "barrier_items": {
+          "barrier_max_damage": { "value": 5.0, "stackable": false }
+        }
+      },
       "attributes": {
         "shield_percent": 0.05,
         "shield_cooldown_reduction_percent": -0.05

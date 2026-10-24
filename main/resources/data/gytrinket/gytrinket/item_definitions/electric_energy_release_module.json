@@ -1,10 +1,16 @@
 {
-    "items":  {
-                  "gytrinket:electric_energy_release_module":  {
-                                                                   "mechanic":  true,
-                                                                   "sets":  [
-                                                                                "electric_discharge_items"
-                                                                            ]
-                                                               }
-              }
+  "items": {
+    "gytrinket:electric_energy_release_module": {
+      "mechanic": true,
+      "sets": [
+        "electric_discharge_items"
+      ],
+      "values": {
+        "electric_discharge_items": {
+          "burn_duration": { "value": 10.0, "stackable": false },
+          "burn_charge": { "value": 0.5, "stackable": false }
+        }
+      }
+    }
+  }
 }

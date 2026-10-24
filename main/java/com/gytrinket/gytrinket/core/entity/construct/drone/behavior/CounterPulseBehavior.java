@@ -131,7 +131,9 @@ public class CounterPulseBehavior implements IDroneSpecialBehavior {
 
         if (!isDamageTriggered) {
             info.cooldown = (int) DefsManager.resolveMechanicValue(drone.level().getServer(), drone.getOwnerUUID(),
-                    "counter_pulse_items", "cooldown", Config.COUNTER_PULSE_COOLDOWN.get());
+                    "counter_pulse_items", "cooldown",
+                    com.gytrinket.gytrinket.core.defs.MechanicValueDefs.defaultValueOf(
+                            "counter_pulse_items", "cooldown", 60.0));
         }
     }
 
@@ -157,13 +159,17 @@ public class CounterPulseBehavior implements IDroneSpecialBehavior {
 
     private double calculateExplosionRadius(DroneConstructEntity drone, int chargeLevel) {
         double baseRadius = DefsManager.resolveMechanicValue(drone.level().getServer(), drone.getOwnerUUID(),
-                "counter_pulse_items", "explosion_radius", Config.COUNTER_PULSE_BASE_EXPLOSION_RADIUS.get());
+                "counter_pulse_items", "explosion_radius",
+                com.gytrinket.gytrinket.core.defs.MechanicValueDefs.defaultValueOf(
+                        "counter_pulse_items", "explosion_radius", 1.3));
         return baseRadius * calculateChargeMultiplier(chargeLevel);
     }
 
     private float calculateExplosionDamage(DroneConstructEntity drone, int chargeLevel) {
         float baseDamage = (float) DefsManager.resolveMechanicValue(drone.level().getServer(), drone.getOwnerUUID(),
-                "counter_pulse_items", "explosion_damage", Config.COUNTER_PULSE_BASE_EXPLOSION_DAMAGE.get().doubleValue());
+                "counter_pulse_items", "explosion_damage",
+                com.gytrinket.gytrinket.core.defs.MechanicValueDefs.defaultValueOf(
+                        "counter_pulse_items", "explosion_damage", 1.0));
         return baseDamage * (float) calculateChargeMultiplier(chargeLevel);
     }
 

@@ -172,8 +172,10 @@ public class WingmanConstructEntity extends AbstractConstructEntity {
 
     public WingmanConstructEntity(EntityType<? extends PathfinderMob> type, Level level) {
         super(type, level);
-        this.baseMaxHealth = Config.getWingmanBaseHealth();
-        this.baseAttackDamage = Config.getWingmanExplosiveDamage();
+        this.baseMaxHealth = com.gytrinket.gytrinket.core.defs.MechanicValueDefs.defaultValueOf(
+                "wingman_module_items", "base_health", 24.0);
+        this.baseAttackDamage = com.gytrinket.gytrinket.core.defs.MechanicValueDefs.defaultValueOf(
+                "wingman_module_items", "base_damage", 0.5);
     }
 
     public WingmanConstructEntity(Level level, UUID ownerUUID, WingmanConstruct wingmanConstruct) {
@@ -208,7 +210,7 @@ public class WingmanConstructEntity extends AbstractConstructEntity {
         String key = getInstanceKey();
         if (key == null) return fallback;
         if (this.level().isClientSide) {
-            return WingmanInstanceParams.resolveClient(key, paramKey);
+            return WingmanInstanceParams.resolveClient(this.level().registryAccess(), key, paramKey);
         }
         net.minecraft.server.MinecraftServer server = net.neoforged.neoforge.server.ServerLifecycleHooks.getCurrentServer();
         if (server == null || getOwnerUUID() == null) return fallback;
@@ -223,7 +225,8 @@ public class WingmanConstructEntity extends AbstractConstructEntity {
     /** 僚机基础攻击间隔（秒）：物品级定义优先，否则 Config 默认 */
     public float getBaseAttackInterval() {
         float iv = getInstanceAttackInterval();
-        return iv > 0 ? iv : (float) Config.getWingmanAttackInterval();
+        return iv > 0 ? iv : (float) com.gytrinket.gytrinket.core.defs.MechanicValueDefs.defaultValueOf(
+                "wingman_module_items", "attack_interval", 1.0);
     }
 
     /** 实例攻击范围（格）；0 表示未定义，沿用 Config 默认 */
@@ -234,7 +237,8 @@ public class WingmanConstructEntity extends AbstractConstructEntity {
     /** 僚机基础攻击范围（格）：物品级定义优先，否则 Config 默认 */
     public float getBaseAttackRange() {
         float range = getInstanceAttackRange();
-        return range > 0 ? range : Config.getWingmanAttackRange().floatValue();
+        return range > 0 ? range : (float) com.gytrinket.gytrinket.core.defs.MechanicValueDefs.defaultValueOf(
+                "wingman_module_items", "attack_range", 20.0);
     }
 
     /** 僚机基础生命值：物品级定义优先（属性刷新与恢复路径即时生效），否则构造时写入的 Config 默认 */

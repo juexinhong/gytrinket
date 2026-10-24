@@ -55,18 +55,22 @@ public final class SwarmInstanceParams {
      * 客户端镜像：解析实例物品指定参数值（与 {@link #resolve} 同语义，读客户端覆盖表）。
      * 供逻辑客户端在无法获取服务端覆盖表时（如渲染/朝向决策）使用，保证客户端表现与服务端一致。
      */
-    public static double resolveClient(String itemId, String paramKey) {
+    public static double resolveClient(net.minecraft.core.RegistryAccess access, String itemId, String paramKey) {
         double fallback = fallbackFor(paramKey);
-        return DefsManager.clientResolveMechanicValueForItem(itemId, MECHANIC_SET, paramKey, fallback);
+        return DefsManager.clientResolveMechanicValueForItem(access, itemId, MECHANIC_SET, paramKey, fallback);
     }
 
     /** 各参数未覆盖时的默认值（服务端/客户端共用） */
     private static double fallbackFor(String paramKey) {
         return switch (paramKey) {
-            case KEY_BUILD_TIME -> Config.getSwarmBuildTime();
-            case KEY_BASE_HEALTH -> Config.getSwarmBaseHealth();
-            case KEY_BASE_DAMAGE -> Config.getSwarmBaseDamage();
-            case KEY_BASE_COUNT -> Config.getSwarmMaxCount();
+            case KEY_BUILD_TIME -> com.gytrinket.gytrinket.core.defs.MechanicValueDefs.defaultValueOf(
+                    MECHANIC_SET, KEY_BUILD_TIME, 20.0);
+            case KEY_BASE_HEALTH -> com.gytrinket.gytrinket.core.defs.MechanicValueDefs.defaultValueOf(
+                    MECHANIC_SET, KEY_BASE_HEALTH, 1.6);
+            case KEY_BASE_DAMAGE -> com.gytrinket.gytrinket.core.defs.MechanicValueDefs.defaultValueOf(
+                    MECHANIC_SET, KEY_BASE_DAMAGE, 0.08);
+            case KEY_BASE_COUNT -> com.gytrinket.gytrinket.core.defs.MechanicValueDefs.defaultValueOf(
+                    MECHANIC_SET, KEY_BASE_COUNT, 4.0);
             case KEY_ATTACK_INTERVAL -> 0.0D;
             case KEY_ATTACK_RANGE -> 0.0D;
             case KEY_SEARCH_RANGE -> 0.0D;

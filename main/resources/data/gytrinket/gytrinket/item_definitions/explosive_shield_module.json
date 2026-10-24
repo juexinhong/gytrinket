@@ -5,6 +5,12 @@
       "sets": [
         "explosive_shield_items"
       ],
+      "values": {
+        "explosive_shield_items": {
+          "radius": { "value": 4.0, "stackable": false },
+          "base_damage": { "value": 10.0, "stackable": false }
+        }
+      },
       "attributes": {
         "shield_percent": 0.05
       }

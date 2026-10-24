@@ -1,6 +1,5 @@
 package com.gytrinket.gytrinket.core.entity.construct.drone.behavior;
 
-import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.damage.InvincibilityMarkerManager;
 import com.gytrinket.gytrinket.core.defs.DefsManager;
 import com.gytrinket.gytrinket.core.entity.construct.drone.DroneConstructEntity;
@@ -48,9 +47,13 @@ public class NearDeathProtectionBehavior implements IDroneSpecialBehavior {
         UUID ownerUUID = drone.getOwnerUUID();
         MinecraftServer server = drone.level().getServer();
         int invincibleDuration = (int) DefsManager.resolveMechanicValue(server, ownerUUID,
-                "near_death_protection_items", "invincible_duration", Config.NEAR_DEATH_PROTECTION_INVINCIBLE_DURATION.get());
+                "near_death_protection_items", "invincible_duration",
+                com.gytrinket.gytrinket.core.defs.MechanicValueDefs.defaultValueOf(
+                        "near_death_protection_items", "invincible_duration", 20.0));
         int cooldownDuration = (int) DefsManager.resolveMechanicValue(server, ownerUUID,
-                "near_death_protection_items", "cooldown", Config.NEAR_DEATH_PROTECTION_COOLDOWN.get());
+                "near_death_protection_items", "cooldown",
+                com.gytrinket.gytrinket.core.defs.MechanicValueDefs.defaultValueOf(
+                        "near_death_protection_items", "cooldown", 300.0));
 
         InvincibilityMarkerManager.addMarker(drone, invincibleDuration);
 

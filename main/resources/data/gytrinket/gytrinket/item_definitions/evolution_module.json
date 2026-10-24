@@ -7,6 +7,14 @@
       ],
       "attributes": {
         "construct_wingman_explosive_count_base": 1
+      },
+      "values": {
+        "wingman_evolution_module_items": {
+          "bonus_per_level": {
+            "value": 0.00625,
+            "stackable": false
+          }
+        }
       }
     }
   }

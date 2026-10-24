@@ -121,17 +121,18 @@ public class TooltipHandler {
         }
         event.getToolTip().add(Component.literal("").withStyle(ChatFormatting.GRAY));
         addTooltip(event, "orbit_array_required", ChatFormatting.GOLD);
+        var access = getClientRegistryAccess();
         addFormattedTooltip(event, itemId, "orbit_array_effect", ChatFormatting.GRAY,
             (id) -> new Object[]{
-                formatDecimal(DefsManager.clientResolveMechanicValueForItem(id, "orbit_array_required_items",
+                formatDecimal(DefsManager.clientResolveMechanicValueForItem(access, id, "orbit_array_required_items",
                     "attack_speed_multiplier", 1.0D)),
-                formatDecimal(DefsManager.clientResolveMechanicValueForItem(id, "orbit_array_required_items",
+                formatDecimal(DefsManager.clientResolveMechanicValueForItem(access, id, "orbit_array_required_items",
                     "orbit_speed_multiplier", 1.0D)),
-                formatDecimal(DefsManager.clientResolveMechanicValueForItem(id, "orbit_array_required_items",
+                formatDecimal(DefsManager.clientResolveMechanicValueForItem(access, id, "orbit_array_required_items",
                     "damage_multiplier", 1.0D)),
-                formatDecimal(DefsManager.clientResolveMechanicValueForItem(id, "orbit_array_required_items",
+                formatDecimal(DefsManager.clientResolveMechanicValueForItem(access, id, "orbit_array_required_items",
                     "attack_range_multiplier", 1.0D)),
-                formatDecimal(DefsManager.clientResolveMechanicValueForItem(id, "orbit_array_required_items",
+                formatDecimal(DefsManager.clientResolveMechanicValueForItem(access, id, "orbit_array_required_items",
                     "target_range_multiplier", 1.0D))
             }
         );
@@ -312,7 +313,8 @@ public class TooltipHandler {
 
     /** 护盾类型开启穿盾机制时，在描述下追加一行"护盾会被过穿" */
     private static void addShieldPierceThroughLine(ItemTooltipEvent event, String type, String itemId) {
-        if (DefsManager.clientShieldTypeValueForItem(itemId, type, "pierce_through", 0.0D) < 0.5D) {
+        var access = getClientRegistryAccess();
+        if (DefsManager.clientShieldTypeValueForItem(access, itemId, type, "pierce_through", 0.0D) < 0.5D) {
             return;
         }
         event.getToolTip().add(Component.literal("    ")
@@ -357,49 +359,51 @@ public class TooltipHandler {
 
         if (!isDefaultTranslation(descTooltip, descKey)) {
             String formattedDesc = descTooltip.getString();
+            var access = getClientRegistryAccess();
             try {
                 // 数值来源与运行时 resolveShieldTypeValueForItem 一致：
-                // 物品级覆盖值优先，未覆盖回退 Config 全局默认，保证描述与实际生效数值相同
+                // 物品级定义（item_definitions 数据包 / UI 覆写）优先，未声明回退静态默认，
+                // 保证描述与实际生效数值相同。光环的全局 Config 项已迁移到物品定义。
                 if (type.equals("aura")) {
                     formattedDesc = String.format(descTooltip.getString(),
-                        (int) DefsManager.clientShieldTypeValueForItem(itemId, type, "trigger_frequency",
-                            Config.AURA_TRIGGER_FREQUENCY.get()),
-                        DefsManager.clientShieldTypeValueForItem(itemId, type, "radius",
-                            Config.AURA_RADIUS.get()),
-                        DefsManager.clientShieldTypeValueForItem(itemId, type, "damage",
-                            Config.AURA_DAMAGE.get()),
-                        DefsManager.clientShieldTypeValueForItem(itemId, type, "shield_cost",
-                            Config.AURA_SHIELD_COST.get()),
+                        (int) DefsManager.clientShieldTypeValueForItem(access, itemId, type, "trigger_frequency",
+                            ShieldValueDefs.defaultValueOf("aura", "trigger_frequency", 5.0)),
+                        DefsManager.clientShieldTypeValueForItem(access, itemId, type, "radius",
+                            ShieldValueDefs.defaultValueOf("aura", "radius", 3.5)),
+                        DefsManager.clientShieldTypeValueForItem(access, itemId, type, "damage",
+                            ShieldValueDefs.defaultValueOf("aura", "damage", 0.75)),
+                        DefsManager.clientShieldTypeValueForItem(access, itemId, type, "shield_cost",
+                            ShieldValueDefs.defaultValueOf("aura", "shield_cost", 0.042)),
                         Config.getIgniteDefaultDamage(),
                         Config.getIgniteDefaultDuration());
                 } else if (type.equals("reflect")) {
                     formattedDesc = String.format(descTooltip.getString(),
-                        (int)(DefsManager.clientShieldTypeValueForItem(itemId, type, "speed_base_modifier",
-                            Config.getReflectSpeedBaseModifier()) * 100),
-                        DefsManager.clientShieldTypeValueForItem(itemId, type, "damage_effect_multiplier",
-                            Config.getReflectDamageEffectMultiplier()));
+                        (int)(DefsManager.clientShieldTypeValueForItem(access, itemId, type, "speed_base_modifier",
+                            ShieldValueDefs.defaultValueOf("reflect", "speed_base_modifier", 1.5)) * 100),
+                        DefsManager.clientShieldTypeValueForItem(access, itemId, type, "damage_effect_multiplier",
+                            ShieldValueDefs.defaultValueOf("reflect", "damage_effect_multiplier", 1.0)));
                 } else if (type.equals("amplification")) {
                     formattedDesc = String.format(descTooltip.getString(),
-                        (int)(DefsManager.clientShieldTypeValueForItem(itemId, type, "base_amplification",
-                            Config.getAmplificationBaseAmplification()) * 100),
-                        (int)(DefsManager.clientShieldTypeValueForItem(itemId, type, "max_amplification",
-                            Config.getAmplificationMaxAmplification()) * 100),
-                        (int)(DefsManager.clientShieldTypeValueForItem(itemId, type, "movement_speed_bonus",
-                            Config.getAmplificationMovementSpeedBonus()) * 100));
+                        (int)(DefsManager.clientShieldTypeValueForItem(access, itemId, type, "base_amplification",
+                            ShieldValueDefs.defaultValueOf("amplification", "base_amplification", 0.2)) * 100),
+                        (int)(DefsManager.clientShieldTypeValueForItem(access, itemId, type, "max_amplification",
+                            ShieldValueDefs.defaultValueOf("amplification", "max_amplification", 1.0)) * 100),
+                        (int)(DefsManager.clientShieldTypeValueForItem(access, itemId, type, "movement_speed_bonus",
+                            ShieldValueDefs.defaultValueOf("amplification", "movement_speed_bonus", 0.2)) * 100));
                 } else if (type.equals("warp")) {
                     formattedDesc = String.format(descTooltip.getString(),
-                        DefsManager.clientShieldTypeValueForItem(itemId, type, "explosion_damage",
-                            Config.getWarpShieldExplosionDamage()));
+                        DefsManager.clientShieldTypeValueForItem(access, itemId, type, "explosion_damage",
+                            ShieldValueDefs.defaultValueOf("warp", "explosion_damage", 7.5)));
                 } else if (type.equals("siphon")) {
                     formattedDesc = String.format(descTooltip.getString(),
-                        DefsManager.clientShieldTypeValueForItem(itemId, type, "tick_interval",
-                            Config.SIPHON_TICK_INTERVAL.get()),
-                        DefsManager.clientShieldTypeValueForItem(itemId, type, "damage",
-                            Config.SIPHON_DAMAGE.get()),
-                        (int)(DefsManager.clientShieldTypeValueForItem(itemId, type, "heal_ratio",
-                            Config.SIPHON_HEAL_RATIO.get()) * 100),
-                        (int)(DefsManager.clientShieldTypeValueForItem(itemId, type, "max_effect",
-                            Config.SIPHON_MAX_EFFECT.get()) * 100));
+                        DefsManager.clientShieldTypeValueForItem(access, itemId, type, "tick_interval",
+                            ShieldValueDefs.defaultValueOf("siphon", "tick_interval", 5.0)),
+                        DefsManager.clientShieldTypeValueForItem(access, itemId, type, "damage",
+                            ShieldValueDefs.defaultValueOf("siphon", "damage", 0.3)),
+                        (int)(DefsManager.clientShieldTypeValueForItem(access, itemId, type, "heal_ratio",
+                            ShieldValueDefs.defaultValueOf("siphon", "heal_ratio", 0.3)) * 100),
+                        (int)(DefsManager.clientShieldTypeValueForItem(access, itemId, type, "max_effect",
+                            ShieldValueDefs.defaultValueOf("siphon", "max_effect", 0.4)) * 100));
                 }
                 event.getToolTip().add(Component.literal("    ").append(Component.literal(formattedDesc).withStyle(ChatFormatting.GRAY)));
             } catch (Exception e) {
@@ -432,7 +436,7 @@ public class TooltipHandler {
 
         if (DefsManager.itemSetContains(getClientRegistryAccess(), "wingman_module_items", itemId)) {
             addTooltip(event, "wingman_module", ChatFormatting.GRAY);
-            if (!collapse) addWingmanModuleDescTooltip(event);
+            if (!collapse) addWingmanModuleDescTooltip(event, itemId);
         }
 
         if (DefsManager.itemSetContains(getClientRegistryAccess(), "wingman_interceptor_module_items", itemId)) {
@@ -447,7 +451,7 @@ public class TooltipHandler {
 
         if (DefsManager.itemSetContains(getClientRegistryAccess(), "swarm_module_items", itemId)) {
             addTooltip(event, "swarm_module", ChatFormatting.GRAY);
-            if (!collapse) addMothershipBodyDescTooltip(event);
+            if (!collapse) addMothershipBodyDescTooltip(event, itemId);
         }
 
         if (DefsManager.itemSetContains(getClientRegistryAccess(), "barrier_items", itemId)) {
@@ -467,16 +471,24 @@ public class TooltipHandler {
 
     /**
      * 征途模块描述工具提示（动态参数：最大层数、持续秒数、消退间隔/数量、攻速/移速每层加成）
+     * 数值按物品的 item_definitions.values 解析，未声明回退静态默认。
      */
     private static void addJourneyModuleDescTooltip(ItemTooltipEvent event, String itemId) {
+        var access = getClientRegistryAccess();
         addFormattedTooltip(event, itemId, "journey_module_desc", ChatFormatting.GRAY,
             (id) -> new Object[]{
-                Config.getJourneyMaxStacks(),
-                Config.getJourneyDurationTicks() / 20.0,
-                Config.getJourneyDecayIntervalTicks(),
-                Config.getJourneyDecayPerInterval(),
-                Config.getJourneyAttackSpeedPerStack() * 100,
-                Config.getJourneyMovementSpeedPerStack() * 100
+                (int) DefsManager.clientResolveMechanicValueForItem(access, id, "journey_module_items",
+                        "max_stacks", 40.0),
+                DefsManager.clientResolveMechanicValueForItem(access, id, "journey_module_items",
+                        "duration_ticks", 100.0) / 20.0,
+                (int) DefsManager.clientResolveMechanicValueForItem(access, id, "journey_module_items",
+                        "decay_interval_ticks", 3.0),
+                (int) DefsManager.clientResolveMechanicValueForItem(access, id, "journey_module_items",
+                        "decay_per_interval", 2.0),
+                DefsManager.clientResolveMechanicValueForItem(access, id, "journey_module_items",
+                        "attack_speed_per_stack", 0.0075) * 100,
+                DefsManager.clientResolveMechanicValueForItem(access, id, "journey_module_items",
+                        "movement_speed_per_stack", 0.0075) * 100
             }
         );
     }
@@ -493,19 +505,20 @@ public class TooltipHandler {
         if (!isDefaultTranslation(tooltip, translationKey)) {
             String formattedText = tooltip.getString();
             try {
-                // 未覆盖回退值需与运行时实例参数解析一致（DroneInstanceParams fallback）：均取 Config 默认
-                double fallbackCount = Config.getDroneMaxCount();
-                double fallbackHealth = Config.getDroneBaseHealth();
-                double fallbackDamage = Config.getDroneBaseDamage();
-                double fallbackInterval = Config.DRONE_ATTACK_INTERVAL.get();
-                // 物品级覆盖值优先（client 覆盖层），未覆盖回退上述默认（与运行时实例参数解析一致）
-                double maxCount = DefsManager.clientResolveMechanicValueForItem(
+                // 未覆盖回退值需与运行时实例参数解析一致：MechanicValueDefs 静态默认
+                double fallbackCount = 3.0;
+                double fallbackHealth = 5.0;
+                double fallbackDamage = 0.3;
+                double fallbackInterval = 0.5;
+                // 物品级覆盖值优先（item_definitions 数据包 + client 覆盖层），未覆盖回退上述默认（与运行时实例参数解析一致）
+                var access = getClientRegistryAccess();
+                double maxCount = DefsManager.clientResolveMechanicValueForItem(access,
                         itemId, "drone_module_items", "base_count", fallbackCount);
-                double maxHealth = DefsManager.clientResolveMechanicValueForItem(
+                double maxHealth = DefsManager.clientResolveMechanicValueForItem(access,
                         itemId, "drone_module_items", "base_health", fallbackHealth);
-                double damage = DefsManager.clientResolveMechanicValueForItem(
+                double damage = DefsManager.clientResolveMechanicValueForItem(access,
                         itemId, "drone_module_items", "base_damage", fallbackDamage);
-                double interval = DefsManager.clientResolveMechanicValueForItem(
+                double interval = DefsManager.clientResolveMechanicValueForItem(access,
                         itemId, "drone_module_items", "attack_interval", fallbackInterval);
                 if (interval <= 0.0D) interval = fallbackInterval;
                 double attackSpeed = 1.0 / interval;
@@ -521,21 +534,25 @@ public class TooltipHandler {
     /**
      * 僚机模块描述工具提示（需要特殊的动态参数计算）
      */
-    private static void addWingmanModuleDescTooltip(ItemTooltipEvent event) {
+    private static void addWingmanModuleDescTooltip(ItemTooltipEvent event, String itemId) {
         String translationKey = TOOLTIP_PREFIX + "wingman_module_desc";
         MutableComponent tooltip = Component.translatable(translationKey);
 
         if (!isDefaultTranslation(tooltip, translationKey)) {
             String formattedText = tooltip.getString();
             try {
-                ConstructType wingmanType = ConstructManager.getInstance().getConstructType(WingmanConstructTypes.WINGMAN);
-                int maxCount = wingmanType != null ? wingmanType.getMaxCount() : Config.getWingmanMaxCount();
-                double maxHealth = wingmanType != null ? wingmanType.getMaxHealth() : Config.getWingmanBaseHealth();
+                var access = getClientRegistryAccess();
                 int explosiveCount = Config.getWingmanExplosiveCount();
-                double explosiveDamage = Config.getWingmanExplosiveDamage();
                 double explosionDamage = Config.getWingmanExplosionDamage();
                 double explosionRadius = Config.getWingmanExplosionRadius();
-                double attackSpeed = 1.0 / Config.getWingmanAttackInterval();
+                int maxCount = (int) DefsManager.clientResolveMechanicValueForItem(access, itemId,
+                        "wingman_module_items", "base_count", 1.0);
+                double maxHealth = DefsManager.clientResolveMechanicValueForItem(access, itemId,
+                        "wingman_module_items", "base_health", 24.0);
+                double explosiveDamage = DefsManager.clientResolveMechanicValueForItem(access, itemId,
+                        "wingman_module_items", "base_damage", 0.5);
+                double attackSpeed = 1.0 / Math.max(0.01, DefsManager.clientResolveMechanicValueForItem(access,
+                        itemId, "wingman_module_items", "attack_interval", 1.0));
                 formattedText = String.format(formattedText,
                     maxCount, (int) maxHealth, explosiveCount, explosiveDamage,
                     explosionDamage, explosionRadius, formatDecimal(attackSpeed));
@@ -558,26 +575,31 @@ public class TooltipHandler {
      */
     private static void addNanoRegenModuleDescTooltip(ItemTooltipEvent event, String itemId) {
         addFormattedTooltip(event, itemId, "nano_regen_module_desc", ChatFormatting.GRAY,
-            (id) -> new Object[]{TooltipConfig.mechanicValue(id, "wingmanNanoRegenPercent", Config.getWingmanNanoRegenPercent()) * 100}
+            (id) -> new Object[]{TooltipConfig.mechanicValue(id, "wingmanNanoRegenPercent", 0.02) * 100}
         );
     }
 
     /**
      * 母舰机身描述工具提示（需要特殊的动态参数计算）
      */
-    private static void addMothershipBodyDescTooltip(ItemTooltipEvent event) {
+    private static void addMothershipBodyDescTooltip(ItemTooltipEvent event, String itemId) {
         String translationKey = TOOLTIP_PREFIX + "mothership_body_desc";
         MutableComponent tooltip = Component.translatable(translationKey);
 
         if (!isDefaultTranslation(tooltip, translationKey)) {
             String formattedText = tooltip.getString();
             try {
-                ConstructType swarmType = ConstructManager.getInstance().getConstructType(SwarmConstructTypes.SWARM);
-                int maxCount = swarmType != null ? swarmType.getMaxCount() : Config.getSwarmMaxCount();
-                double maxHealth = swarmType != null ? swarmType.getMaxHealth() : Config.getSwarmBaseHealth();
-                double damage = Config.getSwarmBaseDamage();
-                double attackSpeed = 1.0 / Config.getSwarmAttackInterval();
-                double attackRange = Config.getSwarmAttackRange();
+                var access = getClientRegistryAccess();
+                int maxCount = (int) DefsManager.clientResolveMechanicValueForItem(access, itemId,
+                        "swarm_module_items", "base_count", 4.0);
+                double maxHealth = DefsManager.clientResolveMechanicValueForItem(access, itemId,
+                        "swarm_module_items", "base_health", 1.6);
+                double damage = DefsManager.clientResolveMechanicValueForItem(access, itemId,
+                        "swarm_module_items", "base_damage", 0.08);
+                double attackSpeed = 1.0 / Math.max(0.01, DefsManager.clientResolveMechanicValueForItem(access,
+                        itemId, "swarm_module_items", "attack_interval", 1.5));
+                double attackRange = DefsManager.clientResolveMechanicValueForItem(access, itemId,
+                        "swarm_module_items", "attack_range", 4.0);
                 formattedText = String.format(formattedText,
                     maxCount, maxHealth, damage, formatDecimal(attackSpeed), attackRange);
                 event.getToolTip().add(Component.literal(formattedText).withStyle(ChatFormatting.GRAY));

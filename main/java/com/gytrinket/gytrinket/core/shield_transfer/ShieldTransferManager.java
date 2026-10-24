@@ -771,7 +771,8 @@ public class ShieldTransferManager {
         }
 
         double penaltyPerEntity = DefsManager.resolveMechanicValue(ServerLifecycleHooks.getCurrentServer(), playerUUID,
-                "shield_transfer_items", "penalty_per_entity", Config.SHIELD_TRANSFER_EFFECT_PENALTY_PER_ENTITY.get());
+                "shield_transfer_items", "penalty_per_entity",
+                com.gytrinket.gytrinket.core.defs.MechanicValueDefs.defaultValueOf("shield_transfer_items", "penalty_per_entity", 0.04));
         double multiplier = 1.0;
         for (int i = 0; i < entityCount; i++) {
             multiplier *= (1.0 - penaltyPerEntity);

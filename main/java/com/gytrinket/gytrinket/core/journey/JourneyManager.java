@@ -2,6 +2,8 @@ package com.gytrinket.gytrinket.core.journey;
 
 import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
+import com.gytrinket.gytrinket.core.defs.DefsManager;
+import com.gytrinket.gytrinket.core.defs.MechanicValueDefs;
 import com.gytrinket.gytrinket.event.PlayerAttributesCalculatedEvent;
 import com.gytrinket.gytrinket.gytrinket;
 import com.gytrinket.gytrinket.storage.PlayerStoreUtils;
@@ -23,12 +25,12 @@ import java.util.concurrent.ConcurrentHashMap;
  * <p>
  * 玩家每击杀一个实体累积 1 层战意：
  * <ul>
- *   <li>每层战意提供 +{@code Config.JOURNEY_ATTACK_SPEED_PER_STACK} 攻击速度动态独立乘区加成</li>
- *   <li>每层战意提供 +{@code Config.JOURNEY_MOVEMENT_SPEED_PER_STACK} 移动速度动态独立乘区加成</li>
- *   <li>叠加时刷新持续时间（{@code Config.JOURNEY_DURATION_TICKS}），期间持续保持层数</li>
- *   <li>持续时间耗尽后快速消退：每 {@code Config.JOURNEY_DECAY_INTERVAL_TICKS} 刻消退
- *       {@code Config.JOURNEY_DECAY_PER_INTERVAL} 层</li>
- *   <li>最多叠加 {@code Config.JOURNEY_MAX_STACKS} 层</li>
+ *   <li>每层战意提供 +{@code attack_speed_per_stack} 攻击速度动态独立乘区加成</li>
+ *   <li>每层战意提供 +{@code movement_speed_per_stack} 移动速度动态独立乘区加成</li>
+ *   <li>叠加时刷新持续时间（{@code duration_ticks}），期间持续保持层数</li>
+ *   <li>持续时间耗尽后快速消退：每 {@code decay_interval_ticks} 刻消退
+ *       {@code decay_per_interval} 层</li>
+ *   <li>最多叠加 {@code max_stacks} 层；以上参数均按玩家装备的征途模块物品级解析</li>
  * </ul>
  * 加成通过本模组属性池（{@link AttributeManager}）的 attack_speed_independent /
  * movement_speed_independent 动态属性施加：玩家面板可显示聚合值，
@@ -115,9 +117,9 @@ public class JourneyManager {
         } else {
             // 持续时间已耗尽：快速消退战意层数
             int decayTicker = PLAYER_DECAY_TICKER.getOrDefault(uuid, 0) + 1;
-            if (decayTicker >= Config.getJourneyDecayIntervalTicks()) {
+            if (decayTicker >= Math.max(1, (int) param(player, "decay_interval_ticks", 3.0))) {
                 PLAYER_DECAY_TICKER.remove(uuid);
-                count = Math.max(0, count - Config.getJourneyDecayPerInterval());
+                count = Math.max(0, count - Math.max(1, (int) param(player, "decay_per_interval", 2.0)));
                 if (count <= 0) {
                     PLAYER_STACK_COUNT.remove(uuid);
                     PLAYER_STACK_TIMER.remove(uuid);
@@ -139,10 +141,10 @@ public class JourneyManager {
     private static void addStack(ServerPlayer player) {
         UUID uuid = player.getUUID();
         int count = PLAYER_STACK_COUNT.getOrDefault(uuid, 0);
-        count = Math.min(count + 1, Config.getJourneyMaxStacks());
+        count = Math.min(count + 1, Math.max(1, (int) param(player, "max_stacks", 40.0)));
         PLAYER_STACK_COUNT.put(uuid, count);
         // 叠加时刷新持续时间，并停止消退
-        PLAYER_STACK_TIMER.put(uuid, Config.getJourneyDurationTicks());
+        PLAYER_STACK_TIMER.put(uuid, Math.max(1, (int) param(player, "duration_ticks", 100.0)));
         PLAYER_DECAY_TICKER.remove(uuid);
         applyAttributes(player, count);
     }
@@ -156,19 +158,25 @@ public class JourneyManager {
         }
         PLAYER_APPLIED_STACKS.put(uuid, stacks);
 
-        double attackSpeedBonus = stacks * Config.getJourneyAttackSpeedPerStack();
+        double attackSpeedBonus = stacks * param(player, "attack_speed_per_stack", 0.0075);
         if (attackSpeedBonus > 0) {
             AttributeManager.setDynamicAttribute(uuid, NAMESPACE, ATTR_ATTACK_SPEED, attackSpeedBonus);
         } else {
             AttributeManager.removeDynamicAttribute(uuid, NAMESPACE, ATTR_ATTACK_SPEED);
         }
 
-        double movementSpeedBonus = stacks * Config.getJourneyMovementSpeedPerStack();
+        double movementSpeedBonus = stacks * param(player, "movement_speed_per_stack", 0.0075);
         if (movementSpeedBonus > 0) {
             AttributeManager.setDynamicAttribute(uuid, NAMESPACE, ATTR_MOVEMENT_SPEED, movementSpeedBonus);
         } else {
             AttributeManager.removeDynamicAttribute(uuid, NAMESPACE, ATTR_MOVEMENT_SPEED);
         }
+    }
+
+    /** 物品级参数解析：取玩家装备的征途模块数值，未声明回退静态默认 */
+    private static double param(Player player, String key, double fallback) {
+        return DefsManager.resolveMechanicValue(player.getServer(), player.getUUID(),
+                "journey_module_items", key, fallback);
     }
 
     /** 清空指定玩家的战意层数与动态属性 */

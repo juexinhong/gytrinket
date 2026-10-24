@@ -291,7 +291,8 @@ public class GuardBehavior implements IDroneBehavior {
 
     @Override
     public float getAttackInterval() {
-        return Config.DRONE_ATTACK_INTERVAL.get().floatValue();
+        return (float) com.gytrinket.gytrinket.core.defs.MechanicValueDefs.defaultValueOf(
+                "drone_module_items", "attack_interval", 0.5);
     }
 
     @Override

@@ -92,9 +92,13 @@ public class SelfDestructBehavior implements IDroneSpecialBehavior {
         UUID ownerUUID = construct instanceof IConstructEntity cEntity ? cEntity.getOwnerUUID() : null;
         var server = construct.level().getServer();
         double baseDamage = DefsManager.resolveMechanicValue(server, ownerUUID,
-                "self_destruct_items", "base_damage", Config.SELF_DESTRUCT_BASE_DAMAGE.get());
+                "self_destruct_items", "base_damage",
+                com.gytrinket.gytrinket.core.defs.MechanicValueDefs.defaultValueOf(
+                        "self_destruct_items", "base_damage", 1.0));
         double baseRadius = DefsManager.resolveMechanicValue(server, ownerUUID,
-                "self_destruct_items", "base_radius", Config.SELF_DESTRUCT_BASE_RADIUS.get());
+                "self_destruct_items", "base_radius",
+                com.gytrinket.gytrinket.core.defs.MechanicValueDefs.defaultValueOf(
+                        "self_destruct_items", "base_radius", 1.0));
         double damagePerHealth = Config.SELF_DESTRUCT_DAMAGE_PER_MAX_HEALTH.get();
         double radiusPerHealth = Config.SELF_DESTRUCT_RADIUS_PER_MAX_HEALTH.get();
 

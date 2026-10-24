@@ -204,7 +204,7 @@ public class ShieldIdleParticleEvent {
 
         if (!reverseOrder) {
             NetworkHandler.sendShieldParticleToPlayer(player, player, particleX, particleY, particleZ,
-                    dirX, dirY, dirZ, originX, originY, originZ, baseDelayTicks);
+                    dirX, dirY, dirZ, originX, originY, originZ, baseDelayTicks, 0);
         }
 
         // 计算与方向向量垂直的法线向量，用于构建六边形平面
@@ -295,14 +295,14 @@ public class ShieldIdleParticleEvent {
                 double pointZ = originZ + pointDir[2] * RADIUS;
 
                 NetworkHandler.sendShieldParticleToPlayer(player, player, pointX, pointY, pointZ,
-                        pointDir[0], pointDir[1], pointDir[2], originX, originY, originZ, baseDelayTicks + delayTicks);
+                        pointDir[0], pointDir[1], pointDir[2], originX, originY, originZ, baseDelayTicks + delayTicks, 0);
             }
         }
 
         // 反序时中心粒子最后出现（3圈后，延迟6tick）
         if (reverseOrder) {
             NetworkHandler.sendShieldParticleToPlayer(player, player, particleX, particleY, particleZ,
-                    dirX, dirY, dirZ, originX, originY, originZ, baseDelayTicks + 6);
+                    dirX, dirY, dirZ, originX, originY, originZ, baseDelayTicks + 6, 0);
         }
     }
 }

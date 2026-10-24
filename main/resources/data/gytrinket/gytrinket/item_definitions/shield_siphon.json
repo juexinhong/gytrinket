@@ -1,4 +1,4 @@
-{
+﻿{
   "items": {
     "gytrinket:shield_siphon": {
       "shieldTypes": ["siphon"],
@@ -6,7 +6,15 @@
         "shield_base": 8.0,
         "shield_cooldown_time": 7.0,
         "shield_hit_cooldown_extend": 40.0,
-        "shield_hit_cooldown_extend_multiplier": 0.1
+        "shield_hit_cooldown_extend_multiplier": 0.1,
+        "tick_interval": 5.0,
+        "radius": 4.0,
+        "damage": 0.3,
+        "heal_ratio": 0.3,
+        "duration_ticks": 20.0,
+        "effect_per_stack": 0.025,
+        "max_effect": 0.4,
+        "decay_ratio": 0.03
       },
       "attributes": {
         "shield_effect_percent": -0.3

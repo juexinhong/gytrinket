@@ -264,19 +264,58 @@ public final class ClientConsole {
                             mc.setScreen(new net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen(mc.player));
                         }
                         case "playerpanel" -> {
+                            // 演示数据只用真实属性键（否则面板会显示未本地化的 key）
                             java.util.Map<String, Double> attrs = new java.util.LinkedHashMap<>();
                             attrs.put("attack_damage", 12.5D);
-                            attrs.put("max_health", 40.0D);
-                            attrs.put("armor", 8.0D);
-                            attrs.put("movement_speed", 1.15D);
+                            attrs.put("shield_base", 120.0D);
+                            attrs.put("shield_damage_reduction", 0.25D);
+                            attrs.put("attack_speed_percent", 1.15D);
+                            attrs.put("construct_count_base", 3.0D);
+                            // 装备区演示数据：4 件真实物品（NBT 走 ItemStack.of 反序列化）
+                            String[] demoIds = {"gytrinket:shield_gy3", "gytrinket:shield_amplifier3",
+                                    "gytrinket:attack_frame", "gytrinket:construct_frame"};
+                            net.minecraft.nbt.ListTag demoItems = new net.minecraft.nbt.ListTag();
+                            for (int i = 0; i < demoIds.length; i++) {
+                                net.minecraft.nbt.CompoundTag t = new net.minecraft.nbt.CompoundTag();
+                                t.putString("id", demoIds[i]);
+                                t.putByte("Count", (byte) 1);
+                                t.putByte("slot", (byte) i);
+                                demoItems.add(t);
+                            }
                             mc.setScreen(new com.gytrinket.gytrinket.client.screen.PlayerPanelScreen(
-                                    attrs, new net.minecraft.nbt.ListTag(), 6,
+                                    attrs, demoItems, 6,
                                     new net.minecraft.nbt.CompoundTag(), new net.minecraft.nbt.ListTag(),
-                                    8, 120, 3, 150, 2, new String[0]));
+                                    8, 12, 3, 150, 2, new String[0]));
                         }
                         case "upgradetarget" -> mc.setScreen(
                                 new com.gytrinket.gytrinket.client.screen.UpgradeTargetScreen(
                                         null, new net.minecraft.nbt.ListTag()));
+                        case "interceptor" -> mc.setScreen(
+                                new com.gytrinket.gytrinket.client.screen.InterceptorWeaponSelectScreen(0));
+                        case "interceptorammo" -> mc.setScreen(
+                                new com.gytrinket.gytrinket.client.screen.InterceptorAmmoSelectScreen(0));
+                        case "interceptorconfig" -> {
+                            // 拦截机配置容器：客户端直接构造一份演示数据（entityId/武器槽均为空）
+                            var inventory = mc.player.getInventory();
+                            var container = new com.gytrinket.gytrinket.core.entity.construct.wingman
+                                    .InterceptorConfigContainer(0, inventory,
+                                    net.minecraft.world.item.ItemStack.EMPTY,
+                                    net.minecraft.world.item.ItemStack.EMPTY, "melee");
+                            mc.setScreen(new com.gytrinket.gytrinket.client.screen
+                                    .InterceptorConfigContainerScreen(container, inventory,
+                                    net.minecraft.network.chat.Component.translatable(
+                                            "screen.gytrinket.interceptor_config")));
+                        }
+                        case "core" -> {
+                            // 光点核心方块界面：37 格容器（27 核心槽 + 玩家背包）
+                            var inventory = mc.player.getInventory();
+                            var menu = new com.gytrinket.gytrinket.menu.LightPointCoreMenu(0, inventory,
+                                    new net.minecraft.world.SimpleContainer(27));
+                            mc.setScreen(new com.gytrinket.gytrinket.client.screen.LightPointCoreScreen(
+                                    menu, inventory,
+                                    net.minecraft.network.chat.Component.translatable(
+                                            "block.gytrinket.light_point_core")));
+                        }
                         default -> gytrinket.LOGGER.warn("[cmd] unknown screen {}", screenId);
                     }
                     gytrinket.LOGGER.info("[cmd] screen {}", screenId);
@@ -368,6 +407,71 @@ public final class ClientConsole {
                     // hud 0 隐藏 HUD（干净截图），hud 1 显示
                     mc.options.hideGui = p.length < 2 || "0".equals(p[1]);
                     gytrinket.LOGGER.info("[cmd] hud hidden={}", mc.options.hideGui);
+                }
+                case "hudmode" -> {
+                    // 切换护盾 HUD 样式：hudmode 0 = 默认纯色长条，hudmode 1 = 原版纹理样式
+                    boolean vanilla = p.length > 1 && !"0".equals(p[1]);
+                    com.gytrinket.gytrinket.config.ClientConfig.VANILLA_STYLE_HUD.set(vanilla);
+                    gytrinket.LOGGER.info("[cmd] hudmode vanilla={}", vanilla);
+                }
+                case "key" -> {
+                    // 模拟按键：key attack 0|1（左键）、key use 0|1（右键）。
+                    // KeyMapping#setDown 会累加点击计数，原版 handleKeybinds 下一 tick 就会触发攻击/使用。
+                    String name = p.length > 1 ? p[1] : "attack";
+                    boolean down = p.length > 2 && !"0".equals(p[2]);
+                    net.minecraft.client.KeyMapping mapping = switch (name) {
+                        case "attack" -> mc.options.keyAttack;
+                        case "use" -> mc.options.keyUse;
+                        case "jump" -> mc.options.keyJump;
+                        case "sprint" -> mc.options.keySprint;
+                        default -> null;
+                    };
+                    if (mapping == null) {
+                        gytrinket.LOGGER.warn("[cmd] key: unknown mapping {}", name);
+                    } else {
+                        mapping.setDown(down);
+                        gytrinket.LOGGER.info("[cmd] key {} down={}", name, down);
+                    }
+                }
+                case "persp" -> {
+                    // 切换视角：0 = 第一人称，1 = 第三人称背后，2 = 第三人称正面（验收构造体/护盾用）
+                    int mode = p.length > 1 ? Integer.parseInt(p[1]) : 1;
+                    mc.options.setCameraType(net.minecraft.client.CameraType.values()[
+                            Math.max(0, Math.min(2, mode))]);
+                    gytrinket.LOGGER.info("[cmd] persp {}", mc.options.getCameraType());
+                }
+                case "entities" -> {
+                    // 列出身周实体（验收用：确认服务端实体是否真的同步到客户端）
+                    double radius = p.length > 1 ? Double.parseDouble(p[1]) : 32.0D;
+                    java.util.List<net.minecraft.world.entity.Entity> list = mc.level.getEntities(
+                            mc.player, mc.player.getBoundingBox().inflate(radius), e -> true);
+                    list.sort(java.util.Comparator.comparingDouble(e -> e.distanceTo(mc.player)));
+                    gytrinket.LOGGER.info("[entities] radius={} count={}", radius, list.size());
+                    for (net.minecraft.world.entity.Entity e : list) {
+                        gytrinket.LOGGER.info("[entities] {} id={} pos={} dist={} invisible={} removed={}",
+                                net.minecraft.core.Registry.ENTITY_TYPE.getKey(e.getType()), e.getId(),
+                                String.format("%.2f/%.2f/%.2f", e.getX(), e.getY(), e.getZ()),
+                                String.format("%.2f", e.distanceTo(mc.player)),
+                                e.isInvisible(), e.isRemoved());
+                    }
+                }
+                case "hudshield" -> {
+                    // 注入 HUD 数值（纯客户端渲染验收；真实同步链路另行测）
+                    double cur = p.length > 1 ? Double.parseDouble(p[1]) : 80.0D;
+                    double max = p.length > 2 ? Double.parseDouble(p[2]) : 120.0D;
+                    double adaptive = p.length > 3 ? Double.parseDouble(p[3]) : 0.15D;
+                    com.gytrinket.gytrinket.client.shield.ShieldHudRenderer.getInstance()
+                            .updateShieldData(cur, max, adaptive);
+                    gytrinket.LOGGER.info("[cmd] hudshield current={} max={} adaptive={}", cur, max, adaptive);
+                }
+                case "click" -> {
+                    // 通用界面点击（像素坐标）：验证按钮/行点击
+                    int cx = Integer.parseInt(p[1]);
+                    int cy = Integer.parseInt(p[2]);
+                    int btn = p.length > 3 ? Integer.parseInt(p[3]) : 0;
+                    boolean handled = mc.screen != null && mc.screen.mouseClicked(cx, cy, btn);
+                    gytrinket.LOGGER.info("[cmd] click {}/{} btn={} screen={} handled={}",
+                            cx, cy, btn, mc.screen == null ? "null" : mc.screen.getClass().getSimpleName(), handled);
                 }
                 case "dump" -> {
                     String name = p[1];

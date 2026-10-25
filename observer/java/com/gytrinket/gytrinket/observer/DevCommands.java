@@ -19,6 +19,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
@@ -170,7 +171,204 @@ public final class DevCommands {
                         .then(Commands.argument("radius", DoubleArgumentType.doubleArg(1.0D, 256.0D))
                                 .executes(ctx -> dumpParts(ctx.getSource(),
                                         DoubleArgumentType.getDouble(ctx, "radius")))))
+                .then(Commands.literal("construct")
+                        .requires(source -> source.hasPermission(2))
+                        .executes(ctx -> spawnConstruct(ctx.getSource(), null))
+                        .then(Commands.argument("type", StringArgumentType.word())
+                                .executes(ctx -> spawnConstruct(ctx.getSource(),
+                                        StringArgumentType.getString(ctx, "type")))))
+                .then(Commands.literal("constructclear")
+                        .requires(source -> source.hasPermission(2))
+                        .executes(ctx -> clearConstructs(ctx.getSource())))
+                .then(Commands.literal("store")
+                        .requires(source -> source.hasPermission(2))
+                        .executes(ctx -> storeItems(ctx.getSource(), new String[0]))
+                        .then(Commands.argument("items", StringArgumentType.greedyString())
+                                .executes(ctx -> storeItems(ctx.getSource(),
+                                        StringArgumentType.getString(ctx, "items").split("\\s+")))))
+                .then(Commands.literal("storeclear")
+                        .requires(source -> source.hasPermission(2))
+                        .executes(ctx -> clearStore(ctx.getSource())))
+                .then(Commands.literal("storelist")
+                        .requires(source -> source.hasPermission(2))
+                        .executes(ctx -> listStore(ctx.getSource())))
         );
+    }
+
+    // ------------------------------------------------------------------
+    // 光点核心存储（PlayerStore）验收：等价于在光点核心界面里放进物品
+    // ------------------------------------------------------------------
+    /**
+     * 往光点核心存储里放物品：{@code /gytrinket store <id> [id ...]}。
+     * 每个参数可以是 {@code id} 或 {@code id*count}。写入通过 ItemStackHandler 触发
+     * {@code PlayerLightPointStoreChangedEvent}，属性/护盾/攻击模式会走真实重算链路。
+     */
+    private static int storeItems(CommandSourceStack source, String[] specs) {
+        ServerPlayer player = source.getPlayer();
+        if (player == null) {
+            source.sendFailure(Component.literal("需要玩家执行"));
+            return 0;
+        }
+        var store = com.gytrinket.gytrinket.storage.PlayerStoreManager.getOrCreatePlayerStore(player);
+        var handler = store.getItemHandler();
+        int added = 0;
+        for (String spec : specs) {
+            if (spec == null || spec.isBlank()) continue;
+            String id = spec;
+            int count = 1;
+            int star = spec.lastIndexOf('*');
+            if (star > 0) {
+                id = spec.substring(0, star);
+                try {
+                    count = Integer.parseInt(spec.substring(star + 1));
+                } catch (NumberFormatException ignored) {
+                    id = spec;
+                }
+            }
+            var rl = net.minecraft.resources.ResourceLocation.tryParse(id.contains(":") ? id : "gytrinket:" + id);
+            var item = rl == null ? null : net.minecraft.core.Registry.ITEM.get(rl);
+            if (item == null || item == net.minecraft.world.item.Items.AIR) {
+                source.sendFailure(Component.literal("未知物品: " + id));
+                continue;
+            }
+            ItemStack stack = new ItemStack(item, Math.max(1, Math.min(count, 64)));
+            boolean placed = false;
+            for (int slot = 0; slot < handler.getSlots(); slot++) {
+                if (handler.getStackInSlot(slot).isEmpty()) {
+                    handler.setStackInSlot(slot, stack);
+                    placed = true;
+                    added++;
+                    break;
+                }
+            }
+            if (!placed) {
+                source.sendFailure(Component.literal("光点核心存储已满，未放入: " + id));
+            }
+        }
+        gytrinket.LOGGER.info("[store] added {} stacks for {}", added, player.getName().getString());
+        source.sendSuccess(Component.literal("已放入光点核心存储: " + added + " 件，当前属性重算已触发"), false);
+        return added;
+    }
+
+    /** 清空光点核心存储（验收复位用） */
+    private static int clearStore(CommandSourceStack source) {
+        ServerPlayer player = source.getPlayer();
+        if (player == null) {
+            source.sendFailure(Component.literal("需要玩家执行"));
+            return 0;
+        }
+        var store = com.gytrinket.gytrinket.storage.PlayerStoreManager.getOrCreatePlayerStore(player);
+        var handler = store.getItemHandler();
+        int removed = 0;
+        for (int slot = 0; slot < handler.getSlots(); slot++) {
+            if (!handler.getStackInSlot(slot).isEmpty()) {
+                removed++;
+                handler.setStackInSlot(slot, ItemStack.EMPTY);
+            }
+        }
+        source.sendSuccess(Component.literal("已清空光点核心存储: " + removed + " 件"), false);
+        return removed;
+    }
+
+    /** 打印光点核心存储内容与禁用状态（验收用） */
+    private static int listStore(CommandSourceStack source) {
+        ServerPlayer player = source.getPlayer();
+        if (player == null) {
+            source.sendFailure(Component.literal("需要玩家执行"));
+            return 0;
+        }
+        var store = com.gytrinket.gytrinket.storage.PlayerStoreManager.getOrCreatePlayerStore(player);
+        var handler = store.getItemHandler();
+        var disabled = com.gytrinket.gytrinket.core.shield.DisableSystem.getDisabledItems(player.getUUID());
+        int count = 0;
+        for (int slot = 0; slot < handler.getSlots(); slot++) {
+            ItemStack stack = handler.getStackInSlot(slot);
+            if (stack.isEmpty()) continue;
+            count++;
+            String id = net.minecraft.core.Registry.ITEM.getKey(stack.getItem()).toString();
+            boolean off = disabled.contains(id);
+            gytrinket.LOGGER.info("[store] slot={} item={} x{} disabled={}{}", slot, id, stack.getCount(), off,
+                    off ? " reason=" + com.gytrinket.gytrinket.core.shield.DisableSystem
+                            .getDisabledReason(player.getUUID(), id) : "");
+        }
+        gytrinket.LOGGER.info("[store] total={} disabledIds={}", count, disabled);
+        source.sendSuccess(Component.literal("光点核心存储: " + count + " 件"), false);
+        return count;
+    }
+
+    // ------------------------------------------------------------------
+    // 构造体验收：走真实构建链路（ConstructBuilder → onCreated → addConstruct）
+    // ------------------------------------------------------------------
+    /**
+     * 立即完成一次构造体构建。不传 type 时打印可选类型。
+     * <p>
+     * 之所以走 {@link com.gytrinket.gytrinket.core.entity.construct.ConstructBuilder} 而不是
+     * 直接 /summon：构造体实体在 {@code checkManagerRegistration} 里要求 owner 与
+     * ConstructManager 注册表都存在，裸召唤的实体会在下一轮检查时自毁。
+     */
+    private static int spawnConstruct(CommandSourceStack source, String typeId) {
+        ServerPlayer player = source.getPlayer();
+        if (player == null) {
+            source.sendFailure(Component.literal("需要玩家执行"));
+            return 0;
+        }
+        var manager = com.gytrinket.gytrinket.core.entity.construct.ConstructManager.getInstance();
+        if (typeId == null) {
+            String ids = String.join(", ", manager.getAllConstructTypeIds());
+            source.sendSuccess(Component.literal("构造体类型: " + ids), false);
+            return manager.getAllConstructTypeIds().size();
+        }
+        var type = manager.getConstructType(typeId);
+        if (type == null) {
+            source.sendFailure(Component.literal("未知构造体类型: " + typeId
+                    + "，可用: " + String.join(", ", manager.getAllConstructTypeIds())));
+            return 0;
+        }
+        var builder = new com.gytrinket.gytrinket.core.entity.construct.ConstructBuilder(player, type);
+        int guard = 0;
+        while (!builder.isCompleted() && guard++ < 20000) {
+            builder.tick();
+        }
+        if (!builder.isCompleted()) {
+            source.sendFailure(Component.literal("构建未完成（构建速度可能为 0）: " + typeId));
+            return 0;
+        }
+        int count = manager.getPlayerConstructCountByType(player, typeId);
+        gytrinket.LOGGER.info("[construct] spawned {} for {} (count={}, entities={})",
+                typeId, player.getName().getString(), count,
+                manager.getActiveConstructEntities(player.getUUID(), typeId).size());
+        source.sendSuccess(Component.literal("已构建 " + typeId + "，当前该类型数量: " + count), false);
+        return count;
+    }
+
+    /** 清掉执行者名下的全部构造体实体（验收复位用） */
+    private static int clearConstructs(CommandSourceStack source) {
+        ServerPlayer player = source.getPlayer();
+        if (player == null) {
+            source.sendFailure(Component.literal("需要玩家执行"));
+            return 0;
+        }
+        var manager = com.gytrinket.gytrinket.core.entity.construct.ConstructManager.getInstance();
+        var server = player.getServer();
+        var level = server != null ? server.getLevel(player.getLevel().dimension()) : null;
+        int removed = 0;
+        for (var entry : manager.getPlayerConstructs(player.getUUID()).entrySet()) {
+            for (var data : entry.getValue()) {
+                if (level != null) {
+                    var entity = level.getEntity(data.getEntityUUID());
+                    if (entity != null) {
+                        entity.discard();
+                        removed++;
+                    }
+                }
+                manager.markConstructDead(player.getUUID(), data.getConstructId(), data.getEntityUUID());
+            }
+            manager.removeConstructsByType(player, entry.getKey());
+        }
+        gytrinket.LOGGER.info("[construct] cleared {} entities for {}",
+                removed, player.getName().getString());
+        source.sendSuccess(Component.literal("已清理构造体实体: " + removed), false);
+        return removed;
     }
 
     // ------------------------------------------------------------------

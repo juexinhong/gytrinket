@@ -1,7 +1,8 @@
-# Gytrinket Observer：独立工具模组（Forge 1.20.1）
-# 1.20.1 的模组元数据文件名必须是 META-INF/mods.toml，且使用 mandatory 而不是 type="required"
+# Gytrinket Observer：独立工具模组（Forge 1.19.2）
+# 1.19.2 的模组元数据文件名是 META-INF/mods.toml，forge/minecraft/loader 版本范围走 gradle 属性注入，
+# 避免再从 1.20.1 分支带过来 [47,)/[1.20.1,1.21) 这类过期硬编码。
 modLoader="javafml"
-loaderVersion="[47,)"
+loaderVersion="${loader_version_range}"
 license="All Rights Reserved"
 
 [[mods]]
@@ -16,20 +17,20 @@ Observation and control tooling: server HTTP API (/status /block /region /comman
 [[dependencies.gytrinket_observer]]
     modId="forge"
     mandatory=true
-    versionRange="[47,)"
+    versionRange="${forge_version_range}"
     ordering="NONE"
     side="BOTH"
 
 [[dependencies.gytrinket_observer]]
     modId="minecraft"
     mandatory=true
-    versionRange="[1.20.1,1.21)"
+    versionRange="${minecraft_version_range}"
     ordering="NONE"
     side="BOTH"
 
 [[dependencies.gytrinket_observer]]
     modId="gytrinket"
     mandatory=true
-    versionRange="[1.1.7,)"
+    versionRange="[1.1.8,)"
     ordering="AFTER"
     side="BOTH"

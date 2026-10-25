@@ -209,6 +209,78 @@ public final class ClientConsole {
                     mc.setScreen(new com.gytrinket.gytrinket.client.screen.ConfigEntriesScreen(null, clientTab));
                     gytrinket.LOGGER.info("[cmd] cfg clientTab={}", clientTab);
                 }
+                case "tabs" -> {
+                    // 调试用：列出创造标签页（序号 / 标题 / 物品数），验证注册顺序与语言键
+                    int idx = 0;
+                    for (net.minecraft.world.item.CreativeModeTab tab : net.minecraft.world.item.CreativeModeTab.TABS) {
+                        if (tab == null) {
+                            idx++;
+                            continue;
+                        }
+                        net.minecraft.core.NonNullList<net.minecraft.world.item.ItemStack> list =
+                                net.minecraft.core.NonNullList.create();
+                        try {
+                            tab.fillItemList(list);
+                        } catch (Exception ex) {
+                            // 搜索页的物品表由客户端单独实现，遍历时会抛异常，跳过
+                            gytrinket.LOGGER.info("[tabs] #{} label={} count=SKIP",
+                                    idx, tab.getDisplayName().getString());
+                            idx++;
+                            continue;
+                        }
+                        StringBuilder head = new StringBuilder();
+                        for (int i = 0; i < Math.min(5, list.size()); i++) {
+                            head.append(net.minecraft.core.Registry.ITEM.getKey(list.get(i).getItem())).append(' ');
+                        }
+                        gytrinket.LOGGER.info("[tabs] #{} label={} count={} head=[{}]",
+                                idx, tab.getDisplayName().getString(), list.size(), head.toString().trim());
+                        idx++;
+                    }
+                }
+                case "screen" -> {
+                    // 调试用：直接打开某个界面做截图验收
+                    String screenId = p.length > 1 ? p[1] : "creative";
+                    switch (screenId) {
+                        case "creative" -> mc.setScreen(
+                                new net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen(mc.player));
+                        case "creativetab" -> {
+                            // 反射设置创造界面的静态 selectedTab，让界面直接开在本模组标签页
+                            int tabIndex = -1;
+                            for (int i = 0; i < net.minecraft.world.item.CreativeModeTab.TABS.length; i++) {
+                                if (net.minecraft.world.item.CreativeModeTab.TABS[i]
+                                        == com.gytrinket.gytrinket.items.ModCreativeModeTabs.GY_TRINKET_TAB) {
+                                    tabIndex = i;
+                                    break;
+                                }
+                            }
+                            try {
+                                java.lang.reflect.Field f = net.minecraft.client.gui.screens.inventory
+                                        .CreativeModeInventoryScreen.class.getDeclaredField("selectedTab");
+                                f.setAccessible(true);
+                                f.setInt(null, tabIndex);
+                            } catch (Exception ex) {
+                                gytrinket.LOGGER.warn("[cmd] select creative tab failed", ex);
+                            }
+                            mc.setScreen(new net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen(mc.player));
+                        }
+                        case "playerpanel" -> {
+                            java.util.Map<String, Double> attrs = new java.util.LinkedHashMap<>();
+                            attrs.put("attack_damage", 12.5D);
+                            attrs.put("max_health", 40.0D);
+                            attrs.put("armor", 8.0D);
+                            attrs.put("movement_speed", 1.15D);
+                            mc.setScreen(new com.gytrinket.gytrinket.client.screen.PlayerPanelScreen(
+                                    attrs, new net.minecraft.nbt.ListTag(), 6,
+                                    new net.minecraft.nbt.CompoundTag(), new net.minecraft.nbt.ListTag(),
+                                    8, 120, 3, 150, 2, new String[0]));
+                        }
+                        case "upgradetarget" -> mc.setScreen(
+                                new com.gytrinket.gytrinket.client.screen.UpgradeTargetScreen(
+                                        null, new net.minecraft.nbt.ListTag()));
+                        default -> gytrinket.LOGGER.warn("[cmd] unknown screen {}", screenId);
+                    }
+                    gytrinket.LOGGER.info("[cmd] screen {}", screenId);
+                }
                 case "cfgclick" -> {
                     // 模拟一次左键点击（像素坐标），用来验证配置界面的行点击/多选一循环
                     double cx = Double.parseDouble(p[1]);

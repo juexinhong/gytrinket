@@ -1,6 +1,7 @@
 package com.gytrinket.gytrinket.core.entity.meteor;
 
 import com.gytrinket.gytrinket.core.damage.ModDamageTypes;
+import com.gytrinket.gytrinket.core.projectile.MultipartHitScan;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
@@ -450,23 +451,25 @@ public class MeteorEntity extends Entity {
     /** 销毁范围内的生物撞击，使用碰撞前的最终速度。 */
     private void damageEntitiesInImpact(ServerLevel server, Vec3 center, double radius, Vec3 impactVelocity) {
         AABB area = new AABB(center, center).inflate(radius);
-        List<LivingEntity> candidates = server.getEntitiesOfClass(LivingEntity.class, area);
         DamageSource source = ModDamageTypes.getMeteorImpactDamageSource(server, this);
         double radiusSqr = radius * radius;
 
-        for (LivingEntity other : candidates) {
-            if (other instanceof Player player && player.isSpectator()) {
-                continue;
-            }
-            Vec3 otherCenter = other.getBoundingBox().getCenter();
-            if (otherCenter.distanceToSqr(center) > radiusSqr) {
-                continue;
-            }
+        // 多体节：体节不注册进 level 实体列表，只查父实体会漏掉伸出的身体节段；
+        // 每个父实体只结算一次，命中箱取离爆心最近的那个
+        List<MultipartHitScan.Hit> hits = MultipartHitScan.collectInRegion(server, area, center,
+                e -> !(e instanceof Player player && player.isSpectator()),
+                box -> box.getCenter().distanceToSqr(center) <= radiusSqr,
+                false);
+
+        for (MultipartHitScan.Hit hit : hits) {
+            LivingEntity other = hit.target();
+            Entity hitbox = hit.hitbox();
+            Vec3 otherCenter = hitbox.getBoundingBox().getCenter();
 
             double relativeSpeed = impactVelocity.subtract(other.getDeltaMovement()).length();
             float damage = (0.15F * this.getMaxHealth() + 3.0F)
                     * (float) (1.0 + 0.10 * relativeSpeed);
-            other.hurt(source, damage);
+            hitbox.hurt(source, damage);
 
             Vec3 delta = otherCenter.subtract(center);
             if (delta.lengthSqr() < 1.0E-6) {
@@ -488,29 +491,36 @@ public class MeteorEntity extends Entity {
 
         // 实体碰撞使用正常碰撞箱检测。
         AABB hitbox = this.getBoundingBox();
-        List<LivingEntity> candidates = this.level().getEntitiesOfClass(LivingEntity.class, hitbox);
 
-        for (LivingEntity other : candidates) {
-            if (!hitbox.intersects(other.getBoundingBox())) {
-                continue;
-            }
-            if (other instanceof Player player && player.isSpectator()) {
-                continue;
-            }
-            this.handleEntityCollision(other);
+        // 多体节：体节不注册进 level 实体列表，只测父实体会漏掉伸出的身体节段。
+        // 只结算最近的一个碰撞（与原实现一致），命中体节时伤害经体节路由
+        List<MultipartHitScan.Hit> hits = MultipartHitScan.collectInRegion(this.level(), hitbox, this.position(),
+                e -> !(e instanceof Player player && player.isSpectator()),
+                box -> hitbox.intersects(box),
+                false,
+                // 本方法逐 tick 执行，体节探测外扩取 2 格
+                2.0D);
+        if (hits.isEmpty()) {
             return;
         }
+        hits.sort(java.util.Comparator.comparingDouble(
+                hit -> hit.position().distanceToSqr(this.position())));
+        MultipartHitScan.Hit closest = hits.get(0);
+        this.handleEntityCollision(closest.hitbox(), closest.target());
     }
 
     /**
      * 陨石只和玩家/生物结算碰撞；陨石之间不再互相碰撞，也不互相伤害。
+     * <p>
+     * {@code hitbox} 是实际碰撞的命中箱（体节命中时为体节），伤害经它结算；
+     * {@code other} 是父实体，用于速度、击退与分离。
      */
-    private void handleEntityCollision(LivingEntity other) {
+    private void handleEntityCollision(Entity hitbox, LivingEntity other) {
         double relativeSpeed = this.getDeltaMovement().subtract(other.getDeltaMovement()).length();
         float damage = (0.15F * this.getMaxHealth() + 3.0F) * (float) (1.0 + 0.10 * relativeSpeed);
 
         DamageSource source = ModDamageTypes.getMeteorImpactDamageSource(this.level(), this);
-        other.hurt(source, damage);
+        hitbox.hurt(source, damage);
         this.applySeparation(other, relativeSpeed);
 
         if (!this.dead) {

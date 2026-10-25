@@ -1,5 +1,6 @@
 package com.gytrinket.observer;
 
+import com.gytrinket.gytrinket.core.projectile.MultipartHitScan;
 import com.gytrinket.gytrinket.core.world.terrain.RuinedTowerBlueprint;
 import com.gytrinket.gytrinket.gytrinket;
 import com.mojang.brigadier.CommandDispatcher;
@@ -9,6 +10,7 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.coordinates.BlockPosArgument;
+import net.minecraft.commands.arguments.coordinates.Vec3Argument;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Vec3i;
 import net.minecraft.nbt.CompoundTag;
@@ -19,7 +21,9 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.neoforge.entity.PartEntity;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 
 import javax.imageio.ImageIO;
@@ -136,11 +140,79 @@ public final class DevCommands {
                         .requires(source -> source.hasPermission(2))
                         .executes(ctx -> buildTowerOnly(ctx.getSource().getLevel(),
                                 BlockPos.containing(ctx.getSource().getPosition()))))
+                .then(Commands.literal("hittest")
+                        .requires(source -> source.hasPermission(2))
+                        .then(Commands.argument("from", Vec3Argument.vec3())
+                                .then(Commands.argument("to", Vec3Argument.vec3())
+                                        .executes(ctx -> hitTest(ctx.getSource(),
+                                                Vec3Argument.getVec3(ctx, "from"),
+                                                Vec3Argument.getVec3(ctx, "to"))))))
+                .then(Commands.literal("parts")
+                        .requires(source -> source.hasPermission(2))
+                        .executes(ctx -> dumpParts(ctx.getSource(), 64.0D))
+                        .then(Commands.argument("radius", DoubleArgumentType.doubleArg(1.0D, 256.0D))
+                                .executes(ctx -> dumpParts(ctx.getSource(),
+                                        DoubleArgumentType.getDouble(ctx, "radius")))))
 
         );
         } catch (Throwable t) {
             gytrinket.LOGGER.error("[dev] command registration failed", t);
         }
+    }
+
+    // ------------------------------------------------------------------
+    // 多体节命中检测诊断：与无人机子弹/爆破弹共用 MultipartHitScan
+    // ------------------------------------------------------------------
+    /**
+     * 用弹射物同一套算法沿线段找第一个碰撞箱，打印命中的是父实体还是体节。
+     * <p>
+     * HTTP {@code /command} 只返回命令结果值，因此命中返回 1、未命中返回 0，
+     * 细节写进日志。用于验收多体节生物（末影龙/娜迦等）的弹道判定。
+     */
+    private static int hitTest(CommandSourceStack source, Vec3 from, Vec3 to) {
+        MultipartHitScan.Hit hit = MultipartHitScan.findFirstOnPath(
+                source.getLevel(), from, to, MultipartHitScan.DEFAULT_HITBOX_INFLATE, e -> true);
+        if (hit == null) {
+            gytrinket.LOGGER.info("[hittest] {} -> {} : no hit", from, to);
+            source.sendSuccess(() -> Component.literal("[hittest] no hit"), false);
+            return 0;
+        }
+        String parentClass = hit.target().getClass().getSimpleName();
+        String boxClass = hit.hitbox().getClass().getSimpleName();
+        String kind = hit.hitbox() instanceof PartEntity<?> ? "part" : "parent";
+        String text = String.format("[hittest] %s -> %s : %s %s (parent %s) pos=%.3f/%.3f/%.3f",
+                from, to, kind, boxClass, parentClass,
+                hit.position().x, hit.position().y, hit.position().z);
+        gytrinket.LOGGER.info(text);
+        source.sendSuccess(() -> Component.literal(text), false);
+        return 1;
+    }
+
+    /**
+     * 列出附近多体节实体的父实体与全部体节碰撞箱（诊断用）。
+     */
+    private static int dumpParts(CommandSourceStack source, double radius) {
+        Vec3 pos = source.getPosition();
+        List<net.minecraft.world.entity.Entity> parents = source.getLevel().getEntities(
+                (net.minecraft.world.entity.Entity) null,
+                new net.minecraft.world.phys.AABB(pos, pos).inflate(radius),
+                e -> {
+                    net.neoforged.neoforge.entity.PartEntity<?>[] parts = e.getParts();
+                    return parts != null && parts.length > 0;
+                });
+        gytrinket.LOGGER.info("[parts] {} -> {} multipart entities:", pos, parents.size());
+        for (net.minecraft.world.entity.Entity parent : parents) {
+            gytrinket.LOGGER.info("[parts] parent {} id={} pos={} bb={} pickable={} alive={}",
+                    parent.getClass().getSimpleName(), parent.getId(), parent.position(),
+                    parent.getBoundingBox(), parent.isPickable(), parent.isAlive());
+            int index = 0;
+            for (net.minecraft.world.entity.Entity part : parent.getParts()) {
+                gytrinket.LOGGER.info("  [parts] #{} {} id={} pos={} bb={} alive={} pickable={} removed={}",
+                        index++, part.getClass().getSimpleName(), part.getId(), part.position(),
+                        part.getBoundingBox(), part.isAlive(), part.isPickable(), part.isRemoved());
+            }
+        }
+        return parents.size();
     }
 
     // ------------------------------------------------------------------

@@ -71,6 +71,9 @@ public class ShieldParticleRenderer {
             int style = ClientConfig.SHIELD_PARTICLE_STYLE.get();
             if (style == 2) {
                 renderVanilla(poseStack, camera, partialTicks);
+            } else if (style == 1) {
+                // 旧版「贴图转立体」：git 历史里的棱柱渲染器原样
+                ShieldParticleTexturedRenderer.renderStyle(poseStack, camera, partialTicks);
             } else {
                 renderVolumetric(poseStack, camera, partialTicks, style);
             }
@@ -111,21 +114,34 @@ public class ShieldParticleRenderer {
     private static void renderVanilla(PoseStack poseStack,
                                       Camera camera,
                                       float partialTicks) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null) return;
+
+        Vec3 cameraPos = (camera != null ? camera : mc.gameRenderer.getMainCamera()).getPosition();
+
+        poseStack.pushPose();
+        poseStack.translate(-cameraPos.x, -cameraPos.y, -cameraPos.z);
+        renderVanillaQuads(poseStack.last().pose(), partialTicks);
+        poseStack.popPose();
+    }
+
+    /**
+     * 平面四边形本体。传入的矩阵已经包含「相机旋转 × 平移(-相机位置)」：
+     * 非光影路径由 PoseStack 传入，光影路径传入 AFTER_PARTICLES 保存的矩阵。
+     */
+    private static void renderVanillaQuads(Matrix4f matrix, float partialTicks) {
         ShieldParticleRenderManager manager = ShieldParticleRenderManager.getInstance();
         if (manager.getParticles().isEmpty()) return;
 
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null) return;
 
-        Vec3 cameraPos = mc.gameRenderer.getMainCamera().getPosition();
-
         RenderSystem.enableBlend();
+        RenderSystem.enableDepthTest();
         RenderSystem.disableCull();
         RenderSystem.depthMask(false);
         RenderSystem.blendFunc(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA);
-
-        poseStack.pushPose();
-        poseStack.translate(-cameraPos.x, -cameraPos.y, -cameraPos.z);
+        RenderSystem.setShader(GameRenderer::getPositionTexColorShader);
 
         for (ShieldParticleData particle : manager.getParticles()) {
             int textureIndex = Math.min(particle.age - 1, SHIELD_TEXTURES.length - 1);
@@ -184,12 +200,10 @@ public class ShieldParticleRenderer {
             }
 
             float[] uvs = {0, 1, 0, 0, 1, 0, 1, 1};
-            Matrix4f matrix = poseStack.last().pose();
 
             float glowSize = size * 1.1F;
             float glowAlpha = alpha * 0.5F;
 
-            RenderSystem.setShader(GameRenderer::getPositionTexColorShader);
             RenderSystem.setShaderTexture(0, texture);
 
             BufferBuilder bufferBuilder = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
@@ -212,8 +226,6 @@ public class ShieldParticleRenderer {
             }
             BufferUploader.drawWithShader(bufferBuilder.buildOrThrow());
         }
-
-        poseStack.popPose();
 
         RenderSystem.depthMask(true);
         RenderSystem.enableCull();
@@ -261,12 +273,24 @@ public class ShieldParticleRenderer {
                                                Matrix4f savedPoseStackMat) {
         if (savedProjection == null || savedModelView == null || savedPoseStackMat == null) return;
 
+        int style = ClientConfig.SHIELD_PARTICLE_STYLE.get();
+
+        // 旧立体宝石走历史贴图棱柱渲染器：它自己会压入/恢复投影与 model-view，直接委托
+        if (style == 1) {
+            ShieldParticleTexturedRenderer.renderWithSavedMatrices(poseStack, bufferSource, camera, partialTicks,
+                    savedProjection, savedModelView, savedPoseStackMat);
+            return;
+        }
+
         Matrix4f irisProjection = new Matrix4f(RenderSystem.getProjectionMatrix());
 
         RenderSystem.setProjectionMatrix(savedProjection, VertexSorting.DISTANCE_TO_ORIGIN);
         Matrix4fStack modelViewStack = RenderSystem.getModelViewStack();
         modelViewStack.pushMatrix();
         modelViewStack.identity();
+        // 顶点已经用 savedModelView 预先旋转过，ModelViewMat 必须是单位矩阵，
+        // 否则会二次旋转（光影下 AFTER_LEVEL 的矩阵状态不可依赖，显式同步一次）
+        RenderSystem.applyModelViewMatrix();
 
         Minecraft mc = Minecraft.getInstance();
         Camera cam = camera != null ? camera : mc.gameRenderer.getMainCamera();
@@ -274,9 +298,15 @@ public class ShieldParticleRenderer {
 
         Matrix4f matrix = new Matrix4f(savedModelView);
         matrix.translate((float) -cameraPos.x, (float) -cameraPos.y, (float) -cameraPos.z);
-        drawParticles(matrix, cam, partialTicks, 0);
+        if (style == 2) {
+            // 平面四边形：用同一份矩阵直接画四边形，保证和另外两套形象同位置、同动画
+            renderVanillaQuads(matrix, partialTicks);
+        } else {
+            drawParticles(matrix, cam, partialTicks, 0);
+        }
 
         modelViewStack.popMatrix();
+        RenderSystem.applyModelViewMatrix();
         RenderSystem.setProjectionMatrix(irisProjection, VertexSorting.DISTANCE_TO_ORIGIN);
     }
 

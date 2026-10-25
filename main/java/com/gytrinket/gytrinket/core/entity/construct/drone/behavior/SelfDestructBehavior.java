@@ -11,6 +11,7 @@ import com.gytrinket.gytrinket.core.entity.construct.HostileTargetManager;
 import com.gytrinket.gytrinket.core.explosion.SimulatedExplosion;
 import com.gytrinket.gytrinket.core.ignite.IIgniteSource;
 import com.gytrinket.gytrinket.core.ignite.IgniteManager;
+import com.gytrinket.gytrinket.core.projectile.MultipartHitScan;
 import com.gytrinket.gytrinket.storage.PlayerStoreUtils;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.damagesource.DamageSource;
@@ -141,15 +142,16 @@ public class SelfDestructBehavior implements IDroneSpecialBehavior {
                     pos.x - radius, pos.y - radius, pos.z - radius,
                     pos.x + radius, pos.y + radius, pos.z + radius
             );
-            for (LivingEntity entity : construct.level().getEntitiesOfClass(LivingEntity.class, aabb)) {
-                if (entity == construct || !entity.isAlive() || entity instanceof Player
-                        || !(entity instanceof Mob)
-                        || !HostileTargetManager.shouldAttackPlayer(entity, playerOwner)) {
-                    continue;
-                }
-                if (entity.position().distanceTo(pos) > radius) {
-                    continue;
-                }
+            // 多体节：体节不注册进 level 实体列表，只查父实体会漏掉伸出的身体节段；
+            // 灼烧/点燃按生物结算，每个父实体只记一次
+            for (MultipartHitScan.Hit hit : MultipartHitScan.collectInRegion(
+                    construct.level(), aabb, pos,
+                    entity -> entity != construct && entity.isAlive() && !(entity instanceof Player)
+                            && entity instanceof Mob
+                            && HostileTargetManager.shouldAttackPlayer(entity, playerOwner),
+                    box -> box.getCenter().distanceTo(pos) <= radius,
+                    false)) {
+                LivingEntity entity = hit.target();
                 BurnManager.applyBurnCharge(entity, burnDamage, burnSource);
                 IgniteManager.applyIgnite(entity, igniteSource, "self_destruct", true);
             }

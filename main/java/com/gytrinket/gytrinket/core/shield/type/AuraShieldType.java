@@ -8,6 +8,7 @@ import com.gytrinket.gytrinket.core.defs.ShieldValueDefs;
 import com.gytrinket.gytrinket.core.entity.construct.HostileTargetManager;
 import com.gytrinket.gytrinket.core.ignite.IIgniteSource;
 import com.gytrinket.gytrinket.core.ignite.IgniteManager;
+import com.gytrinket.gytrinket.core.projectile.MultipartHitScan;
 import com.gytrinket.gytrinket.core.shield.ShieldManager;
 import com.gytrinket.gytrinket.core.shield_transfer.ShieldTransferManager;
 import com.gytrinket.gytrinket.core.damage.ModDamageTypes;
@@ -156,11 +157,16 @@ public class AuraShieldType implements IShieldType {
             }
 
             AABB boundingBox = center.getBoundingBox().inflate(radius);
-            List<LivingEntity> entities = player.level().getEntitiesOfClass(LivingEntity.class, boundingBox,
-                entity -> isValidTarget(entity, center)
-            );
+            // 多体节：体节不注册进 level 实体列表，只查父实体会漏掉伸出的身体节段；
+            // 每个父实体只记一次（灼烧/点燃按生物结算）
+            List<MultipartHitScan.Hit> hits = MultipartHitScan.collectInRegion(
+                player.level(), boundingBox, center.position(),
+                entity -> isValidTarget((LivingEntity) entity, center),
+                boundingBox::intersects,
+                false);
 
-            for (LivingEntity target : entities) {
+            for (MultipartHitScan.Hit hit : hits) {
+                LivingEntity target = hit.target();
                 hasEnemies = true;
                 double chargeRate = Math.max(0.0, DefsManager.resolveShieldTypeValueForItem(player.getServer(), itemId,
                         "aura", "damage", ShieldValueDefs.defaultValueOf("aura", "damage", 0.75)));
@@ -171,10 +177,10 @@ public class AuraShieldType implements IShieldType {
                 igniteTargets.add(target);
             }
 
-            if (!entities.isEmpty()) {
+            if (!hits.isEmpty()) {
                 double baseShieldCost = Math.max(0.0, DefsManager.resolveShieldTypeValueForItem(player.getServer(), itemId,
                         "aura", "shield_cost", ShieldValueDefs.defaultValueOf("aura", "shield_cost", 0.042)));
-                totalShieldCost += baseShieldCost * entities.size();
+                totalShieldCost += baseShieldCost * hits.size();
             }
         }
 

@@ -14,24 +14,13 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.neoforge.items.ItemStackHandler;
 import org.jetbrains.annotations.Nullable;
-import software.bernie.geckolib.animatable.GeoBlockEntity;
-import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
-import software.bernie.geckolib.animation.AnimatableManager;
-import software.bernie.geckolib.animation.AnimationController;
-import software.bernie.geckolib.animation.AnimationState;
-import software.bernie.geckolib.animation.RawAnimation;
-import software.bernie.geckolib.animation.PlayState;
-import software.bernie.geckolib.util.GeckoLibUtil;
 
 /**
  * 光点核心方块实体
  * 负责处理方块的渲染、菜单打开等功能
  * 存储逻辑已移到 PlayerStoreManager 中
  */
-public class LightPointCoreBlockEntity extends BlockEntity implements MenuProvider, GeoBlockEntity {
-    // GeckoLib 动画实例缓存
-    private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
-
+public class LightPointCoreBlockEntity extends BlockEntity implements MenuProvider {
     /**
      * 构造函数
      * @param pos 方块位置
@@ -190,35 +179,5 @@ public class LightPointCoreBlockEntity extends BlockEntity implements MenuProvid
                 }
             }
         });
-    }
-
-    /**
-     * 注册动画控制器
-     * @param controllers 动画控制器注册器
-     */
-    @Override
-    public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
-        // 添加一个循环播放 idle 动画的控制器
-        controllers.add(new AnimationController<>(this, "controller", 0, this::predicate));
-    }
-
-    /**
-     * 动画状态判断
-     * @param event 动画状态事件
-     * @return 动画状态
-     */
-    private PlayState predicate(AnimationState<LightPointCoreBlockEntity> event) {
-        // 循环播放 recharge 动画
-        event.setAndContinue(RawAnimation.begin().thenLoop("recharge"));
-        return PlayState.CONTINUE;
-    }
-
-    /**
-     * 获取 GeckoLib 的动画实例缓存
-     * @return 动画实例缓存
-     */
-    @Override
-    public AnimatableInstanceCache getAnimatableInstanceCache() {
-        return cache;
     }
 }

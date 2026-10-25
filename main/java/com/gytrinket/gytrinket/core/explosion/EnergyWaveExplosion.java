@@ -5,16 +5,17 @@ import com.gytrinket.gytrinket.core.attribute.AttributeManager;
 import com.gytrinket.gytrinket.core.damage.DamageAttributionWindow;
 import com.gytrinket.gytrinket.core.damage.SecondaryDamageMerger;
 import com.gytrinket.gytrinket.core.modifier.player.knockback.KnockbackManager;
+import com.gytrinket.gytrinket.core.projectile.MultipartHitScan;
 import com.gytrinket.gytrinket.network.NetworkHandler;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -143,20 +144,29 @@ public class EnergyWaveExplosion {
                 Math.max(behindStart.z, rayEnd.z) + inflation
         );
 
-        List<LivingEntity> entities = new ArrayList<>(level.getEntitiesOfClass(LivingEntity.class, aabb));
+        // 多体节：体节不注册进 level 实体列表，只查父实体会漏掉伸出的头/颈/翅/尾/节段
+        // （娜迦父实体只有头部 2×2，身体节段拖出 20+ 格）；每个父实体只结算一次，
+        // 命中箱取离波心最近的那个（父实体 AABB 与原版爆炸一致恒参与）
+        List<MultipartHitScan.Hit> hits = MultipartHitScan.collectInRegion(level, aabb, center,
+                e -> entityFilter.test((LivingEntity) e),
+                box -> isInEnergyWave(box, center, direction, effectiveLength, baseHalfWidth, behindLength),
+                false);
 
         boolean[] hitAnyRef = {false};
-        for (LivingEntity entity : entities) {
-            if (!entityFilter.test(entity)) continue;
+        for (MultipartHitScan.Hit hit : hits) {
+            LivingEntity target = hit.target();
+            Entity hitbox = hit.hitbox();
+            // 体节命中时合并键带上体节 ID，保证合并批次与施加时命中的碰撞箱一致
+            String waveMergeType = mergeType == null || hitbox == target
+                    ? mergeType
+                    : mergeType + ":part:" + hitbox.getId();
 
-            if (!isInEnergyWave(entity, center, direction, effectiveLength, baseHalfWidth, behindLength)) continue;
-
-            if (mergeType == null) {
-                hitAnyRef[0] |= applyWaveHit(entity, center, direction, effectiveLength, baseHalfWidth, behindLength,
+            if (waveMergeType == null) {
+                hitAnyRef[0] |= applyWaveHit(hitbox, target, center, direction, effectiveLength, baseHalfWidth, behindLength,
                         damage, damageSource, owner, resetInvulnerable, postHitCallback);
             } else {
-                SecondaryDamageMerger.accumulate(entity, mergeType, damage, (target, mergedDamage) -> {
-                    if (applyWaveHit(target, center, direction, effectiveLength, baseHalfWidth, behindLength,
+                SecondaryDamageMerger.accumulate(target, waveMergeType, damage, (t, mergedDamage) -> {
+                    if (applyWaveHit(hitbox, t, center, direction, effectiveLength, baseHalfWidth, behindLength,
                             mergedDamage, damageSource, owner, resetInvulnerable, postHitCallback)) {
                         hitAnyRef[0] = true;
                     }
@@ -174,10 +184,13 @@ public class EnergyWaveExplosion {
 
     /**
      * 对单个实体施加能量波命中：重置无敌时间、归属窗口、伤害
+     * <p>
+     * {@code hitbox} 是实际命中箱（体节命中时为体节，否则为父实体），伤害经它结算以
+     * 保留各模组的体节倍率；{@code target} 是父实体，用于无敌帧、归属窗口与回调。
      *
      * @return 是否造成了伤害
      */
-    private static boolean applyWaveHit(LivingEntity entity, Vec3 center, Vec3 direction, double effectiveLength,
+    private static boolean applyWaveHit(Entity hitbox, LivingEntity entity, Vec3 center, Vec3 direction, double effectiveLength,
                                         double baseHalfWidth, double behindLength,
                                         float damage, DamageSource damageSource, Player owner,
                                         boolean resetInvulnerable, Consumer<LivingEntity> postHitCallback) {
@@ -197,7 +210,7 @@ public class EnergyWaveExplosion {
         KnockbackManager.markNoKnockback(entity.getUUID());
 
         try {
-            entity.hurt(damageSource, damage);
+            hitbox.hurt(damageSource, damage);
         } finally {
             if (windowed) {
                 DamageAttributionWindow.unmark(entity);
@@ -228,18 +241,17 @@ public class EnergyWaveExplosion {
      * [-behindLength, effectiveLength] 且实体中心到轴线的垂直距离小于半宽+AABB半径，则命中。
      * AABB半径使用半对角线长度，确保不会漏掉部分在长方形内的实体。
      *
-     * @param entity          目标实体
+     * @param entityBox       目标碰撞箱（体节命中时为体节碰撞箱）
      * @param center          原点（长方形起点）
      * @param direction       溅射方向（归一化）
      * @param effectiveLength 有效溅射长度（长方形长度）
      * @param baseHalfWidth   长方形恒定半宽
      * @param behindLength    身后判定距离（格）
      */
-    private static boolean isInEnergyWave(LivingEntity entity, Vec3 center, Vec3 direction,
+    private static boolean isInEnergyWave(AABB entityBox, Vec3 center, Vec3 direction,
                                           double effectiveLength, double baseHalfWidth, double behindLength) {
         if (effectiveLength <= 0) return false;
 
-        AABB entityBox = entity.getBoundingBox();
         Vec3 entityCenter = entityBox.getCenter();
 
         // 实体中心到原点的向量

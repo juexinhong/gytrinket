@@ -8,6 +8,7 @@ import com.gytrinket.gytrinket.core.entity.construct.HostileTargetManager;
 import com.gytrinket.gytrinket.core.ignite.IIgniteSource;
 import com.gytrinket.gytrinket.core.ignite.IgniteManager;
 import com.gytrinket.gytrinket.core.modifier.player.attack.AttackSpeedManager;
+import com.gytrinket.gytrinket.core.projectile.MultipartHitScan;
 import com.gytrinket.gytrinket.core.shield.ShieldManager;
 import com.gytrinket.gytrinket.core.shield_transfer.ShieldTransferManager;
 import com.gytrinket.gytrinket.core.damage.ModDamageTypes;
@@ -284,9 +285,14 @@ public class ElectricDischargeManager {
                 );
 
                 // 查找有效目标
-                for (LivingEntity entity : ((ServerLevel) player.level()).getEntitiesOfClass(LivingEntity.class, searchBox)) {
-                    if (!isValidTarget(entity, player)) continue;
-                    hitEntities.add(entity);
+                // 多体节：体节不注册进 level 实体列表，只查父实体会漏掉伸出的身体节段；
+                // 每个父实体只记一次（燃烧/点燃效果按生物结算，不按体节）
+                for (MultipartHitScan.Hit hit : MultipartHitScan.collectInRegion(
+                        player.level(), searchBox, point,
+                        entity -> entity instanceof LivingEntity living && isValidTarget(living, player),
+                        searchBox::intersects,
+                        false)) {
+                    hitEntities.add(hit.target());
                 }
             }
         }

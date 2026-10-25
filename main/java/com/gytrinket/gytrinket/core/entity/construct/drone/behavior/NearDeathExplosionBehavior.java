@@ -4,6 +4,7 @@ import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.damage.InvincibilityMarkerManager;
 import com.gytrinket.gytrinket.core.defs.DefsManager;
 import com.gytrinket.gytrinket.core.entity.construct.drone.DroneConstructEntity;
+import com.gytrinket.gytrinket.core.projectile.MultipartHitScan;
 import com.gytrinket.gytrinket.core.entity.construct.HostileTargetManager;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
@@ -174,19 +175,26 @@ public class NearDeathExplosionBehavior implements IDroneSpecialBehavior {
 
         Player player = drone.getOwner() instanceof Player ? (Player) drone.getOwner() : null;
 
-        List<LivingEntity> targets = level.getEntitiesOfClass(LivingEntity.class, searchBox,
+        // 多体节：体节不注册进 level 实体列表，只查父实体会漏掉伸出的身体节段；
+        // 每个父实体只记一次（爆炸伤害由 SimulatedExplosion 结算，本身也是多体节感知的）
+        List<MultipartHitScan.Hit> targets = MultipartHitScan.collectInRegion(level, searchBox, dronePos,
                 entity -> {
                     if (entity == drone || !entity.isAlive()) return false;
                     if (entity instanceof Player) return false;
                     return HostileTargetManager.shouldAttackPlayer(entity, player);
-                });
+                },
+                searchBox::intersects,
+                false,
+                // 本方法每 tick 执行，体节探测外扩取 2 格
+                2.0D);
 
         if (targets.isEmpty()) {
             return null;
         }
 
         return targets.stream()
-                .min(Comparator.comparingDouble(t -> drone.distanceTo(t)))
+                .min(Comparator.comparingDouble(hit -> drone.distanceTo(hit.target())))
+                .map(MultipartHitScan.Hit::target)
                 .orElse(null);
     }
 

@@ -20,10 +20,6 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import software.bernie.geckolib.animatable.GeoEntity;
-import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
-import software.bernie.geckolib.animation.AnimatableManager;
-import software.bernie.geckolib.util.GeckoLibUtil;
 
 import javax.annotation.Nullable;
 import java.util.Comparator;
@@ -61,7 +57,7 @@ import java.util.function.Predicate;
  *   <li>{@link #applyConstructAttributes(UUID, Map)} - 调用类型特定的属性应用方法</li>
  * </ul>
  */
-public abstract class AbstractConstructEntity extends PathfinderMob implements GeoEntity, IConstructEntity, net.minecraft.world.entity.OwnableEntity {
+public abstract class AbstractConstructEntity extends PathfinderMob implements IConstructEntity, net.minecraft.world.entity.OwnableEntity {
 
     private static final EntityDataAccessor<Optional<UUID>> DATA_OWNER_UUID =
             SynchedEntityData.defineId(AbstractConstructEntity.class, EntityDataSerializers.OPTIONAL_UUID);
@@ -69,8 +65,6 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
     /** 大小倍率（来自 construct_size 等属性，同步给客户端用于渲染缩放；碰撞箱经 getScale 缩放） */
     private static final EntityDataAccessor<Float> DATA_SIZE_MULTIPLIER =
             SynchedEntityData.defineId(AbstractConstructEntity.class, EntityDataSerializers.FLOAT);
-
-    private final AnimatableInstanceCache animatableInstanceCache = GeckoLibUtil.createInstanceCache(this);
 
     /** 归属者玩家 UUID */
     @Nullable
@@ -766,14 +760,27 @@ public abstract class AbstractConstructEntity extends PathfinderMob implements G
         // 默认无类型特有字段
     }
 
-    // ===== GeckoLib =====
+    // ===== 名牌 =====
 
+    /**
+     * 构造体一律不渲染头顶名牌。
+     * <p>
+     * 原 GeckoLib 的渲染器在 {@code shouldShowName} 里对「没有自定义名的 Mob」
+     * 返回 false，所以无人机/蜂群/僚机都没有名牌；换成原生渲染器后这条屏蔽
+     * 没有了，因此统一在实体基类里关掉（渲染器里也各有一层兜底）。
+     */
     @Override
-    public AnimatableInstanceCache getAnimatableInstanceCache() {
-        return this.animatableInstanceCache;
+    public boolean shouldShowName() {
+        return false;
     }
 
+    /**
+     * 连「注视时显示自定义名」那个分支也屏蔽，旧存档里残留的 CustomName
+     * 数据同样不会显示。
+     */
     @Override
-    public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
+    public boolean hasCustomName() {
+        return false;
     }
+
 }

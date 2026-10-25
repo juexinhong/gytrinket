@@ -13,6 +13,8 @@ public class ModShaders {
 
     // ===== ShaderInstance 对象缓存（运行时填充） =====
     private static ShaderInstance shieldGlassShader;
+    /** 旧版「贴图转立体」专用着色器（历史 glass） */
+    private static ShaderInstance shieldGlassLegacyShader;
     private static ShaderInstance energyWaveVolShader;
     private static ShaderInstance lightningVolShader;
     private static ShaderInstance islandSkyShader;
@@ -49,6 +51,15 @@ public class ModShaders {
     @Nullable
     public static ShaderInstance getShieldGlassShader() {
         return shieldGlassShader;
+    }
+
+    public static void setShieldGlassLegacyShader(ShaderInstance shader) {
+        shieldGlassLegacyShader = shader;
+    }
+
+    @Nullable
+    public static ShaderInstance getShieldGlassLegacyShader() {
+        return shieldGlassLegacyShader;
     }
 
     // ===== EnergyWave 体积着色器（能量波 raymarching） =====

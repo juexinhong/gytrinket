@@ -88,13 +88,6 @@ config="${mod_id}.mixins.json"
     ordering="NONE"
     side="BOTH"
 
-[[dependencies.${mod_id}]]
-    modId="geckolib"
-    type="required"
-    versionRange="[4.8.2,)"
-    ordering="AFTER"
-    side="BOTH"
-
 # Curios 饰品栏可选联动：玩家未安装时饰品栏扩展机制不生效
 [[dependencies.${mod_id}]]
     modId="curios"

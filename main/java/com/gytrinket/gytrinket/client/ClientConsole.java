@@ -35,6 +35,7 @@ import java.nio.file.Path;
  * shieldfreeze 0|1          冻结/解冻粒子年龄（固定姿态截图用）
  * shieldage n               把所有粒子年龄固定到第 n 刻
  * shieldburst               立刻生成一次受击粒子
+ * shieldstyle n             切换护盾粒子形象（0 水晶 / 1 旧立体 / 2 平面）
  * shieldclear               清空当前粒子
  * </pre>
  */
@@ -236,6 +237,11 @@ public final class ClientConsole {
                             p.length > 2 ? Double.parseDouble(p[2]) : 3.2D,
                             p.length > 3 ? Double.parseDouble(p[3]) : 1.15D);
                     gytrinket.LOGGER.info("[cmd] shieldorbit");
+                }
+                case "shieldstyle" -> {
+                    int style = Integer.parseInt(p[1]);
+                    com.gytrinket.gytrinket.config.ClientConfig.SHIELD_PARTICLE_STYLE.set(style);
+                    gytrinket.LOGGER.info("[cmd] shieldstyle {}", style);
                 }
                 case "shieldclear" -> {
                     com.gytrinket.gytrinket.client.effect.particle.ShieldParticleRenderManager

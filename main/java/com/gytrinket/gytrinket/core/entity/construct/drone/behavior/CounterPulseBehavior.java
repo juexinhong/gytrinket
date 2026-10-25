@@ -4,6 +4,7 @@ import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.defs.DefsManager;
 import com.gytrinket.gytrinket.core.entity.construct.drone.DroneConstructEntity;
 import com.gytrinket.gytrinket.core.explosion.SimulatedExplosion;
+import com.gytrinket.gytrinket.core.projectile.MultipartHitScan;
 import com.gytrinket.gytrinket.core.entity.construct.HostileTargetManager;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
@@ -146,13 +147,20 @@ public class CounterPulseBehavior implements IDroneSpecialBehavior {
         AABB boundingBox = drone.getBoundingBox().inflate(radius);
         Player owner = drone.getOwner() instanceof Player p ? p : null;
 
+        // 多体节：体节不注册进 level 实体列表，只查父实体会漏掉伸出的身体节段；
+        // 每个父实体只记一次（脉冲伤害由 SimulatedExplosion 结算，本身也是多体节感知的）
         List<LivingEntity> enemies = new ArrayList<>();
-        for (LivingEntity entity : drone.level().getEntitiesOfClass(LivingEntity.class, boundingBox)) {
-            if (entity == drone || !entity.isAlive() || entity.isInvisible()) continue;
-            if (entity instanceof Player) continue;
-            if (owner != null && HostileTargetManager.isEntityProtectedByPlayer(entity, owner)) continue;
-            if (!HostileTargetManager.shouldAttackPlayer(entity, owner)) continue;
-            enemies.add(entity);
+        for (MultipartHitScan.Hit hit : MultipartHitScan.collectInRegion(
+                drone.level(), boundingBox, drone.position(),
+                entity -> entity != drone && entity.isAlive() && !entity.isInvisible()
+                        && !(entity instanceof Player)
+                        && (owner == null || !HostileTargetManager.isEntityProtectedByPlayer(entity, owner))
+                        && HostileTargetManager.shouldAttackPlayer(entity, owner),
+                boundingBox::intersects,
+                false,
+                // 本方法每 tick 执行，体节探测外扩取 2 格（脉冲半径本身很小）
+                2.0D)) {
+            enemies.add(hit.target());
         }
         return enemies;
     }

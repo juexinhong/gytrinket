@@ -38,9 +38,11 @@ public final class ConfigValueRegistry {
         public final boolean bool;
         /** 客户端专属项（ClientConfig，不参与服务端同步，客户端修改后直接落盘） */
         public final boolean clientOnly;
+        /** 多选一选项数（0 = 普通数值，点击打开数值编辑框；>0 = 点击在 0..choices-1 之间循环） */
+        public final int choices;
 
         Entry(String id, int group, DoubleSupplier getter, DoubleConsumer applier,
-              double min, double max, boolean bool, boolean clientOnly) {
+              double min, double max, boolean bool, boolean clientOnly, int choices) {
             this.id = id;
             this.group = group;
             this.getter = getter;
@@ -49,6 +51,7 @@ public final class ConfigValueRegistry {
             this.max = max;
             this.bool = bool;
             this.clientOnly = clientOnly;
+            this.choices = choices;
         }
 
         public double clamp(double v) {
@@ -68,23 +71,28 @@ public final class ConfigValueRegistry {
 
     /** 注册服务端 double 配置项 */
     private static void d(String id, int group, DoubleSupplier getter, DoubleConsumer applier, double min, double max) {
-        add(new Entry(id, group, getter, applier, min, max, false, false));
+        add(new Entry(id, group, getter, applier, min, max, false, false, 0));
     }
 
     /** 注册服务端 int 配置项 */
     private static void i(String id, int group, DoubleSupplier getter, DoubleConsumer applier, int min, int max) {
-        add(new Entry(id, group, getter, applier, min, max, false, false));
+        add(new Entry(id, group, getter, applier, min, max, false, false, 0));
     }
 
     /** 注册服务端 boolean 配置项 */
     private static void b(String id, int group, DoubleSupplier getter, DoubleConsumer applier) {
-        add(new Entry(id, group, getter, applier, 0, 1, true, false));
+        add(new Entry(id, group, getter, applier, 0, 1, true, false, 0));
     }
 
     /** 注册客户端专属配置项 */
     private static void c(String id, int group, DoubleSupplier getter, DoubleConsumer applier,
                           double min, double max, boolean bool) {
-        add(new Entry(id, group, getter, applier, min, max, bool, true));
+        add(new Entry(id, group, getter, applier, min, max, bool, true, 0));
+    }
+
+    /** 注册客户端专属的「多选一」配置项：界面点击在 0..choices-1 之间循环 */
+    private static void ce(String id, int group, DoubleSupplier getter, DoubleConsumer applier, int choices) {
+        add(new Entry(id, group, getter, applier, 0, choices - 1, false, true, choices));
     }
 
     public static List<Entry> entries() {
@@ -256,6 +264,7 @@ public final class ConfigValueRegistry {
         // ==================== 客户端 HUD（客户端专属，不走网络同步） ====================
         c("shield_idle_particle.enabled", GROUP_HUD, () -> ClientConfig.SHIELD_IDLE_PARTICLE_ENABLED.get() ? 1.0 : 0.0, v -> ClientConfig.SHIELD_IDLE_PARTICLE_ENABLED.set(v != 0.0), 0, 1, true);
         c("shield_particle_rendering.volumetricRendering", GROUP_HUD, () -> ClientConfig.SHIELD_PARTICLE_VOLUMETRIC_RENDERING.get() ? 1.0 : 0.0, v -> ClientConfig.SHIELD_PARTICLE_VOLUMETRIC_RENDERING.set(v != 0.0), 0, 1, true);
+        ce("shield_particle_rendering.style", GROUP_HUD, () -> (double) ClientConfig.SHIELD_PARTICLE_STYLE.get(), v -> ClientConfig.SHIELD_PARTICLE_STYLE.set((int) Math.round(v)), 3);
 
         c("shield_hud.vanillaStyle", GROUP_HUD, () -> ClientConfig.VANILLA_STYLE_HUD.get() ? 1.0 : 0.0, v -> ClientConfig.VANILLA_STYLE_HUD.set(v != 0.0), 0, 1, true);
 

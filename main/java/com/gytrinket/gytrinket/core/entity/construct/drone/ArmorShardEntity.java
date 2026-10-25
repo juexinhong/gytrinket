@@ -15,20 +15,14 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
-import software.bernie.geckolib.animatable.GeoEntity;
-import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
-import software.bernie.geckolib.animation.AnimatableManager;
-import software.bernie.geckolib.util.GeckoLibUtil;
 
 import java.util.UUID;
 
-public class ArmorShardEntity extends Entity implements GeoEntity {
+public class ArmorShardEntity extends Entity {
 
     private UUID ownerUUID;
     private float damageReductionBonus;
     private int lifetime;
-
-    private final AnimatableInstanceCache animatableInstanceCache = GeckoLibUtil.createInstanceCache(this);
 
     private static final int MAX_LIFETIME = 200;
     private static final double ATTRACT_RANGE = 15.0;
@@ -152,12 +146,4 @@ public class ArmorShardEntity extends Entity implements GeoEntity {
         return false;
     }
 
-    @Override
-    public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
-    }
-
-    @Override
-    public AnimatableInstanceCache getAnimatableInstanceCache() {
-        return this.animatableInstanceCache;
-    }
 }

@@ -1,5 +1,6 @@
 package com.gytrinket.gytrinket.core.entity.construct.drone;
 
+import com.gytrinket.gytrinket.core.projectile.MultipartHitScan;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
@@ -14,14 +15,6 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import software.bernie.geckolib.animatable.GeoEntity;
-import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
-import software.bernie.geckolib.animation.AnimatableManager;
-import software.bernie.geckolib.animation.AnimationController;
-import software.bernie.geckolib.animation.AnimationState;
-import software.bernie.geckolib.animation.RawAnimation;
-import software.bernie.geckolib.animation.PlayState;
-import software.bernie.geckolib.util.GeckoLibUtil;
 
 import java.util.List;
 import java.util.UUID;
@@ -33,11 +26,9 @@ import java.util.UUID;
  * 光束有固定的宽度和高度，使用线段检测命中目标。
  * 每个光束炮实体只存在10刻，期间可以命中多个目标但每个目标只命中一次。
  */
-public class DroneBeamProjectile extends Entity implements GeoEntity {
+public class DroneBeamProjectile extends Entity {
     private static final EntityDataAccessor<Float> DAMAGE = SynchedEntityData.defineId(DroneBeamProjectile.class, EntityDataSerializers.FLOAT);
     private static final EntityDataAccessor<Integer> LIFETIME = SynchedEntityData.defineId(DroneBeamProjectile.class, EntityDataSerializers.INT);
-
-    private final AnimatableInstanceCache animatableInstanceCache = GeckoLibUtil.createInstanceCache(this);
 
     private static final int BEAM_LIFETIME = 10;
     public static final double BEAM_LENGTH = 15.0D;
@@ -135,58 +126,59 @@ public class DroneBeamProjectile extends Entity implements GeoEntity {
                 Math.max(start.z, end.z) + searchRadius
         );
 
-        List<LivingEntity> entities = this.level().getEntitiesOfClass(LivingEntity.class, largeAABB);
+        // 多体节：体节不注册进 level 实体列表，只扫父实体 AABB 会打空末影龙翼、
+        // 娜迦身体节段等伸出的部位；逐个测体节碰撞箱（光束瞄准命中，父实体包络需可选中）
+        List<MultipartHitScan.Hit> hits = MultipartHitScan.collectInRegion(
+                this.level(), largeAABB, start,
+                e -> e instanceof LivingEntity living && this.canHitEntity(living),
+                box -> isHitByRectangularBeam(start, end, box),
+                true);
 
-        for (LivingEntity entity : entities) {
-            if (!isEntityHitByBeam(entity, start, end)) {
+        for (MultipartHitScan.Hit hit : hits) {
+            LivingEntity target = hit.target();
+            if (this.hitTargets.contains(target.getUUID())) {
                 continue;
             }
-            if (this.canHitEntity(entity)) {
-                if (!this.hitTargets.contains(entity.getUUID())) {
-                    entity.invulnerableTime = 0;
 
-                    Entity realAttacker = this.getOwner();
+            Entity hitbox = hit.hitbox();
+            Entity realAttacker = this.getOwner();
 
-                    float totalDamage = this.getDamage();
-                    float projectileDamage = totalDamage * 0.5F;
-                    float fireDamage = totalDamage * 0.5F;
+            float totalDamage = this.getDamage();
+            float projectileDamage = totalDamage * 0.5F;
+            float fireDamage = totalDamage * 0.5F;
 
-                    // 施加时攻击者恒为无人机本体（避免非致死时对玩家触发仇恨）：
-                    // 预估致死时由 ExecuteDamageHandler 取消原伤害并改用归属玩家的
-                    // 斩杀伤害源（execute_damage）完成最后一击
-                    DamageSource projectileDamageSource;
-                    DamageSource fireDamageSource;
-                    if (realAttacker instanceof LivingEntity livingAttacker) {
-                        projectileDamageSource = entity.damageSources().mobAttack(livingAttacker);
-                        fireDamageSource = entity.damageSources().mobAttack(livingAttacker);
-                    } else {
-                        projectileDamageSource = entity.damageSources().indirectMagic(realAttacker, realAttacker);
-                        fireDamageSource = entity.damageSources().indirectMagic(realAttacker, realAttacker);
-                    }
-
-                    entity.hurt(projectileDamageSource, projectileDamage);
-                    entity.invulnerableTime = 0;
-                    entity.hurt(fireDamageSource, fireDamage);
-
-                    if (realAttacker instanceof DroneConstructEntity droneShooter && droneShooter.isCommanderDrone()) {
-                        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.post(
-                            new com.gytrinket.gytrinket.core.vulnerability.VulnerabilityApplyEvent(
-                                "commander", com.gytrinket.gytrinket.config.Config.COMMANDER_VULNERABILITY.get().floatValue(), entity, true
-                            )
-                        );
-                    }
-
-                    entity.invulnerableTime = 0;
-                    entity.setDeltaMovement(0, 0, 0);
-
-                    this.hitTargets.add(entity.getUUID());
-                }
+            // 施加时攻击者恒为无人机本体（避免非致死时对玩家触发仇恨）：
+            // 预估致死时由 ExecuteDamageHandler 取消原伤害并改用归属玩家的
+            // 斩杀伤害源（execute_damage）完成最后一击
+            DamageSource projectileDamageSource;
+            DamageSource fireDamageSource;
+            if (realAttacker instanceof LivingEntity livingAttacker) {
+                projectileDamageSource = target.damageSources().mobAttack(livingAttacker);
+                fireDamageSource = target.damageSources().mobAttack(livingAttacker);
+            } else {
+                projectileDamageSource = target.damageSources().indirectMagic(realAttacker, realAttacker);
+                fireDamageSource = target.damageSources().indirectMagic(realAttacker, realAttacker);
             }
-        }
-    }
 
-    private boolean isEntityHitByBeam(LivingEntity entity, Vec3 beamStart, Vec3 beamEnd) {
-        return isHitByRectangularBeam(beamStart, beamEnd, entity.getBoundingBox());
+            target.invulnerableTime = 0;
+            // 命中体节时由体节自身结算，保留各模组的体节倍率
+            hitbox.hurt(projectileDamageSource, projectileDamage);
+            target.invulnerableTime = 0;
+            hitbox.hurt(fireDamageSource, fireDamage);
+
+            if (realAttacker instanceof DroneConstructEntity droneShooter && droneShooter.isCommanderDrone()) {
+                net.neoforged.neoforge.common.NeoForge.EVENT_BUS.post(
+                    new com.gytrinket.gytrinket.core.vulnerability.VulnerabilityApplyEvent(
+                        "commander", com.gytrinket.gytrinket.config.Config.COMMANDER_VULNERABILITY.get().floatValue(), target, true
+                    )
+                );
+            }
+
+            target.invulnerableTime = 0;
+            target.setDeltaMovement(0, 0, 0);
+
+            this.hitTargets.add(target.getUUID());
+        }
     }
 
     private boolean isHitByRectangularBeam(Vec3 beamStart, Vec3 beamEnd, AABB entityAABB) {
@@ -358,18 +350,4 @@ public class DroneBeamProjectile extends Entity implements GeoEntity {
         this.entityData.set(LIFETIME, lifetime);
     }
 
-    @Override
-    public void registerControllers(AnimatableManager.ControllerRegistrar controllerRegistrar) {
-        controllerRegistrar.add(new AnimationController<>(this, "controller", 0, this::predicate));
-    }
-
-    private PlayState predicate(AnimationState<DroneBeamProjectile> event) {
-        event.setAndContinue(RawAnimation.begin().thenLoop("fire"));
-        return PlayState.CONTINUE;
-    }
-
-    @Override
-    public AnimatableInstanceCache getAnimatableInstanceCache() {
-        return this.animatableInstanceCache;
-    }
 }

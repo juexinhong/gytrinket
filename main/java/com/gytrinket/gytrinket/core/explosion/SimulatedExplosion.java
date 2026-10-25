@@ -3,7 +3,9 @@ package com.gytrinket.gytrinket.core.explosion;
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
 import com.gytrinket.gytrinket.core.damage.DamageAttributionWindow;
 import com.gytrinket.gytrinket.core.damage.SecondaryDamageMerger;
+import com.gytrinket.gytrinket.core.projectile.MultipartHitScan;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
@@ -113,32 +115,42 @@ public class SimulatedExplosion {
                 center.x + radius, center.y + radius, center.z + radius
         );
 
-        List<LivingEntity> entities = level.getEntitiesOfClass(LivingEntity.class, aabb);
+        // 多体节：体节不注册进 level 实体列表，只查父实体会漏掉伸出的头/颈/翅/尾/节段
+        // （娜迦父实体只有头部 2×2，身体节段拖出 20+ 格）；每个父实体只结算一次，
+        // 命中箱取离爆心最近的那个（父实体 AABB 与原版爆炸一致恒参与）
+        final double queryRadius = radius;
+        List<MultipartHitScan.Hit> hits = MultipartHitScan.collectInRegion(level, aabb, center,
+                e -> entityFilter.test((LivingEntity) e),
+                box -> box.getCenter().distanceToSqr(center) <= queryRadius * queryRadius
+                        || intersectsExplosionCircle(box, center, queryRadius),
+                false);
 
         // radius 可能被属性增幅重赋值，lambda 中使用 final 副本
         final double effectiveRadius = radius;
 
-        for (LivingEntity entity : entities) {
-            if (!entityFilter.test(entity)) continue;
-
-            double distance = entity.position().distanceTo(center);
-
-            // 范围修复机制：除原有 3D 距离判定（脚底坐标，受高度差影响）外，
-            // 爆心高度处半径 radius 的水平圆与目标碰撞箱（XZ 投影）相交时同样视为被波及，
-            // 解决边缘/站高差目标的漏判；单实体在单次遍历中只结算一次，天然去重
-            boolean hit = distance <= radius || intersectsExplosionCircle(entity, center, radius);
-            if (!hit) continue;
+        for (MultipartHitScan.Hit hit : hits) {
+            LivingEntity entity = hit.target();
+            Entity hitbox = hit.hitbox();
+            // 命中父实体时沿用原「脚底坐标」距离（击退衰减与原实现一致）；
+            // 命中体节时用体节碰撞箱中心
+            Vec3 referencePos = hitbox == entity ? entity.position() : hitbox.getBoundingBox().getCenter();
+            double distance = referencePos.distanceTo(center);
 
             // 仅由水平圆命中的目标 distance 可能超过 radius，钳制以免击退衰减计算出负值
             double effectiveDistance = Math.min(distance, radius);
 
-            if (mergeType == null) {
-                applyExplosionHit(entity, center, radius, effectiveDistance, damage, damageSource,
+            // 体节命中时合并键带上体节 ID，保证合并批次与施加时命中的碰撞箱一致
+            String shellMergeType = mergeType == null || hitbox == entity
+                    ? mergeType
+                    : mergeType + ":part:" + hitbox.getId();
+
+            if (shellMergeType == null) {
+                applyExplosionHit(hitbox, entity, center, radius, effectiveDistance, damage, damageSource,
                         owner, resetInvulnerable, knockbackMultiplierOverride);
             } else {
                 // 爆炸伤害：归属玩家时第一次立即结算，随后进入 0.5 秒收集期
-                SecondaryDamageMerger.accumulateExplosion(entity, mergeType, damage, owner != null, (target, mergedDamage) ->
-                        applyExplosionHit(target, center, effectiveRadius, effectiveDistance, mergedDamage, damageSource,
+                SecondaryDamageMerger.accumulateExplosion(entity, shellMergeType, damage, owner != null, (target, mergedDamage) ->
+                        applyExplosionHit(hitbox, target, center, effectiveRadius, effectiveDistance, mergedDamage, damageSource,
                                 owner, resetInvulnerable, knockbackMultiplierOverride));
             }
         }
@@ -153,8 +165,7 @@ public class SimulatedExplosion {
      * 将爆心水平坐标钳制到碰撞箱范围内得到最近点，最近点与爆心的水平距离 ≤ radius 即相交。
      * 垂直范围由调用处的 AABB 预筛选（爆心 ± radius 立方体）兜底，不会波及过远目标。
      */
-    private static boolean intersectsExplosionCircle(LivingEntity entity, Vec3 center, double radius) {
-        AABB box = entity.getBoundingBox();
+    private static boolean intersectsExplosionCircle(AABB box, Vec3 center, double radius) {
         // 碰撞箱未跨越爆心高度平面，水平圆与之不相交
         if (center.y < box.minY || center.y > box.maxY) {
             return false;
@@ -168,8 +179,11 @@ public class SimulatedExplosion {
 
     /**
      * 对单个实体施加爆炸命中：重置无敌时间、归属窗口、伤害、击退
+     * <p>
+     * {@code hitbox} 是实际命中箱（体节命中时为体节），伤害经它结算以保留体节倍率；
+     * {@code entity} 是父实体，用于无敌帧、归属窗口与击退。
      */
-    private static void applyExplosionHit(LivingEntity entity, Vec3 center, double radius, double distance,
+    private static void applyExplosionHit(Entity hitbox, LivingEntity entity, Vec3 center, double radius, double distance,
                                           float damage, DamageSource damageSource, Player owner,
                                           boolean resetInvulnerable, double knockbackMultiplierOverride) {
         if (resetInvulnerable) {
@@ -185,7 +199,7 @@ public class SimulatedExplosion {
             DamageAttributionWindow.mark(entity, owner);
         }
         try {
-            entity.hurt(actualSource, damage);
+            hitbox.hurt(actualSource, damage);
         } finally {
             if (windowed) {
                 DamageAttributionWindow.unmark(entity);

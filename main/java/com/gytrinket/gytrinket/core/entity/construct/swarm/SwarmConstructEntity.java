@@ -5,6 +5,7 @@ import com.gytrinket.gytrinket.core.entity.construct.AbstractConstructEntity;
 import com.gytrinket.gytrinket.core.entity.construct.ConstructAttributeApplier;
 import com.gytrinket.gytrinket.core.entity.construct.ConstructData;
 import com.gytrinket.gytrinket.core.entity.construct.ConstructGroupCache;
+import com.gytrinket.gytrinket.core.projectile.MultipartHitScan;
 import com.gytrinket.gytrinket.core.entity.construct.ConstructManager;
 import com.gytrinket.gytrinket.core.entity.construct.drone.ModEntities;
 import com.gytrinket.gytrinket.core.entity.construct.drone.behavior.BoidCalculator;
@@ -30,6 +31,7 @@ import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.common.NeoForge;
 
@@ -548,29 +550,43 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
         float damage = (float) this.baseAttackDamage;
         float vulnValue = (float) (Config.getSwarmVulnerabilityValue() * MothershipManager.getOverflowMultiplier(owner.getUUID()));
 
-        // 使用共享索敌缓存获取攻击范围内目标，而非独立做 getEntitiesOfClass
+        // 多体节：体节不注册进 level 实体列表，只查父实体会漏掉伸出的身体节段
+        // （娜迦父实体只有头部 2×2，身体节段拖出 20+ 格）；每个父实体只结算一次，
+        // 命中箱取离蜂群最近的那个
         float arcSearchRange = (float) (baseAttackRange + 4.0);
-        List<LivingEntity> hits = ConstructGroupCache.getInstance().findTargetsInRange(
-            owner.getUUID(), owner, swarm.position(), arcSearchRange);
+        AABB arcBox = new AABB(swarm.position(), swarm.position()).inflate(arcSearchRange);
+        List<MultipartHitScan.Hit> hits = MultipartHitScan.collectInRegion(
+            this.level(), arcBox, swarm.position(),
+            entity -> canArcHit(owner, entity),
+            box -> {
+                // 与大碰撞箱优化一致：检查点取碰撞箱 7/10 高度处，范围按碰撞箱宽度加成
+                Vec3 checkPos = new Vec3(box.getCenter().x, box.minY + box.getYsize() * 0.7, box.getCenter().z);
+                double effectiveRange = baseAttackRange + (int) box.getXsize();
+                return swarm.position().distanceToSqr(checkPos) <= effectiveRange * effectiveRange;
+            },
+            false);
 
         boolean hitAny = false;
-        for (LivingEntity hit : hits) {
-            // 使用目标身高7/10处为检查点，并根据碰撞箱宽度调整攻击范围
-            Vec3 hitCheckPos = hit.position().add(0, hit.getBbHeight() * 0.7, 0);
-            double hitEffectiveRange = baseAttackRange + (int) hit.getBbWidth();
-            if (swarm.position().distanceTo(hitCheckPos) > hitEffectiveRange) continue;
+        for (MultipartHitScan.Hit hit : hits) {
+            LivingEntity hitTarget = hit.target();
+            Entity hitbox = hit.hitbox();
 
             // 攻击前：取消击退标记（伤害经次级伤害合并系统延迟施加，同类型伤害窗口内累积合并）
-            KnockbackManager.markNoKnockback(hit.getUUID());
-            SecondaryDamageMerger.accumulate(hit, "swarm_arc", damage, (t, mergedDamage) -> {
+            KnockbackManager.markNoKnockback(hitTarget.getUUID());
+            // 体节命中时合并键带上体节 ID，保证合并批次与施加时命中的碰撞箱一致
+            String arcMergeType = hitbox == hitTarget
+                ? "swarm_arc"
+                : "swarm_arc:part:" + hitbox.getId();
+            SecondaryDamageMerger.accumulate(hitTarget, arcMergeType, damage, (t, mergedDamage) -> {
                 // 攻击前：取消无敌时间（合并延迟施加时重置）
                 t.invulnerableTime = 0;
 
                 // 蜂群电弧伤害（自定义伤害类型，归属蜂群构造体）；
                 // 预估致死时由 ExecuteDamageHandler 取消原伤害并改用归属玩家的
-                // 斩杀伤害源（execute_damage）完成最后一击
+                // 斩杀伤害源（execute_damage）完成最后一击。
+                // 命中体节时由体节自身结算，保留各模组的体节倍率
                 DamageSource source = ModDamageTypes.getSwarmDamageSource(t.level(), swarm);
-                t.hurt(source, mergedDamage);
+                hitbox.hurt(source, mergedDamage);
 
                 // 攻击后：取消无敌时间
                 t.invulnerableTime = 0;
@@ -596,6 +612,37 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
         double attackInterval = getBaseAttackInterval();
         int cooldown = (int) (attackInterval * 20.0 / (attackSpeedMult * this.attackSpeedMultiplier));
         this.attackCooldown = Math.max(1, cooldown);
+    }
+
+    /**
+     * 电弧范围命中过滤：与共享索敌缓存（{@code ConstructGroupCache.getTargetSnapshot}）
+     * 的筛选条件保持一致——排除自身、己方构造体、铁傀儡与玩家保护目标，只保留敌对目标。
+     */
+    private boolean canArcHit(LivingEntity owner, net.minecraft.world.entity.Entity entity) {
+        if (!(entity instanceof LivingEntity living) || entity == owner) {
+            return false;
+        }
+        if (!living.isAlive()) {
+            return false;
+        }
+        if (living instanceof net.minecraft.world.entity.animal.AbstractGolem) {
+            return false;
+        }
+        if (living instanceof com.gytrinket.gytrinket.core.entity.construct.IConstructEntity construct) {
+            UUID constructOwner = construct.getOwnerUUID();
+            if (constructOwner != null && constructOwner.equals(owner.getUUID())) {
+                return false;
+            }
+        }
+        net.minecraft.world.entity.player.Player player =
+            owner instanceof net.minecraft.world.entity.player.Player p ? p : null;
+        if (player != null
+                && com.gytrinket.gytrinket.core.entity.construct.HostileTargetManager
+                        .isEntityProtectedByPlayer(living, player)) {
+            return false;
+        }
+        return com.gytrinket.gytrinket.core.entity.construct.HostileTargetManager
+                .shouldAttackPlayer(living, player);
     }
 
     /**

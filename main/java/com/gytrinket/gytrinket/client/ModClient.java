@@ -8,6 +8,11 @@ import com.gytrinket.gytrinket.client.effect.particle.ShieldParticleRenderEvent;
 import com.gytrinket.gytrinket.client.effect.particle.ShieldParticleTickEvent;
 import com.gytrinket.gytrinket.client.shader.ModShaders;
 import com.gytrinket.gytrinket.core.entity.construct.drone.ModEntities;
+import com.gytrinket.gytrinket.core.entity.construct.drone.ArmorFragmentEntityModel;
+import com.gytrinket.gytrinket.core.entity.construct.drone.AssaultDroneEntityModel;
+import com.gytrinket.gytrinket.core.entity.construct.drone.DefenseDroneEntityModel;
+import com.gytrinket.gytrinket.core.entity.construct.drone.DroneBeamEntityModel;
+import com.gytrinket.gytrinket.core.entity.construct.drone.DroneEntityModel;
 import com.gytrinket.gytrinket.core.entity.construct.drone.DroneRenderer;
 import com.gytrinket.gytrinket.core.entity.meteor.MeteorEntities;
 import com.gytrinket.gytrinket.core.entity.meteor.client.MeteorRenderer;
@@ -19,6 +24,8 @@ import com.gytrinket.gytrinket.core.entity.construct.wingman.WingmanEntityModel;
 import com.gytrinket.gytrinket.core.entity.construct.wingman.ExplosiveProjectileRenderer;
 import com.gytrinket.gytrinket.core.entity.construct.wingman.InterceptorConfigContainer;
 import com.gytrinket.gytrinket.client.screen.InterceptorConfigContainerScreen;
+import com.gytrinket.gytrinket.client.model.LightPointCoreBlockModel;
+import com.gytrinket.gytrinket.core.entity.construct.swarm.SwarmEntityModel;
 import com.gytrinket.gytrinket.core.entity.construct.swarm.SwarmRenderer;
 import com.gytrinket.gytrinket.items.ModItems;
 import com.gytrinket.gytrinket.key.KeyInputHandler;
@@ -58,7 +65,7 @@ public class ModClient {
 
     /**
      * 注册光点核心物品的自定义渲染器扩展
-     * 使 Minecraft 使用 BEWLR 渲染路径，让 GeckoLib 的 GeoItemRenderer 接管 3D 模型渲染
+     * 使 Minecraft 使用 BEWLR 渲染路径，由 LightPointCoreItemRenderer 接管 3D 模型渲染
      */
     @SubscribeEvent
     public static void onRegisterClientExtensions(RegisterClientExtensionsEvent event) {
@@ -96,6 +103,15 @@ public class ModClient {
                 DefaultVertexFormat.POSITION_TEX_COLOR_NORMAL
             ),
             ModShaders::setShieldGlassShader
+        );
+        // 旧版「贴图转立体」：git 历史里的 glass 着色器（贴图 + 顶点色编码法线）
+        event.registerShader(
+            new ShaderInstance(
+                event.getResourceProvider(),
+                ResourceLocation.fromNamespaceAndPath(com.gytrinket.gytrinket.gytrinket.MODID, "shield_glass_legacy"),
+                DefaultVertexFormat.POSITION_TEX_COLOR
+            ),
+            ModShaders::setShieldGlassLegacyShader
         );
         event.registerShader(
             new ShaderInstance(
@@ -159,5 +175,12 @@ public class ModClient {
     @SubscribeEvent
     public static void registerLayerDefinitions(EntityRenderersEvent.RegisterLayerDefinitions event) {
         event.registerLayerDefinition(WingmanEntityModel.LAYER_LOCATION, WingmanEntityModel::createBodyLayer);
+        event.registerLayerDefinition(DroneEntityModel.LAYER_LOCATION, DroneEntityModel::createBodyLayer);
+        event.registerLayerDefinition(AssaultDroneEntityModel.LAYER_LOCATION, AssaultDroneEntityModel::createBodyLayer);
+        event.registerLayerDefinition(DefenseDroneEntityModel.LAYER_LOCATION, DefenseDroneEntityModel::createBodyLayer);
+        event.registerLayerDefinition(ArmorFragmentEntityModel.LAYER_LOCATION, ArmorFragmentEntityModel::createBodyLayer);
+        event.registerLayerDefinition(DroneBeamEntityModel.LAYER_LOCATION, DroneBeamEntityModel::createBodyLayer);
+        event.registerLayerDefinition(SwarmEntityModel.LAYER_LOCATION, SwarmEntityModel::createBodyLayer);
+        event.registerLayerDefinition(LightPointCoreBlockModel.LAYER_LOCATION, LightPointCoreBlockModel::createBodyLayer);
     }
 }

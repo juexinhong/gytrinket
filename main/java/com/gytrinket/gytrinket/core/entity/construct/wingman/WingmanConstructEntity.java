@@ -905,18 +905,8 @@ public class WingmanConstructEntity extends AbstractConstructEntity {
         return WingmanConstructTypes.WINGMAN;
     }
 
-    @Override
-    public boolean shouldShowName() {
-        // 不渲染僚机上方显示"僚机"的名牌
-        return false;
-    }
-
-    @Override
-    public boolean hasCustomName() {
-        // 彻底屏蔽名牌的另一个渲染分支（hasCustomName && 正在注视），
-        // 即使旧存档中残留 CustomName 数据也不会显示名牌
-        return false;
-    }
+    // 名牌屏蔽已上移到 AbstractConstructEntity（shouldShowName / hasCustomName），
+    // 无人机、蜂群、僚机等所有构造体统一不再显示头顶名牌。
 
     @Override
     protected void onRemoveFromConstructManager() {

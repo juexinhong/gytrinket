@@ -6,6 +6,7 @@ import com.gytrinket.gytrinket.core.defs.DefsManager;
 import com.gytrinket.gytrinket.core.defs.ShieldValueDefs;
 import com.gytrinket.gytrinket.core.entity.construct.HostileTargetManager;
 import com.gytrinket.gytrinket.core.modifier.player.knockback.KnockbackManager;
+import com.gytrinket.gytrinket.core.projectile.MultipartHitScan;
 import com.gytrinket.gytrinket.core.shield.ShieldManager;
 import com.gytrinket.gytrinket.core.shield_transfer.ShieldTransferManager;
 import com.gytrinket.gytrinket.core.damage.ModDamageTypes;
@@ -147,11 +148,14 @@ public class SiphonShieldType implements IShieldType {
             if (center == null || !center.isAlive()) continue;
 
             AABB boundingBox = center.getBoundingBox().inflate(radius);
-            List<LivingEntity> entities = player.level().getEntitiesOfClass(LivingEntity.class, boundingBox,
-                entity -> isValidTarget(entity, center)
-            );
-
-            for (LivingEntity target : entities) {
+            // 多体节：体节不注册进 level 实体列表，只查父实体会漏掉伸出的身体节段；
+            // 虹吸伤害按生物结算（每个父实体只记一次）
+            for (MultipartHitScan.Hit hit : MultipartHitScan.collectInRegion(
+                    player.level(), boundingBox, center.position(),
+                    entity -> isValidTarget((LivingEntity) entity, center),
+                    boundingBox::intersects,
+                    false)) {
+                LivingEntity target = hit.target();
                 if (target.isAlive() && target.getHealth() > 0) {
                     targets.add(target);
                 }

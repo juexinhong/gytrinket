@@ -1,12 +1,12 @@
 package com.gytrinket.gytrinket.event;
 
 import com.gytrinket.gytrinket.core.entity.construct.IConstructEntity;
+import com.gytrinket.gytrinket.core.projectile.MultipartHitScan;
 import com.gytrinket.gytrinket.gytrinket;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -14,7 +14,6 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.ProjectileImpactEvent;
 import net.neoforged.neoforge.event.entity.player.AttackEntityEvent;
 
-import java.util.List;
 import java.util.UUID;
 
 /**
@@ -117,7 +116,12 @@ public class ConstructPenetrationHandler {
      * 从玩家视线方向做射线追踪，排除玩家自己的所有构造体
      * <p>
      * 沿玩家视线方向逐步检测，跳过所有属于该玩家的构造体，
-     * 返回第一个命中的非构造体实体
+     * 返回第一个命中的非构造体实体。
+     * <p>
+     * 多体节：体节不注册进 level 实体列表，{@code getEntitiesOfClass(Entity.class)}
+     * 只会返回父实体；末影龙父实体 {@code isPickable() == false}（其 16×8 包络不可
+     * 选中），重追踪会直接看不到龙。改由 {@link MultipartHitScan} 逐个测体节，
+     * 命中体节时返回体节（原版玩家攻击体节正是通过体节 ID 解析、经体节路由伤害）。
      */
     private static Entity raytraceExcludingOwnConstructs(Player player) {
         Level level = player.level();
@@ -128,35 +132,21 @@ public class ConstructPenetrationHandler {
 
         UUID playerUUID = player.getUUID();
 
-        // 获取视线范围内所有实体
-        AABB searchBox = new AABB(eyePos, endPos).inflate(1.0);
-        List<Entity> entities = level.getEntitiesOfClass(Entity.class, searchBox,
-                entity -> entity != player && entity.isAlive() && entity.isPickable());
-
-        Entity closestEntity = null;
-        double closestDist = Double.MAX_VALUE;
-
-        for (Entity entity : entities) {
-            // 跳过玩家自己的构造体
-            if (isConstruct(entity)) {
-                UUID ownerUUID = getConstructOwnerUUID(entity);
-                if (ownerUUID != null && ownerUUID.equals(playerUUID)) {
-                    continue;
-                }
-            }
-
-            // 计算视线与实体碰撞箱的交点
-            AABB entityBB = entity.getBoundingBox().inflate(0.3);
-            Vec3 intersection = entityBB.clip(eyePos, endPos).orElse(null);
-            if (intersection != null) {
-                double dist = eyePos.distanceToSqr(intersection);
-                if (dist < closestDist) {
-                    closestDist = dist;
-                    closestEntity = entity;
-                }
-            }
-        }
-
-        return closestEntity;
+        MultipartHitScan.Hit hit = MultipartHitScan.findFirstOnPath(level, eyePos, endPos,
+                MultipartHitScan.DEFAULT_HITBOX_INFLATE,
+                entity -> {
+                    if (entity == player || !entity.isAlive()) {
+                        return false;
+                    }
+                    // 普通实体保留原来的可选中要求；多体节父实体本身不可选中时仍要取体节
+                    Entity[] parts = entity.getParts();
+                    if (!entity.isPickable() && (parts == null || parts.length == 0)) {
+                        return false;
+                    }
+                    // 跳过玩家自己的构造体
+                    return !(isConstruct(entity)
+                            && playerUUID.equals(getConstructOwnerUUID(entity)));
+                });
+        return hit == null ? null : hit.hitbox();
     }
 }

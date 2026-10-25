@@ -9,7 +9,7 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 public class ModItems {
     public static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(com.gytrinket.gytrinket.gytrinket.MODID);
 
-    // 基础方块（使用 GeoItem 渲染3D模型）
+    // 基础方块（物品形态用 BEWLR 渲染原生 3D 模型）
     public static final DeferredItem<BlockItem> LIGHT_POINT_CORE = ITEMS.register("light_point_core",
             () -> new LightPointCoreBlockItem(ModBlocks.LIGHT_POINT_CORE.get(), new Item.Properties()));
 

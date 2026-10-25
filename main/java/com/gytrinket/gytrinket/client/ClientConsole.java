@@ -45,23 +45,64 @@ public final class ClientConsole {
             return;
         }
         Minecraft mc = Minecraft.getInstance();
+        // 控制台命令文件先读出来：join/quit 这类命令在主菜单阶段就要能执行（自动化验证用）
+        Path file = mc.gameDirectory.toPath().resolve("gytrinket_cmd.txt");
+        String line = null;
+        if (Files.exists(file)) {
+            try {
+                line = Files.readString(file).trim();
+            } catch (Exception e) {
+                line = null;
+            }
+            if (line != null && line.isEmpty()) {
+                try {
+                    Files.deleteIfExists(file);
+                } catch (Exception ignored) {
+                }
+                line = null;
+            }
+        }
+        if (line != null && line.startsWith("join")) {
+            try {
+                Files.deleteIfExists(file);
+            } catch (Exception ignored) {
+            }
+            String[] head = line.split("\\s+");
+            if (head.length > 1) {
+                gytrinket.LOGGER.info("[cmd] join {}", head[1]);
+                mc.createWorldOpenFlows().loadLevel(mc.screen, head[1]);
+            }
+            return;
+        }
+        if (line != null && line.startsWith("connect")) {
+            // 连开发服务器：截图/指令验证走独立服务端，避免单人存档锁与世界复制的坑
+            try {
+                Files.deleteIfExists(file);
+            } catch (Exception ignored) {
+            }
+            String[] head = line.split("\\s+");
+            if (head.length > 1) {
+                gytrinket.LOGGER.info("[cmd] connect {}", head[1]);
+                net.minecraft.client.multiplayer.resolver.ServerAddress address =
+                        net.minecraft.client.multiplayer.resolver.ServerAddress.parseString(head[1]);
+                net.minecraft.client.gui.screens.ConnectScreen.startConnecting(
+                        mc.screen, mc, address,
+                        new net.minecraft.client.multiplayer.ServerData("dev", head[1], false));
+            }
+            return;
+        }
         if (mc.player == null || mc.level == null) {
+            // 没有世界时先把命令留在文件里，进世界后的下一 tick 再执行
             return;
         }
         // 观察台的自动循环（每 20 刻换一批），与 1.21.1 对齐
         ShieldDemoHarness.tick(mc);
-        Path file = mc.gameDirectory.toPath().resolve("gytrinket_cmd.txt");
-        if (!Files.exists(file)) {
+        if (line == null) {
             return;
         }
-        String line;
         try {
-            line = Files.readString(file).trim();
             Files.deleteIfExists(file);
         } catch (Exception e) {
-            return;
-        }
-        if (line.isEmpty()) {
             return;
         }
         String[] p = line.split("\\s+");

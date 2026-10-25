@@ -8,10 +8,11 @@
     "MovementSpeedSwimMixin",
     "PlayerMixin",
     "TargetingConditionsMixin",
-    "LevelMixin"
+    "LevelMixin",
+    "LivingEntityHurtEventMixin",
+    "PrimaryLevelDataMixin"
   ],
   "client": [
-    "LivingEntityClientMixin",
     "GameRendererMixin",
     "MinecraftClientMixin",
     "MouseHandlerMixin",

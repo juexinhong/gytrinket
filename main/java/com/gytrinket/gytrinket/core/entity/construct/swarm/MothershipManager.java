@@ -100,20 +100,27 @@ public class MothershipManager {
      * 由 {@link com.gytrinket.gytrinket.core.entity.construct.ConstructAttributeApplier#getEffectiveMaxCount}
      * 在计算蜂群最终数量时设置。
      *
-     * @param playerUUID 玩家 UUID
+     * @param playerUUID 玩家 UUID（可能为 null：构造体反序列化阶段 owner 尚未解析）
      * @return 溢出倍率，1.0 表示无溢出
      */
     public static double getOverflowMultiplier(UUID playerUUID) {
+        // ConcurrentHashMap 不接受 null key，反序列化早期的 null owner 必须回退默认值
+        if (playerUUID == null) {
+            return 1.0;
+        }
         return OVERFLOW_MULTIPLIERS.getOrDefault(playerUUID, 1.0);
     }
 
     /**
      * 设置蜂群溢出倍率。倍率 <= 1.0 时移除存储。
      *
-     * @param playerUUID 玩家 UUID
+     * @param playerUUID 玩家 UUID（null 时直接忽略）
      * @param multiplier 溢出倍率
      */
     public static void setOverflowMultiplier(UUID playerUUID, double multiplier) {
+        if (playerUUID == null) {
+            return;
+        }
         if (multiplier <= 1.0) {
             OVERFLOW_MULTIPLIERS.remove(playerUUID);
         } else {

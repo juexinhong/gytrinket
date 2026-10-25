@@ -26,6 +26,11 @@ import java.nio.file.Path;
  * shot name                 截图到 screenshots/name.png
  * build variant x y z       在坐标砌民居（variant 0..3，3 为别墅）
  * clear x0 y0 z0 x1 y1 z1   清空区域
+ * shielddemo [x y z] [age]  在坐标（或视线前方）摆一圈护盾粒子并冻结年龄
+ * shieldage n               把现有粒子年龄改成 n 刻
+ * shieldfreeze [0]          冻结/解冻粒子计时
+ * shieldstyle 0|1|2         切换护盾粒子形象（水晶/旧立体/平面）
+ * shieldclear               清掉护盾粒子与演示实体
  * </pre>
  */
 @EventBusSubscriber(modid = gytrinket.MODID, value = Dist.CLIENT)
@@ -43,6 +48,8 @@ public final class ClientConsole {
         if (mc.player == null || mc.level == null) {
             return;
         }
+        // 观察台的自动循环（每 20 刻换一批），与 1.21.1 对齐
+        ShieldDemoHarness.tick(mc);
         Path file = mc.gameDirectory.toPath().resolve("gytrinket_cmd.txt");
         if (!Files.exists(file)) {
             return;
@@ -125,6 +132,49 @@ public final class ClientConsole {
                         gytrinket.LOGGER.info("[cmd] cleared");
                     }
                 }
+                case "shieldinfo" -> {
+                    var sp = serverPlayer();
+                    if (sp != null) {
+                        gytrinket.LOGGER.info("[cmd] shieldinfo current={} max={} instances={}",
+                                com.gy_mod.gy_trinket.core.shield.ShieldManager.getCurrentShield(sp.getUUID()),
+                                com.gy_mod.gy_trinket.core.shield.ShieldManager.getMaxShield(sp.getUUID()),
+                                com.gy_mod.gy_trinket.core.shield.ShieldManager.getInstances(sp.getUUID()).size());
+                    }
+                }
+                case "shieldset" -> {
+                    double value = Double.parseDouble(p[1]);
+                    var sp = serverPlayer();
+                    if (sp != null) {
+                        com.gy_mod.gy_trinket.core.shield.ShieldManager.setCurrentShield(sp.getUUID(), value);
+                        gytrinket.LOGGER.info("[cmd] shieldset {} -> current={} max={}",
+                                value,
+                                com.gy_mod.gy_trinket.core.shield.ShieldManager.getCurrentShield(sp.getUUID()),
+                                com.gy_mod.gy_trinket.core.shield.ShieldManager.getMaxShield(sp.getUUID()));
+                    }
+                }
+                case "quit" -> {
+                    // 正常退出（会走 PlayerLoggedOutEvent → PlayerDataCenter 落盘），测持久化用
+                    gytrinket.LOGGER.info("[cmd] quit");
+                    mc.stop();
+                }
+                case "reload" -> {
+                    // 改完着色器 / 贴图不用重启客户端：热重载资源包（含 core shader）
+                    mc.reloadResourcePacks();
+                    gytrinket.LOGGER.info("[cmd] reload resource packs");
+                }
+                case "cfg" -> {
+                    // 打开配置界面：cfg 1 = 直接进「客户端」分组（调试多选一行用）
+                    boolean clientTab = p.length > 1 && !"0".equals(p[1]);
+                    mc.setScreen(new com.gy_mod.gy_trinket.client.screen.ConfigEntriesScreen(null, clientTab));
+                    gytrinket.LOGGER.info("[cmd] cfg clientTab={}", clientTab);
+                }
+                case "cfgclick" -> {
+                    // 模拟一次左键点击（像素坐标），用来验证配置界面的行点击/多选一循环
+                    double cx = Double.parseDouble(p[1]);
+                    double cy = Double.parseDouble(p[2]);
+                    boolean handled = mc.screen != null && mc.screen.mouseClicked(cx, cy, 0);
+                    gytrinket.LOGGER.info("[cmd] cfgclick {}/{} handled={}", cx, cy, handled);
+                }
                 case "set" -> {
                     int sx = Integer.parseInt(p[1]);
                     int sy = Integer.parseInt(p[2]);
@@ -148,6 +198,63 @@ public final class ClientConsole {
                         }
                     }
                     gytrinket.LOGGER.info("[cmd] fill {}", p[7]);
+                }
+                case "shielddemo" -> {
+                    // 观察台：隐形盔甲架 + 一批 19 颗粒子（中心 + 三圈六边形），镜头自动摆到斜前方
+                    if (p.length >= 4) {
+                        ShieldDemoHarness.start(mc,
+                                Double.parseDouble(p[1]), Double.parseDouble(p[2]), Double.parseDouble(p[3]),
+                                p.length > 4 ? Double.parseDouble(p[4]) : 3.2D,
+                                p.length > 5 ? Double.parseDouble(p[5]) : 38.0D);
+                    } else {
+                        ShieldDemoHarness.start(mc,
+                                Math.floor(mc.player.getX()) + 0.5D,
+                                Math.floor(mc.player.getY()) + 0.05D,
+                                Math.floor(mc.player.getZ()) + 0.5D,
+                                3.2D, 38.0D);
+                    }
+                    gytrinket.LOGGER.info("[cmd] shielddemo");
+                }
+                case "shieldstop" -> {
+                    ShieldDemoHarness.stop(mc);
+                    gytrinket.LOGGER.info("[cmd] shieldstop");
+                }
+                case "shieldauto" -> {
+                    ShieldDemoHarness.setAuto(p.length > 1 && !"0".equals(p[1]));
+                    gytrinket.LOGGER.info("[cmd] shieldauto {}", p.length > 1 ? p[1] : "1");
+                }
+                case "shieldfreeze" -> {
+                    ShieldDemoHarness.setFreeze(p.length > 1 && !"0".equals(p[1]));
+                    gytrinket.LOGGER.info("[cmd] shieldfreeze {}", p.length > 1 ? p[1] : "1");
+                }
+                case "shieldage" -> {
+                    ShieldDemoHarness.setAge(p.length > 1 ? Integer.parseInt(p[1]) : 8);
+                    gytrinket.LOGGER.info("[cmd] shieldage {}", p.length > 1 ? p[1] : "8");
+                }
+                case "shieldburst" -> {
+                    ShieldDemoHarness.burst(mc);
+                    gytrinket.LOGGER.info("[cmd] shieldburst");
+                }
+                case "shieldorbit" -> {
+                    ShieldDemoHarness.orbit(mc,
+                            p.length > 1 ? Double.parseDouble(p[1]) : 38.0D,
+                            p.length > 2 ? Double.parseDouble(p[2]) : 3.2D,
+                            p.length > 3 ? Double.parseDouble(p[3]) : 1.15D);
+                    gytrinket.LOGGER.info("[cmd] shieldorbit");
+                }
+                case "shieldstyle" -> {
+                    int style = Integer.parseInt(p[1]);
+                    com.gy_mod.gy_trinket.config.ClientConfig.SHIELD_PARTICLE_STYLE.set(style);
+                    gytrinket.LOGGER.info("[cmd] shieldstyle {}", style);
+                }
+                case "shieldclear" -> {
+                    ShieldDemoHarness.stop(mc);
+                    gytrinket.LOGGER.info("[cmd] shieldclear");
+                }
+                case "hud" -> {
+                    // hud 0 隐藏 HUD（干净截图），hud 1 显示
+                    mc.options.hideGui = p.length < 2 || "0".equals(p[1]);
+                    gytrinket.LOGGER.info("[cmd] hud hidden={}", mc.options.hideGui);
                 }
                 case "dump" -> {
                     String name = p[1];
@@ -173,6 +280,16 @@ public final class ClientConsole {
         } catch (Exception e) {
             gytrinket.LOGGER.warn("[cmd] failed: {} ({})", line, e.getMessage());
         }
+    }
+
+
+    /** 客户端线程上取当前单人存档的服务端玩家（dev 控制台用，没有则返回 null） */
+    private static net.minecraft.server.level.ServerPlayer serverPlayer() {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.getSingleplayerServer() == null || mc.player == null) {
+            return null;
+        }
+        return mc.getSingleplayerServer().getPlayerList().getPlayer(mc.player.getUUID());
     }
 
     private static BlockState blockByName(String id) {

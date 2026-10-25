@@ -1,6 +1,7 @@
 package com.gy_mod.gy_trinket.core.entity.construct.swarm;
 
 import com.gy_mod.gy_trinket.config.Config;
+import com.gy_mod.gy_trinket.core.defs.MechanicValueDefs;
 import com.gy_mod.gy_trinket.core.defs.DefsManager;
 import net.minecraft.server.MinecraftServer;
 
@@ -63,9 +64,9 @@ public final class SwarmInstanceParams {
     /** 各参数未覆盖时的默认值（服务端/客户端共用） */
     private static double fallbackFor(String paramKey) {
         return switch (paramKey) {
-            case KEY_BUILD_TIME -> Config.getSwarmBuildTime();
-            case KEY_BASE_HEALTH -> Config.getSwarmBaseHealth();
-            case KEY_BASE_DAMAGE -> Config.getSwarmBaseDamage();
+            case KEY_BUILD_TIME -> MechanicValueDefs.defaultValueOf("swarm_module_items", "build_time", 20);
+            case KEY_BASE_HEALTH -> MechanicValueDefs.defaultValueOf("swarm_module_items", "base_health", 1.6);
+            case KEY_BASE_DAMAGE -> MechanicValueDefs.defaultValueOf("swarm_module_items", "base_damage", 0.08);
             case KEY_BASE_COUNT -> Config.getSwarmMaxCount();
             case KEY_ATTACK_INTERVAL -> 0.0D;
             case KEY_ATTACK_RANGE -> 0.0D;

@@ -1,6 +1,7 @@
 package com.gy_mod.gy_trinket.core.entity.construct.drone.behavior;
 
 import com.gy_mod.gy_trinket.config.Config;
+import com.gy_mod.gy_trinket.core.defs.MechanicValueDefs;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
 import com.gy_mod.gy_trinket.core.burn.BurnManager;
 import com.gy_mod.gy_trinket.core.burn.IBurnSource;
@@ -10,6 +11,7 @@ import com.gy_mod.gy_trinket.core.entity.construct.HostileTargetManager;
 import com.gy_mod.gy_trinket.core.explosion.SimulatedExplosion;
 import com.gy_mod.gy_trinket.core.ignite.IIgniteSource;
 import com.gy_mod.gy_trinket.core.ignite.IgniteManager;
+import com.gy_mod.gy_trinket.core.projectile.MultipartHitScan;
 import com.gy_mod.gy_trinket.core.shield.DisableSystem;
 import com.gy_mod.gy_trinket.core.defs.DefsManager;
 import com.gy_mod.gy_trinket.storage.PlayerStoreUtils;
@@ -96,9 +98,9 @@ public class SelfDestructBehavior implements IDroneSpecialBehavior {
         UUID ownerUUID = construct instanceof IConstructEntity cEntity ? cEntity.getOwnerUUID() : null;
         var server = construct.level().getServer();
         double baseDamage = DefsManager.resolveMechanicValue(server, ownerUUID,
-                "self_destruct_items", "base_damage", Config.SELF_DESTRUCT_BASE_DAMAGE.get());
+                "self_destruct_items", "base_damage", MechanicValueDefs.defaultValueOf("self_destruct_items", "base_damage", 1));
         double baseRadius = DefsManager.resolveMechanicValue(server, ownerUUID,
-                "self_destruct_items", "base_radius", Config.SELF_DESTRUCT_BASE_RADIUS.get());
+                "self_destruct_items", "base_radius", MechanicValueDefs.defaultValueOf("self_destruct_items", "base_radius", 1));
         double damagePerHealth = Config.SELF_DESTRUCT_DAMAGE_PER_MAX_HEALTH.get();
         double radiusPerHealth = Config.SELF_DESTRUCT_RADIUS_PER_MAX_HEALTH.get();
 
@@ -141,15 +143,16 @@ public class SelfDestructBehavior implements IDroneSpecialBehavior {
                     pos.x - radius, pos.y - radius, pos.z - radius,
                     pos.x + radius, pos.y + radius, pos.z + radius
             );
-            for (LivingEntity entity : construct.level().getEntitiesOfClass(LivingEntity.class, aabb)) {
-                if (entity == construct || !entity.isAlive() || entity instanceof Player
-                        || !(entity instanceof Mob)
-                        || !HostileTargetManager.shouldAttackPlayer(entity, playerOwner)) {
-                    continue;
-                }
-                if (entity.position().distanceTo(pos) > radius) {
-                    continue;
-                }
+            // 多体节：体节不注册进 level 实体列表，只查父实体会漏掉伸出的身体节段；
+            // 灼烧/点燃按生物结算，每个父实体只记一次
+            for (MultipartHitScan.Hit hit : MultipartHitScan.collectInRegion(
+                    construct.level(), aabb, pos,
+                    entity -> entity != construct && entity.isAlive() && !(entity instanceof Player)
+                            && entity instanceof Mob
+                            && HostileTargetManager.shouldAttackPlayer(entity, playerOwner),
+                    box -> box.getCenter().distanceTo(pos) <= radius,
+                    false)) {
+                LivingEntity entity = hit.target();
                 BurnManager.applyBurnCharge(entity, burnDamage, burnSource);
                 IgniteManager.applyIgnite(entity, igniteSource, "self_destruct", true);
             }

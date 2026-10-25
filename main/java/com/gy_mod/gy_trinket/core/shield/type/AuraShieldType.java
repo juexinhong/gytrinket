@@ -1,6 +1,7 @@
 package com.gy_mod.gy_trinket.core.shield.type;
 
 import com.gy_mod.gy_trinket.config.Config;
+import com.gy_mod.gy_trinket.core.defs.ShieldValueDefs;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
 import com.gy_mod.gy_trinket.core.burn.BurnManager;
 import com.gy_mod.gy_trinket.core.burn.IBurnSource;
@@ -8,6 +9,7 @@ import com.gy_mod.gy_trinket.core.defs.DefsManager;
 import com.gy_mod.gy_trinket.core.entity.construct.HostileTargetManager;
 import com.gy_mod.gy_trinket.core.ignite.IIgniteSource;
 import com.gy_mod.gy_trinket.core.ignite.IgniteManager;
+import com.gy_mod.gy_trinket.core.projectile.MultipartHitScan;
 import com.gy_mod.gy_trinket.core.shield.ShieldManager;
 import com.gy_mod.gy_trinket.core.shield_transfer.ShieldTransferManager;
 import com.gy_mod.gy_trinket.core.damage.ModDamageTypes;
@@ -132,7 +134,7 @@ public class AuraShieldType implements IShieldType {
             return;
         }
 
-        int triggerFrequency = (int) valueFor(server, itemId, "trigger_frequency", Config.AURA_TRIGGER_FREQUENCY.get());
+        int triggerFrequency = (int) valueFor(server, itemId, "trigger_frequency", ShieldValueDefs.defaultValueOf("aura", "trigger_frequency", 5.0));
         int tickCounter = TICK_COUNTERS.getOrDefault(key, 0) + 1;
         if (tickCounter < triggerFrequency) {
             TICK_COUNTERS.put(key, tickCounter);
@@ -148,11 +150,11 @@ public class AuraShieldType implements IShieldType {
         }
 
         double shieldEffectRadius = AttributeManager.getGroupAttribute(uuid, "shield_effect_radius");
-        double baseRadius = valueFor(server, itemId, "radius", Config.AURA_RADIUS.get());
+        double baseRadius = valueFor(server, itemId, "radius", ShieldValueDefs.defaultValueOf("aura", "radius", 3.5));
         double radius = baseRadius * shieldEffectRadius;
 
-        double chargeRate = valueFor(server, itemId, "damage", Config.AURA_DAMAGE.get());
-        double baseShieldCost = valueFor(server, itemId, "shield_cost", Config.AURA_SHIELD_COST.get());
+        double chargeRate = valueFor(server, itemId, "damage", ShieldValueDefs.defaultValueOf("aura", "damage", 0.75));
+        double baseShieldCost = valueFor(server, itemId, "shield_cost", ShieldValueDefs.defaultValueOf("aura", "shield_cost", 0.042));
 
         float totalShieldCost = 0;
         boolean hasEnemies = false;
@@ -166,11 +168,16 @@ public class AuraShieldType implements IShieldType {
             }
 
             AABB boundingBox = center.getBoundingBox().inflate(radius);
-            List<LivingEntity> entities = player.level().getEntitiesOfClass(LivingEntity.class, boundingBox,
-                entity -> isValidTarget(entity, center)
-            );
+            // 多体节：体节不注册进 level 实体列表，只查父实体会漏掉伸出的身体节段；
+            // 每个父实体只记一次（灼烧/点燃按生物结算）
+            List<MultipartHitScan.Hit> hits = MultipartHitScan.collectInRegion(
+                player.level(), boundingBox, center.position(),
+                entity -> isValidTarget((LivingEntity) entity, center),
+                boundingBox::intersects,
+                false);
 
-            for (LivingEntity target : entities) {
+            for (MultipartHitScan.Hit hit : hits) {
+                LivingEntity target = hit.target();
                 hasEnemies = true;
                 double shieldEffect = AttributeManager.getGroupAttribute(uuid, "shield_effect");
                 float charge = (float)(chargeRate * shieldEffect);
@@ -179,8 +186,8 @@ public class AuraShieldType implements IShieldType {
                 igniteTargets.add(target);
             }
 
-            if (!entities.isEmpty()) {
-                totalShieldCost += baseShieldCost * entities.size();
+            if (!hits.isEmpty()) {
+                totalShieldCost += baseShieldCost * hits.size();
             }
         }
 

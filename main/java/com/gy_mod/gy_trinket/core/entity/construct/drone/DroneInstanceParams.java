@@ -1,6 +1,7 @@
 package com.gy_mod.gy_trinket.core.entity.construct.drone;
 
 import com.gy_mod.gy_trinket.config.Config;
+import com.gy_mod.gy_trinket.core.defs.MechanicValueDefs;
 import com.gy_mod.gy_trinket.core.defs.DefsManager;
 import net.minecraft.server.MinecraftServer;
 
@@ -66,8 +67,8 @@ public final class DroneInstanceParams {
     private static double fallbackFor(String paramKey) {
         return switch (paramKey) {
             case KEY_BUILD_TIME -> DEFAULT_BUILD_TIME;
-            case KEY_BASE_HEALTH -> Config.getDroneBaseHealth();
-            case KEY_BASE_DAMAGE -> Config.getDroneBaseDamage();
+            case KEY_BASE_HEALTH -> MechanicValueDefs.defaultValueOf("drone_module_items", "base_health", 5);
+            case KEY_BASE_DAMAGE -> MechanicValueDefs.defaultValueOf("drone_module_items", "base_damage", 0.3);
             case KEY_BASE_COUNT -> Config.getDroneMaxCount();
             case KEY_ATTACK_INTERVAL -> 0.0D;
             case KEY_MOVE_SPEED -> 1.0D;

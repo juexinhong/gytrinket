@@ -1,10 +1,46 @@
 {
-    "items":  {
-                  "gytrinket:ghost_fuselage":  {
-                                                   "mechanic":  true,
-                                                   "sets":  [
-                                                                "ghost_fuselage_items"
-                                                            ]
-                                               }
-              }
+  "items": {
+    "gytrinket:ghost_fuselage": {
+      "mechanic": true,
+      "sets": [
+        "ghost_fuselage_items"
+      ],
+      "values": {
+        "ghost_fuselage_items": {
+          "stealth_speed_bonus_per_level": {
+            "value": 0.005,
+            "stackable": false
+          },
+          "max_bonus_per_level": {
+            "value": 0.005,
+            "stackable": false
+          },
+          "base_max_damage_bonus": {
+            "value": 3,
+            "stackable": false
+          },
+          "move_speed_threshold": {
+            "value": 0.25,
+            "stackable": false
+          },
+          "move_speed_reduction": {
+            "value": 0.2,
+            "stackable": false
+          },
+          "decay_rate": {
+            "value": 0.3,
+            "stackable": false
+          },
+          "min_decay": {
+            "value": 0.02,
+            "stackable": false
+          },
+          "full_stealth_ticks": {
+            "value": 40,
+            "stackable": false
+          }
+        }
+      }
+    }
+  }
 }

@@ -1,130 +1,72 @@
 package com.gy_mod.gy_trinket.client;
 
 import com.gy_mod.gy_trinket.blocks.LightPointCoreBlockEntity;
+import com.gy_mod.gy_trinket.client.model.LightPointCoreBlockModel;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.resources.ResourceLocation;
-import software.bernie.geckolib.cache.object.BakedGeoModel;
-import software.bernie.geckolib.model.GeoModel;
-import software.bernie.geckolib.renderer.GeoBlockRenderer;
+import net.minecraft.world.level.Level;
 
 /**
- * 光点核心方块渲染器
- * 负责使用 GeckoLib 渲染光点核心方块
- * 支持双层透明材质渲染
+ * 光点核心方块渲染器（标准 Minecraft 模型渲染，不依赖 GeckoLib）
+ * <p>
+ * 双层材质：先画基础层（gy1），再用半透明装饰层（gy3）叠一遍。
+ * 原 GeckoLib 的 {@code recharge} 动画改为在这里直接驱动 ModelPart：
+ * <ul>
+ *   <li>{@code bone9} 绕 Y 轴每 2 秒（40 tick）转一圈；</li>
+ *   <li>{@code bone51} 有常量位置偏移 [0,-1,0]（向下一格 = 原生 y+1）。</li>
+ * </ul>
  */
-public class LightPointCoreBlockRenderer extends GeoBlockRenderer<LightPointCoreBlockEntity> {
-    /**
-     * 构造函数
-     * @param context 方块实体渲染器提供者上下文
-     */
+public class LightPointCoreBlockRenderer implements BlockEntityRenderer<LightPointCoreBlockEntity> {
+    private static final ResourceLocation BASE_TEXTURE =
+            new ResourceLocation("gytrinket", "textures/block/light_point_core_block_gy1.png");
+    private static final ResourceLocation DECOR_TEXTURE =
+            new ResourceLocation("gytrinket", "textures/block/light_point_core_block_gy3.png");
+
+    private final LightPointCoreBlockModel model;
+    /** bone51 的建模基准 y，动画在其上加 1 个单位（向下一格）。 */
+    private final float bone51BaseY;
+
     public LightPointCoreBlockRenderer(BlockEntityRendererProvider.Context context) {
-        super(new LightPointCoreBlockModel());
+        this.model = new LightPointCoreBlockModel(
+                context.bakeLayer(LightPointCoreBlockModel.LAYER_LOCATION),
+                RenderType::entityTranslucent);
+        this.bone51BaseY = this.model.bone51.y;
     }
 
-    /**
-     * 自定义渲染方法
-     * 实现双层材质的渲染
-     * @param poseStack 坐标变换栈
-     * @param animatable 动画方块实体
-     * @param bufferSource 多缓冲源
-     * @param renderType 渲染类型
-     * @param buffer 顶点消费者
-     * @param yaw Y轴旋转
-     * @param partialTick 部分刻
-     * @param packedLight 打包光照
-     */
     @Override
-    public void defaultRender(PoseStack poseStack, LightPointCoreBlockEntity animatable, MultiBufferSource bufferSource, RenderType renderType, VertexConsumer buffer, float yaw, float partialTick, int packedLight) {
-        // 第一次渲染，使用第一个材质（基础层）
-        super.defaultRender(poseStack, animatable, bufferSource, renderType, buffer, yaw, partialTick, packedLight);
+    public void render(LightPointCoreBlockEntity blockEntity, float partialTick, PoseStack poseStack,
+                       MultiBufferSource bufferSource, int packedLight, int packedOverlay) {
+        animate(blockEntity.getLevel(), partialTick);
 
-        // 第二次渲染，使用第二个材质（装饰层）
         poseStack.pushPose();
+        // GeckoLib 方块渲染口径：方块内居中 + x/y 取反 + 脚底 y=1.5 格
+        poseStack.translate(0.5D, 0.0D, 0.5D);
+        poseStack.scale(-1.0F, -1.0F, 1.0F);
+        poseStack.translate(0.0F, -1.5F, 0.0F);
 
-        // 获取渲染颜色
-        software.bernie.geckolib.core.object.Color renderColorObj = new software.bernie.geckolib.core.object.Color(getRenderColor(animatable, partialTick, packedLight).argbInt());
-        int packedOverlay = getPackedOverlay(animatable, 0, partialTick);
-        BakedGeoModel model = getGeoModel().getBakedModel(getGeoModel().getModelResource(animatable, this));
+        VertexConsumer baseBuffer = bufferSource.getBuffer(RenderType.entityTranslucent(BASE_TEXTURE));
+        this.model.renderToBuffer(poseStack, baseBuffer, packedLight, packedOverlay,
+                1.0F, 1.0F, 1.0F, 1.0F);
 
-        // 使用第二个材质
-        ResourceLocation secondTexture = new ResourceLocation("gytrinket", "textures/block/light_point_core_block_gy3.png");
-        RenderType secondRenderType = RenderType.entityTranslucent(secondTexture);
-        VertexConsumer secondBuffer = bufferSource.getBuffer(secondRenderType);
-
-        // 执行第二层渲染
-        preRender(poseStack, animatable, model, bufferSource, secondBuffer, false, partialTick, packedLight, packedOverlay,
-                renderColorObj.getRedFloat(), renderColorObj.getGreenFloat(), renderColorObj.getBlueFloat(), renderColorObj.getAlphaFloat());
-
-        if (firePreRenderEvent(poseStack, model, bufferSource, partialTick, packedLight)) {
-            preApplyRenderLayers(poseStack, animatable, model, secondRenderType, bufferSource, secondBuffer, partialTick, packedLight, packedOverlay);
-            actuallyRender(poseStack, animatable, model, secondRenderType, bufferSource, secondBuffer, false, partialTick, packedLight, packedOverlay,
-                    renderColorObj.getRedFloat(), renderColorObj.getGreenFloat(), renderColorObj.getBlueFloat(), renderColorObj.getAlphaFloat());
-            applyRenderLayers(poseStack, animatable, model, secondRenderType, bufferSource, secondBuffer, partialTick, packedLight, packedOverlay);
-            postRender(poseStack, animatable, model, bufferSource, secondBuffer, false, partialTick, packedLight, packedOverlay,
-                    renderColorObj.getRedFloat(), renderColorObj.getGreenFloat(), renderColorObj.getBlueFloat(), renderColorObj.getAlphaFloat());
-            firePostRenderEvent(poseStack, model, bufferSource, partialTick, packedLight);
-        }
+        VertexConsumer decorBuffer = bufferSource.getBuffer(RenderType.entityTranslucent(DECOR_TEXTURE));
+        this.model.renderToBuffer(poseStack, decorBuffer, packedLight, packedOverlay,
+                1.0F, 1.0F, 1.0F, 1.0F);
 
         poseStack.popPose();
-
-        // 最终渲染
-        renderFinal(poseStack, animatable, model, bufferSource, buffer, partialTick, packedLight, packedOverlay,
-                renderColorObj.getRedFloat(), renderColorObj.getGreenFloat(), renderColorObj.getBlueFloat(), renderColorObj.getAlphaFloat());
-        doPostRenderCleanup();
     }
 
-    /**
-     * 光点核心方块模型类
-     * 定义模型、材质和动画资源的位置
-     */
-    private static class LightPointCoreBlockModel extends GeoModel<LightPointCoreBlockEntity> {
-        /**
-         * 获取 GeckoLib 模型资源位置
-         * @param object 方块实体
-         * @return 模型资源位置
-         */
-        @Override
-        public ResourceLocation getModelResource(LightPointCoreBlockEntity object) {
-            return new ResourceLocation("gytrinket", "geo/light_point_core_block_gy.geo.json");
-        }
-
-        /**
-         * 获取材质资源位置
-         * @param object 方块实体
-         * @return 材质资源位置（第一个材质）
-         */
-        @Override
-        public ResourceLocation getTextureResource(LightPointCoreBlockEntity object) {
-            // 使用第一个材质文件（基础层）
-            return new ResourceLocation("gytrinket", "textures/block/light_point_core_block_gy1.png");
-        }
-
-        /**
-         * 获取动画资源位置
-         * @param object 方块实体
-         * @return 动画资源位置
-         */
-        @Override
-        public ResourceLocation getAnimationResource(LightPointCoreBlockEntity object) {
-            return new ResourceLocation("gytrinket", "animations/light_point_core_block_gy.animation.json");
-        }
-
-        /**
-         * 获取渲染类型
-         * 为了支持透明度，使用 entityTranslucent 渲染类型
-         * @param animatable 方块实体
-         * @param texture 材质资源
-         * @return 渲染类型
-         */
-        @Override
-        public RenderType getRenderType(LightPointCoreBlockEntity animatable, ResourceLocation texture) {
-            // 使用支持透明度的渲染类型
-            return RenderType.entityTranslucent(texture);
-        }
+    /** 原 recharge 动画：bone9 自转 + bone51 常量下移。 */
+    private void animate(Level level, float partialTick) {
+        long gameTime = level != null ? level.getGameTime() : System.currentTimeMillis() / 50L;
+        float loopTicks = (float) Math.floorMod(gameTime, 40L) + partialTick;
+        // geo 旋转 0 → -360°/2s，原生 yRot 数值原样照搬（弧度）
+        this.model.bone9.yRot = -(loopTicks / 40.0F) * (float) (Math.PI * 2.0D);
+        // 位置 [0,-1,0]：作者坐标向下 1 单位 = 原生 y +1
+        this.model.bone51.y = this.bone51BaseY + 1.0F;
     }
 }
-

@@ -1,6 +1,7 @@
 package com.gy_mod.gy_trinket.core.special_effect.explosive_shield;
 
 import com.gy_mod.gy_trinket.config.Config;
+import com.gy_mod.gy_trinket.core.defs.MechanicValueDefs;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
 import com.gy_mod.gy_trinket.core.shield.DisableSystem;
 import com.gy_mod.gy_trinket.core.explosion.SimulatedExplosion;
@@ -43,12 +44,12 @@ public class ExplosiveShieldEffect {
 
         double shieldEffectRadius = AttributeManager.getGroupAttribute(player.getUUID(), "shield_effect_radius");
         double baseRadius = DefsManager.resolveMechanicValue(player.getServer(), player.getUUID(),
-                "explosive_shield_items", "radius", Config.EXPLOSIVE_SHIELD_RADIUS.get());
+                "explosive_shield_items", "radius", MechanicValueDefs.defaultValueOf("explosive_shield_items", "radius", 4));
         double radius = baseRadius * shieldEffectRadius;
 
         double shieldEffect = AttributeManager.getGroupAttribute(player.getUUID(), "shield_effect");
         double baseDamage = DefsManager.resolveMechanicValue(player.getServer(), player.getUUID(),
-                "explosive_shield_items", "base_damage", Config.EXPLOSIVE_SHIELD_DAMAGE.get());
+                "explosive_shield_items", "base_damage", MechanicValueDefs.defaultValueOf("explosive_shield_items", "base_damage", 10));
         float damage = (float)(baseDamage * shieldEffect);
 
         for (LivingEntity effectCenter : effectCenters) {

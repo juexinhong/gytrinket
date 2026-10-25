@@ -7,7 +7,15 @@
       ],
       "attributes": {
         "construct_health_percent": 0.25,
-        "construct_build_speed_percent": 0.10
+        "construct_build_speed_percent": 0.1
+      },
+      "values": {
+        "precision_construct_items": {
+          "bonus_per_level": {
+            "value": 0.0025,
+            "stackable": false
+          }
+        }
       }
     }
   }

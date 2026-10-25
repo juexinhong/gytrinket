@@ -1,10 +1,46 @@
 {
-    "items":  {
-                  "gytrinket:drone_module":  {
-                                                 "mechanic":  true,
-                                                 "sets":  [
-                                                              "drone_module_items"
-                                                          ]
-                                             }
-              }
+  "items": {
+    "gytrinket:drone_module": {
+      "mechanic": true,
+      "sets": [
+        "drone_module_items"
+      ],
+      "values": {
+        "drone_module_items": {
+          "build_time": {
+            "value": 100,
+            "stackable": false
+          },
+          "base_health": {
+            "value": 5,
+            "stackable": false
+          },
+          "base_damage": {
+            "value": 0.3,
+            "stackable": false
+          },
+          "base_count": {
+            "value": 3,
+            "stackable": false
+          },
+          "attack_interval": {
+            "value": 0.5,
+            "stackable": false
+          },
+          "move_speed_multiplier": {
+            "value": 1,
+            "stackable": false
+          },
+          "attack_range": {
+            "value": 8,
+            "stackable": false
+          },
+          "target_range": {
+            "value": 8,
+            "stackable": false
+          }
+        }
+      }
+    }
+  }
 }

@@ -1,6 +1,7 @@
 package com.gy_mod.gy_trinket.core.entity.construct.wingman.attack_mode;
 
 import com.gy_mod.gy_trinket.config.Config;
+import com.gy_mod.gy_trinket.core.defs.MechanicValueDefs;
 import com.gy_mod.gy_trinket.core.damage.ModDamageTypes;
 import com.gy_mod.gy_trinket.core.entity.construct.wingman.WingmanConstructEntity;
 import net.minecraft.world.entity.LivingEntity;
@@ -53,7 +54,7 @@ public class InterceptorAssaultHandler implements InterceptorAttackModeHandler {
         setAssaultStacks(wingman, stacks);
 
         // 自伤
-        float selfDamage = (float) (Config.getAssaultSelfDamagePerStack() * stacks);
+        float selfDamage = (float) (MechanicValueDefs.defaultValueOf("assault_items", "self_damage_per_stack", 0.05) * stacks);
         if (selfDamage > 0) {
             wingman.hurt(ModDamageTypes.getPlayerSelfDamageSource(wingman.level()), selfDamage);
         }
@@ -65,7 +66,7 @@ public class InterceptorAssaultHandler implements InterceptorAttackModeHandler {
         if (stacks <= 0) return baseCooldown;
 
         // 每层提供10%攻击速度（减少冷却）
-        double attackSpeedBonus = Config.getAssaultAttackSpeedPerStack() * stacks;
+        double attackSpeedBonus = MechanicValueDefs.defaultValueOf("assault_items", "attack_speed_per_stack", 0.1) * stacks;
         // 攻击速度加成是独立乘区，冷却 = 基础冷却 / (1 + 加成)
         double modifiedCooldown = baseCooldown / (1.0 + attackSpeedBonus);
         return Math.max(2, (int) modifiedCooldown);

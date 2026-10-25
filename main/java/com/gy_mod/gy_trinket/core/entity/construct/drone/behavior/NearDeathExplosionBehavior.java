@@ -4,6 +4,7 @@ import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.core.damage.InvincibilityMarkerManager;
 import com.gy_mod.gy_trinket.core.shield.DisableSystem;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneConstructEntity;
+import com.gy_mod.gy_trinket.core.projectile.MultipartHitScan;
 import com.gy_mod.gy_trinket.core.entity.construct.HostileTargetManager;
 import com.gy_mod.gy_trinket.core.defs.DefsManager;
 import com.gy_mod.gy_trinket.storage.PlayerStoreUtils;
@@ -140,9 +141,16 @@ public class NearDeathExplosionBehavior implements IDroneSpecialBehavior {
         if (target != null) {
             // 射线判定（取代原距离≤2格范围判定）：
             // 本刻运动扫掠从本刻碰撞箱沿运动距离延伸（天然覆盖本刻重叠情况），
-            // 与目标碰撞箱相交 → 下一刻在相交位置（本刻预计算）自爆
+            // 与目标碰撞箱相交 → 下一刻在相交位置（本刻预计算）自爆。
+            // 多体节：体节不注册进 level 实体列表，目标父实体的 AABB 可能只是头部，
+            // 逐个测体节碰撞箱（本方法每 tick 执行，探测外扩取 2 格）
             AABB sweepBox = drone.getBoundingBox().expandTowards(movement);
-            if (sweepBox.intersects(target.getBoundingBox())) {
+            boolean sweptHit = !MultipartHitScan.collectInRegion(level, sweepBox, drone.position(),
+                    entity -> entity == target,
+                    sweepBox::intersects,
+                    false,
+                    2.0D).isEmpty();
+            if (sweptHit) {
                 Vec3 hitPos = drone.position().add(movement);
                 data.putDouble(TAG_PENDING_EXPLODE_X, hitPos.x);
                 data.putDouble(TAG_PENDING_EXPLODE_Y, hitPos.y);
@@ -171,19 +179,25 @@ public class NearDeathExplosionBehavior implements IDroneSpecialBehavior {
 
         Player player = drone.getOwner() instanceof Player ? (Player) drone.getOwner() : null;
 
-        List<LivingEntity> targets = level.getEntitiesOfClass(LivingEntity.class, searchBox,
+        // 多体节：体节不注册进 level 实体列表，只查父实体会漏掉伸出的身体节段；
+        // 每个父实体只记一次（本方法每 tick 执行，体节探测外扩取 2 格）
+        List<MultipartHitScan.Hit> targets = MultipartHitScan.collectInRegion(level, searchBox, dronePos,
                 entity -> {
                     if (entity == drone || !entity.isAlive()) return false;
                     if (entity instanceof Player) return false;
                     return HostileTargetManager.shouldAttackPlayer(entity, player);
-                });
+                },
+                searchBox::intersects,
+                false,
+                2.0D);
 
         if (targets.isEmpty()) {
             return null;
         }
 
         return targets.stream()
-                .min(Comparator.comparingDouble(t -> drone.distanceTo(t)))
+                .min(Comparator.comparingDouble(hit -> drone.distanceTo(hit.target())))
+                .map(MultipartHitScan.Hit::target)
                 .orElse(null);
     }
 

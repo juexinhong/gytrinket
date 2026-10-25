@@ -3,6 +3,13 @@ package com.gy_mod.gy_trinket.client.effect.particle;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+/**
+ * 延迟出场的粒子队列（护盾粒子一圈里除中心那几颗之外的，会延迟 2/4 刻出现）。
+ * <p>
+ * 注意：这里的粒子同样带着 {@code burstId}。即使它还没出场，只要同一只实体
+ * 已经挨了更新的一下，它一出场就会被判定为"旧圈"并进入让位流程 ——
+ * 先播完出现动画，再淡出。
+ */
 public class ShieldParticleTimerManager {
 
     private static ShieldParticleTimerManager instance;
@@ -21,11 +28,11 @@ public class ShieldParticleTimerManager {
                                    double originOffsetX, double originOffsetY, double originOffsetZ,
                                    double offsetX, double offsetY, double offsetZ,
                                    double dirX, double dirY, double dirZ,
-                                   int delayTicks) {
+                                   int delayTicks, int burstId) {
         pendingParticles.add(new PendingParticle(entityId, originOffsetX, originOffsetY, originOffsetZ,
                                                  offsetX, offsetY, offsetZ,
                                                  dirX, dirY, dirZ,
-                                                 delayTicks));
+                                                 delayTicks, burstId));
     }
 
     public void tick() {
@@ -34,7 +41,7 @@ public class ShieldParticleTimerManager {
                 ShieldParticleRenderManager.getInstance().addParticle(
                     p.entityId, p.originOffsetX, p.originOffsetY, p.originOffsetZ,
                     p.offsetX, p.offsetY, p.offsetZ,
-                    p.dirX, p.dirY, p.dirZ
+                    p.dirX, p.dirY, p.dirZ, p.burstId
                 );
                 return true;
             }
@@ -48,13 +55,14 @@ public class ShieldParticleTimerManager {
         final double originOffsetX, originOffsetY, originOffsetZ;
         final double offsetX, offsetY, offsetZ;
         final double dirX, dirY, dirZ;
+        final int burstId;
         int delayTicks;
 
         PendingParticle(int entityId,
                        double originOffsetX, double originOffsetY, double originOffsetZ,
                        double offsetX, double offsetY, double offsetZ,
                        double dirX, double dirY, double dirZ,
-                       int delayTicks) {
+                       int delayTicks, int burstId) {
             this.entityId = entityId;
             this.originOffsetX = originOffsetX;
             this.originOffsetY = originOffsetY;
@@ -66,7 +74,7 @@ public class ShieldParticleTimerManager {
             this.dirY = dirY;
             this.dirZ = dirZ;
             this.delayTicks = delayTicks;
+            this.burstId = burstId;
         }
     }
 }
-

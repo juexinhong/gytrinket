@@ -1,6 +1,7 @@
 package com.gy_mod.gy_trinket.core.entity.construct.drone.behavior;
 
 import com.gy_mod.gy_trinket.config.Config;
+import com.gy_mod.gy_trinket.core.defs.MechanicValueDefs;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructGroupCache;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructManager;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneArrayType;
@@ -9,6 +10,7 @@ import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneBullet;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneConstructEntity;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneConstructTypes;
 import com.gy_mod.gy_trinket.core.entity.construct.HostileTargetManager;
+import com.gy_mod.gy_trinket.core.projectile.MultipartHitScan;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -226,11 +228,17 @@ public class GuardBehavior implements IDroneBehavior {
         if (!(owner instanceof Player player)) return;
 
         AABB droneAABB = drone.getBoundingBox();
-        List<LivingEntity> entities = drone.level().getEntitiesOfClass(LivingEntity.class, droneAABB.inflate(0.0));
-
-        for (LivingEntity entity : entities) {
-            if (!HostileTargetManager.shouldAttackPlayer(entity, player)) continue;
-            if (entity == drone || entity == owner) continue;
+        // 多体节：体节不注册进 level 实体列表，只查父实体会漏掉伸出的身体节段；
+        // 击退施加在父实体上（每个父实体只结算一次）。
+        // 本方法每 tick 执行，体节探测外扩取 1 格（接触判定距离本身只有 0 格）
+        for (MultipartHitScan.Hit hit : MultipartHitScan.collectInRegion(
+                drone.level(), droneAABB, drone.position(),
+                entity -> entity != drone && entity != owner
+                        && HostileTargetManager.shouldAttackPlayer(entity, player),
+                droneAABB::intersects,
+                false,
+                1.0D)) {
+            LivingEntity entity = hit.target();
 
             Vec3 awayDir = entity.position().subtract(owner.position()).normalize();
             entity.setDeltaMovement(entity.getDeltaMovement().add(awayDir.scale(REPEL_SPEED)));
@@ -291,7 +299,7 @@ public class GuardBehavior implements IDroneBehavior {
 
     @Override
     public float getAttackInterval() {
-        return Config.DRONE_ATTACK_INTERVAL.get().floatValue();
+        return (float) MechanicValueDefs.defaultValueOf("drone_module_items", "attack_interval", 0.5);
     }
 
     @Override

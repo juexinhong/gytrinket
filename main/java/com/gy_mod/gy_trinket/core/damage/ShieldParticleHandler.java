@@ -58,6 +58,9 @@ public class ShieldParticleHandler implements DamageHandler {
     }
     
     private void generateShieldParticles(ServerPlayer shieldOwner, DamageSource source, net.minecraft.world.entity.Entity attackedEntity) {
+        // 这一次受击一个编号：客户端靠它判断"新一圈"，让旧圈的粒子（包括还没出场的）让位
+        int burstId = NetworkHandler.nextShieldBurstId();
+
         double originX = attackedEntity.getX();
         double originY = attackedEntity.getY() + attackedEntity.getBbHeight() / 1.5;
         double originZ = attackedEntity.getZ();
@@ -95,7 +98,7 @@ public class ShieldParticleHandler implements DamageHandler {
             return;
         }
         
-        NetworkHandler.sendShieldParticleToPlayer(shieldOwner, attackedEntity, particleX, particleY, particleZ, dirX, dirY, dirZ, originX, originY, originZ, 0);
+        NetworkHandler.sendShieldParticleToPlayer(shieldOwner, attackedEntity, particleX, particleY, particleZ, dirX, dirY, dirZ, originX, originY, originZ, 0, burstId);
         
         double[] normal = new double[3];
         if (Math.abs(dirY) < 0.999) {
@@ -160,7 +163,7 @@ public class ShieldParticleHandler implements DamageHandler {
                 double pointY = originY + pointDir[1] * radius;
                 double pointZ = originZ + pointDir[2] * radius;
                 
-                NetworkHandler.sendShieldParticleToPlayer(shieldOwner, attackedEntity, pointX, pointY, pointZ, pointDir[0], pointDir[1], pointDir[2], originX, originY, originZ, delayTicks);
+                NetworkHandler.sendShieldParticleToPlayer(shieldOwner, attackedEntity, pointX, pointY, pointZ, pointDir[0], pointDir[1], pointDir[2], originX, originY, originZ, delayTicks, burstId);
             }
         }
     }

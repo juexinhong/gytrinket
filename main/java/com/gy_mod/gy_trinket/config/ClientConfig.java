@@ -21,6 +21,8 @@ public class ClientConfig {
 
     // ===== 护盾粒子渲染 =====
     public static final ForgeConfigSpec.ConfigValue<Boolean> SHIELD_PARTICLE_VOLUMETRIC_RENDERING;
+    /** 粒子形象：0 = 三渲二水晶（默认） / 1 = 旧立体宝石 / 2 = 平面四边形 */
+    public static final ForgeConfigSpec.IntValue SHIELD_PARTICLE_STYLE;
 
     // ===== 护盾HUD =====
     public static final ForgeConfigSpec.ConfigValue<Boolean> VANILLA_STYLE_HUD;
@@ -67,6 +69,14 @@ public class ClientConfig {
             "禁用：使用原版透明度渲染（平面四边形）",
             "默认启用"
         ).define("volumetricRendering", true);
+
+        SHIELD_PARTICLE_STYLE = BUILDER.comment(
+            "护盾粒子的形象（三选一）",
+            "0 = 三渲二水晶：14 面刻面、固定三档配色、按面选面的光带（默认）",
+            "1 = 旧立体宝石：平滑渐变 + 虹彩的玻璃质感",
+            "2 = 平面四边形：原版透明渲染（最省性能）",
+            "注意：三种形象共用同一套出现/让位动画（2 刻淡出、按圈涌动）"
+        ).defineInRange("style", 0, 0, 2);
 
         BUILDER.pop();
 

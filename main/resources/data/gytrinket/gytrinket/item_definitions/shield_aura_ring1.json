@@ -1,12 +1,18 @@
 {
   "items": {
     "gytrinket:shield_aura_ring1": {
-      "shieldTypes": ["aura"],
+      "shieldTypes": [
+        "aura"
+      ],
       "shieldValues": {
-        "shield_base": 12.0,
+        "shield_base": 12,
         "shield_cooldown_time": 6.5,
-        "shield_hit_cooldown_extend": 40.0,
-        "shield_hit_cooldown_extend_multiplier": 0.1
+        "shield_hit_cooldown_extend": 40,
+        "shield_hit_cooldown_extend_multiplier": 0.1,
+        "trigger_frequency": 5,
+        "radius": 3.5,
+        "damage": 0.75,
+        "shield_cost": 0.042
       }
     }
   }

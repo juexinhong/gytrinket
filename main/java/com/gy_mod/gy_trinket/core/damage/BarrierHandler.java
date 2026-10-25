@@ -1,6 +1,7 @@
 package com.gy_mod.gy_trinket.core.damage;
 
 import com.gy_mod.gy_trinket.config.Config;
+import com.gy_mod.gy_trinket.core.defs.MechanicValueDefs;
 import com.gy_mod.gy_trinket.core.shield.ShieldManager;
 import com.gy_mod.gy_trinket.core.shield_transfer.ShieldTransferManager;
 import com.gy_mod.gy_trinket.core.damage.ModDamageTypes;
@@ -55,7 +56,7 @@ public class BarrierHandler implements DamageHandler {
         // 只在伤害仍高于上限时钳制，避免把已减免的伤害重新抬高覆盖掉
         float currentDamage = context.getCurrentDamage();
         float maxDamage = (float) DefsManager.resolveMechanicValue(player.getServer(), playerUUID,
-                "barrier_items", "barrier_max_damage", Config.BARRIER_MAX_DAMAGE.get().doubleValue());
+                "barrier_items", "barrier_max_damage", MechanicValueDefs.defaultValueOf("barrier_items", "barrier_max_damage", 5));
         if (currentDamage > maxDamage) {
             context.setCurrentDamage(maxDamage);
         }

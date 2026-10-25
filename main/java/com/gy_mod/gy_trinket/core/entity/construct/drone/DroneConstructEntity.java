@@ -1,6 +1,7 @@
 package com.gy_mod.gy_trinket.core.entity.construct.drone;
 
 import com.gy_mod.gy_trinket.config.Config;
+import com.gy_mod.gy_trinket.core.defs.MechanicValueDefs;
 import com.gy_mod.gy_trinket.core.entity.construct.AbstractConstructEntity;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructAttributeApplier;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructData;
@@ -92,8 +93,8 @@ public class DroneConstructEntity extends AbstractConstructEntity {
      */
     public DroneConstructEntity(EntityType<? extends PathfinderMob> type, Level level) {
         super(type, level);
-        this.baseMaxHealth = Config.getDroneBaseHealth();
-        this.baseAttackDamage = Config.getDroneBaseDamage();
+        this.baseMaxHealth = MechanicValueDefs.defaultValueOf("drone_module_items", "base_health", 5);
+        this.baseAttackDamage = MechanicValueDefs.defaultValueOf("drone_module_items", "base_damage", 0.3);
     }
 
     /**
@@ -148,7 +149,7 @@ public class DroneConstructEntity extends AbstractConstructEntity {
     /** 无人机基础攻击间隔（秒）：物品级定义优先，否则全局默认 */
     public float getBaseAttackInterval() {
         float iv = getInstanceAttackInterval();
-        return iv > 0 ? iv : Config.DRONE_ATTACK_INTERVAL.get().floatValue();
+        return iv > 0 ? iv : (float) MechanicValueDefs.defaultValueOf("drone_module_items", "attack_interval", 0.5);
     }
 
     /** 阵列攻速修正冷却：基础间隔 × 20 ÷ (玩家攻速属性 × 阵列攻速倍率)，写入攻击冷却 */
@@ -172,13 +173,13 @@ public class DroneConstructEntity extends AbstractConstructEntity {
     /** 无人机基础攻击范围（格）：物品级定义优先，否则全局默认 */
     public float getBaseAttackRange() {
         float range = getInstanceAttackRange();
-        return range > 0 ? range : Config.DRONE_ATTACK_RANGE.get().floatValue();
+        return range > 0 ? range : (float) MechanicValueDefs.defaultValueOf("drone_module_items", "attack_range", 8);
     }
 
     /** 无人机基础索敌范围（格）：物品级定义优先，否则全局默认 */
     public float getBaseTargetRange() {
         float range = getInstanceTargetRange();
-        return range > 0 ? range : Config.DRONE_TARGET_RANGE.get().floatValue();
+        return range > 0 ? range : (float) MechanicValueDefs.defaultValueOf("drone_module_items", "target_range", 8);
     }
 
     /** 有效攻击范围（格）：基础攻击范围 × 阵列攻击范围倍率（服务端按 uuid，客户端按 owner 镜像解析） */

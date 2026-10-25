@@ -1,6 +1,7 @@
 package com.gy_mod.gy_trinket.core.attack_mode.electric_discharge;
 
 import com.gy_mod.gy_trinket.config.Config;
+import com.gy_mod.gy_trinket.core.defs.MechanicValueDefs;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
 import com.gy_mod.gy_trinket.core.burn.BurnManager;
 import com.gy_mod.gy_trinket.core.burn.IBurnSource;
@@ -8,6 +9,7 @@ import com.gy_mod.gy_trinket.core.entity.construct.HostileTargetManager;
 import com.gy_mod.gy_trinket.core.ignite.IIgniteSource;
 import com.gy_mod.gy_trinket.core.ignite.IgniteManager;
 import com.gy_mod.gy_trinket.core.modifier.player.attack.AttackSpeedManager;
+import com.gy_mod.gy_trinket.core.projectile.MultipartHitScan;
 import com.gy_mod.gy_trinket.core.shield.ShieldManager;
 import com.gy_mod.gy_trinket.core.shield_transfer.ShieldTransferManager;
 import com.gy_mod.gy_trinket.core.damage.ModDamageTypes;
@@ -193,7 +195,7 @@ public class ElectricDischargeManager {
 
                 // 计算灼烧充能
                 float baseBurnCharge = (float) DefsManager.resolveMechanicValue(target.attacker.getServer(), target.attacker.getUUID(),
-                        "electric_discharge_items", "burn_charge", Config.getElectricDischargeBurnCharge());
+                        "electric_discharge_items", "burn_charge", MechanicValueDefs.defaultValueOf("electric_discharge_items", "burn_charge", 0.5));
                 // 计算灼烧充能（使用不含模组修正的基础攻击速度）
                 double attackSpeedBase = AttackSpeedManager.getBaseAttackSpeed(target.attacker);
                 double attackSpeedMultiplier = attackSpeedBase;
@@ -282,9 +284,14 @@ public class ElectricDischargeManager {
                 );
 
                 // 查找有效目标
-                for (LivingEntity entity : ((ServerLevel) player.level()).getEntitiesOfClass(LivingEntity.class, searchBox)) {
-                    if (!isValidTarget(entity, player)) continue;
-                    hitEntities.add(entity);
+                // 多体节：体节不注册进 level 实体列表，只查父实体会漏掉伸出的身体节段；
+                // 每个父实体只记一次（燃烧/点燃效果按生物结算，不按体节）
+                for (MultipartHitScan.Hit hit : MultipartHitScan.collectInRegion(
+                        player.level(), searchBox, point,
+                        entity -> entity instanceof LivingEntity living && isValidTarget(living, player),
+                        searchBox::intersects,
+                        false)) {
+                    hitEntities.add(hit.target());
                 }
             }
         }

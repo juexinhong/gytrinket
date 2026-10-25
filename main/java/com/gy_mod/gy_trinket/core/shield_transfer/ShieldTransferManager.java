@@ -1,6 +1,7 @@
 package com.gy_mod.gy_trinket.core.shield_transfer;
 
 import com.gy_mod.gy_trinket.config.Config;
+import com.gy_mod.gy_trinket.core.defs.MechanicValueDefs;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
 import com.gy_mod.gy_trinket.core.defs.DefsManager;
 import com.gy_mod.gy_trinket.core.shield.DisableSystem;
@@ -756,7 +757,7 @@ public class ShieldTransferManager {
         }
 
         double penaltyPerEntity = DefsManager.resolveMechanicValue(ServerLifecycleHooks.getCurrentServer(), playerUUID,
-                "shield_transfer_items", "penalty_per_entity", Config.SHIELD_TRANSFER_EFFECT_PENALTY_PER_ENTITY.get());
+                "shield_transfer_items", "penalty_per_entity", MechanicValueDefs.defaultValueOf("shield_transfer_items", "penalty_per_entity", 0.04));
         double multiplier = 1.0;
         for (int i = 0; i < entityCount; i++) {
             multiplier *= (1.0 - penaltyPerEntity);

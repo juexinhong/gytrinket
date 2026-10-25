@@ -10,6 +10,42 @@
         "player_health_percent": 0.15,
         "movement_speed_percent": 0.4,
         "knockback_resistance": 0.2
+      },
+      "values": {
+        "swarm_module_items": {
+          "build_time": {
+            "value": 20,
+            "stackable": false
+          },
+          "base_health": {
+            "value": 1.6,
+            "stackable": false
+          },
+          "base_damage": {
+            "value": 0.08,
+            "stackable": false
+          },
+          "base_count": {
+            "value": 4,
+            "stackable": false
+          },
+          "attack_interval": {
+            "value": 1.5,
+            "stackable": false
+          },
+          "attack_range": {
+            "value": 4,
+            "stackable": false
+          },
+          "search_range": {
+            "value": 20,
+            "stackable": false
+          },
+          "move_speed_multiplier": {
+            "value": 1,
+            "stackable": false
+          }
+        }
       }
     }
   }

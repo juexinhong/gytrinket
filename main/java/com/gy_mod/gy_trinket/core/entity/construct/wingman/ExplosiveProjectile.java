@@ -1,13 +1,14 @@
 package com.gy_mod.gy_trinket.core.entity.construct.wingman;
 
 import com.gy_mod.gy_trinket.config.Config;
+import com.gy_mod.gy_trinket.core.defs.MechanicValueDefs;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneConstructEntity;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.ModDamageSources;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.ModEntities;
 import com.gy_mod.gy_trinket.core.explosion.EnergyWaveExplosion;
 import com.gy_mod.gy_trinket.core.entity.construct.HostileTargetManager;
 import com.gy_mod.gy_trinket.core.damage.SecondaryDamageMerger;
-import com.gy_mod.gy_trinket.core.modifier.player.knockback.KnockbackManager;
+import com.gy_mod.gy_trinket.core.projectile.MultipartHitScan;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
@@ -17,13 +18,10 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.ThrowableItemProjectile;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
-
-import java.util.List;
 
 /**
  * 爆破弹实体
@@ -40,7 +38,7 @@ public class ExplosiveProjectile extends ThrowableItemProjectile {
         super(type, level);
         this.noPhysics = true;
         this.setNoGravity(true);
-        this.damage = (float) Config.getWingmanExplosiveDamage();
+        this.damage = (float) MechanicValueDefs.defaultValueOf("wingman_module_items", "base_damage", 0.5);
     }
 
     public ExplosiveProjectile(Level level, LivingEntity owner, float damage) {
@@ -110,11 +108,11 @@ public class ExplosiveProjectile extends ThrowableItemProjectile {
             Vec3 currentPos = this.position();
             Vec3 nextPos = currentPos.add(velocity);
 
-            PathHit hit = findTargetInPath(currentPos, nextPos);
+            MultipartHitScan.Hit hit = findTargetInPath(currentPos, nextPos);
             if (hit != null) {
                 // 将弹体移动到上一刻（本刻预测）计算得出的相交位置，再结算伤害与爆炸
-                this.setPos(hit.hitPos().x, hit.hitPos().y, hit.hitPos().z);
-                dealDamageToTarget(hit.target());
+                this.setPos(hit.position().x, hit.position().y, hit.position().z);
+                dealDamageToTarget(hit);
                 triggerExplosionAndDiscard();
                 return;
             }
@@ -130,51 +128,28 @@ public class ExplosiveProjectile extends ThrowableItemProjectile {
     }
 
     /**
-     * 沿弹道路径寻找第一个可攻击的实体
-     * 检测方式：射线从本刻位置到下一刻位置击中实体碰撞箱（路径预测；
-     * 射线自本刻位置发出，天然覆盖本刻重叠情况）
+     * 沿弹道路径寻找第一个可攻击的碰撞箱
+     * <p>
+     * 检测方式：射线从本刻位置到下一刻位置击中碰撞箱（路径预测；
+     * 射线自本刻位置发出，天然覆盖本刻重叠情况）。
+     * <p>
+     * 多体节实体（末影龙/娜迦/九头蛇等）由 {@link MultipartHitScan} 逐个测体节：
+     * 体节不注册进 level 实体列表，只测父实体 AABB 会打空伸出的头/颈/翅/尾/节段；
+     * 命中体节时爆心也落在体节上，爆炸位置与视觉一致。
      */
     @Nullable
-    private PathHit findTargetInPath(Vec3 currentPos, Vec3 nextPos) {
+    private MultipartHitScan.Hit findTargetInPath(Vec3 currentPos, Vec3 nextPos) {
         Entity owner = this.getOwner();
         Player ownerPlayer = getOwnerPlayer();
 
-        Vec3 pathVec = nextPos.subtract(currentPos);
-        double pathLength = pathVec.length();
-        if (pathLength < 0.001) return null;
-
-        AABB pathBox = new AABB(
-            Math.min(currentPos.x, nextPos.x), Math.min(currentPos.y, nextPos.y), Math.min(currentPos.z, nextPos.z),
-            Math.max(currentPos.x, nextPos.x), Math.max(currentPos.y, nextPos.y), Math.max(currentPos.z, nextPos.z)
-        ).inflate(1.0);
-
-        List<LivingEntity> candidates = this.level().getEntitiesOfClass(LivingEntity.class, pathBox);
-
-        PathHit closest = null;
-        double closestDist = Double.MAX_VALUE;
-
-        for (LivingEntity target : candidates) {
-            if (target == owner) continue;
-            if (ownerPlayer != null && target == ownerPlayer) continue;
-            if (ownerPlayer != null && !HostileTargetManager.shouldAttackPlayer(target, ownerPlayer)) continue;
-
-            // 射线是否击中实体碰撞箱
-            AABB targetBox = target.getBoundingBox().inflate(0.3);
-            Vec3 intersection = targetBox.clip(currentPos, nextPos).orElse(null);
-            if (intersection != null) {
-                double dist = currentPos.distanceToSqr(intersection);
-                if (dist < closestDist) {
-                    closestDist = dist;
-                    closest = new PathHit(target, intersection);
-                }
-            }
-        }
-
-        return closest;
-    }
-
-    /** 射线命中结果：目标实体与相交位置 */
-    private record PathHit(LivingEntity target, Vec3 hitPos) {
+        return MultipartHitScan.findFirstOnPath(this.level(), currentPos, nextPos,
+                MultipartHitScan.DEFAULT_HITBOX_INFLATE,
+                target -> {
+                    if (target == owner) return false;
+                    if (ownerPlayer != null && target == ownerPlayer) return false;
+                    return ownerPlayer == null
+                            || HostileTargetManager.shouldAttackPlayer(target, ownerPlayer);
+                });
     }
 
     @Nullable
@@ -190,13 +165,23 @@ public class ExplosiveProjectile extends ThrowableItemProjectile {
     }
 
     /**
-     * 对目标造成伤害，并移除无敌时间以确保多枚爆破弹都能命中
+     * 对目标造成伤害，并移除无敌时间以确保多枚爆破弹都能命中。
+     * <p>
+     * 命中体节时由体节自身结算（{@code hitbox.hurt}），保留各模组的体节倍率
+     * （末影龙头部满伤、躯干/翼 1/4，娜迦节段 2/3 等）；父实体只用于记账。
+     * 合并键带上体节 ID，保证合并批次与施加时命中的碰撞箱一致。
      */
-    private void dealDamageToTarget(LivingEntity target) {
+    private void dealDamageToTarget(MultipartHitScan.Hit hit) {
+        LivingEntity target = hit.target();
+        Entity hitbox = hit.hitbox();
+
         DamageSource source = createDamageSourceWithGuardAggro();
-        SecondaryDamageMerger.accumulate(target, "explosive_shell", damage, (t, mergedDamage) -> {
+        String mergeType = hitbox == target
+                ? "explosive_shell"
+                : "explosive_shell:part:" + hitbox.getId();
+        SecondaryDamageMerger.accumulate(target, mergeType, damage, (t, mergedDamage) -> {
             t.invulnerableTime = 0;
-            t.hurt(source, mergedDamage);
+            hitbox.hurt(source, mergedDamage);
             t.invulnerableTime = 0;
         });
     }

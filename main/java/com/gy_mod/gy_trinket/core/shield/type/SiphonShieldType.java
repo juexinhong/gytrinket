@@ -1,11 +1,13 @@
 package com.gy_mod.gy_trinket.core.shield.type;
 
 import com.gy_mod.gy_trinket.config.Config;
+import com.gy_mod.gy_trinket.core.defs.ShieldValueDefs;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
 import com.gy_mod.gy_trinket.core.damage.DamageAttributionWindow;
 import com.gy_mod.gy_trinket.core.defs.DefsManager;
 import com.gy_mod.gy_trinket.core.entity.construct.HostileTargetManager;
 import com.gy_mod.gy_trinket.core.modifier.player.knockback.KnockbackManager;
+import com.gy_mod.gy_trinket.core.projectile.MultipartHitScan;
 import com.gy_mod.gy_trinket.core.shield.ShieldManager;
 import com.gy_mod.gy_trinket.core.shield_transfer.ShieldTransferManager;
 import com.gy_mod.gy_trinket.core.damage.ModDamageTypes;
@@ -115,7 +117,7 @@ public class SiphonShieldType implements IShieldType {
         SiphonData data = PLAYER_SIPHON_DATA.computeIfAbsent(key, k -> new SiphonData());
 
         data.tickCounter++;
-        int tickInterval = (int) valueFor(server, itemId, "tick_interval", Config.SIPHON_TICK_INTERVAL.get());
+        int tickInterval = (int) valueFor(server, itemId, "tick_interval", ShieldValueDefs.defaultValueOf("siphon", "tick_interval", 5.0));
         if (data.tickCounter >= tickInterval) {
             data.tickCounter = 0;
             performSiphon(player, data, server, itemId);
@@ -139,11 +141,11 @@ public class SiphonShieldType implements IShieldType {
         }
 
         double shieldEffectRadius = AttributeManager.getGroupAttribute(player.getUUID(), "shield_effect_radius");
-        double baseRadius = valueFor(server, itemId, "radius", Config.SIPHON_RADIUS.get());
+        double baseRadius = valueFor(server, itemId, "radius", ShieldValueDefs.defaultValueOf("siphon", "radius", 4.0));
         double radius = baseRadius * shieldEffectRadius;
 
         double shieldEffect = AttributeManager.getGroupAttribute(player.getUUID(), "shield_effect");
-        double baseDamage = valueFor(server, itemId, "damage", Config.SIPHON_DAMAGE.get());
+        double baseDamage = valueFor(server, itemId, "damage", ShieldValueDefs.defaultValueOf("siphon", "damage", 0.3));
         double totalDamage = baseDamage * shieldEffect;
 
         List<LivingEntity> targets = new ArrayList<>();
@@ -152,11 +154,14 @@ public class SiphonShieldType implements IShieldType {
             if (center == null || !center.isAlive()) continue;
 
             AABB boundingBox = center.getBoundingBox().inflate(radius);
-            List<LivingEntity> entities = player.level().getEntitiesOfClass(LivingEntity.class, boundingBox,
-                entity -> isValidTarget(entity, center)
-            );
-
-            for (LivingEntity target : entities) {
+            // 多体节：体节不注册进 level 实体列表，只查父实体会漏掉伸出的身体节段；
+            // 虹吸伤害按生物结算（每个父实体只记一次）
+            for (MultipartHitScan.Hit hit : MultipartHitScan.collectInRegion(
+                    player.level(), boundingBox, center.position(),
+                    entity -> isValidTarget((LivingEntity) entity, center),
+                    boundingBox::intersects,
+                    false)) {
+                LivingEntity target = hit.target();
                 if (target.isAlive() && target.getHealth() > 0) {
                     targets.add(target);
                 }
@@ -193,7 +198,7 @@ public class SiphonShieldType implements IShieldType {
             }
 
             data.stacks++;
-            data.remainingTicks = (int) valueFor(server, itemId, "duration_ticks", Config.SIPHON_DURATION_TICKS.get());
+            data.remainingTicks = (int) valueFor(server, itemId, "duration_ticks", ShieldValueDefs.defaultValueOf("siphon", "duration_ticks", 20.0));
             data.decaying = false;
         }
     }
@@ -225,7 +230,7 @@ public class SiphonShieldType implements IShieldType {
         }
 
         if (data.decaying) {
-            double decayRatio = valueFor(server, itemId, "decay_ratio", Config.SIPHON_DECAY_RATIO.get());
+            double decayRatio = valueFor(server, itemId, "decay_ratio", ShieldValueDefs.defaultValueOf("siphon", "decay_ratio", 0.03));
             int decayAmount = 1 + (int) Math.floor(data.stacks * decayRatio);
             data.stacks -= decayAmount;
             if (data.stacks <= 0) {
@@ -250,8 +255,8 @@ public class SiphonShieldType implements IShieldType {
             SiphonData data = e.getValue();
             if (data.stacks <= 0) continue;
             String instItemId = e.getKey().substring(prefix.length());
-            double effectPerStack = valueFor(server, instItemId, "effect_per_stack", Config.SIPHON_EFFECT_PER_STACK.get());
-            double maxEffect = valueFor(server, instItemId, "max_effect", Config.SIPHON_MAX_EFFECT.get());
+            double effectPerStack = valueFor(server, instItemId, "effect_per_stack", ShieldValueDefs.defaultValueOf("siphon", "effect_per_stack", 0.025));
+            double maxEffect = valueFor(server, instItemId, "max_effect", ShieldValueDefs.defaultValueOf("siphon", "max_effect", 0.4));
             shieldEffectBonus += Math.min(data.stacks * effectPerStack, maxEffect);
             shieldEffectRadiusBonus += Math.min(data.stacks * effectPerStack, maxEffect);
         }

@@ -1,6 +1,7 @@
 package com.gy_mod.gy_trinket.core.entity.construct.drone;
 
 import com.gy_mod.gy_trinket.config.Config;
+import com.gy_mod.gy_trinket.core.defs.MechanicValueDefs;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructCategory;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructData;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructManager;
@@ -29,7 +30,7 @@ public class DroneConstructTypes {
                 .categories(ConstructCategory.createOtherCategories(ConstructCategory.Tier.STANDARD))
                 .tags(Set.of("drone"))
                 .buildTime(100)
-                .maxHealth(Config.getDroneBaseHealth())
+                .maxHealth(MechanicValueDefs.defaultValueOf("drone_module_items", "base_health", 5))
                 .maxCount(Config.getDroneMaxCount())
                 .constructFactory((player, type) -> createDroneConstruct(player, null))
                 .entityRestorer(new DroneEntityRestorer())
@@ -53,7 +54,7 @@ public class DroneConstructTypes {
         if (hasAssault) effects.add(new AssaultEffect());
         if (hasDefense) effects.add(new DefenseEffect());
 
-        double maxHealth = type != null ? type.getMaxHealth() : Config.getDroneBaseHealth();
+        double maxHealth = type != null ? type.getMaxHealth() : MechanicValueDefs.defaultValueOf("drone_module_items", "base_health", 5);
         return new DroneConstruct(DRONE, arrayType, effects, player, maxHealth, instanceKey);
     }
 

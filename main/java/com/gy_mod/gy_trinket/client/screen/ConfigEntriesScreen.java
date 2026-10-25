@@ -50,8 +50,14 @@ public class ConfigEntriesScreen extends AbstractPanelScreen {
     private int cancelY;
 
     public ConfigEntriesScreen(Screen parentScreen) {
+        this(parentScreen, false);
+    }
+
+    /** @param clientTab true = 直接打开「客户端」分组（开发调试用） */
+    public ConfigEntriesScreen(Screen parentScreen, boolean clientTab) {
         super(Component.translatable("screen.gytrinket.config_entries_title"),
                 resolveParent(parentScreen), SolidUIRenderer.CONFIG);
+        this.clientGroup = clientTab;
     }
 
     private static Screen resolveParent(Screen parentScreen) {
@@ -189,10 +195,17 @@ public class ConfigEntriesScreen extends AbstractPanelScreen {
                     hovered ? renderer.getAccentColor() : renderer.getTextColor(), false);
 
             // 值（右对齐；客户端专属项带 * 标记）
-            String valueText = entry.bool
-                    ? Component.translatable(entry.getter.getAsDouble() != 0.0
-                            ? "config.gytrinket.value_on" : "config.gytrinket.value_off").getString()
-                    : formatDouble(entry.getter.getAsDouble());
+            String valueText;
+            if (entry.bool) {
+                valueText = Component.translatable(entry.getter.getAsDouble() != 0.0
+                        ? "config.gytrinket.value_on" : "config.gytrinket.value_off").getString();
+            } else if (entry.choices > 0) {
+                // 多选一：显示当前选项名（config.gytrinket.option.<id>.<n>）
+                valueText = Component.translatable("config.gytrinket.option." + entry.id + "."
+                        + (int) Math.round(entry.getter.getAsDouble())).getString();
+            } else {
+                valueText = formatDouble(entry.getter.getAsDouble());
+            }
             if (entry.clientOnly) {
                 valueText = valueText + " *";
             }
@@ -410,6 +423,10 @@ public class ConfigEntriesScreen extends AbstractPanelScreen {
                     ConfigValueRegistry.Entry entry = rows.get(index);
                     if (entry.bool) {
                         applyEntry(entry, entry.getter.getAsDouble() != 0.0 ? 0.0 : 1.0);
+                    } else if (entry.choices > 0) {
+                        // 多选一：点击循环到下一个选项，不需要编辑框
+                        int current = (int) Math.round(entry.getter.getAsDouble());
+                        applyEntry(entry, (current + 1) % entry.choices);
                     } else {
                         openEditor(entry);
                     }

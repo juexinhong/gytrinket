@@ -13,6 +13,12 @@ public class ModShaders {
 
     // ===== ShaderInstance 对象缓存（运行时填充） =====
     private static ShaderInstance shieldGlassShader;
+    /** 同一套 vsh/fsh，但 JSON 里的 blend 是加色（srcalpha, one）：光晕与高光用 */
+    private static ShaderInstance shieldGlassAddShader;
+    /** 高光 Pass 专用（PassMode 在 JSON 里就写死 2.0，不依赖 uniform） */
+    private static ShaderInstance shieldGlassHiShader;
+    /** 旧版贴图棱柱专用（历史 glass 着色器，带 Sampler0 / Brightness） */
+    private static ShaderInstance shieldGlassLegacyShader;
     private static ShaderInstance energyWaveVolShader;
     private static ShaderInstance lightningVolShader;
 
@@ -48,6 +54,35 @@ public class ModShaders {
     @Nullable
     public static ShaderInstance getShieldGlassShader() {
         return shieldGlassShader;
+    }
+
+    public static void setShieldGlassAddShader(ShaderInstance shader) {
+        shieldGlassAddShader = shader;
+    }
+
+    @Nullable
+    public static ShaderInstance getShieldGlassAddShader() {
+        return shieldGlassAddShader;
+    }
+
+    public static void setShieldGlassHiShader(ShaderInstance shader) {
+        shieldGlassHiShader = shader;
+    }
+
+    @Nullable
+    public static ShaderInstance getShieldGlassHiShader() {
+        return shieldGlassHiShader;
+    }
+
+    // ===== 旧版「贴图转立体」着色器（style = 1，历史外观） =====
+
+    public static void setShieldGlassLegacyShader(ShaderInstance shader) {
+        shieldGlassLegacyShader = shader;
+    }
+
+    @Nullable
+    public static ShaderInstance getShieldGlassLegacyShader() {
+        return shieldGlassLegacyShader;
     }
 
     // ===== EnergyWave 体积着色器（能量波 raymarching） =====

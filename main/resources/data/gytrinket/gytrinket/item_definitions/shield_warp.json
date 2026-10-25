@@ -1,12 +1,18 @@
 {
   "items": {
     "gytrinket:shield_warp": {
-      "shieldTypes": ["warp"],
+      "shieldTypes": [
+        "warp"
+      ],
       "shieldValues": {
-        "shield_base": 18.0,
+        "shield_base": 18,
         "shield_cooldown_time": 10.5,
-        "shield_hit_cooldown_extend": 40.0,
-        "shield_hit_cooldown_extend_multiplier": 0.1
+        "shield_hit_cooldown_extend": 40,
+        "shield_hit_cooldown_extend_multiplier": 0.1,
+        "warp_distance": 5,
+        "explosion_radius": 3.3,
+        "explosion_damage": 7.5,
+        "invincible_duration": 15
       }
     }
   }

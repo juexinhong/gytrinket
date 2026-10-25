@@ -1,50 +1,53 @@
 package com.gy_mod.gy_trinket.core.entity.construct.swarm;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import net.minecraft.client.renderer.LightTexture;
+import com.mojang.math.Axis;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
+import net.minecraft.client.renderer.entity.LivingEntityRenderer;
 import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.LightLayer;
-import software.bernie.geckolib.renderer.GeoEntityRenderer;
 
 /**
- * 蜂群构造体渲染器
+ * 蜂群构造体渲染器（标准 Minecraft 实体渲染，不依赖 GeckoLib）
  */
-public class SwarmRenderer extends GeoEntityRenderer<SwarmConstructEntity> {
+public class SwarmRenderer extends LivingEntityRenderer<SwarmConstructEntity, SwarmEntityModel> {
+    private static final ResourceLocation TEXTURE =
+            new ResourceLocation("gytrinket", "textures/entity/swarm.png");
+
     public SwarmRenderer(EntityRendererProvider.Context context) {
-        super(context, new SwarmModel());
-        withScale(0.6F, 0.6F);
-        this.shadowRadius = 0.0f;
+        super(context, new SwarmEntityModel(context.bakeLayer(SwarmEntityModel.LAYER_LOCATION)), 0.0F);
+        this.shadowRadius = 0.0F;
     }
 
     @Override
-    public void render(SwarmConstructEntity entity, float entityYaw, float partialTicks, PoseStack poseStack, MultiBufferSource bufferSource, int packedLight) {
-        float renderYaw = entity.yRotO + (entity.getYRot() - entity.yRotO) * partialTicks;
+    public ResourceLocation getTextureLocation(SwarmConstructEntity entity) {
+        return TEXTURE;
+    }
 
-        poseStack.pushPose();
-        poseStack.translate(0, 0.1D, 0);
+    @Override
+    protected void setupRotations(SwarmConstructEntity entity, PoseStack poseStack, float ageInTicks,
+                                  float rotationYaw, float partialTick) {
+        poseStack.translate(0.0D, 0.1D, 0.0D);
+        poseStack.mulPose(Axis.YP.rotationDegrees(180.0F - rotationYaw));
+        float pitch = entity.xRotO + (entity.getXRot() - entity.xRotO) * partialTick;
+        poseStack.mulPose(Axis.XP.rotationDegrees(-pitch));
+    }
 
-        // 大小属性：按同步的大小倍率缩放渲染模型
-        float sizeMultiplier = (float) entity.getSizeMultiplier();
-        poseStack.scale(sizeMultiplier, sizeMultiplier, sizeMultiplier);
+    @Override
+    protected void scale(SwarmConstructEntity entity, PoseStack poseStack, float partialTickTime) {
+        // 原 GeckoLib 渲染器 withScale(0.6)。
+        // 1.20.1 的 LivingEntityRenderer 不会自动应用实体大小倍率，这里手动乘上。
+        float scale = 0.6F * (float) entity.getSizeMultiplier();
+        poseStack.scale(scale, scale, scale);
+    }
 
-        float pitch = entity.xRotO + (entity.getXRot() - entity.xRotO) * partialTicks;
-
-        poseStack.pushPose();
-        poseStack.mulPose(new org.joml.Quaternionf().rotateY((float) Math.toRadians(-renderYaw)));
-        poseStack.mulPose(new org.joml.Quaternionf().rotateX((float) Math.toRadians(pitch)));
-        poseStack.mulPose(new org.joml.Quaternionf().rotateY((float) Math.toRadians(renderYaw)));
-
-        BlockPos pos = entity.blockPosition();
-        int blockLight = entity.level().getBrightness(LightLayer.BLOCK, pos);
-        int skyLight = entity.level().getBrightness(LightLayer.SKY, pos);
-        int correctPackedLight = LightTexture.pack(blockLight, skyLight);
-
-        super.render(entity, renderYaw, partialTicks, poseStack, bufferSource, correctPackedLight);
-
-        poseStack.popPose();
-        poseStack.popPose();
+    @Override
+    protected void renderNameTag(SwarmConstructEntity entity, Component displayName, PoseStack poseStack,
+                                 MultiBufferSource bufferSource, int packedLight) {
+        // 不渲染蜂群上方的名牌
     }
 
     @Override
@@ -52,4 +55,3 @@ public class SwarmRenderer extends GeoEntityRenderer<SwarmConstructEntity> {
         return entity.level().getBrightness(LightLayer.BLOCK, pos);
     }
 }
-

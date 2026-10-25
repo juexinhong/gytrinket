@@ -2,93 +2,138 @@ package com.gy_mod.gy_trinket.core.entity.construct.drone;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import net.minecraft.client.renderer.LightTexture;
+import com.mojang.math.Axis;
+import net.minecraft.client.model.EntityModel;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
+import net.minecraft.client.renderer.entity.LivingEntityRenderer;
+import net.minecraft.client.renderer.entity.layers.RenderLayer;
+import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.LightLayer;
-import software.bernie.geckolib.cache.object.BakedGeoModel;
-import software.bernie.geckolib.renderer.GeoEntityRenderer;
-import software.bernie.geckolib.renderer.layer.GeoRenderLayer;
 
 /**
- * 无人机构造体渲染器 - 使用GeckoLib渲染3D模型和动画
+ * 无人机构造体渲染器（标准 Minecraft 实体渲染，不依赖 GeckoLib）
  * <p>
- * 根据无人机效果选择不同的发光纹理
+ * 三种变体各有一套原生模型与贴图，渲染时按实体效果切换 {@link #model}：
+ * 普通无人机（drone）/ 突击无人机（assaultdrone）/ 防御无人机（defense_drone）。
+ * 发光层复用同一模型，换发光贴图再画一遍。
  */
-public class DroneRenderer extends GeoEntityRenderer<DroneConstructEntity> {
+public class DroneRenderer extends LivingEntityRenderer<DroneConstructEntity, EntityModel<DroneConstructEntity>> {
+    private static final ResourceLocation DRONE_TEXTURE =
+            new ResourceLocation("gytrinket", "textures/entity/drone1.png");
+    private static final ResourceLocation DRONE_GLOW =
+            new ResourceLocation("gytrinket", "textures/entity/drone2.png");
+    private static final ResourceLocation ASSAULT_TEXTURE =
+            new ResourceLocation("gytrinket", "textures/entity/assaultdrone1.png");
+    private static final ResourceLocation ASSAULT_GLOW =
+            new ResourceLocation("gytrinket", "textures/entity/assaultdrone2.png");
+    private static final ResourceLocation DEFENSE_TEXTURE =
+            new ResourceLocation("gytrinket", "textures/entity/defense_drone1.png");
+    private static final ResourceLocation DEFENSE_GLOW =
+            new ResourceLocation("gytrinket", "textures/entity/defense_drone2.png");
+
+    private final EntityModel<DroneConstructEntity> normalModel;
+    private final EntityModel<DroneConstructEntity> assaultModel;
+    private final EntityModel<DroneConstructEntity> defenseModel;
+
     public DroneRenderer(EntityRendererProvider.Context context) {
-        super(context, new DroneModel());
-        withScale(0.8F, 0.8F);
+        // 原 GeckoLib 渲染器没有阴影（EntityRenderer.shadowRadius 默认 0）
+        super(context, new DroneEntityModel(context.bakeLayer(DroneEntityModel.LAYER_LOCATION)), 0.0F);
+        this.normalModel = this.model;
+        this.assaultModel = new AssaultDroneEntityModel(
+                context.bakeLayer(AssaultDroneEntityModel.LAYER_LOCATION));
+        this.defenseModel = new DefenseDroneEntityModel(
+                context.bakeLayer(DefenseDroneEntityModel.LAYER_LOCATION));
 
-        addRenderLayer(new GeoRenderLayer<DroneConstructEntity>(this) {
+        // 发光层：同一模型 + 发光贴图
+        this.addLayer(new RenderLayer<DroneConstructEntity, EntityModel<DroneConstructEntity>>(this) {
             @Override
-            public void render(PoseStack poseStack, DroneConstructEntity animatable, BakedGeoModel bakedModel, RenderType renderType,
-                              MultiBufferSource bufferSource, VertexConsumer buffer, float partialTick, int packedLight, int packedOverlay) {
-                ResourceLocation glowTexture;
-                RenderType glowRenderType;
-
-                if (animatable.isAssaultDrone()) {
-                    glowTexture = new ResourceLocation("gytrinket", "textures/entity/assaultdrone2.png");
-                    glowRenderType = RenderType.eyes(glowTexture);
-                } else if (animatable.isDefenseDrone()) {
-                    glowTexture = new ResourceLocation("gytrinket", "textures/entity/defense_drone2.png");
-                    glowRenderType = RenderType.entityTranslucent(glowTexture);
+            public void render(PoseStack poseStack, MultiBufferSource bufferSource, int packedLight,
+                               DroneConstructEntity entity, float limbSwing, float limbSwingAmount,
+                               float partialTick, float ageInTicks, float netHeadYaw, float headPitch) {
+                RenderType glowType;
+                if (entity.isAssaultDrone()) {
+                    glowType = RenderType.eyes(ASSAULT_GLOW);
+                } else if (entity.isDefenseDrone()) {
+                    glowType = RenderType.entityTranslucent(DEFENSE_GLOW);
                 } else {
-                    glowTexture = new ResourceLocation("gytrinket", "textures/entity/drone2.png");
-                    glowRenderType = RenderType.eyes(glowTexture);
+                    glowType = RenderType.eyes(DRONE_GLOW);
                 }
-
-                VertexConsumer glowBuffer = bufferSource.getBuffer(glowRenderType);
-
-                getRenderer().reRender(bakedModel, poseStack, bufferSource, animatable, glowRenderType,
-                    glowBuffer, partialTick, packedLight, packedOverlay, 1.0F, 1.0F, 1.0F, 1.0F);
+                VertexConsumer glowBuffer = bufferSource.getBuffer(glowType);
+                getParentModel().renderToBuffer(poseStack, glowBuffer, packedLight,
+                        OverlayTexture.NO_OVERLAY, 1.0F, 1.0F, 1.0F, 1.0F);
             }
         });
     }
 
     @Override
-    public void render(DroneConstructEntity entity, float entityYaw, float partialTicks, PoseStack poseStack, MultiBufferSource bufferSource, int packedLight) {
-        float renderYaw;
+    public void render(DroneConstructEntity entity, float entityYaw, float partialTicks,
+                       PoseStack poseStack, MultiBufferSource bufferSource, int packedLight) {
+        this.model = pickModel(entity);
+        super.render(entity, entityYaw, partialTicks, poseStack, bufferSource, packedLight);
+    }
 
-        renderYaw = entity.yRotO + (entity.getYRot() - entity.yRotO) * partialTicks;
-
-        poseStack.pushPose();
-        if (entity.isDefenseDrone()) {
-            poseStack.translate(0, -0.2D, 0);
-            // 防御无人机渲染模型缩小20%（0.8 * 0.8 = 0.64）
-            poseStack.scale(0.8F, 0.8F, 0.8F);
-        } else {
-            poseStack.translate(0, 0.3D, 0);
+    private EntityModel<DroneConstructEntity> pickModel(DroneConstructEntity entity) {
+        if (entity.isAssaultDrone()) {
+            return this.assaultModel;
         }
+        if (entity.isDefenseDrone()) {
+            return this.defenseModel;
+        }
+        return this.normalModel;
+    }
 
-        // 大小属性：按同步的大小倍率缩放渲染模型
-        float sizeMultiplier = (float) entity.getSizeMultiplier();
-        poseStack.scale(sizeMultiplier, sizeMultiplier, sizeMultiplier);
+    @Override
+    public ResourceLocation getTextureLocation(DroneConstructEntity entity) {
+        if (entity.isAssaultDrone()) {
+            return ASSAULT_TEXTURE;
+        }
+        if (entity.isDefenseDrone()) {
+            return DEFENSE_TEXTURE;
+        }
+        return DRONE_TEXTURE;
+    }
 
-        float pitch = entity.xRotO + (entity.getXRot() - entity.xRotO) * partialTicks;
+    @Override
+    protected void setupRotations(DroneConstructEntity entity, PoseStack poseStack, float ageInTicks,
+                                  float rotationYaw, float partialTick) {
+        // 位置偏移与原渲染器一致：防御无人机略低，其余抬高 0.3
+        if (entity.isDefenseDrone()) {
+            poseStack.translate(0.0D, -0.2D, 0.0D);
+        } else {
+            poseStack.translate(0.0D, 0.3D, 0.0D);
+        }
+        // 偏航：标准方向
+        poseStack.mulPose(Axis.YP.rotationDegrees(180.0F - rotationYaw));
+        // 俯仰：绕机体横轴（在偏航之后应用，等价于绕世界 X 轴）
+        float pitch = entity.xRotO + (entity.getXRot() - entity.xRotO) * partialTick;
+        poseStack.mulPose(Axis.XP.rotationDegrees(-pitch));
+    }
 
-        poseStack.pushPose();
-        poseStack.mulPose(new org.joml.Quaternionf().rotateY((float) Math.toRadians(-renderYaw)));
-        poseStack.mulPose(new org.joml.Quaternionf().rotateX((float) Math.toRadians(pitch)));
-        poseStack.mulPose(new org.joml.Quaternionf().rotateY((float) Math.toRadians(renderYaw)));
+    @Override
+    protected void scale(DroneConstructEntity entity, PoseStack poseStack, float partialTickTime) {
+        // 原 GeckoLib 渲染器 withScale(0.8)；防御无人机再额外缩 20%。
+        // 1.20.1 的 LivingEntityRenderer 不会自动应用实体大小倍率，这里手动乘上。
+        float scale = 0.8F * (float) entity.getSizeMultiplier();
+        if (entity.isDefenseDrone()) {
+            scale *= 0.8F;
+        }
+        poseStack.scale(scale, scale, scale);
+    }
 
-        BlockPos pos = entity.blockPosition();
-        int blockLight = entity.level().getBrightness(LightLayer.BLOCK, pos);
-        int skyLight = entity.level().getBrightness(LightLayer.SKY, pos);
-        int correctPackedLight = LightTexture.pack(blockLight, skyLight);
-
-        super.render(entity, renderYaw, partialTicks, poseStack, bufferSource, correctPackedLight);
-
-        poseStack.popPose();
-        poseStack.popPose();
+    @Override
+    protected void renderNameTag(DroneConstructEntity entity, Component displayName, PoseStack poseStack,
+                                 MultiBufferSource bufferSource, int packedLight) {
+        // 不渲染无人机上方的名牌
     }
 
     @Override
     protected int getBlockLightLevel(DroneConstructEntity entity, BlockPos pos) {
+        // 机体自发光：只看方块光照，避免黑夜里整机消失
         return entity.level().getBrightness(LightLayer.BLOCK, pos);
     }
 }
-

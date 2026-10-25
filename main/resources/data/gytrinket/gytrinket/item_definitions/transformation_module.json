@@ -6,8 +6,20 @@
         "conversion_items"
       ],
       "attributes": {
-        "shield_base": 1.0,
-        "player_health": 1.0
+        "shield_base": 1,
+        "player_health": 1
+      },
+      "values": {
+        "conversion_items": {
+          "conversion_ratio": {
+            "value": 0.3,
+            "stackable": false
+          },
+          "conversion_direction": {
+            "value": 0,
+            "stackable": false
+          }
+        }
       }
     }
   }

@@ -1,5 +1,6 @@
 package com.gy_mod.gy_trinket.core.entity.construct.drone.client.renderer;
 
+import com.gy_mod.gy_trinket.core.projectile.MultipartHitScan;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.BufferBuilder;
 import com.mojang.blaze3d.vertex.BufferUploader;
@@ -12,13 +13,10 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.projectile.ThrowableItemProjectile;
-import net.minecraft.world.phys.AABB;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
-
-import java.util.List;
 
 /**
  * 无人机子弹拖尾。
@@ -88,48 +86,23 @@ public class DroneBulletTrail {
     }
 
     /**
-     * 沿射线查找第一个与实体碰撞箱相交的位置
+     * 沿射线查找第一个与碰撞箱相交的位置
+     * <p>
+     * 与服务端 {@code DroneBullet} 共用 {@link MultipartHitScan}：多体节生物
+     * （末影龙/娜迦/九头蛇等）逐个测体节，拖尾终点才会落在体节上而不是父实体
+     * 的粗略包络上。
      */
     private Vec3 findHitPosition(Vec3 currentPos, Vec3 nextPos) {
-        if (Minecraft.getInstance().level == null) {
+        Level level = Minecraft.getInstance().level;
+        if (level == null) {
             return nextPos;
         }
 
-        AABB pathBox = new AABB(
-            Math.min(currentPos.x, nextPos.x), Math.min(currentPos.y, nextPos.y), Math.min(currentPos.z, nextPos.z),
-            Math.max(currentPos.x, nextPos.x), Math.max(currentPos.y, nextPos.y), Math.max(currentPos.z, nextPos.z)
-        ).inflate(1.0);
-
-        List<LivingEntity> candidates = Minecraft.getInstance().level.getEntitiesOfClass(LivingEntity.class, pathBox);
         Entity bulletOwner = bullet.getOwner();
-
-        Vec3 closestHit = null;
-        double closestDist = Double.MAX_VALUE;
-
-        for (LivingEntity target : candidates) {
-            if (target == bulletOwner) continue;
-
-            AABB targetBox = target.getBoundingBox().inflate(0.3);
-            Vec3 intersection = targetBox.clip(currentPos, nextPos).orElse(null);
-            if (intersection != null) {
-                double dist = currentPos.distanceToSqr(intersection);
-                if (dist < closestDist) {
-                    closestDist = dist;
-                    closestHit = intersection;
-                }
-            }
-
-            // 也检查子弹碰撞箱是否已与实体重叠
-            if (bullet.getBoundingBox().intersects(target.getBoundingBox())) {
-                double dist = currentPos.distanceToSqr(target.position());
-                if (dist < closestDist) {
-                    closestDist = dist;
-                    closestHit = target.position().add(0, target.getBbHeight() * 0.5, 0);
-                }
-            }
-        }
-
-        return closestHit != null ? closestHit : nextPos;
+        MultipartHitScan.Hit hit = MultipartHitScan.findFirstOnPath(level, currentPos, nextPos,
+                MultipartHitScan.DEFAULT_HITBOX_INFLATE,
+                candidate -> candidate != bulletOwner);
+        return hit != null ? hit.position() : nextPos;
     }
 
     /**

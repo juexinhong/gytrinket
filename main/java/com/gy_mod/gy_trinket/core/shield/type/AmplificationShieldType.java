@@ -1,6 +1,7 @@
 package com.gy_mod.gy_trinket.core.shield.type;
 
 import com.gy_mod.gy_trinket.config.Config;
+import com.gy_mod.gy_trinket.core.defs.ShieldValueDefs;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
 import com.gy_mod.gy_trinket.core.defs.DefsManager;
 import com.gy_mod.gy_trinket.core.entity.construct.HostileTargetManager;
@@ -134,37 +135,37 @@ public class AmplificationShieldType implements IShieldType {
     /** 获取基础增幅值（按物品实例取值） */
     private static double getBaseAmplification(String itemId) {
         return DefsManager.resolveShieldTypeValueForItem(currentServer(), itemId,
-                "amplification", "base_amplification", Config.getAmplificationBaseAmplification());
+                "amplification", "base_amplification", ShieldValueDefs.defaultValueOf("amplification", "base_amplification", 0.2));
     }
 
     /** 获取每个威胁的固定增幅值（按物品实例取值） */
     private static double getThreatAmplification(String itemId) {
         return DefsManager.resolveShieldTypeValueForItem(currentServer(), itemId,
-                "amplification", "threat_amplification", Config.getAmplificationThreatAmplification());
+                "amplification", "threat_amplification", ShieldValueDefs.defaultValueOf("amplification", "threat_amplification", 0.2));
     }
 
     /** 获取每个威胁按最大生命提供的增幅值（每点，按物品实例取值） */
     private static double getHealthAmplificationPerPoint(String itemId) {
         return DefsManager.resolveShieldTypeValueForItem(currentServer(), itemId,
-                "amplification", "health_amplification_per_point", Config.getAmplificationHealthAmplificationPerPoint());
+                "amplification", "health_amplification_per_point", ShieldValueDefs.defaultValueOf("amplification", "health_amplification_per_point", 0.02));
     }
 
     /** 获取最大增幅值（按物品实例取值） */
     private static double getMaxAmplification(String itemId) {
         return DefsManager.resolveShieldTypeValueForItem(currentServer(), itemId,
-                "amplification", "max_amplification", Config.getAmplificationMaxAmplification());
+                "amplification", "max_amplification", ShieldValueDefs.defaultValueOf("amplification", "max_amplification", 1.0));
     }
 
     /** 获取基础检测半径（按物品实例取值） */
     private static double getBaseRadius(String itemId) {
         return DefsManager.resolveShieldTypeValueForItem(currentServer(), itemId,
-                "amplification", "check_radius", Config.getAmplificationCheckRadius());
+                "amplification", "check_radius", ShieldValueDefs.defaultValueOf("amplification", "check_radius", 5.0));
     }
 
     /** 获取移动速度加成（按物品实例取值） */
     private static double getMovementSpeedBonus(String itemId) {
         return DefsManager.resolveShieldTypeValueForItem(currentServer(), itemId,
-                "amplification", "movement_speed_bonus", Config.getAmplificationMovementSpeedBonus());
+                "amplification", "movement_speed_bonus", ShieldValueDefs.defaultValueOf("amplification", "movement_speed_bonus", 0.2));
     }
 
     @Override

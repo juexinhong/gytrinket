@@ -1,7 +1,5 @@
 package com.gy_mod.gy_trinket.core.defs;
 
-import com.gy_mod.gy_trinket.config.Config;
-
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,8 +16,9 @@ import java.util.function.DoubleSupplier;
  * <p>
  * 覆盖值由 UI 产生，存储在 {@link DefsManager.ShieldTypeOverride} 的 values 段；
  * 运行时读取走 {@link DefsManager#resolveShieldTypeValueForItem}（服务端，按物品实例取值，
- * 不跨物品合并），未覆盖回退此处默认值。基础四项的显示默认值优先取护盾类型定义
- * （{@link DefsManager#clientShieldTypeParamDefault}），此处硬编码仅为回退。
+ * 不跨物品合并）。该方法的取值顺序为：item_definitions 物品级 shieldValues（数据文件 /
+ * UI 覆写）→ shield_types 类型级默认值 → 此处默认值。光环护盾的四项行为参数已完整迁移到
+ * item_definitions（逐物品声明），Config 不再提供对应全局项。
  */
 public final class ShieldValueDefs {
 
@@ -38,6 +37,47 @@ public final class ShieldValueDefs {
             new ParamDef("shield_hit_cooldown_extend_multiplier",
                     nameKey("base", "shield_hit_cooldown_extend_multiplier"), () -> 0.1)
     };
+
+    /**
+     * 光环护盾行为参数默认值。
+     * <p>
+     * 这些数值已迁移到物品定义（item_definitions 的 {@code shieldValues} 段，逐物品声明），
+     * Config 中不再提供全局项；此处仅作为"物品与护盾类型都未声明该键"时的最终回退，
+     * 数值与迁移前 Config 默认值一致。
+     */
+    private static final double AURA_TRIGGER_FREQUENCY = 5.0;
+    private static final double AURA_RADIUS = 3.5;
+    private static final double AURA_DAMAGE = 0.75;
+    private static final double AURA_SHIELD_COST = 0.042;
+
+    /** 虹吸护盾行为参数默认值（已迁移到 item_definitions，Config 全局项已移除） */
+    private static final double SIPHON_TICK_INTERVAL = 5.0;
+    private static final double SIPHON_RADIUS = 4.0;
+    private static final double SIPHON_DAMAGE = 0.3;
+    private static final double SIPHON_HEAL_RATIO = 0.3;
+    private static final double SIPHON_DURATION_TICKS = 20.0;
+    private static final double SIPHON_EFFECT_PER_STACK = 0.025;
+    private static final double SIPHON_MAX_EFFECT = 0.4;
+    private static final double SIPHON_DECAY_RATIO = 0.03;
+
+    /** 反射护盾行为参数默认值（已迁移到 item_definitions，Config 全局项已移除） */
+    private static final double REFLECT_SPEED_BASE_MODIFIER = 1.5;
+    private static final double REFLECT_SPEED_EXTRA_MODIFIER = 1.0;
+    private static final double REFLECT_DAMAGE_EFFECT_MULTIPLIER = 1.0;
+
+    /** 增幅护盾行为参数默认值（已迁移到 item_definitions，Config 全局项已移除） */
+    private static final double AMPLIFICATION_BASE = 0.2;
+    private static final double AMPLIFICATION_THREAT = 0.2;
+    private static final double AMPLIFICATION_HEALTH_PER_POINT = 0.02;
+    private static final double AMPLIFICATION_MAX = 1.0;
+    private static final double AMPLIFICATION_CHECK_RADIUS = 5.0;
+    private static final double AMPLIFICATION_MOVEMENT_SPEED_BONUS = 0.2;
+
+    /** 跃迁护盾行为参数默认值（已迁移到 item_definitions，Config 全局项已移除） */
+    private static final double WARP_DISTANCE = 5.0;
+    private static final double WARP_EXPLOSION_RADIUS = 3.3;
+    private static final double WARP_EXPLOSION_DAMAGE = 7.5;
+    private static final double WARP_INVINCIBLE_DURATION = 15.0;
 
     private static void register(String shieldType, ParamDef... defs) {
         PARAMS.put(shieldType, List.of(defs));
@@ -66,73 +106,78 @@ public final class ShieldValueDefs {
         register("none", withBase());
 
         // ===== 光环护盾 (aura) =====
+        // 数值已迁移到 item_definitions 物品级 shieldValues；此处仅为未声明物品的最终回退
         register("aura", withBase(
                 new ParamDef("trigger_frequency", nameKey("aura", "trigger_frequency"),
-                        () -> Config.AURA_TRIGGER_FREQUENCY.get()),
+                        () -> AURA_TRIGGER_FREQUENCY),
                 new ParamDef("radius", nameKey("aura", "radius"),
-                        () -> Config.AURA_RADIUS.get()),
+                        () -> AURA_RADIUS),
                 new ParamDef("damage", nameKey("aura", "damage"),
-                        () -> Config.AURA_DAMAGE.get()),
+                        () -> AURA_DAMAGE),
                 new ParamDef("shield_cost", nameKey("aura", "shield_cost"),
-                        () -> Config.AURA_SHIELD_COST.get())
+                        () -> AURA_SHIELD_COST)
         ));
 
         // ===== 虹吸护盾 (siphon) =====
+        // 数值已迁移到 item_definitions 物品级 shieldValues
         register("siphon", withBase(
                 new ParamDef("tick_interval", nameKey("siphon", "tick_interval"),
-                        () -> Config.SIPHON_TICK_INTERVAL.get()),
+                        () -> SIPHON_TICK_INTERVAL),
                 new ParamDef("radius", nameKey("siphon", "radius"),
-                        () -> Config.SIPHON_RADIUS.get()),
+                        () -> SIPHON_RADIUS),
                 new ParamDef("damage", nameKey("siphon", "damage"),
-                        () -> Config.SIPHON_DAMAGE.get()),
+                        () -> SIPHON_DAMAGE),
                 new ParamDef("heal_ratio", nameKey("siphon", "heal_ratio"),
-                        () -> Config.SIPHON_HEAL_RATIO.get()),
+                        () -> SIPHON_HEAL_RATIO),
                 new ParamDef("duration_ticks", nameKey("siphon", "duration_ticks"),
-                        () -> Config.SIPHON_DURATION_TICKS.get()),
+                        () -> SIPHON_DURATION_TICKS),
                 new ParamDef("effect_per_stack", nameKey("siphon", "effect_per_stack"),
-                        () -> Config.SIPHON_EFFECT_PER_STACK.get()),
+                        () -> SIPHON_EFFECT_PER_STACK),
                 new ParamDef("max_effect", nameKey("siphon", "max_effect"),
-                        () -> Config.SIPHON_MAX_EFFECT.get()),
+                        () -> SIPHON_MAX_EFFECT),
                 new ParamDef("decay_ratio", nameKey("siphon", "decay_ratio"),
-                        () -> Config.SIPHON_DECAY_RATIO.get())
+                        () -> SIPHON_DECAY_RATIO)
         ));
 
         // ===== 反射护盾 (reflect) =====
+        // 数值已迁移到 item_definitions 物品级 shieldValues
         register("reflect", withBase(
                 new ParamDef("speed_base_modifier", nameKey("reflect", "speed_base_modifier"),
-                        Config::getReflectSpeedBaseModifier),
+                        () -> REFLECT_SPEED_BASE_MODIFIER),
                 new ParamDef("speed_extra_modifier", nameKey("reflect", "speed_extra_modifier"),
-                        Config::getReflectSpeedExtraModifier),
+                        () -> REFLECT_SPEED_EXTRA_MODIFIER),
                 new ParamDef("damage_effect_multiplier", nameKey("reflect", "damage_effect_multiplier"),
-                        Config::getReflectDamageEffectMultiplier)
+                        () -> REFLECT_DAMAGE_EFFECT_MULTIPLIER)
         ));
 
         // ===== 增幅护盾 (amplification) =====
+        // 数值已迁移到 item_definitions 物品级 shieldValues
         register("amplification", withBase(
                 new ParamDef("base_amplification", nameKey("amplification", "base_amplification"),
-                        Config::getAmplificationBaseAmplification),
+                        () -> AMPLIFICATION_BASE),
                 new ParamDef("threat_amplification", nameKey("amplification", "threat_amplification"),
-                        Config::getAmplificationThreatAmplification),
+                        () -> AMPLIFICATION_THREAT),
                 new ParamDef("health_amplification_per_point", nameKey("amplification", "health_amplification_per_point"),
-                        Config::getAmplificationHealthAmplificationPerPoint),
+                        () -> AMPLIFICATION_HEALTH_PER_POINT),
                 new ParamDef("max_amplification", nameKey("amplification", "max_amplification"),
-                        Config::getAmplificationMaxAmplification),
+                        () -> AMPLIFICATION_MAX),
                 new ParamDef("check_radius", nameKey("amplification", "check_radius"),
-                        Config::getAmplificationCheckRadius),
+                        () -> AMPLIFICATION_CHECK_RADIUS),
                 new ParamDef("movement_speed_bonus", nameKey("amplification", "movement_speed_bonus"),
-                        Config::getAmplificationMovementSpeedBonus)
+                        () -> AMPLIFICATION_MOVEMENT_SPEED_BONUS)
         ));
 
         // ===== 跃迁护盾 (warp) =====
+        // 数值已迁移到 item_definitions 物品级 shieldValues
         register("warp", withBase(
                 new ParamDef("warp_distance", nameKey("warp", "warp_distance"),
-                        () -> Config.WARP_SHIELD_WARP_DISTANCE.get()),
+                        () -> WARP_DISTANCE),
                 new ParamDef("explosion_radius", nameKey("warp", "explosion_radius"),
-                        () -> Config.WARP_SHIELD_EXPLOSION_RADIUS.get()),
+                        () -> WARP_EXPLOSION_RADIUS),
                 new ParamDef("explosion_damage", nameKey("warp", "explosion_damage"),
-                        () -> Config.WARP_SHIELD_EXPLOSION_DAMAGE.get()),
+                        () -> WARP_EXPLOSION_DAMAGE),
                 new ParamDef("invincible_duration", nameKey("warp", "invincible_duration"),
-                        () -> Config.WARP_SHIELD_INVINCIBLE_DURATION.get())
+                        () -> WARP_INVINCIBLE_DURATION)
         ));
     }
 
@@ -151,5 +196,16 @@ public final class ShieldValueDefs {
             }
         }
         return null;
+    }
+
+    /**
+     * 获取参数默认值，未注册时返回调用方给定的回退值。
+     * <p>
+     * 供运行时/ tooltip 在"物品定义与护盾类型都未声明该参数"时取最终回退，
+     * 避免直接依赖 Config 中的全局数值项。
+     */
+    public static double defaultValueOf(String shieldType, String paramKey, double fallback) {
+        Double value = getDefaultValue(shieldType, paramKey);
+        return value != null ? value : fallback;
     }
 }

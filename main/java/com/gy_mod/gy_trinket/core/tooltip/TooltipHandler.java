@@ -1,6 +1,7 @@
 package com.gy_mod.gy_trinket.core.tooltip;
 
 import com.gy_mod.gy_trinket.client.ClientItemAttributes;
+import com.gy_mod.gy_trinket.core.defs.MechanicValueDefs;
 import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.core.attribute.AttributeDefinition;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
@@ -346,43 +347,43 @@ public class TooltipHandler {
                 if (type.equals("aura")) {
                     formattedDesc = String.format(descTooltip.getString(),
                         (int) DefsManager.clientShieldTypeValueForItem(itemId, type, "trigger_frequency",
-                            Config.AURA_TRIGGER_FREQUENCY.get()),
+                            ShieldValueDefs.defaultValueOf("aura", "trigger_frequency", 5.0)),
                         DefsManager.clientShieldTypeValueForItem(itemId, type, "radius",
-                            Config.AURA_RADIUS.get()),
+                            ShieldValueDefs.defaultValueOf("aura", "radius", 3.5)),
                         DefsManager.clientShieldTypeValueForItem(itemId, type, "damage",
-                            Config.AURA_DAMAGE.get()),
+                            ShieldValueDefs.defaultValueOf("aura", "damage", 0.75)),
                         DefsManager.clientShieldTypeValueForItem(itemId, type, "shield_cost",
-                            Config.AURA_SHIELD_COST.get()),
+                            ShieldValueDefs.defaultValueOf("aura", "shield_cost", 0.042)),
                         Config.getIgniteDefaultDamage(),
                         Config.getIgniteDefaultDuration());
                 } else if (type.equals("reflect")) {
                     formattedDesc = String.format(descTooltip.getString(),
                         (int)(DefsManager.clientShieldTypeValueForItem(itemId, type, "speed_base_modifier",
-                            Config.getReflectSpeedBaseModifier()) * 100),
+                            ShieldValueDefs.defaultValueOf("reflect", "speed_base_modifier", 1.5)) * 100),
                         DefsManager.clientShieldTypeValueForItem(itemId, type, "damage_effect_multiplier",
-                            Config.getReflectDamageEffectMultiplier()));
+                            ShieldValueDefs.defaultValueOf("reflect", "damage_effect_multiplier", 1.0)));
                 } else if (type.equals("amplification")) {
                     formattedDesc = String.format(descTooltip.getString(),
                         (int)(DefsManager.clientShieldTypeValueForItem(itemId, type, "base_amplification",
-                            Config.getAmplificationBaseAmplification()) * 100),
+                            ShieldValueDefs.defaultValueOf("amplification", "base_amplification", 0.2)) * 100),
                         (int)(DefsManager.clientShieldTypeValueForItem(itemId, type, "max_amplification",
-                            Config.getAmplificationMaxAmplification()) * 100),
+                            ShieldValueDefs.defaultValueOf("amplification", "max_amplification", 1.0)) * 100),
                         (int)(DefsManager.clientShieldTypeValueForItem(itemId, type, "movement_speed_bonus",
-                            Config.getAmplificationMovementSpeedBonus()) * 100));
+                            ShieldValueDefs.defaultValueOf("amplification", "movement_speed_bonus", 0.2)) * 100));
                 } else if (type.equals("warp")) {
                     formattedDesc = String.format(descTooltip.getString(),
                         DefsManager.clientShieldTypeValueForItem(itemId, type, "explosion_damage",
-                            Config.getWarpShieldExplosionDamage()));
+                            ShieldValueDefs.defaultValueOf("warp", "explosion_damage", 7.5)));
                 } else if (type.equals("siphon")) {
                     formattedDesc = String.format(descTooltip.getString(),
                         DefsManager.clientShieldTypeValueForItem(itemId, type, "tick_interval",
-                            Config.SIPHON_TICK_INTERVAL.get()),
+                            ShieldValueDefs.defaultValueOf("siphon", "tick_interval", 5.0)),
                         DefsManager.clientShieldTypeValueForItem(itemId, type, "damage",
-                            Config.SIPHON_DAMAGE.get()),
+                            ShieldValueDefs.defaultValueOf("siphon", "damage", 0.3)),
                         (int)(DefsManager.clientShieldTypeValueForItem(itemId, type, "heal_ratio",
-                            Config.SIPHON_HEAL_RATIO.get()) * 100),
+                            ShieldValueDefs.defaultValueOf("siphon", "heal_ratio", 0.3)) * 100),
                         (int)(DefsManager.clientShieldTypeValueForItem(itemId, type, "max_effect",
-                            Config.SIPHON_MAX_EFFECT.get()) * 100));
+                            ShieldValueDefs.defaultValueOf("siphon", "max_effect", 0.4)) * 100));
                 }
                 event.getToolTip().add(Component.literal("    ").append(Component.literal(formattedDesc).withStyle(ChatFormatting.GRAY)));
             } catch (Exception e) {
@@ -478,9 +479,9 @@ public class TooltipHandler {
             try {
                 // 未覆盖回退值需与运行时实例参数解析一致（DroneInstanceParams fallback）：均取 Config 默认
                 double fallbackCount = Config.getDroneMaxCount();
-                double fallbackHealth = Config.getDroneBaseHealth();
-                double fallbackDamage = Config.getDroneBaseDamage();
-                double fallbackInterval = Config.DRONE_ATTACK_INTERVAL.get();
+                double fallbackHealth = MechanicValueDefs.defaultValueOf("drone_module_items", "base_health", 5);
+                double fallbackDamage = MechanicValueDefs.defaultValueOf("drone_module_items", "base_damage", 0.3);
+                double fallbackInterval = MechanicValueDefs.defaultValueOf("drone_module_items", "attack_interval", 0.5);
                 // 物品级覆盖值优先（client 覆盖层），未覆盖回退上述默认（与运行时实例参数解析一致）
                 double maxCount = DefsManager.clientResolveMechanicValueForItem(
                         itemId, "drone_module_items", "base_count", fallbackCount);
@@ -513,12 +514,12 @@ public class TooltipHandler {
             try {
                 ConstructType wingmanType = ConstructManager.getInstance().getConstructType(WingmanConstructTypes.WINGMAN);
                 int maxCount = wingmanType != null ? wingmanType.getMaxCount() : Config.getWingmanMaxCount();
-                double maxHealth = wingmanType != null ? wingmanType.getMaxHealth() : Config.getWingmanBaseHealth();
+                double maxHealth = wingmanType != null ? wingmanType.getMaxHealth() : MechanicValueDefs.defaultValueOf("wingman_module_items", "base_health", 24);
                 int explosiveCount = Config.getWingmanExplosiveCount();
-                double explosiveDamage = Config.getWingmanExplosiveDamage();
+                double explosiveDamage = MechanicValueDefs.defaultValueOf("wingman_module_items", "base_damage", 0.5);
                 double explosionDamage = Config.getWingmanExplosionDamage();
                 double explosionRadius = Config.getWingmanExplosionRadius();
-                double attackSpeed = 1.0 / Config.getWingmanAttackInterval();
+                double attackSpeed = 1.0 / MechanicValueDefs.defaultValueOf("wingman_module_items", "attack_interval", 1);
                 formattedText = String.format(formattedText,
                     maxCount, (int) maxHealth, explosiveCount, explosiveDamage,
                     explosionDamage, explosionRadius, formatDecimal(attackSpeed));
@@ -541,7 +542,7 @@ public class TooltipHandler {
      */
     private static void addNanoRegenModuleDescTooltip(ItemTooltipEvent event, String itemId) {
         addFormattedTooltip(event, itemId, "nano_regen_module_desc", ChatFormatting.GRAY,
-            (id) -> new Object[]{TooltipConfig.mechanicValue(id, "wingmanNanoRegenPercent", Config.getWingmanNanoRegenPercent()) * 100}
+            (id) -> new Object[]{TooltipConfig.mechanicValue(id, "wingmanNanoRegenPercent", MechanicValueDefs.defaultValueOf("wingman_nano_regen_module_items", "regen_percent", 0.02)) * 100}
         );
     }
 
@@ -557,10 +558,10 @@ public class TooltipHandler {
             try {
                 ConstructType swarmType = ConstructManager.getInstance().getConstructType(SwarmConstructTypes.SWARM);
                 int maxCount = swarmType != null ? swarmType.getMaxCount() : Config.getSwarmMaxCount();
-                double maxHealth = swarmType != null ? swarmType.getMaxHealth() : Config.getSwarmBaseHealth();
-                double damage = Config.getSwarmBaseDamage();
-                double attackSpeed = 1.0 / Config.getSwarmAttackInterval();
-                double attackRange = Config.getSwarmAttackRange();
+                double maxHealth = swarmType != null ? swarmType.getMaxHealth() : MechanicValueDefs.defaultValueOf("swarm_module_items", "base_health", 1.6);
+                double damage = MechanicValueDefs.defaultValueOf("swarm_module_items", "base_damage", 0.08);
+                double attackSpeed = 1.0 / MechanicValueDefs.defaultValueOf("swarm_module_items", "attack_interval", 1.5);
+                double attackRange = MechanicValueDefs.defaultValueOf("swarm_module_items", "attack_range", 4);
                 formattedText = String.format(formattedText,
                     maxCount, maxHealth, damage, formatDecimal(attackSpeed), attackRange);
                 event.getToolTip().add(Component.literal(formattedText).withStyle(ChatFormatting.GRAY));

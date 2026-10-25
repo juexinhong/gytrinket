@@ -1,6 +1,7 @@
 package com.gy_mod.gy_trinket.core.shield;
 
 import com.gy_mod.gy_trinket.config.Config;
+import com.gy_mod.gy_trinket.core.defs.MechanicValueDefs;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
 import com.gy_mod.gy_trinket.core.attack_mode.charged_attack.ChargedAttackManager;
 import com.gy_mod.gy_trinket.core.defs.DefsManager;
@@ -112,9 +113,9 @@ public class ChargedShieldManager {
             // 充能中：线性过渡到目标值（物品级数值覆盖：取首个生效物品的覆盖值，未覆盖回退 Config 默认）
             double chargeValue = ChargedAttackManager.getChargeValue(player);
             double chargeRatio = DefsManager.resolveMechanicValue(player.getServer(), uuid,
-                    "charged_shield_items", "charge_ratio", Config.getChargedShieldChargeRatio());
+                    "charged_shield_items", "charge_ratio", MechanicValueDefs.defaultValueOf("charged_shield_items", "charge_ratio", 0.1));
             double maxBonus = DefsManager.resolveMechanicValue(player.getServer(), uuid,
-                    "charged_shield_items", "max_bonus", Config.getChargedShieldMaxBonus());
+                    "charged_shield_items", "max_bonus", MechanicValueDefs.defaultValueOf("charged_shield_items", "max_bonus", 0.8));
             double targetBonus = Math.min(chargeValue * chargeRatio, maxBonus);
 
             // 充能中清除延迟计时器
@@ -125,7 +126,7 @@ public class ChargedShieldManager {
 
             // 线性过渡
             double transitionRate = DefsManager.resolveMechanicValue(player.getServer(), uuid,
-                    "charged_shield_items", "decay_rate", Config.getChargedShieldDecayRate());
+                    "charged_shield_items", "decay_rate", MechanicValueDefs.defaultValueOf("charged_shield_items", "decay_rate", 0.08));
             if (currentBonus < targetBonus) {
                 currentBonus = Math.min(currentBonus + transitionRate, targetBonus);
             } else if (currentBonus > targetBonus) {
@@ -142,7 +143,7 @@ public class ChargedShieldManager {
         } else if (currentBonus > 0) {
             // 延迟结束后：线性过渡到0
             double transitionRate = DefsManager.resolveMechanicValue(player.getServer(), uuid,
-                    "charged_shield_items", "decay_rate", Config.getChargedShieldDecayRate());
+                    "charged_shield_items", "decay_rate", MechanicValueDefs.defaultValueOf("charged_shield_items", "decay_rate", 0.08));
             currentBonus = Math.max(0, currentBonus - transitionRate);
 
             if (currentBonus <= 0) {

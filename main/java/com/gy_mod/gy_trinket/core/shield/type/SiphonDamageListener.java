@@ -1,6 +1,7 @@
 package com.gy_mod.gy_trinket.core.shield.type;
 
 import com.gy_mod.gy_trinket.config.Config;
+import com.gy_mod.gy_trinket.core.defs.ShieldValueDefs;
 import com.gy_mod.gy_trinket.core.defs.DefsManager;
 import com.gy_mod.gy_trinket.core.shield.ShieldManager;
 import com.gy_mod.gy_trinket.core.damage.ModDamageTypes;
@@ -47,7 +48,7 @@ public class SiphonDamageListener {
         // heal_ratio 按产生虹吸的物品实例取值
         MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
         double healRatio = DefsManager.resolveShieldTypeValueForItem(server, ref.itemId(),
-                "siphon", "heal_ratio", Config.SIPHON_HEAL_RATIO.get());
+                "siphon", "heal_ratio", ShieldValueDefs.defaultValueOf("siphon", "heal_ratio", 0.3));
 
         float damageAmount = event.getAmount();
         double shieldRecovery = damageAmount * healRatio;

@@ -56,59 +56,25 @@ public class Config {
     public static final ForgeConfigSpec.ConfigValue<String> RANDOM_BUILD_TOKEN_DESC;
 
     // ===== 1. 光环护盾 (aura_shield) =====
-    public static final ForgeConfigSpec.DoubleValue AURA_RADIUS;
-    public static final ForgeConfigSpec.DoubleValue AURA_DAMAGE;
-    public static final ForgeConfigSpec.IntValue AURA_TRIGGER_FREQUENCY;
-    public static final ForgeConfigSpec.DoubleValue AURA_SHIELD_COST;
 
     // ===== 2. 虹吸护盾 (siphon_shield) =====
-    public static final ForgeConfigSpec.DoubleValue SIPHON_RADIUS;
-    public static final ForgeConfigSpec.DoubleValue SIPHON_DAMAGE;
-    public static final ForgeConfigSpec.IntValue SIPHON_TICK_INTERVAL;
-    public static final ForgeConfigSpec.DoubleValue SIPHON_HEAL_RATIO;
-    public static final ForgeConfigSpec.IntValue SIPHON_DURATION_TICKS;
-    public static final ForgeConfigSpec.DoubleValue SIPHON_EFFECT_PER_STACK;
-    public static final ForgeConfigSpec.DoubleValue SIPHON_MAX_EFFECT;
-    public static final ForgeConfigSpec.DoubleValue SIPHON_DECAY_RATIO;
 
     // ===== 3. 反射护盾类型 (reflect_shield) =====
-    public static final ForgeConfigSpec.DoubleValue REFLECT_RADIUS;
-    public static final ForgeConfigSpec.DoubleValue REFLECT_SPEED_BASE_MODIFIER;
-    public static final ForgeConfigSpec.DoubleValue REFLECT_SPEED_EXTRA_MODIFIER;
-    public static final ForgeConfigSpec.DoubleValue REFLECT_DAMAGE_EFFECT_MULTIPLIER;
 
     // ===== 4. 增幅护盾 (amplification_shield) =====
-    public static final ForgeConfigSpec.DoubleValue AMPLIFICATION_BASE_AMPLIFICATION;
-    public static final ForgeConfigSpec.DoubleValue AMPLIFICATION_THREAT_AMPLIFICATION;
-    public static final ForgeConfigSpec.DoubleValue AMPLIFICATION_CHECK_RADIUS;
-    public static final ForgeConfigSpec.DoubleValue AMPLIFICATION_MAX_AMPLIFICATION;
-    public static final ForgeConfigSpec.DoubleValue AMPLIFICATION_MOVEMENT_SPEED_BONUS;
-    public static final ForgeConfigSpec.DoubleValue AMPLIFICATION_HEALTH_AMPLIFICATION_PER_POINT;
 
     // ===== 5. 跃传护盾 (warp_shield) =====
-    public static final ForgeConfigSpec.IntValue WARP_SHIELD_INVINCIBLE_DURATION;
-    public static final ForgeConfigSpec.DoubleValue WARP_SHIELD_EXPLOSION_DAMAGE;
-    public static final ForgeConfigSpec.DoubleValue WARP_SHIELD_EXPLOSION_RADIUS;
-    public static final ForgeConfigSpec.DoubleValue WARP_SHIELD_WARP_DISTANCE;
 
     // ===== 6. 屏障 (barrier) =====
-    public static final ForgeConfigSpec.DoubleValue BARRIER_MAX_DAMAGE;
 
     // ===== 7. 反射护盾 (reflect_damage) =====
-    public static final ForgeConfigSpec.DoubleValue REFLECT_DAMAGE_BASE_DAMAGE;
-    public static final ForgeConfigSpec.DoubleValue REFLECT_DAMAGE_RAY_LENGTH;
 
     // ===== 8. 易爆护盾 (explosive_shield) =====
-    public static final ForgeConfigSpec.DoubleValue EXPLOSIVE_SHIELD_DAMAGE;
-    public static final ForgeConfigSpec.DoubleValue EXPLOSIVE_SHIELD_RADIUS;
 
     // ===== 9. 电能释放 (electric_discharge) =====
-    public static final ForgeConfigSpec.DoubleValue ELECTRIC_DISCHARGE_BURN_CHARGE;
     public static final ForgeConfigSpec.IntValue ELECTRIC_DISCHARGE_BURN_DURATION;
 
     // ===== 10. 武器化护盾 (weaponized_shield) =====
-    public static final ForgeConfigSpec.DoubleValue WEAPONIZED_SHIELD_VULNERABILITY;
-    public static final ForgeConfigSpec.DoubleValue WEAPONIZED_SHIELD_RADIUS;
 
     // ===== 11. 镀层 (coating_system) =====
     public static final ForgeConfigSpec.DoubleValue COATING_REDUCTION_PER_LAYER;
@@ -124,14 +90,9 @@ public class Config {
     public static final ForgeConfigSpec.DoubleValue NATURAL_RECOVERY_SHIELD_PRESENT_SHIELD_MODIFIER;
     
     // ===== 15. 转化 (conversion) =====
-    public static final ForgeConfigSpec.DoubleValue CONVERSION_RATIO;
 
     // ===== 17. 强袭 (assault) =====
-    public static final ForgeConfigSpec.DoubleValue ASSAULT_ATTACK_SPEED_PER_STACK;
     public static final ForgeConfigSpec.IntValue ASSAULT_DURATION_TICKS;
-    public static final ForgeConfigSpec.DoubleValue ASSAULT_SELF_DAMAGE_PER_STACK;
-    public static final ForgeConfigSpec.DoubleValue ASSAULT_MOVEMENT_SPEED_PENALTY;
-    public static final ForgeConfigSpec.DoubleValue ASSAULT_OVERFLOW_DAMAGE_EFFICIENCY;
 
     // ===== 17.5 征途 (journey) =====
     public static final ForgeConfigSpec.DoubleValue JOURNEY_ATTACK_SPEED_PER_STACK;
@@ -146,11 +107,8 @@ public class Config {
     public static final ForgeConfigSpec.IntValue SECONDARY_DAMAGE_MERGE_WINDOW_TICKS;
 
     /** 次级爆炸（爆炸半径模块特殊机制）：爆炸伤害占弹射物伤害的比例 */
-    public static final ForgeConfigSpec.DoubleValue SECONDARY_EXPLOSION_DAMAGE_FRACTION;
     /** 次级爆炸（爆炸半径模块特殊机制）：爆炸半径基础值 */
-    public static final ForgeConfigSpec.DoubleValue SECONDARY_EXPLOSION_RADIUS_BASE;
     /** 次级爆炸（爆炸半径模块特殊机制）：每点爆炸伤害增加的爆炸半径 */
-    public static final ForgeConfigSpec.DoubleValue SECONDARY_EXPLOSION_RADIUS_DAMAGE_FRACTION;
 
     // ===== 18. 充能攻击 (charged_attack) =====
     public static final ForgeConfigSpec.DoubleValue CHARGED_ATTACK_BASE_CHARGE_RATE;
@@ -171,32 +129,22 @@ public class Config {
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> PROJECTILE_SOURCE_TRACE_PACKAGES;
 
     // ===== 19. 精密构造 (precision_construct) =====
-    public static final ForgeConfigSpec.DoubleValue PRECISION_CONSTRUCT_BONUS_PER_LEVEL;
 
     // ===== 20. 护盾移植 (shield_transfer) =====
-    public static final ForgeConfigSpec.DoubleValue SHIELD_TRANSFER_EFFECT_PENALTY_PER_ENTITY;
 
     // ===== 21. 追击阵列/突击无人机 (pursuit_array) =====
-    public static final ForgeConfigSpec.DoubleValue DRONE_BASE_HEALTH;
-    public static final ForgeConfigSpec.DoubleValue DRONE_BASE_DAMAGE;
     public static final ForgeConfigSpec.IntValue DRONE_MAX_COUNT;
     public static final ForgeConfigSpec.DoubleValue DRONE_FOLLOW_RANGE;
     /** 无人机正常攻击间隔（秒）：物品级 attack_interval 未定义时的全局默认 */
-    public static final ForgeConfigSpec.DoubleValue DRONE_ATTACK_INTERVAL;
     /** 无人机基础攻击范围（格）：物品级 attack_range 未定义时使用 */
-    public static final ForgeConfigSpec.DoubleValue DRONE_ATTACK_RANGE;
     /** 无人机基础索敌范围（格）：物品级 target_range 未定义时使用 */
-    public static final ForgeConfigSpec.DoubleValue DRONE_TARGET_RANGE;
 
     // ===== 21.5 无人机斩杀机制 (drone_execute) =====
     public static final ForgeConfigSpec.BooleanValue DRONE_EXECUTE_ENABLED;
 
     // ===== 22. 宽限协议 (near_death_protection) =====
-    public static final ForgeConfigSpec.IntValue NEAR_DEATH_PROTECTION_COOLDOWN;
-    public static final ForgeConfigSpec.IntValue NEAR_DEATH_PROTECTION_INVINCIBLE_DURATION;
 
     // ===== 23. 高等工程 (advanced_engineering) =====
-    public static final ForgeConfigSpec.DoubleValue ADVANCED_ENGINEERING_BONUS_PER_LEVEL;
 
     // ===== 24. 最后指令 (near_death_explosion) =====
     public static final ForgeConfigSpec.IntValue NEAR_DEATH_EXPLOSION_INVINCIBLE_DURATION;
@@ -215,23 +163,13 @@ public class Config {
     public static final ForgeConfigSpec.DoubleValue COMMANDER_VULNERABILITY;
 
     // ===== 僚机 (wingman) =====
-    public static final ForgeConfigSpec.DoubleValue WINGMAN_BASE_HEALTH;
     public static final ForgeConfigSpec.IntValue WINGMAN_MAX_COUNT;
-    public static final ForgeConfigSpec.DoubleValue WINGMAN_ATTACK_INTERVAL;
-    public static final ForgeConfigSpec.DoubleValue WINGMAN_ATTACK_RANGE;
     public static final ForgeConfigSpec.IntValue WINGMAN_EXPLOSIVE_COUNT;
-    public static final ForgeConfigSpec.DoubleValue WINGMAN_EXPLOSIVE_DAMAGE;
 
     // ===== 蜂群 =====
-    public static final ForgeConfigSpec.DoubleValue SWARM_BASE_HEALTH;
-    public static final ForgeConfigSpec.DoubleValue SWARM_BASE_DAMAGE;
     public static final ForgeConfigSpec.IntValue SWARM_MAX_COUNT;
     public static final ForgeConfigSpec.IntValue SWARM_COUNT_LIMIT;
-    public static final ForgeConfigSpec.IntValue SWARM_BUILD_TIME;
     public static final ForgeConfigSpec.DoubleValue SWARM_MOVE_SPEED;
-    public static final ForgeConfigSpec.DoubleValue SWARM_SEARCH_RANGE;
-    public static final ForgeConfigSpec.DoubleValue SWARM_ATTACK_RANGE;
-    public static final ForgeConfigSpec.DoubleValue SWARM_ATTACK_INTERVAL;
     public static final ForgeConfigSpec.DoubleValue SWARM_VULNERABILITY_VALUE;
     public static final ForgeConfigSpec.DoubleValue SWARM_SHIELD_REPAIR_MULTIPLIER;
     public static final ForgeConfigSpec.DoubleValue SWARM_TIER_UPGRADE_CHANCE_STANDARD;
@@ -241,8 +179,6 @@ public class Config {
     public static final ForgeConfigSpec.IntValue WINGMAN_INTERCEPTOR_CHARGE_DURATION_TICKS;
     public static final ForgeConfigSpec.IntValue WINGMAN_INTERCEPTOR_MAX_CHARGE_DURATION_TICKS;
     public static final ForgeConfigSpec.DoubleValue WINGMAN_INTERCEPTOR_CHARGED_SWEEP_BASE_RANGE;
-    public static final ForgeConfigSpec.DoubleValue WINGMAN_EVOLUTION_BONUS_PER_LEVEL;
-    public static final ForgeConfigSpec.DoubleValue WINGMAN_NANO_REGEN_PERCENT;
     public static final ForgeConfigSpec.DoubleValue WINGMAN_SHOCKWAVE_DAMAGE_MULTIPLIER;
     public static final ForgeConfigSpec.DoubleValue WINGMAN_SHOCKWAVE_SPLASH_LENGTH_MULTIPLIER;
 
@@ -252,9 +188,6 @@ public class Config {
     public static final ForgeConfigSpec.DoubleValue ARC_BARRIER_POSITION_DEVIATION_THRESHOLD;
 
     // ===== 29. 反制脉冲 (counter_pulse) =====
-    public static final ForgeConfigSpec.IntValue COUNTER_PULSE_COOLDOWN;
-    public static final ForgeConfigSpec.DoubleValue COUNTER_PULSE_BASE_EXPLOSION_RADIUS;
-    public static final ForgeConfigSpec.DoubleValue COUNTER_PULSE_BASE_EXPLOSION_DAMAGE;
     public static final ForgeConfigSpec.IntValue COUNTER_PULSE_CHARGE_INTERVAL;
     public static final ForgeConfigSpec.IntValue COUNTER_PULSE_MAX_CHARGE_LEVEL;
 
@@ -264,31 +197,14 @@ public class Config {
     public static final ForgeConfigSpec.IntValue RESHAPING_DAMAGE_REDUCTION_DURATION;
 
     // ===== 30b. 自毁装置 (self_destruct) =====
-    public static final ForgeConfigSpec.DoubleValue SELF_DESTRUCT_BASE_DAMAGE;
-    public static final ForgeConfigSpec.DoubleValue SELF_DESTRUCT_BASE_RADIUS;
     public static final ForgeConfigSpec.DoubleValue SELF_DESTRUCT_DAMAGE_PER_MAX_HEALTH;
     public static final ForgeConfigSpec.DoubleValue SELF_DESTRUCT_RADIUS_PER_MAX_HEALTH;
 
     // ===== 31. 充能护盾 (charged_shield) =====
-    public static final ForgeConfigSpec.DoubleValue CHARGED_SHIELD_CHARGE_RATIO;
-    public static final ForgeConfigSpec.DoubleValue CHARGED_SHIELD_MAX_BONUS;
-    public static final ForgeConfigSpec.DoubleValue CHARGED_SHIELD_DECAY_RATE;
-    public static final ForgeConfigSpec.DoubleValue CHARGED_SHIELD_MOVEMENT_SPEED_PENALTY;
 
     // ===== 35. 积怨 (grudge) =====
-    public static final ForgeConfigSpec.DoubleValue GRUDGE_CONVERSION_RATIO;
-    public static final ForgeConfigSpec.DoubleValue GRUDGE_FADE_BASE;
-    public static final ForgeConfigSpec.DoubleValue GRUDGE_FADE_PERCENT;
-    public static final ForgeConfigSpec.DoubleValue GRUDGE_MOVEMENT_SPEED_PENALTY;
 
     // ===== 幽灵机身 (ghost_fuselage) =====
-    public static final ForgeConfigSpec.DoubleValue GHOST_FUSELAGE_STEALTH_SPEED_BONUS_PER_LEVEL;
-    public static final ForgeConfigSpec.DoubleValue GHOST_FUSELAGE_MAX_BONUS_PER_LEVEL;
-    public static final ForgeConfigSpec.DoubleValue GHOST_FUSELAGE_BASE_MAX_DAMAGE_BONUS;
-    public static final ForgeConfigSpec.DoubleValue GHOST_FUSELAGE_MOVE_SPEED_THRESHOLD;
-    public static final ForgeConfigSpec.DoubleValue GHOST_FUSELAGE_MOVE_SPEED_REDUCTION;
-    public static final ForgeConfigSpec.DoubleValue GHOST_FUSELAGE_DECAY_RATE;
-    public static final ForgeConfigSpec.DoubleValue GHOST_FUSELAGE_MIN_DECAY;
     public static final ForgeConfigSpec.IntValue GHOST_FUSELAGE_FULL_STEALTH_TICKS;
 
     // ===== 32. 升级系统 (upgrade_system) =====
@@ -368,166 +284,24 @@ public class Config {
         BUILDER.pop();
 
         // ===== 1. 光环护盾 =====
-        BUILDER.comment("光环护盾配置").push("aura_shield");
-
-        AURA_RADIUS = BUILDER.comment("光环护盾半径").defineInRange("auraRadius", 3.5, 0.0, 100.0);
-        AURA_DAMAGE = BUILDER.comment("光环护盾伤害").defineInRange("auraDamage", 0.75, 0.0, 100.0);
-        AURA_TRIGGER_FREQUENCY = BUILDER.comment("光环护盾触发频率（刻）").defineInRange("auraTriggerFrequency", 5, 1, 200);
-        AURA_SHIELD_COST = BUILDER.comment("光环护盾消耗护盾值").defineInRange("auraShieldCost", 0.042, 0.0, 10.0);
-
-        BUILDER.pop();
 
         // ===== 2. 虹吸护盾 =====
-        BUILDER.comment("虹吸护盾配置").push("siphon_shield");
-
-        SIPHON_RADIUS = BUILDER.comment("虹吸护盾基础半径").defineInRange("siphonRadius", 4.0, 0.0, 100.0);
-        SIPHON_DAMAGE = BUILDER.comment("虹吸护盾基础伤害量").defineInRange("siphonDamage", 0.3, 0.0, 100.0);
-        SIPHON_TICK_INTERVAL = BUILDER.comment("虹吸护盾伤害频率（刻）").defineInRange("siphonTickInterval", 5, 1, 200);
-        SIPHON_HEAL_RATIO = BUILDER.comment("虹吸护盾伤害恢复护盾比例").defineInRange("siphonHealRatio", 0.3, 0.0, 1.0);
-        SIPHON_DURATION_TICKS = BUILDER.comment("虹吸效果持续时间（刻）").defineInRange("siphonDurationTicks", 20, 1, 200);
-        SIPHON_EFFECT_PER_STACK = BUILDER.comment("每层虹吸效果提供的百分比加成").defineInRange("siphonEffectPerStack", 0.025, 0.001, 1.0);
-        SIPHON_MAX_EFFECT = BUILDER.comment("虹吸效果最大百分比加成").defineInRange("siphonMaxEffect", 0.4, 0.01, 1.0);
-        SIPHON_DECAY_RATIO = BUILDER.comment("虹吸效果消退比率").defineInRange("siphonDecayRatio", 0.03, 0.0, 1.0);
-
-        BUILDER.pop();
 
         // ===== 3. 反射护盾类型 =====
-        BUILDER.comment("反射护盾配置").push("reflect_shield");
-
-        REFLECT_RADIUS = BUILDER.comment("反射护盾半径").defineInRange("reflectRadius", 40.0, 0.0, 100.0);
-        REFLECT_SPEED_BASE_MODIFIER = BUILDER.comment("反射弹射物速度基础系数").defineInRange("reflectSpeedBaseModifier", 1.5, 0.0, 10.0);
-        REFLECT_SPEED_EXTRA_MODIFIER = BUILDER.comment("反射弹射物速度额外系数（决定护盾效果半径属性能够生效多少.1就是100%）").defineInRange("reflectSpeedExtraModifier", 1.0, 0.0, 10.0);
-        REFLECT_DAMAGE_EFFECT_MULTIPLIER = BUILDER.comment("反射弹射物伤害护盾效果系数（乘以护盾效果属性）").defineInRange("reflectDamageEffectMultiplier", 1.0, 0.0, 10.0);
-
-        BUILDER.pop();
 
         // ===== 4. 增幅护盾 =====
-        BUILDER.comment("增幅护盾系统配置").push("amplification_shield");
-
-        AMPLIFICATION_BASE_AMPLIFICATION = BUILDER.comment(
-            "增幅护盾基础增幅值",
-            "当玩家有护盾值时提供的基础攻击伤害加成（独立乘区）",
-            "例如：0.2 表示增加20%"
-        ).defineInRange("amplificationBaseAmplification", 0.2, 0.0, 2.0);
-
-        AMPLIFICATION_THREAT_AMPLIFICATION = BUILDER.comment(
-            "增幅护盾威胁增幅值",
-            "每个危险目标增加的攻击伤害加成（独立乘区）",
-            "例如：0.2 表示每个威胁增加20%"
-        ).defineInRange("amplificationThreatAmplification", 0.2, 0.0, 1.0);
-
-        AMPLIFICATION_HEALTH_AMPLIFICATION_PER_POINT = BUILDER.comment(
-            "增幅护盾敌人最大生命增幅值",
-            "敌人最大生命每点提供的攻击伤害加成（独立乘区）",
-            "例如：0.01 表示每点最大生命增加1%，僵尸(20生命)提供20%增幅",
-            "该增幅计入每个敌人的贡献，总量不能超出最大增幅限制",
-            "范围：0.0 ~ 0.1"
-        ).defineInRange("amplificationHealthAmplificationPerPoint", 0.02, 0.0, 0.1);
-
-        AMPLIFICATION_CHECK_RADIUS = BUILDER.comment(
-            "增幅护盾威胁检测半径（格）",
-            "检测玩家周围危险目标的基础半径",
-            "该值会受护盾效果半径属性影响"
-        ).defineInRange("amplificationCheckRadius", 5.0, 1.0, 20.0);
-
-        AMPLIFICATION_MAX_AMPLIFICATION = BUILDER.comment(
-            "增幅护盾最大增幅值",
-            "攻击伤害加成的上限（独立乘区）",
-            "例如：1.0 表示最大增加100%"
-        ).defineInRange("amplificationMaxAmplification", 1.0, 0.0, 3.0);
-
-        AMPLIFICATION_MOVEMENT_SPEED_BONUS = BUILDER.comment(
-            "增幅护盾移动速度加成",
-            "当有护盾值时，为玩家或被护盾保护的实体提供的移动速度独立乘区加成",
-            "该值受护盾效果属性影响，但不受危险物数量提升机制影响",
-            "例如：0.2 表示增加20%"
-        ).defineInRange("amplificationMovementSpeedBonus", 0.2, 0.0, 2.0);
-
-        BUILDER.pop();
 
         // ===== 5. 跃传护盾 =====
-        BUILDER.comment("跃传护盾系统配置").push("warp_shield");
-
-        WARP_SHIELD_INVINCIBLE_DURATION = BUILDER.comment(
-            "跃传护盾玩家无敌时间（刻）",
-            "护盾破裂后玩家进入无敌状态的持续时间",
-            "例如：15 表示持续15刻（0.75秒）"
-        ).defineInRange("warpShieldInvincibleDuration", 15, 1, 100);
-
-        WARP_SHIELD_EXPLOSION_DAMAGE = BUILDER.comment(
-            "跃传护盾爆炸基础伤害",
-            "护盾破裂时产生的爆炸基础伤害值",
-            "该值会受护盾效果属性组影响"
-        ).defineInRange("warpShieldExplosionDamage", 7.5, 0.0, 100.0);
-
-        WARP_SHIELD_EXPLOSION_RADIUS = BUILDER.comment(
-            "跃传护盾爆炸半径（格）",
-            "护盾破裂时爆炸的基础半径",
-            "该值会受护盾效果半径属性组影响"
-        ).defineInRange("warpShieldExplosionRadius", 3.3, 1.0, 20.0);
-
-        WARP_SHIELD_WARP_DISTANCE = BUILDER.comment(
-            "跃传护盾传送距离（格）",
-            "护盾破裂时玩家/被保护实体被传送的基础距离",
-            "该值会受护盾效果半径属性组影响"
-        ).defineInRange("warpShieldWarpDistance", 5.0, 1.0, 20.0);
-
-        BUILDER.pop();
 
         // ===== 6. 屏障 =====
-        BUILDER.comment("屏障系统配置").push("barrier");
-
-        BARRIER_MAX_DAMAGE = BUILDER.comment(
-            "屏障限制伤害最大值",
-            "当伤害超过此值时，将被限制为此值",
-            "示例：5.0"
-        ).defineInRange("barrierMaxDamage", 5.0, 0.0, 1000.0);
-
-        BUILDER.pop();
 
         // ===== 7. 反射护盾 =====
-        BUILDER.comment("反射护盾伤害处理器配置").push("reflect_damage");
-
-        REFLECT_DAMAGE_BASE_DAMAGE = BUILDER.comment(
-            "反射护盾基础伤害值",
-            "该伤害会受护盾效果属性影响",
-            "示例：1.0"
-        ).defineInRange("reflectDamageBaseDamage", 0.7, 0.0, 10.0);
-
-        REFLECT_DAMAGE_RAY_LENGTH = BUILDER.comment(
-            "反射护盾射线基础长度（格）",
-            "该长度会受护盾效果半径属性影响",
-            "示例：5.0"
-        ).defineInRange("reflectDamageRayLength", 2.0, 1.0, 20.0);
-
-        BUILDER.pop();
 
         // ===== 8. 易爆护盾 =====
-        BUILDER.comment("易爆护盾系统配置").push("explosive_shield");
-
-        EXPLOSIVE_SHIELD_DAMAGE = BUILDER.comment(
-            "易爆护盾默认伤害值",
-            "该伤害会受护盾效果属性影响",
-            "示例：10.0"
-        ).defineInRange("explosiveShieldDamage", 10.0, 0.0, 100.0);
-
-        EXPLOSIVE_SHIELD_RADIUS = BUILDER.comment(
-            "易爆护盾默认半径（格）",
-            "该半径会受护盾效果半径属性影响",
-            "示例：3.5"
-        ).defineInRange("explosiveShieldRadius", 4.0, 0.0, 10.0);
-
-        BUILDER.pop();
 
         // ===== 9. 电能释放 =====
         BUILDER.comment("电能释放系统配置").push("electric_discharge");
 
-        ELECTRIC_DISCHARGE_BURN_CHARGE = BUILDER.comment(
-            "电能释放基础灼烧充能量",
-            "每次闪电命中目标时施加的灼烧充能量",
-            "该值会受到玩家攻击速度的影响：攻击速度越快，灼烧充能越少",
-            "范围：0.1 ~ 10.0"
-        ).defineInRange("electricDischargeBurnCharge", 0.5, 0.1, 10.0);
 
         ELECTRIC_DISCHARGE_BURN_DURATION = BUILDER.comment(
             "电能释放灼烧持续时间（刻）",
@@ -538,22 +312,6 @@ public class Config {
         BUILDER.pop();
 
         // ===== 10. 武器化护盾 =====
-        BUILDER.comment("武器化护盾系统配置").push("weaponized_shield");
-
-        WEAPONIZED_SHIELD_VULNERABILITY = BUILDER.comment(
-            "武器化护盾基础易伤值",
-            "该值会受到护盾效果属性组影响",
-            "范围：0.0 ~ 1.0",
-            "示例：0.20"
-        ).defineInRange("weaponizedShieldVulnerability", 0.20, 0.0, 10.0);
-
-        WEAPONIZED_SHIELD_RADIUS = BUILDER.comment(
-            "武器化护盾基础作用半径（格）",
-            "该值会受到护盾效果半径属性组影响",
-            "示例：4.0"
-        ).defineInRange("weaponizedShieldRadius", 4.0, 1.0, 20.0);
-
-        BUILDER.pop();
 
         // ===== 11. 镀层 =====
         BUILDER.comment("镀层系统配置").push("coating_system");
@@ -608,25 +366,10 @@ public class Config {
         BUILDER.pop();
 
         // ===== 15. 转化 =====
-        BUILDER.comment("转化效果配置").push("conversion");
-
-        CONVERSION_RATIO = BUILDER.comment(
-            "转化效果的转化比例",
-            "较低资源的此比例会被转化为较高资源",
-            "例如：0.3 表示将较低资源的30%转化给较高资源",
-            "取值范围：0.0 - 1.0"
-        ).defineInRange("conversionRatio", 0.3, 0.0, 1.0);
-
-        BUILDER.pop();
 
         // ===== 17. 强袭 =====
         BUILDER.comment("强袭系统配置").push("assault");
 
-        ASSAULT_ATTACK_SPEED_PER_STACK = BUILDER.comment(
-            "每层强袭提供的攻击速度独立乘区加成",
-            "默认0.1（即10%）",
-            "范围：0.01 ~ 1.0"
-        ).defineInRange("attackSpeedPerStack", 0.1, 0.01, 1.0);
 
         ASSAULT_DURATION_TICKS = BUILDER.comment(
             "强袭层数持续时间（刻）",
@@ -634,24 +377,8 @@ public class Config {
             "范围：10 ~ 200"
         ).defineInRange("durationTicks", 40, 10, 200);
 
-        ASSAULT_SELF_DAMAGE_PER_STACK = BUILDER.comment(
-            "每层强袭对玩家自身造成的伤害",
-            "默认0.1",
-            "范围：0.01 ~ 10.0"
-        ).defineInRange("selfDamagePerStack", 0.05, 0.01, 10.0);
 
-        ASSAULT_MOVEMENT_SPEED_PENALTY = BUILDER.comment(
-            "强袭期间的移动速度独立乘区惩罚",
-            "处于强袭时（按住左键期间）施加的减速比例",
-            "默认-0.6（即-60%，独立乘区）",
-            "范围：-0.99 ~ 0.0"
-        ).defineInRange("movementSpeedPenalty", -0.6, -0.99, 0.0);
 
-        ASSAULT_OVERFLOW_DAMAGE_EFFICIENCY = BUILDER.comment(
-            "强袭攻击速度溢出攻速上限时，转化为伤害百分比的效率系数",
-            "溢出攻速 / 攻速上限 × 该系数 = 额外伤害百分比",
-            "默认1.0，范围：0.0 ~ 1.0"
-        ).defineInRange("overflowDamageEfficiency", 1.0, 0.0, 1.0);
 
         BUILDER.pop();
 
@@ -788,38 +515,13 @@ public class Config {
         BUILDER.pop();
 
         // ===== 19. 精密构造 =====
-        BUILDER.comment("精密构造系统配置").push("precision_construct");
-
-        PRECISION_CONSTRUCT_BONUS_PER_LEVEL = BUILDER.comment(
-            "精妙构造每级提供的构建速度独立乘区加成",
-            "0.0025表示每级0.25%",
-            "默认0.0025"
-        ).defineInRange("precisionConstructBonusPerLevel", 0.0025, 0.0, 1.0);
-
-        BUILDER.pop();
 
         // ===== 20. 护盾移植 =====
-        BUILDER.comment("护盾移植系统配置").push("shield_transfer");
-
-        SHIELD_TRANSFER_EFFECT_PENALTY_PER_ENTITY = BUILDER.comment(
-            "护盾移植每保护一个实体降低的护盾效果和护盾效果半径百分比",
-            "0.03表示每保护一个实体降低3%",
-            "降低值之间相乘计算，例如3个实体：0.97*0.97*0.97=0.91，降低0.09",
-            "默认0.04"
-        ).defineInRange("effectPenaltyPerEntity", 0.04, 0.0, 1.0);
-
-        BUILDER.pop();
 
         // ===== 21. 追击阵列/突击无人机 =====
         BUILDER.comment("追击阵列/突击无人机配置").push("pursuit_array");
 
-        DRONE_BASE_HEALTH = BUILDER.comment(
-            "无人机基础最大生命值"
-        ).defineInRange("droneBaseHealth", 5.0, 1.0, 1000.0);
 
-        DRONE_BASE_DAMAGE = BUILDER.comment(
-            "无人机基础伤害（每颗子弹）"
-        ).defineInRange("droneBaseDamage", 0.3, 0.01, 100.0);
 
         DRONE_MAX_COUNT = BUILDER.comment(
             "无人机最大数量"
@@ -829,17 +531,8 @@ public class Config {
             "无人机跟随范围（格）"
         ).defineInRange("droneFollowRange", 16.0, 4.0, 64.0);
 
-        DRONE_ATTACK_INTERVAL = BUILDER.comment(
-            "无人机正常攻击间隔（秒），物品级 attack_interval 未定义时使用"
-        ).defineInRange("droneAttackInterval", 0.5, 0.05, 10.0);
 
-        DRONE_ATTACK_RANGE = BUILDER.comment(
-            "无人机基础攻击范围（格），物品级 attack_range 未定义时使用"
-        ).defineInRange("droneAttackRange", 8.0, 1.0, 64.0);
 
-        DRONE_TARGET_RANGE = BUILDER.comment(
-            "无人机基础索敌范围（格），物品级 target_range 未定义时使用"
-        ).defineInRange("droneTargetRange", 8.0, 1.0, 64.0);
 
         BUILDER.pop();
 
@@ -855,32 +548,8 @@ public class Config {
         BUILDER.pop();
 
         // ===== 22. 宽限协议 =====
-        BUILDER.comment("濒死保护系统配置").push("near_death_protection");
-
-        NEAR_DEATH_PROTECTION_COOLDOWN = BUILDER.comment(
-            "宽限协议冷却时间（tick）",
-            "触发濒死保护后的冷却时间，期间无法再次触发",
-            "默认300tick（15秒）"
-        ).defineInRange("nearDeathProtectionCooldown", 300, 20, 6000);
-
-        NEAR_DEATH_PROTECTION_INVINCIBLE_DURATION = BUILDER.comment(
-            "宽限协议无敌持续时间（tick）",
-            "触发濒死保护后的无敌持续时间",
-            "默认20tick（1秒）"
-        ).defineInRange("nearDeathProtectionInvincibleDuration", 20, 1, 200);
-
-        BUILDER.pop();
 
         // ===== 23. 高等工程 =====
-        BUILDER.comment("高等工程系统配置").push("advanced_engineering");
-
-        ADVANCED_ENGINEERING_BONUS_PER_LEVEL = BUILDER.comment(
-            "高等工程每级提供的无人机生命和伤害独立乘区加成",
-            "0.01表示每级1%",
-            "默认0.01"
-        ).defineInRange("advancedEngineeringBonusPerLevel", 0.01, 0.0, 1.0);
-
-        BUILDER.pop();
 
         // ===== 24. 最后指令 =====
         BUILDER.comment("濒死自爆系统配置").push("near_death_explosion");
@@ -948,29 +617,17 @@ public class Config {
         // ===== 僚机 =====
         BUILDER.comment("僚机构造体配置").push("wingman");
 
-        WINGMAN_BASE_HEALTH = BUILDER.comment(
-            "僚机基础生命值"
-        ).defineInRange("wingmanBaseHealth", 24.0, 1.0, 1000.0);
 
         WINGMAN_MAX_COUNT = BUILDER.comment(
             "僚机最大数量"
         ).defineInRange("wingmanMaxCount", 1, 1, 20);
 
-        WINGMAN_ATTACK_INTERVAL = BUILDER.comment(
-            "僚机攻击间隔（秒）"
-        ).defineInRange("wingmanAttackInterval", 1.0, 0.05, 100.0);
 
-        WINGMAN_ATTACK_RANGE = BUILDER.comment(
-            "僚机攻击范围（格）"
-        ).defineInRange("wingmanAttackRange", 20.0, 1.0, 64.0);
 
         WINGMAN_EXPLOSIVE_COUNT = BUILDER.comment(
             "每次攻击发射的爆破弹数量"
         ).defineInRange("wingmanExplosiveCount", 3, 1, 20);
 
-        WINGMAN_EXPLOSIVE_DAMAGE = BUILDER.comment(
-            "爆破弹基础伤害"
-        ).defineInRange("wingmanExplosiveDamage", 0.5, 0.01, 100.0);
 
         WINGMAN_EXPLOSION_DAMAGE = BUILDER.comment(
             "爆破弹爆炸伤害"
@@ -996,15 +653,7 @@ public class Config {
             "默认2.0，范围：0.5 ~ 10.0"
         ).defineInRange("wingmanInterceptorChargedSweepBaseRange", 2.0, 0.5, 10.0);
 
-        WINGMAN_EVOLUTION_BONUS_PER_LEVEL = BUILDER.comment(
-            "僚机进化：每级光点等级提供的属性加成百分比",
-            "默认：0.00625（0.625%），范围：0.0 ~ 1.0"
-        ).defineInRange("wingmanEvolutionBonusPerLevel", 0.00625, 0.0, 1.0);
 
-        WINGMAN_NANO_REGEN_PERCENT = BUILDER.comment(
-            "僚机纳米再生：每秒恢复最大生命值的百分比",
-            "默认：0.02（2%），范围：0.0 ~ 1.0"
-        ).defineInRange("wingmanNanoRegenPercent", 0.02, 0.0, 1.0);
 
         WINGMAN_SHOCKWAVE_DAMAGE_MULTIPLIER = BUILDER.comment(
             "震撼弹模块：爆破弹爆炸伤害倍率",
@@ -1021,13 +670,7 @@ public class Config {
         // ===== 蜂群 =====
         BUILDER.comment("蜂群构造体配置").push("swarm");
 
-        SWARM_BASE_HEALTH = BUILDER.comment(
-            "蜂群基础生命值"
-        ).defineInRange("swarmBaseHealth", 1.6, 0.1, 1000.0);
 
-        SWARM_BASE_DAMAGE = BUILDER.comment(
-            "蜂群基础攻击伤害"
-        ).defineInRange("swarmBaseDamage", 0.08, 0.01, 100.0);
 
         SWARM_MAX_COUNT = BUILDER.comment(
             "蜂群最大数量"
@@ -1041,25 +684,13 @@ public class Config {
             "设为0表示不限制"
         ).defineInRange("swarmCountLimit", 35, 0, 100);
 
-        SWARM_BUILD_TIME = BUILDER.comment(
-            "蜂群构建时间（tick）"
-        ).defineInRange("swarmBuildTime", 20, 1, 6000);
 
         SWARM_MOVE_SPEED = BUILDER.comment(
             "蜂群移动速度"
         ).defineInRange("swarmMoveSpeed", 0.25, 0.01, 10.0);
 
-        SWARM_SEARCH_RANGE = BUILDER.comment(
-            "蜂群索敌范围（格）"
-        ).defineInRange("swarmSearchRange", 20.0, 1.0, 64.0);
 
-        SWARM_ATTACK_RANGE = BUILDER.comment(
-            "蜂群攻击范围（格）"
-        ).defineInRange("swarmAttackRange", 4.0, 0.5, 32.0);
 
-        SWARM_ATTACK_INTERVAL = BUILDER.comment(
-            "蜂群攻击间隔（秒）"
-        ).defineInRange("swarmAttackInterval", 1.5, 0.05, 100.0);
 
         SWARM_VULNERABILITY_VALUE = BUILDER.comment(
             "蜂群电弧施加的易伤值"
@@ -1080,9 +711,6 @@ public class Config {
         BUILDER.pop();
 
         // ===== 27. 守卫阵列/防御无人机 =====
-        BUILDER.comment("守卫阵列/防御无人机配置").push("guard_array");
-
-        BUILDER.pop();
 
         // ===== 28. 弧形屏障 =====
         BUILDER.comment("弧形屏障系统配置").push("arc_barrier");
@@ -1099,20 +727,8 @@ public class Config {
         // ===== 29. 反制脉冲 =====
         BUILDER.comment("反制脉冲系统配置").push("counter_pulse");
 
-        COUNTER_PULSE_COOLDOWN = BUILDER.comment(
-            "反制脉冲冷却时间（tick）",
-            "默认60tick（3秒）"
-        ).defineInRange("cooldown", 60, 20, 600);
 
-        COUNTER_PULSE_BASE_EXPLOSION_RADIUS = BUILDER.comment(
-            "反制脉冲基础爆炸半径（格）",
-            "默认1.3格"
-        ).defineInRange("baseExplosionRadius", 1.3, 0.5, 10.0);
 
-        COUNTER_PULSE_BASE_EXPLOSION_DAMAGE = BUILDER.comment(
-            "反制脉冲基础爆炸伤害",
-            "默认1.0"
-        ).defineInRange("baseExplosionDamage", 1.0, 0.1, 100.0);
 
         COUNTER_PULSE_CHARGE_INTERVAL = BUILDER.comment(
             "反制脉冲充能间隔（tick）",
@@ -1152,48 +768,11 @@ public class Config {
         BUILDER.pop();
 
         // ===== 31. 充能护盾 =====
-        BUILDER.comment("充能护盾系统配置").push("charged_shield");
-
-        CHARGED_SHIELD_CHARGE_RATIO = BUILDER.comment(
-            "充能值转化为护盾加成的比率",
-            "动态属性值 = 累计充能值 * 此比率",
-            "默认0.1（即10%）",
-            "范围：0.01 ~ 1.0"
-        ).defineInRange("chargeRatio", 0.1, 0.01, 1.0);
-
-        CHARGED_SHIELD_MAX_BONUS = BUILDER.comment(
-            "动态属性值上限",
-            "动态属性值不超过此值（独立乘区值，0.8即80%加成）",
-            "默认0.8",
-            "范围：0.1 ~ 5.0"
-        ).defineInRange("maxBonus", 0.8, 0.1, 5.0);
-
-        CHARGED_SHIELD_DECAY_RATE = BUILDER.comment(
-            "充能护盾消退速率（每tick消退的独立乘区值）",
-            "停止充能后，动态属性值按此速率线性消退",
-            "默认0.05（即每tick消退5%，约16tick完全消退）",
-            "范围：0.005 ~ 0.5"
-        ).defineInRange("decayRate", 0.08, 0.005, 0.5);
-
-        CHARGED_SHIELD_MOVEMENT_SPEED_PENALTY = BUILDER.comment(
-            "充能护盾模块附加的移动速度独立乘区惩罚",
-            "充能期间若拥有充能护盾模块，额外施加的减速比例",
-            "默认-0.15（即-15%，独立乘区）",
-            "范围：-0.99 ~ 0.0"
-        ).defineInRange("movementSpeedPenalty", -0.15, -0.99, 0.0);
-
-        BUILDER.pop();
 
         // ===== 自毁装置 =====
         BUILDER.comment("自毁装置系统配置").push("self_destruct");
 
-        SELF_DESTRUCT_BASE_DAMAGE = BUILDER.comment(
-            "自毁爆炸基础伤害"
-        ).defineInRange("selfDestructBaseDamage", 1.0, 0.0, 1000.0);
 
-        SELF_DESTRUCT_BASE_RADIUS = BUILDER.comment(
-            "自毁爆炸基础半径（格）"
-        ).defineInRange("selfDestructBaseRadius", 1.0, 0.0, 100.0);
 
         SELF_DESTRUCT_DAMAGE_PER_MAX_HEALTH = BUILDER.comment(
             "每点最大生命值增加的自毁爆炸伤害"
@@ -1206,83 +785,16 @@ public class Config {
         BUILDER.pop();
 
         // ===== 35. 积怨 =====
-        BUILDER.comment("积怨系统配置").push("grudge");
-
-        GRUDGE_CONVERSION_RATIO = BUILDER.comment(
-            "积怨转化比率",
-            "每点损失的生命或护盾值转化为多少充能速率",
-            "默认0.05（即1:0.05）",
-            "范围：0.001 ~ 1.0"
-        ).defineInRange("conversionRatio", 0.2, 0.001, 1.0);
-
-        GRUDGE_FADE_BASE = BUILDER.comment(
-            "积怨消退最低速率",
-            "消退时每tick至少减少的充能速率",
-            "默认1.0",
-            "范围：0.0 ~ 10.0"
-        ).defineInRange("fadeBase", 0.00001, 0.0, 10.0);
-
-        GRUDGE_FADE_PERCENT = BUILDER.comment(
-            "积怨消退百分比",
-            "消退时每tick减少当前值的百分比",
-            "消退速度 = max(fadeBase, 当前值 * fadePercent)",
-            "默认0.02（即2%）",
-            "范围：0.0 ~ 1.0"
-        ).defineInRange("fadePercent", 0.02, 0.0, 1.0);
-
-        GRUDGE_MOVEMENT_SPEED_PENALTY = BUILDER.comment(
-            "积怨模块附加的移动速度独立乘区惩罚",
-            "充能期间若拥有积怨模块，额外施加的减速比例",
-            "默认-0.15（即-15%，独立乘区）",
-            "范围：-0.99 ~ 0.0"
-        ).defineInRange("movementSpeedPenalty", -0.15, -0.99, 0.0);
-
-        BUILDER.pop();
 
         // ===== 幽灵机身 =====
         BUILDER.comment("幽灵机身配置").push("ghost_fuselage");
 
-        GHOST_FUSELAGE_STEALTH_SPEED_BONUS_PER_LEVEL = BUILDER.comment(
-            "每级光点等级增加的隐身速度百分比",
-            "默认0.005（即0.5%/级）",
-            "范围：0.0 ~ 1.0"
-        ).defineInRange("stealthSpeedBonusPerLevel", 0.005, 0.0, 1.0);
 
-        GHOST_FUSELAGE_MAX_BONUS_PER_LEVEL = BUILDER.comment(
-            "每级光点等级增加的最大伤害加成百分比",
-            "默认0.005（即0.5%/级），最大加成=基础最大伤害加成×(1+level×此值）",
-            "范围：0.0 ~ 1.0"
-        ).defineInRange("maxBonusPerLevel", 0.005, 0.0, 1.0);
 
-        GHOST_FUSELAGE_BASE_MAX_DAMAGE_BONUS = BUILDER.comment(
-            "基础最大伤害加成（完全隐身时的独立乘区伤害加成）",
-            "默认3.0（即+300%）",
-            "范围：0.0 ~ 100.0"
-        ).defineInRange("baseMaxDamageBonus", 3.0, 0.0, 100.0);
 
-        GHOST_FUSELAGE_MOVE_SPEED_THRESHOLD = BUILDER.comment(
-            "移动速度阈值（blocks/tick），超过此值开始扣除隐身进度",
-            "默认0.0（任何移动都扣除）",
-            "范围：0.0 ~ 10.0"
-        ).defineInRange("moveSpeedThreshold", 0.25, 0.0, 10.0);
 
-        GHOST_FUSELAGE_MOVE_SPEED_REDUCTION = BUILDER.comment(
-            "移动速度超过阈值时，每0.1 blocks/tick扣除的隐身进度",
-            "默认0.2（正常行走0.1×0.2=0.02，与基础增长持平）",
-            "范围：0.0 ~ 1.0"
-        ).defineInRange("moveSpeedReduction", 0.2, 0.0, 1.0);
 
-        GHOST_FUSELAGE_DECAY_RATE = BUILDER.comment(
-            "破隐后隐身进度每tick消退的当前值比例",
-            "默认0.3（即每刻消退当前值的30%）",
-            "范围：0.01 ~ 0.99"
-        ).defineInRange("decayRate", 0.3, 0.01, 0.99);
 
-        GHOST_FUSELAGE_MIN_DECAY = BUILDER.comment(
-            "破隐后隐身进度每tick的最低消退量",
-            "默认0.02（即每刻至少消退2%进度）",
-            "范围：0.0 ~ 0.1"
-        ).defineInRange("minDecay", 0.02, 0.0, 0.1);
 
         GHOST_FUSELAGE_FULL_STEALTH_TICKS = BUILDER.comment(
             "达到完全隐身（80%进度）所需的tick数",
@@ -1405,27 +917,6 @@ public class Config {
         BUILDER.pop();
 
         // ===== 24.5.3 弹射物次级爆炸（爆炸半径模块特殊机制） =====
-        BUILDER.comment("弹射物次级爆炸配置（爆炸半径模块特殊机制）").push("secondary_explosion");
-
-        SECONDARY_EXPLOSION_DAMAGE_FRACTION = BUILDER.comment(
-            "次级爆炸伤害占弹射物伤害的比例",
-            "弹射物次级爆炸：归属玩家的弹射物造成伤害后从世界移除时爆炸",
-            "爆炸伤害 = 已记录最高弹射物伤害 × 该比例",
-            "默认0.15"
-        ).defineInRange("secondaryExplosionDamageFraction", 0.15, 0.0, 1.0);
-
-        SECONDARY_EXPLOSION_RADIUS_BASE = BUILDER.comment(
-            "次级爆炸半径基础值（格）",
-            "次级爆炸半径 = 基础值 + 爆炸伤害 × 每点伤害半径增量，之后经爆炸半径属性组增幅",
-            "默认2.0"
-        ).defineInRange("secondaryExplosionRadiusBase", 2.0, 0.0, 32.0);
-
-        SECONDARY_EXPLOSION_RADIUS_DAMAGE_FRACTION = BUILDER.comment(
-            "次级爆炸每点爆炸伤害增加的爆炸半径（格）",
-            "默认0.5"
-        ).defineInRange("secondaryExplosionRadiusDamageFraction", 0.5, 0.0, 8.0);
-
-        BUILDER.pop();
 
         SPEC = BUILDER.build();
     }
@@ -1609,57 +1100,26 @@ public class Config {
         return switch (name) {
             case "shieldNaturalRecoveryPresentHealthModifier" -> getNaturalRecoveryShieldPresentHealthModifier();
             case "shieldNaturalRecoveryPresentShieldModifier" -> getNaturalRecoveryShieldPresentShieldModifier();
-            case "explosiveShieldDamage" -> EXPLOSIVE_SHIELD_DAMAGE.get();
-            case "shieldTransferEffectPenaltyPerEntity" -> SHIELD_TRANSFER_EFFECT_PENALTY_PER_ENTITY.get();
-            case "weaponizedShieldVulnerability" -> WEAPONIZED_SHIELD_VULNERABILITY.get();
-            case "nearDeathProtectionInvincibleDuration" -> NEAR_DEATH_PROTECTION_INVINCIBLE_DURATION.get();
-            case "nearDeathProtectionCooldown" -> NEAR_DEATH_PROTECTION_COOLDOWN.get();
             case "nearDeathExplosionInvincibleDuration" -> NEAR_DEATH_EXPLOSION_INVINCIBLE_DURATION.get();
             case "nearDeathExplosionCoefficient" -> NEAR_DEATH_EXPLOSION_COEFFICIENT.get();
             case "nearDeathExplosionRadius" -> NEAR_DEATH_EXPLOSION_RADIUS.get();
-            case "conversionRatio" -> CONVERSION_RATIO.get();
             case "coatingReductionPerLayer" -> getCoatingReductionPerLayer();
             case "arcBarrierPositionDeviationThreshold" -> ARC_BARRIER_POSITION_DEVIATION_THRESHOLD.get();
             case "reshapingHealRate" -> RESHAPING_HEAL_RATE.get();
             case "reshapingBaseDamageReduction" -> RESHAPING_BASE_DAMAGE_REDUCTION.get();
             case "reshapingDamageReductionDuration" -> RESHAPING_DAMAGE_REDUCTION_DURATION.get();
-            case "counterPulseCooldown" -> COUNTER_PULSE_COOLDOWN.get();
-            case "counterPulseBaseExplosionRadius" -> COUNTER_PULSE_BASE_EXPLOSION_RADIUS.get();
-            case "counterPulseBaseExplosionDamage" -> COUNTER_PULSE_BASE_EXPLOSION_DAMAGE.get();
             case "counterPulseChargeInterval" -> COUNTER_PULSE_CHARGE_INTERVAL.get();
             case "counterPulseMaxChargeLevel" -> COUNTER_PULSE_MAX_CHARGE_LEVEL.get();
-            case "precisionConstructBonusPerLevel" -> PRECISION_CONSTRUCT_BONUS_PER_LEVEL.get();
-            case "advancedEngineeringBonusPerLevel" -> ADVANCED_ENGINEERING_BONUS_PER_LEVEL.get();
-            case "assaultAttackSpeedPerStack" -> getAssaultAttackSpeedPerStack();
-            case "assaultSelfDamagePerStack" -> getAssaultSelfDamagePerStack();
-            case "assaultMovementSpeedPenalty" -> getAssaultMovementSpeedPenalty();
             case "commanderMaxCount" -> COMMANDER_MAX_COUNT.get();
             case "commanderAppointDelay" -> COMMANDER_APPOINT_DELAY.get();
-            case "chargedShieldChargeRatio" -> getChargedShieldChargeRatio();
-            case "chargedShieldMaxBonus" -> getChargedShieldMaxBonus();
-            case "chargedShieldMovementSpeedPenalty" -> getChargedShieldMovementSpeedPenalty();
-            case "grudgeConversionRatio" -> getGrudgeConversionRatio();
-            case "grudgeFadePercent" -> getGrudgeFadePercent();
-            case "grudgeFadeBase" -> getGrudgeFadeBase();
-            case "grudgeMovementSpeedPenalty" -> getGrudgeMovementSpeedPenalty();
             case "wingmanShockwaveDamageMultiplier" -> getWingmanShockwaveDamageMultiplier();
             case "wingmanShockwaveSplashLengthMultiplier" -> getWingmanShockwaveSplashLengthMultiplier();
-            case "wingmanEvolutionBonusPerLevel" -> getWingmanEvolutionBonusPerLevel();
             case "journeyAttackSpeedPerStack" -> getJourneyAttackSpeedPerStack();
             case "journeyMovementSpeedPerStack" -> getJourneyMovementSpeedPerStack();
             case "journeyDurationTicks" -> getJourneyDurationTicks();
             case "journeyMaxStacks" -> getJourneyMaxStacks();
             case "ghostFuselageFullStealthTicks" -> getGhostFuselageFullStealthTicks();
-            case "ghostFuselageBaseMaxDamageBonus" -> getGhostFuselageBaseMaxDamageBonus();
-            case "ghostFuselageDecayRate" -> getGhostFuselageDecayRate();
-            case "ghostFuselageMinDecay" -> getGhostFuselageMinDecay();
-            case "ghostFuselageStealthSpeedBonusPerLevel" -> getGhostFuselageStealthSpeedBonusPerLevel();
-            case "secondaryExplosionDamageFraction" -> SECONDARY_EXPLOSION_DAMAGE_FRACTION.get();
-            case "secondaryExplosionRadiusBase" -> SECONDARY_EXPLOSION_RADIUS_BASE.get();
-            case "secondaryExplosionRadiusDamageFraction" -> SECONDARY_EXPLOSION_RADIUS_DAMAGE_FRACTION.get();
             case "electricDischargeBurnDuration" -> getElectricDischargeBurnDuration();
-            case "selfDestructBaseDamage" -> SELF_DESTRUCT_BASE_DAMAGE.get();
-            case "selfDestructBaseRadius" -> SELF_DESTRUCT_BASE_RADIUS.get();
             default -> 0;
         };
     }
@@ -1831,21 +1291,9 @@ public class Config {
         loadProjectileSourceTrace();
     }
 
-    public static double getReflectRadius() {
-        return REFLECT_RADIUS.get();
-    }
 
-    public static double getReflectSpeedBaseModifier() {
-        return REFLECT_SPEED_BASE_MODIFIER.get();
-    }
 
-    public static double getReflectSpeedExtraModifier() {
-        return REFLECT_SPEED_EXTRA_MODIFIER.get();
-    }
 
-    public static double getReflectDamageEffectMultiplier() {
-        return REFLECT_DAMAGE_EFFECT_MULTIPLIER.get();
-    }
 
     public static double getIgniteDefaultDamage() {
         return IGNITE_DEFAULT_DAMAGE.get();
@@ -1886,13 +1334,7 @@ public class Config {
         return isModuleItem("assault_drone_module", item);
     }
 
-    public static double getDroneBaseHealth() {
-        return DRONE_BASE_HEALTH.get();
-    }
 
-    public static double getDroneBaseDamage() {
-        return DRONE_BASE_DAMAGE.get();
-    }
 
     public static int getDroneMaxCount() {
         return DRONE_MAX_COUNT.get();
@@ -1914,13 +1356,7 @@ public class Config {
         return isModuleItem("swarm_module", item);
     }
 
-    public static double getSwarmBaseHealth() {
-        return SWARM_BASE_HEALTH.get();
-    }
 
-    public static double getSwarmBaseDamage() {
-        return SWARM_BASE_DAMAGE.get();
-    }
 
     public static int getSwarmMaxCount() {
         return SWARM_MAX_COUNT.get();
@@ -1930,25 +1366,13 @@ public class Config {
         return SWARM_COUNT_LIMIT.get();
     }
 
-    public static int getSwarmBuildTime() {
-        return SWARM_BUILD_TIME.get();
-    }
 
     public static double getSwarmMoveSpeed() {
         return SWARM_MOVE_SPEED.get();
     }
 
-    public static double getSwarmSearchRange() {
-        return SWARM_SEARCH_RANGE.get();
-    }
 
-    public static double getSwarmAttackRange() {
-        return SWARM_ATTACK_RANGE.get();
-    }
 
-    public static double getSwarmAttackInterval() {
-        return SWARM_ATTACK_INTERVAL.get();
-    }
 
     public static double getSwarmVulnerabilityValue() {
         return SWARM_VULNERABILITY_VALUE.get();
@@ -1966,29 +1390,17 @@ public class Config {
         return SWARM_TIER_UPGRADE_CHANCE_ADVANCED.get();
     }
 
-    public static double getWingmanBaseHealth() {
-        return WINGMAN_BASE_HEALTH.get();
-    }
 
     public static int getWingmanMaxCount() {
         return WINGMAN_MAX_COUNT.get();
     }
 
-    public static double getWingmanAttackInterval() {
-        return WINGMAN_ATTACK_INTERVAL.get();
-    }
 
-    public static Double getWingmanAttackRange() {
-        return WINGMAN_ATTACK_RANGE.get();
-    }
 
     public static int getWingmanExplosiveCount() {
         return WINGMAN_EXPLOSIVE_COUNT.get();
     }
 
-    public static double getWingmanExplosiveDamage() {
-        return WINGMAN_EXPLOSIVE_DAMAGE.get();
-    }
 
     public static double getWingmanExplosionDamage() {
         return WINGMAN_EXPLOSION_DAMAGE.get();
@@ -2050,9 +1462,6 @@ public class Config {
         return isModuleItem("nano_regen_module", item);
     }
 
-    public static double getWingmanNanoRegenPercent() {
-        return WINGMAN_NANO_REGEN_PERCENT.get();
-    }
 
     public static boolean isShockwaveModuleItem(Item item) {
         return isModuleItem("shockwave_module", item);
@@ -2066,9 +1475,6 @@ public class Config {
         return WINGMAN_SHOCKWAVE_SPLASH_LENGTH_MULTIPLIER.get();
     }
 
-    public static double getWingmanEvolutionBonusPerLevel() {
-        return WINGMAN_EVOLUTION_BONUS_PER_LEVEL.get();
-    }
 
     public static boolean isNearDeathProtectionItem(Item item) {
         return isModuleItem("near_death_protection", item);
@@ -2126,9 +1532,6 @@ public class Config {
         return isModuleItem("electric_discharge", item);
     }
 
-    public static double getElectricDischargeBurnCharge() {
-        return ELECTRIC_DISCHARGE_BURN_CHARGE.get();
-    }
 
     public static int getElectricDischargeBurnDuration() {
         return ELECTRIC_DISCHARGE_BURN_DURATION.get();
@@ -2170,33 +1573,12 @@ public class Config {
         return DANGEROUS_ENTITY_SET.contains(entityId);
     }
 
-    public static double getAmplificationBaseAmplification() {
-        return AMPLIFICATION_BASE_AMPLIFICATION.get();
-    }
 
-    public static double getAmplificationThreatAmplification() {
-        return AMPLIFICATION_THREAT_AMPLIFICATION.get();
-    }
 
-    public static double getAmplificationCheckRadius() {
-        return AMPLIFICATION_CHECK_RADIUS.get();
-    }
 
-    public static double getAmplificationMaxAmplification() {
-        return AMPLIFICATION_MAX_AMPLIFICATION.get();
-    }
 
-    public static double getAmplificationMovementSpeedBonus() {
-        return AMPLIFICATION_MOVEMENT_SPEED_BONUS.get();
-    }
 
-    public static double getAmplificationHealthAmplificationPerPoint() {
-        return AMPLIFICATION_HEALTH_AMPLIFICATION_PER_POINT.get();
-    }
     
-    public static double getWarpShieldExplosionDamage() {
-        return WARP_SHIELD_EXPLOSION_DAMAGE.get();
-    }
 
     public static boolean isArcBarrierItem(Item item) {
         return isModuleItem("arc_barrier", item);
@@ -2214,25 +1596,13 @@ public class Config {
         return isModuleItem("assault", item);
     }
 
-    public static double getAssaultAttackSpeedPerStack() {
-        return ASSAULT_ATTACK_SPEED_PER_STACK.get();
-    }
 
     public static int getAssaultDurationTicks() {
         return ASSAULT_DURATION_TICKS.get();
     }
 
-    public static double getAssaultSelfDamagePerStack() {
-        return ASSAULT_SELF_DAMAGE_PER_STACK.get();
-    }
 
-    public static double getAssaultMovementSpeedPenalty() {
-        return ASSAULT_MOVEMENT_SPEED_PENALTY.get();
-    }
 
-    public static double getAssaultOverflowDamageEfficiency() {
-        return ASSAULT_OVERFLOW_DAMAGE_EFFICIENCY.get();
-    }
 
     public static boolean isChargedAttackItem(Item item) {
         return isModuleItem("charged_attack", item);
@@ -2262,41 +1632,17 @@ public class Config {
         return isModuleItem("charged_shield", item);
     }
 
-    public static double getChargedShieldChargeRatio() {
-        return CHARGED_SHIELD_CHARGE_RATIO.get();
-    }
 
-    public static double getChargedShieldMaxBonus() {
-        return CHARGED_SHIELD_MAX_BONUS.get();
-    }
 
-    public static double getChargedShieldDecayRate() {
-        return CHARGED_SHIELD_DECAY_RATE.get();
-    }
 
-    public static double getChargedShieldMovementSpeedPenalty() {
-        return CHARGED_SHIELD_MOVEMENT_SPEED_PENALTY.get();
-    }
 
     public static boolean isGrudgeItem(Item item) {
         return isModuleItem("grudge", item);
     }
 
-    public static double getGrudgeConversionRatio() {
-        return GRUDGE_CONVERSION_RATIO.get();
-    }
 
-    public static double getGrudgeFadeBase() {
-        return GRUDGE_FADE_BASE.get();
-    }
 
-    public static double getGrudgeFadePercent() {
-        return GRUDGE_FADE_PERCENT.get();
-    }
 
-    public static double getGrudgeMovementSpeedPenalty() {
-        return GRUDGE_MOVEMENT_SPEED_PENALTY.get();
-    }
 
     public static int getQuickEquipUpgradePointsCost() {
         return QUICK_EQUIP_UPGRADE_POINTS_COST.get();
@@ -2368,33 +1714,12 @@ public class Config {
         return isModuleItem("ghost_fuselage", item);
     }
 
-    public static double getGhostFuselageStealthSpeedBonusPerLevel() {
-        return GHOST_FUSELAGE_STEALTH_SPEED_BONUS_PER_LEVEL.get();
-    }
 
-    public static double getGhostFuselageMaxBonusPerLevel() {
-        return GHOST_FUSELAGE_MAX_BONUS_PER_LEVEL.get();
-    }
 
-    public static double getGhostFuselageBaseMaxDamageBonus() {
-        return GHOST_FUSELAGE_BASE_MAX_DAMAGE_BONUS.get();
-    }
 
-    public static double getGhostFuselageMoveSpeedThreshold() {
-        return GHOST_FUSELAGE_MOVE_SPEED_THRESHOLD.get();
-    }
 
-    public static double getGhostFuselageMoveSpeedReduction() {
-        return GHOST_FUSELAGE_MOVE_SPEED_REDUCTION.get();
-    }
 
-    public static double getGhostFuselageDecayRate() {
-        return GHOST_FUSELAGE_DECAY_RATE.get();
-    }
 
-    public static double getGhostFuselageMinDecay() {
-        return GHOST_FUSELAGE_MIN_DECAY.get();
-    }
 
     public static int getGhostFuselageFullStealthTicks() {
         return GHOST_FUSELAGE_FULL_STEALTH_TICKS.get();

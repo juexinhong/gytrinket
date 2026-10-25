@@ -1,6 +1,7 @@
 package com.gy_mod.gy_trinket.core.attack_mode.charged_attack;
 
 import com.gy_mod.gy_trinket.core.entity.construct.IConstructEntity;
+import com.gy_mod.gy_trinket.core.projectile.MultipartHitScan;
 import com.gy_mod.gy_trinket.gytrinket;
 import com.gy_mod.gy_trinket.network.NetworkHandler;
 import net.minecraft.server.level.ServerPlayer;
@@ -122,49 +123,48 @@ public class ChargedAttackSweepHandler {
         double entityReach = 3.0; // 1.20.1 无实体交互距离属性，使用原版固定值
         double expandedDist = entityReach * rangeMultiplier;
         AABB searchBox = player.getBoundingBox().inflate(expandedDist + 1.0);
-        List<LivingEntity> nearbyEntities = player.level().getEntitiesOfClass(LivingEntity.class, searchBox);
 
         // 玩家视线方向
         Vec3 lookVec = player.getLookAngle();
         double expandedDistLimit = expandedDist * expandedDist + 1.0;
+        Vec3 playerPos = player.position();
 
         // 先收集横扫目标到集合，避免遍历时伤害导致并发修改
+        // 多体节：体节不注册进 level 实体列表，只查父实体会漏掉伸出的身体节段；
+        // 每个父实体只记一次（命中箱取离玩家最近的那个）
+        List<MultipartHitScan.Hit> hits = MultipartHitScan.collectInRegion(
+                player.level(), searchBox, playerPos,
+                entity -> entity != primaryTarget && entity != primaryLiving && entity != player
+                        && entity instanceof LivingEntity living
+                        && !player.isAlliedTo(living)
+                        && !isOwnConstruct(living, player),
+                box -> {
+                    Vec3 center = box.getCenter();
+                    if (center.distanceToSqr(playerPos) > expandedDistLimit) {
+                        return false;
+                    }
+                    // 前方判定：碰撞箱中心必须在玩家面前
+                    return center.subtract(playerPos).dot(lookVec) > 0;
+                },
+                false);
+
         List<LivingEntity> sweepTargets = new ArrayList<>();
-        for (LivingEntity livingEntity : nearbyEntities) {
-            if (livingEntity == primaryTarget || livingEntity == primaryLiving || livingEntity == player) {
-                continue;
-            }
-            if (player.isAlliedTo(livingEntity)) {
-                continue;
-            }
-            // 过滤自己的构造体
-            if (isOwnConstruct(livingEntity, player)) {
-                continue;
-            }
-
-            // 距离检查
-            double distSqr = player.distanceToSqr(livingEntity);
-            if (distSqr > expandedDistLimit) {
-                continue;
-            }
-
-            // 前方判定：实体必须在玩家面前
-            Vec3 toEntity = livingEntity.position().subtract(player.position());
-            if (toEntity.dot(lookVec) <= 0) {
-                continue;
-            }
-
-            sweepTargets.add(livingEntity);
+        List<Entity> sweepHitboxes = new ArrayList<>();
+        for (MultipartHitScan.Hit hit : hits) {
+            sweepTargets.add(hit.target());
+            sweepHitboxes.add(hit.hitbox());
         }
 
         // 统一对横扫目标施加伤害和击退
         double kbX = primaryTarget.getX() - player.getX();
         double kbZ = primaryTarget.getZ() - player.getZ();
-        for (LivingEntity livingEntity : sweepTargets) {
+        for (int i = 0; i < sweepTargets.size(); i++) {
+            LivingEntity livingEntity = sweepTargets.get(i);
             // 移除无敌时间确保伤害生效
             livingEntity.invulnerableTime = 0;
 
-            livingEntity.hurt(player.damageSources().playerAttack(player), sweepDamage);
+            // 命中体节时由体节自身结算，保留各模组的体节倍率
+            sweepHitboxes.get(i).hurt(player.damageSources().playerAttack(player), sweepDamage);
 
             // 击退效果（横扫击退）
             livingEntity.knockback(0.4F, -kbX, -kbZ);

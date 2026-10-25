@@ -1,11 +1,13 @@
 package com.gy_mod.gy_trinket.core.entity.construct.wingman.attack_mode;
 
 import com.gy_mod.gy_trinket.config.Config;
+import com.gy_mod.gy_trinket.core.defs.MechanicValueDefs;
 import com.gy_mod.gy_trinket.core.attack_mode.charged_attack.ChargedAttackSweepHandler;
 import com.gy_mod.gy_trinket.core.defs.DefsManager;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.ModDamageSources;
 import com.gy_mod.gy_trinket.core.entity.construct.wingman.WingmanConstructEntity;
 import com.gy_mod.gy_trinket.core.attack_mode.GrudgeManager;
+import com.gy_mod.gy_trinket.core.projectile.MultipartHitScan;
 import com.gy_mod.gy_trinket.core.shield.ShieldManager;
 import com.gy_mod.gy_trinket.core.shield_transfer.ShieldTransferManager;
 import net.minecraft.world.entity.Entity;
@@ -252,7 +254,7 @@ public class InterceptorChargedHandler implements InterceptorAttackModeHandler {
         if (totalLost > 0) {
             // 物品级数值覆盖：取首个生效物品的覆盖值，未覆盖回退 Config 默认
             double conversionRatio = DefsManager.resolveMechanicValue(owner.getServer(), ownerUUID,
-                    "grudge_items", "conversion_ratio", Config.getGrudgeConversionRatio());
+                    "grudge_items", "conversion_ratio", MechanicValueDefs.defaultValueOf("grudge_items", "conversion_ratio", 0.2));
             grudgeRate = totalLost * conversionRatio;
         }
 
@@ -352,24 +354,24 @@ public class InterceptorChargedHandler implements InterceptorAttackModeHandler {
         double baseRange = Config.getInterceptorChargedSweepBaseRange();
         double expandedRange = baseRange * rangeMultiplier;
         net.minecraft.world.phys.AABB searchBox = target.getBoundingBox().inflate(expandedRange);
-        java.util.List<LivingEntity> nearbyEntities = wingman.level().getEntitiesOfClass(
-                LivingEntity.class, searchBox);
+        net.minecraft.world.phys.Vec3 wingmanPos = wingman.position();
+        net.minecraft.world.phys.Vec3 lookVec = wingman.getLookAngle();
 
-        for (LivingEntity entity : nearbyEntities) {
-            if (entity == wingman || entity == target || wingman.isAlliedTo(entity)) {
-                continue;
-            }
-            if (!wingman.canAttackType(entity.getType())) {
-                continue;
-            }
-            // 前方判定
-            net.minecraft.world.phys.Vec3 toEntity = entity.position().subtract(wingman.position());
-            net.minecraft.world.phys.Vec3 lookVec = wingman.getLookAngle();
-            if (toEntity.dot(lookVec) <= 0) continue;
+        // 多体节：体节不注册进 level 实体列表，只查父实体会漏掉伸出的身体节段；
+        // 每个父实体只结算一次（命中箱取离僚机最近的那个）
+        for (MultipartHitScan.Hit hit : MultipartHitScan.collectInRegion(
+                wingman.level(), searchBox, wingmanPos,
+                entity -> entity != wingman && entity != target && entity instanceof LivingEntity living
+                        && !wingman.isAlliedTo(living)
+                        && wingman.canAttackType(entity.getType()),
+                box -> box.getCenter().subtract(wingmanPos).dot(lookVec) > 0,
+                false)) {
+            LivingEntity entity = hit.target();
 
             // 移除无敌时间
             entity.invulnerableTime = 0;
-            entity.hurt(ModDamageSources.mobAttackWithGuardAggro(wingman, entity), sweepDamage);
+            // 命中体节时由体节自身结算，保留各模组的体节倍率
+            hit.hitbox().hurt(ModDamageSources.mobAttackWithGuardAggro(wingman, entity), sweepDamage);
 
             // 击退
             float yaw = wingman.getYRot() * ((float) Math.PI / 180F);

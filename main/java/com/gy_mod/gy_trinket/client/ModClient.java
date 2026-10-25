@@ -12,6 +12,11 @@ import com.gy_mod.gy_trinket.core.entity.meteor.MeteorEntities;
 import com.gy_mod.gy_trinket.core.entity.meteor.client.MeteorRenderer;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneRenderer;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneBulletRenderer;
+import com.gy_mod.gy_trinket.core.entity.construct.drone.ArmorFragmentEntityModel;
+import com.gy_mod.gy_trinket.core.entity.construct.drone.AssaultDroneEntityModel;
+import com.gy_mod.gy_trinket.core.entity.construct.drone.DefenseDroneEntityModel;
+import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneBeamEntityModel;
+import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneEntityModel;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.client.renderer.DroneBeamRenderer;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.client.renderer.ArmorShardRenderer;
 import com.gy_mod.gy_trinket.core.entity.construct.wingman.WingmanRenderer;
@@ -19,6 +24,8 @@ import com.gy_mod.gy_trinket.core.entity.construct.wingman.WingmanEntityModel;
 import com.gy_mod.gy_trinket.core.entity.construct.wingman.ExplosiveProjectileRenderer;
 import com.gy_mod.gy_trinket.core.entity.construct.wingman.InterceptorConfigContainer;
 import com.gy_mod.gy_trinket.client.screen.InterceptorConfigContainerScreen;
+import com.gy_mod.gy_trinket.client.model.LightPointCoreBlockModel;
+import com.gy_mod.gy_trinket.core.entity.construct.swarm.SwarmEntityModel;
 import com.gy_mod.gy_trinket.core.entity.construct.swarm.SwarmRenderer;
 import com.gy_mod.gy_trinket.items.ModItems;
 import com.gy_mod.gy_trinket.key.KeyInputHandler;
@@ -71,7 +78,7 @@ public class ModClient {
 
     /**
      * 注册自定义着色器
-     * shield_glass: Alpha 混合（玻璃表面）
+     * shield_glass: 三渲二水晶（顶点带法线，法线长度编码面类型）
      * gytrinket_energy_wave_vol: 能量波体积渲染（3D raymarching）
      * gytrinket_lightning_vol: 闪电3D圆柱体积渲染
      */
@@ -81,9 +88,37 @@ public class ModClient {
             new ShaderInstance(
                 event.getResourceProvider(),
                 new ResourceLocation(com.gy_mod.gy_trinket.gytrinket.MODID, "shield_glass"),
-                DefaultVertexFormat.POSITION_TEX_COLOR
+                DefaultVertexFormat.POSITION_TEX_COLOR_NORMAL
             ),
             ModShaders::setShieldGlassShader
+        );
+        // 同一套 vsh/fsh 的加色版本（blend = srcalpha, one）：光晕 Pass 用
+        event.registerShader(
+            new ShaderInstance(
+                event.getResourceProvider(),
+                new ResourceLocation(com.gy_mod.gy_trinket.gytrinket.MODID, "shield_glass_add"),
+                DefaultVertexFormat.POSITION_TEX_COLOR_NORMAL
+            ),
+            ModShaders::setShieldGlassAddShader
+        );
+        // 高光 Pass：同样的加色 blend，但 PassMode 在 JSON 里写死 2.0
+        // （1.20.1 的自定义 uniform 在部分驱动/管线组合下拿不到，不能依赖运行时设置）
+        event.registerShader(
+            new ShaderInstance(
+                event.getResourceProvider(),
+                new ResourceLocation(com.gy_mod.gy_trinket.gytrinket.MODID, "shield_glass_hi"),
+                DefaultVertexFormat.POSITION_TEX_COLOR_NORMAL
+            ),
+            ModShaders::setShieldGlassHiShader
+        );
+        // 旧版「贴图转立体」：历史 glass 着色器（贴图 + 顶点色编码法线），顶点格式只到 UV/Color
+        event.registerShader(
+            new ShaderInstance(
+                event.getResourceProvider(),
+                new ResourceLocation(com.gy_mod.gy_trinket.gytrinket.MODID, "shield_glass_legacy"),
+                DefaultVertexFormat.POSITION_TEX_COLOR
+            ),
+            ModShaders::setShieldGlassLegacyShader
         );
         event.registerShader(
             new ShaderInstance(
@@ -147,5 +182,12 @@ public class ModClient {
     @SubscribeEvent
     public static void registerLayerDefinitions(EntityRenderersEvent.RegisterLayerDefinitions event) {
         event.registerLayerDefinition(WingmanEntityModel.LAYER_LOCATION, WingmanEntityModel::createBodyLayer);
+        event.registerLayerDefinition(DroneEntityModel.LAYER_LOCATION, DroneEntityModel::createBodyLayer);
+        event.registerLayerDefinition(AssaultDroneEntityModel.LAYER_LOCATION, AssaultDroneEntityModel::createBodyLayer);
+        event.registerLayerDefinition(DefenseDroneEntityModel.LAYER_LOCATION, DefenseDroneEntityModel::createBodyLayer);
+        event.registerLayerDefinition(ArmorFragmentEntityModel.LAYER_LOCATION, ArmorFragmentEntityModel::createBodyLayer);
+        event.registerLayerDefinition(DroneBeamEntityModel.LAYER_LOCATION, DroneBeamEntityModel::createBodyLayer);
+        event.registerLayerDefinition(SwarmEntityModel.LAYER_LOCATION, SwarmEntityModel::createBodyLayer);
+        event.registerLayerDefinition(LightPointCoreBlockModel.LAYER_LOCATION, LightPointCoreBlockModel::createBodyLayer);
     }
 }

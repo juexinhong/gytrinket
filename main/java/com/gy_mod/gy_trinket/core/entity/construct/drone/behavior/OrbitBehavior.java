@@ -1,6 +1,7 @@
 package com.gy_mod.gy_trinket.core.entity.construct.drone.behavior;
 
 import com.gy_mod.gy_trinket.config.Config;
+import com.gy_mod.gy_trinket.core.defs.MechanicValueDefs;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructGroupCache;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructManager;
 import com.gy_mod.gy_trinket.core.entity.construct.IConstructEntity;
@@ -192,7 +193,7 @@ public class OrbitBehavior implements IDroneBehavior {
 
     @Override
     public float getAttackInterval() {
-        return Config.DRONE_ATTACK_INTERVAL.get().floatValue();
+        return (float) MechanicValueDefs.defaultValueOf("drone_module_items", "attack_interval", 0.5);
     }
 
     @Override

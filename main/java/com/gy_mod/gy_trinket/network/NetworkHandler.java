@@ -1,6 +1,7 @@
 package com.gy_mod.gy_trinket.network;
 
 import com.gy_mod.gy_trinket.compat.CuriosCompat;
+import com.gy_mod.gy_trinket.core.defs.ShieldValueDefs;
 import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.config.ConfigValueRegistry;
 import com.gy_mod.gy_trinket.core.defs.DefsManager;
@@ -127,11 +128,18 @@ public class NetworkHandler {
 
     // ======================== Helper send methods ========================
 
+    /** 护盾受击批次号：每次受击 +1，客户端靠它判断"新一圈"，让旧圈粒子让位 */
+    private static int shieldBurstCounter = 0;
+
+    public static int nextShieldBurstId() {
+        return ++shieldBurstCounter;
+    }
+
     public static void sendShieldParticleToPlayer(ServerPlayer player, net.minecraft.world.entity.Entity trackedEntity,
                                                    double x, double y, double z,
                                                    double dirX, double dirY, double dirZ,
                                                    double originX, double originY, double originZ,
-                                                   int delayTicks) {
+                                                   int delayTicks, int burstId) {
         // 计算偏移量：从实体脚底到球心的偏移
         double originOffsetX = originX - trackedEntity.getX();
         double originOffsetY = originY - trackedEntity.getY();
@@ -142,7 +150,7 @@ public class NetworkHandler {
         double offsetZ = z - originZ;
 
         INSTANCE.send(PacketDistributor.TRACKING_ENTITY_AND_SELF.with(() -> player),
-            new ShieldParticlePacket(trackedEntity.getId(), originOffsetX, originOffsetY, originOffsetZ, offsetX, offsetY, offsetZ, dirX, dirY, dirZ, delayTicks));
+            new ShieldParticlePacket(trackedEntity.getId(), originOffsetX, originOffsetY, originOffsetZ, offsetX, offsetY, offsetZ, dirX, dirY, dirZ, delayTicks, burstId));
     }
 
     public static void sendShieldSyncToPlayer(ServerPlayer player, double currentShield, double maxShield) {
@@ -176,16 +184,16 @@ public class NetworkHandler {
                     state.auraDamaging = true;
                 }
                 state.auraRadius = DefsManager.resolveShieldTypeValueForItem(player.getServer(), itemId,
-                        "aura", "radius", Config.AURA_RADIUS.get()) * shieldEffectRadius;
+                        "aura", "radius", ShieldValueDefs.defaultValueOf("aura", "radius", 3.5)) * shieldEffectRadius;
             } else if ("siphon".equals(typeName)) {
                 state.siphonStacks += com.gy_mod.gy_trinket.core.shield.type.SiphonShieldType.getSiphonStacksForItem(uuid, itemId);
                 state.siphonRadius = DefsManager.resolveShieldTypeValueForItem(player.getServer(), itemId,
-                        "siphon", "radius", Config.SIPHON_RADIUS.get()) * shieldEffectRadius;
+                        "siphon", "radius", ShieldValueDefs.defaultValueOf("siphon", "radius", 4.0)) * shieldEffectRadius;
             } else if ("amplification".equals(typeName)) {
                 state.amplificationProgress = Math.max(state.amplificationProgress,
                     com.gy_mod.gy_trinket.core.shield.type.AmplificationShieldType.getProgressForItem(uuid, itemId));
                 state.amplificationRadius = DefsManager.resolveShieldTypeValueForItem(player.getServer(), itemId,
-                        "amplification", "check_radius", Config.getAmplificationCheckRadius()) * shieldEffectRadius;
+                        "amplification", "check_radius", ShieldValueDefs.defaultValueOf("amplification", "check_radius", 5.0)) * shieldEffectRadius;
             }
         }
 

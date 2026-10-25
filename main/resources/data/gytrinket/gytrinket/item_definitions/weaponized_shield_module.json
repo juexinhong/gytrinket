@@ -1,10 +1,22 @@
 {
-    "items":  {
-                  "gytrinket:weaponized_shield_module":  {
-                                                             "mechanic":  true,
-                                                             "sets":  [
-                                                                          "weaponized_shield_items"
-                                                                      ]
-                                                         }
-              }
+  "items": {
+    "gytrinket:weaponized_shield_module": {
+      "mechanic": true,
+      "sets": [
+        "weaponized_shield_items"
+      ],
+      "values": {
+        "weaponized_shield_items": {
+          "radius": {
+            "value": 4,
+            "stackable": false
+          },
+          "vulnerability": {
+            "value": 0.2,
+            "stackable": false
+          }
+        }
+      }
+    }
+  }
 }

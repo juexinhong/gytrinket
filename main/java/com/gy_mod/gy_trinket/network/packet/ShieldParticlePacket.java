@@ -14,12 +14,14 @@ public class ShieldParticlePacket {
     private final double offsetX, offsetY, offsetZ;
     private final double dirX, dirY, dirZ;
     private final int delayTicks;
+    /** 这一次受击的编号（同一批共用；0 = 不参与让位体系，比如待机粒子） */
+    private final int burstId;
 
     public ShieldParticlePacket(int entityId,
                                double originOffsetX, double originOffsetY, double originOffsetZ,
                                double offsetX, double offsetY, double offsetZ,
                                double dirX, double dirY, double dirZ,
-                               int delayTicks) {
+                               int delayTicks, int burstId) {
         this.entityId = entityId;
         this.originOffsetX = originOffsetX;
         this.originOffsetY = originOffsetY;
@@ -31,6 +33,7 @@ public class ShieldParticlePacket {
         this.dirY = dirY;
         this.dirZ = dirZ;
         this.delayTicks = delayTicks;
+        this.burstId = burstId;
     }
 
     public ShieldParticlePacket(FriendlyByteBuf buf) {
@@ -45,6 +48,7 @@ public class ShieldParticlePacket {
         this.dirY = buf.readDouble();
         this.dirZ = buf.readDouble();
         this.delayTicks = buf.readVarInt();
+        this.burstId = buf.readVarInt();
     }
 
     public void toBytes(FriendlyByteBuf buf) {
@@ -59,6 +63,7 @@ public class ShieldParticlePacket {
         buf.writeDouble(dirY);
         buf.writeDouble(dirZ);
         buf.writeVarInt(delayTicks);
+        buf.writeVarInt(burstId);
     }
 
     public void handle(Supplier<NetworkEvent.Context> contextSupplier) {
@@ -67,10 +72,10 @@ public class ShieldParticlePacket {
             DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> {
                 if (delayTicks > 0) {
                     com.gy_mod.gy_trinket.client.effect.particle.ShieldParticleTimerManager.getInstance()
-                        .addPendingParticle(entityId, originOffsetX, originOffsetY, originOffsetZ, offsetX, offsetY, offsetZ, dirX, dirY, dirZ, delayTicks);
+                        .addPendingParticle(entityId, originOffsetX, originOffsetY, originOffsetZ, offsetX, offsetY, offsetZ, dirX, dirY, dirZ, delayTicks, burstId);
                 } else {
                     com.gy_mod.gy_trinket.client.effect.particle.ShieldParticleRenderManager.getInstance()
-                        .addParticle(entityId, originOffsetX, originOffsetY, originOffsetZ, offsetX, offsetY, offsetZ, dirX, dirY, dirZ);
+                        .addParticle(entityId, originOffsetX, originOffsetY, originOffsetZ, offsetX, offsetY, offsetZ, dirX, dirY, dirZ, burstId);
                 }
             });
         });

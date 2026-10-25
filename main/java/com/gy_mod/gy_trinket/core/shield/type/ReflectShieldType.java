@@ -1,6 +1,7 @@
 package com.gy_mod.gy_trinket.core.shield.type;
 
 import com.gy_mod.gy_trinket.config.Config;
+import com.gy_mod.gy_trinket.core.defs.ShieldValueDefs;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
 import com.gy_mod.gy_trinket.core.defs.DefsManager;
 import com.gy_mod.gy_trinket.core.shield.ShieldManager;
@@ -198,9 +199,9 @@ public class ReflectShieldType implements IShieldType {
         double shieldEffect_radius = AttributeManager.getGroupAttribute(player.getUUID(), "shield_effect_radius") - 1;
         // 数值按提供该 reflect 实例的物品取（每实例独立）
         double speedBaseModifier = DefsManager.resolveShieldTypeValueForItem(player.getServer(), info.getItemId(),
-                "reflect", "speed_base_modifier", Config.getReflectSpeedBaseModifier());
+                "reflect", "speed_base_modifier", ShieldValueDefs.defaultValueOf("reflect", "speed_base_modifier", 1.5));
         double speedExtraModifier = DefsManager.resolveShieldTypeValueForItem(player.getServer(), info.getItemId(),
-                "reflect", "speed_extra_modifier", Config.getReflectSpeedExtraModifier());
+                "reflect", "speed_extra_modifier", ShieldValueDefs.defaultValueOf("reflect", "speed_extra_modifier", 1.0));
         double speedModifier = speedBaseModifier * (1 + speedExtraModifier * shieldEffect_radius);
 
         Entity originalOwner = projectile.getOwner();
@@ -336,7 +337,7 @@ public class ReflectShieldType implements IShieldType {
         // 数值按产生该反射弹射物的实例物品取
         double damageEffectMultiplier = DefsManager.resolveShieldTypeValueForItem(attacker.getServer(),
                 reflectedInfo != null ? reflectedInfo.itemId : null,
-                "reflect", "damage_effect_multiplier", Config.getReflectDamageEffectMultiplier());
+                "reflect", "damage_effect_multiplier", ShieldValueDefs.defaultValueOf("reflect", "damage_effect_multiplier", 1.0));
         float finalDamage = (float)(originalDamage * (1 + shieldEffect * damageEffectMultiplier));
 
         target.invulnerableTime = 0;

@@ -49,6 +49,13 @@ public class ShieldManager {
     private static final Map<UUID, List<ShieldInstance>> INSTANCES = new ConcurrentHashMap<>();
     /** 上次重建的护盾相关输入快照：仅这些输入变化才真正重建实例，其余属性变动直接跳过（保留实例对象与冷却进度） */
     private static final Map<UUID, ShieldRebuildInputs> LAST_REBUILD_INPUTS = new ConcurrentHashMap<>();
+    /**
+     * 登录暂存的存档护盾快照：登录时先存这里，等实例重建（属性重算）时按 identityKey 迁移。
+     * <p>
+     * 不能等到属性重算之后再读数据槽——重算会重建实例并把「shield」槽写成新实例的聚合值（带冷却的物品新实例是 0），
+     * 后读就只能读到 0，护盾值必然丢失。
+     */
+    private static final Map<UUID, ShieldData> PENDING_RESTORE = new ConcurrentHashMap<>();
 
     /**
      * 护盾重建输入快照：实例列表与上限只由这些输入决定——
@@ -164,7 +171,8 @@ public class ShieldManager {
         // 非护盾属性（伤害/攻速等）变动引发的全量属性重算不再触碰护盾实例，
         // 实例对象原样保留，冷却进度与护盾值天然不受干扰
         ShieldRebuildInputs inputs = ShieldRebuildInputs.capture(playerUUID);
-        if (inputs.equals(LAST_REBUILD_INPUTS.get(playerUUID))) {
+        boolean hasPendingRestore = PENDING_RESTORE.containsKey(playerUUID);
+        if (!hasPendingRestore && inputs.equals(LAST_REBUILD_INPUTS.get(playerUUID))) {
             return;
         }
         LAST_REBUILD_INPUTS.put(playerUUID, inputs);
@@ -174,6 +182,19 @@ public class ShieldManager {
         if (oldInstances != null) {
             for (ShieldInstance old : oldInstances) {
                 oldByIdentity.putIfAbsent(old.identityKey(), old);
+            }
+        }
+
+        // 登录恢复：消费暂存的存档快照（只在登录后第一次重建时存在）
+        ShieldData pending = PENDING_RESTORE.remove(playerUUID);
+        List<ShieldData.InstanceSnapshot> pendingSnapshots =
+                pending != null && pending.getInstances() != null ? pending.getInstances() : null;
+        Map<String, ShieldData.InstanceSnapshot> pendingByIdentity = null;
+        if (pendingSnapshots != null) {
+            pendingByIdentity = new HashMap<>();
+            for (ShieldData.InstanceSnapshot snapshot : pendingSnapshots) {
+                pendingByIdentity.putIfAbsent(snapshot.itemId() + "|"
+                        + (snapshot.shieldTypeName() == null ? "" : snapshot.shieldTypeName()), snapshot);
             }
         }
 
@@ -212,6 +233,7 @@ public class ShieldManager {
         // 否则 restoreState 以未分配的 raw 上限 clamp 当前护盾值（满盾被截断为 raw 底数，
         // 被误判为受损 → 充能/冷却重置；任何属性变动都会触发重建，症状为冷却反复清零）
         Map<ShieldInstance, ShieldInstance> oldToRestore = new LinkedHashMap<>();
+        Map<ShieldInstance, ShieldData.InstanceSnapshot> snapshotToRestore = new LinkedHashMap<>();
 
         for (ItemStack stack : stacks) {
             if (stack.isEmpty()) {
@@ -237,6 +259,11 @@ public class ShieldManager {
                 ShieldInstance old = oldByIdentity.remove(identityKey);
                 if (old != null) {
                     oldToRestore.put(instance, old);
+                } else if (pendingByIdentity != null) {
+                    ShieldData.InstanceSnapshot snapshot = pendingByIdentity.remove(identityKey);
+                    if (snapshot != null) {
+                        snapshotToRestore.put(instance, snapshot);
+                    }
                 }
                 newInstances.add(instance);
             }
@@ -272,6 +299,22 @@ public class ShieldManager {
             instance.restoreState(old.getCurrentShield(), old.isBroken(),
                     old.getCooldownProgress(), old.getMaxCooldown());
         }
+        // 登录恢复：按 identityKey 把存档快照写回新实例（池量 / 破盾 / 冷却进度）
+        for (Map.Entry<ShieldInstance, ShieldData.InstanceSnapshot> entry : snapshotToRestore.entrySet()) {
+            ShieldInstance instance = entry.getKey();
+            ShieldData.InstanceSnapshot snapshot = entry.getValue();
+            instance.restoreState(snapshot.current(), snapshot.broken(),
+                    snapshot.cooldownProgress(), snapshot.maxCooldown());
+        }
+
+        // 旧存档兼容：存档只有聚合值、没有实例明细时，按池量比例分到各实例（破盾解除、进度清零）
+        if (pendingSnapshots == null && pending != null && pending.getCurrentShield() > 0) {
+            double ratio = pending.getMaxShield() > 0
+                    ? Math.min(1.0, pending.getCurrentShield() / pending.getMaxShield()) : 0;
+            for (ShieldInstance instance : newInstances) {
+                instance.restoreState(instance.getMaxShield() * ratio, false, 0, instance.getMaxCooldown());
+            }
+        }
 
         INSTANCES.put(playerUUID, newInstances);
     }
@@ -306,16 +349,6 @@ public class ShieldManager {
         double oldTotal = getCurrentShield(playerUUID);
         setAggregateInternal(playerUUID, currentShield);
         afterInstanceMutation(playerUUID, oldTotal);
-    }
-
-    /** 存档恢复专用：按比例恢复池量，不发布破盾事件（避免满盾入场语义下恢复为 0 误触破盾副作用） */
-    public static void restoreShield(UUID playerUUID, double value) {
-        if (value <= 0) {
-            return;
-        }
-        setAggregateInternal(playerUUID, value);
-        saveAggregateToSlot(playerUUID);
-        syncShieldToClient(playerUUID);
     }
 
     /** 增量调整池量：正数按实例顺序填充未破盾实例的剩余空间（冷却实例不可复活），负数扣减聚合量 */
@@ -402,8 +435,31 @@ public class ShieldManager {
     }
 
     private static void saveAggregateToSlot(UUID playerUUID) {
+        // 附带实例快照：退出重进时按 identityKey 迁移各实例的池量 / 破盾 / 冷却状态
+        List<ShieldData.InstanceSnapshot> snapshots = new ArrayList<>();
+        for (ShieldInstance instance : getInstances(playerUUID)) {
+            snapshots.add(new ShieldData.InstanceSnapshot(instance.getItemId(), instance.getShieldTypeName(),
+                    instance.isGlobalPool(), instance.getCurrentShield(), instance.isBroken(),
+                    instance.getCooldownProgress(), instance.getMaxCooldown()));
+        }
         PlayerDataCenter.setData(playerUUID, SLOT_KEY,
-                new ShieldData(getCurrentShield(playerUUID), getMaxShield(playerUUID)));
+                new ShieldData(getCurrentShield(playerUUID), getMaxShield(playerUUID), snapshots));
+    }
+
+    /**
+     * 登录恢复：暂存存档护盾快照，等实例重建时按 identityKey 迁移。
+     * <p>
+     * 必须在登录流程里、属性重算（{@code PlayerLightPointStoreChangedEvent} → rebuildInstances）
+     * <b>之前</b>调用：重算会重建实例并把「shield」槽覆盖成新实例的聚合值（带冷却的物品新实例是 0），
+     * 读取晚于重算就只能读到 0。
+     */
+    public static void stageRestore(UUID playerUUID, ShieldData saved) {
+        if (saved == null) {
+            return;
+        }
+        if (saved.getInstances() != null || saved.getCurrentShield() > 0) {
+            PENDING_RESTORE.put(playerUUID, saved);
+        }
     }
 
     // ==================== 事件 ====================
@@ -432,11 +488,15 @@ public class ShieldManager {
         }
     }
 
-    @SubscribeEvent
+    @SubscribeEvent(priority = net.minecraftforge.eventbus.api.EventPriority.HIGHEST)
     public static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
         UUID playerUUID = event.getEntity().getUUID();
+        // 登出前落盘最终状态（含冷却 tick 推进后的进度，变更入口之外的推进不会触发槽位同步）。
+        // HIGHEST：必须早于 DataCenterLifecycleHandler.onPlayerLogout 里的 PlayerDataCenter.onLogout（它才真正写盘）
+        saveAggregateToSlot(playerUUID);
         INSTANCES.remove(playerUUID);
         LAST_REBUILD_INPUTS.remove(playerUUID);
+        PENDING_RESTORE.remove(playerUUID);
     }
 
     private static void syncShieldToClient(UUID playerUUID) {

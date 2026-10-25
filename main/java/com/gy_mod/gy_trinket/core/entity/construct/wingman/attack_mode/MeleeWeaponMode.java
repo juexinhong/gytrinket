@@ -3,6 +3,7 @@ package com.gy_mod.gy_trinket.core.entity.construct.wingman.attack_mode;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.ModDamageSources;
 import com.gy_mod.gy_trinket.core.entity.construct.wingman.WingmanConstructEntity;
 import com.gy_mod.gy_trinket.core.modifier.player.attack.AttackSpeedManager;
+import com.gy_mod.gy_trinket.core.projectile.MultipartHitScan;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -95,18 +96,23 @@ public class MeleeWeaponMode implements InterceptorWeaponMode {
         float sweepDamage = 1.0f + sweepingDamageRatio * baseDamage;
 
         AABB sweepRange = target.getBoundingBox().inflate(1.0, 0.25, 1.0);
-        List<LivingEntity> hurtEntities = attacker.level().getEntitiesOfClass(LivingEntity.class, sweepRange);
+        // 多体节：体节不注册进 level 实体列表，只查父实体会漏掉伸出的头/颈/翅/尾/节段；
+        // 每个父实体只结算一次（命中箱取离主目标最近的那个），伤害经命中箱路由
+        List<MultipartHitScan.Hit> hurtHits = MultipartHitScan.collectInRegion(
+                attacker.level(), sweepRange, target.position(),
+                entity -> entity != attacker && entity != target
+                        && !attacker.isAlliedTo(entity) && attacker.canAttackType(entity.getType()),
+                box -> sweepRange.intersects(box),
+                false);
 
-        for (LivingEntity entity : hurtEntities) {
-            if (entity != attacker && entity != target && !attacker.isAlliedTo(entity)
-                    && attacker.canAttackType(entity.getType())) {
-                float posX = Mth.sin(attacker.getYRot() * ((float) Math.PI / 180F));
-                float posY = -Mth.cos(attacker.getYRot() * ((float) Math.PI / 180F));
-                entity.knockback(0.4, posX, posY);
-                // 横扫目标同样清除无敌帧，保证多目标横扫不被原版无敌帧吞伤
-                entity.invulnerableTime = 0;
-                entity.hurt(ModDamageSources.mobAttackWithGuardAggro(attacker, entity), sweepDamage);
-            }
+        for (MultipartHitScan.Hit hit : hurtHits) {
+            LivingEntity entity = hit.target();
+            float posX = Mth.sin(attacker.getYRot() * ((float) Math.PI / 180F));
+            float posY = -Mth.cos(attacker.getYRot() * ((float) Math.PI / 180F));
+            entity.knockback(0.4, posX, posY);
+            // 横扫目标同样清除无敌帧，保证多目标横扫不被原版无敌帧吞伤
+            entity.invulnerableTime = 0;
+            hit.hitbox().hurt(ModDamageSources.mobAttackWithGuardAggro(attacker, entity), sweepDamage);
         }
 
         attacker.level().playSound(null, attacker.getX(), attacker.getY(), attacker.getZ(),

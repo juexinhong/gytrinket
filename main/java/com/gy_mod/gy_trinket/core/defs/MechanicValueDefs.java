@@ -1,6 +1,5 @@
 package com.gy_mod.gy_trinket.core.defs;
 
-import com.gy_mod.gy_trinket.config.Config;
 import com.gy_mod.gy_trinket.core.damage.ReflectDamageHandler;
 
 import java.util.LinkedHashMap;
@@ -12,8 +11,8 @@ import java.util.function.DoubleSupplier;
  * 特殊机制数值参数注册表（编译期静态定义）。
  * <p>
  * 定义配置面板可为每个机制集合编辑的物品级数值参数：参数键（存储/网络传输用）、
- * 显示翻译键、Config 默认值提供者。阶段一仅注册非周期类机制；
- * 阵列类周期机制（pursuit/formation/guard）待阶段二多实例独立后加入。
+ * 显示翻译键、静态默认值提供者。
+ * 阵列类机制（orbit/pursuit/formation/guard）同样在此注册。
  * <p>
  * 覆盖值由 UI 产生，存储在 {@link DefsManager.SpecialMechanicOverride} 的 values 段；
  * 运行时读取走 {@link DefsManager#resolveMechanicValue}（服务端）/
@@ -21,12 +20,91 @@ import java.util.function.DoubleSupplier;
  */
 public final class MechanicValueDefs {
 
-    /** 单个机制参数：参数键 + 显示翻译键 + Config 默认值提供者 */
+    /** 单个机制参数：参数键 + 显示翻译键 + 静态默认值提供者 */
     public record ParamDef(String key, String nameKey, DoubleSupplier defaultSupplier) {
         public double defaultValue() { return defaultSupplier.getAsDouble(); }
     }
 
     private static final Map<String, List<ParamDef>> PARAMS = new LinkedHashMap<>();
+
+    /** 已迁移到 item_definitions 的机制参数最终回退值（Config 全局项已移除） */
+    private static final double BARRIER_MAX_DAMAGE = 5.0;
+    private static final double SHIELD_TRANSFER_PENALTY = 0.04;
+    private static final double EXPLOSIVE_RADIUS = 4.0;
+    private static final double EXPLOSIVE_DAMAGE = 10.0;
+    private static final double WEAPONIZED_RADIUS = 4.0;
+    private static final double WEAPONIZED_VULNERABILITY = 0.2;
+    private static final double ELECTRIC_BURN_DURATION = 10.0;
+    private static final double ELECTRIC_BURN_CHARGE = 0.5;
+
+    /** 以下机制的行为参数已迁移到 item_definitions 的 values 段（Config 全局项已移除） */
+    private static final double NEAR_DEATH_INVINCIBLE_DURATION = 20.0;
+    private static final double NEAR_DEATH_COOLDOWN = 300.0;
+    private static final double SELF_DESTRUCT_BASE_DAMAGE = 1.0;
+    private static final double SELF_DESTRUCT_BASE_RADIUS = 1.0;
+    private static final double COUNTER_PULSE_RADIUS = 1.3;
+    private static final double COUNTER_PULSE_DAMAGE = 1.0;
+    private static final double COUNTER_PULSE_COOLDOWN = 60.0;
+    private static final double PROJECTILE_EXPLOSION_DAMAGE_FRACTION = 0.15;
+    private static final double PROJECTILE_EXPLOSION_RADIUS_BASE = 2.0;
+    private static final double PROJECTILE_EXPLOSION_RADIUS_PER_DAMAGE = 0.5;
+    private static final double PRECISION_CONSTRUCT_BONUS_PER_LEVEL = 0.0025;
+    private static final double ADVANCED_ENGINEERING_BONUS_PER_LEVEL = 0.01;
+    private static final double CONVERSION_RATIO = 0.3;
+    private static final double ASSAULT_ATTACK_SPEED_PER_STACK = 0.1;
+    private static final double ASSAULT_SELF_DAMAGE_PER_STACK = 0.02;
+    private static final double ASSAULT_OVERFLOW_EFFICIENCY = 1.0;
+    private static final double ASSAULT_MOVE_SPEED_PENALTY = -0.6;
+    private static final double JOURNEY_ATTACK_SPEED_PER_STACK = 0.0075;
+    private static final double JOURNEY_MOVE_SPEED_PER_STACK = 0.0075;
+    private static final double JOURNEY_DURATION_TICKS = 100.0;
+    private static final double JOURNEY_MAX_STACKS = 40.0;
+    private static final double JOURNEY_DECAY_INTERVAL_TICKS = 3.0;
+    private static final double JOURNEY_DECAY_PER_INTERVAL = 2.0;
+    private static final double CHARGED_SHIELD_CHARGE_RATIO = 0.1;
+    private static final double CHARGED_SHIELD_MAX_BONUS = 0.8;
+    private static final double CHARGED_SHIELD_DECAY_RATE = 0.08;
+    private static final double CHARGED_SHIELD_MOVE_SPEED_PENALTY = -0.15;
+    private static final double GRUDGE_CONVERSION_RATIO = 0.2;
+    private static final double GRUDGE_FADE_BASE = 0.00001;
+    private static final double GRUDGE_FADE_PERCENT = 0.02;
+    private static final double GRUDGE_MOVE_SPEED_PENALTY = -0.15;
+
+    /** 机身/构造体基础属性的静态默认（已迁移到 item_definitions 的 values 段） */
+    private static final double GHOST_STEALTH_SPEED_PER_LEVEL = 0.005;
+    private static final double GHOST_MAX_BONUS_PER_LEVEL = 0.005;
+    private static final double GHOST_BASE_MAX_DAMAGE_BONUS = 3.0;
+    private static final double GHOST_MOVE_SPEED_THRESHOLD = 0.25;
+    private static final double GHOST_MOVE_SPEED_REDUCTION = 0.2;
+    private static final double GHOST_DECAY_RATE = 0.3;
+    private static final double GHOST_MIN_DECAY = 0.02;
+    private static final double GHOST_FULL_STEALTH_TICKS = 40.0;
+
+    private static final double WINGMAN_EVOLUTION_BONUS_PER_LEVEL = 0.00625;
+    private static final double WINGMAN_NANO_REGEN_PERCENT = 0.02;
+
+    private static final double DRONE_BUILD_TIME = 100.0;
+    private static final double DRONE_BASE_HEALTH = 5.0;
+    private static final double DRONE_BASE_DAMAGE = 0.3;
+    private static final double DRONE_BASE_COUNT = 3.0;
+    private static final double DRONE_ATTACK_INTERVAL = 0.5;
+    private static final double DRONE_ATTACK_RANGE = 8.0;
+    private static final double DRONE_TARGET_RANGE = 8.0;
+
+    private static final double SWARM_BUILD_TIME = 20.0;
+    private static final double SWARM_BASE_HEALTH = 1.6;
+    private static final double SWARM_BASE_DAMAGE = 0.08;
+    private static final double SWARM_BASE_COUNT = 4.0;
+    private static final double SWARM_ATTACK_INTERVAL = 1.5;
+    private static final double SWARM_ATTACK_RANGE = 4.0;
+    private static final double SWARM_SEARCH_RANGE = 20.0;
+
+    private static final double WINGMAN_BUILD_TIME = 500.0;
+    private static final double WINGMAN_BASE_HEALTH = 24.0;
+    private static final double WINGMAN_BASE_DAMAGE = 0.5;
+    private static final double WINGMAN_BASE_COUNT = 1.0;
+    private static final double WINGMAN_ATTACK_INTERVAL = 1.0;
+    private static final double WINGMAN_ATTACK_RANGE = 20.0;
 
     private static void register(String mechanicSet, ParamDef... defs) {
         PARAMS.put(mechanicSet, List.of(defs));
@@ -43,75 +121,75 @@ public final class MechanicValueDefs {
         // ===== 充能护盾 (charged_shield) =====
         register("charged_shield_items",
                 new ParamDef("charge_ratio", nameKey("charged_shield_items", "charge_ratio"),
-                        Config::getChargedShieldChargeRatio),
+                        () -> CHARGED_SHIELD_CHARGE_RATIO),
                 new ParamDef("max_bonus", nameKey("charged_shield_items", "max_bonus"),
-                        Config::getChargedShieldMaxBonus),
+                        () -> CHARGED_SHIELD_MAX_BONUS),
                 new ParamDef("decay_rate", nameKey("charged_shield_items", "decay_rate"),
-                        Config::getChargedShieldDecayRate),
+                        () -> CHARGED_SHIELD_DECAY_RATE),
                 new ParamDef("move_speed_penalty", nameKey("charged_shield_items", "move_speed_penalty"),
-                        Config::getChargedShieldMovementSpeedPenalty)
+                        () -> CHARGED_SHIELD_MOVE_SPEED_PENALTY)
         );
 
         // ===== 幽灵机身 (ghost_fuselage) =====
         register("ghost_fuselage_items",
                 new ParamDef("stealth_speed_bonus_per_level", nameKey("ghost_fuselage_items", "stealth_speed_bonus_per_level"),
-                        Config::getGhostFuselageStealthSpeedBonusPerLevel),
+                        () -> GHOST_STEALTH_SPEED_PER_LEVEL),
                 new ParamDef("max_bonus_per_level", nameKey("ghost_fuselage_items", "max_bonus_per_level"),
-                        Config::getGhostFuselageMaxBonusPerLevel),
+                        () -> GHOST_MAX_BONUS_PER_LEVEL),
                 new ParamDef("base_max_damage_bonus", nameKey("ghost_fuselage_items", "base_max_damage_bonus"),
-                        Config::getGhostFuselageBaseMaxDamageBonus),
+                        () -> GHOST_BASE_MAX_DAMAGE_BONUS),
                 new ParamDef("move_speed_threshold", nameKey("ghost_fuselage_items", "move_speed_threshold"),
-                        Config::getGhostFuselageMoveSpeedThreshold),
+                        () -> GHOST_MOVE_SPEED_THRESHOLD),
                 new ParamDef("move_speed_reduction", nameKey("ghost_fuselage_items", "move_speed_reduction"),
-                        Config::getGhostFuselageMoveSpeedReduction),
+                        () -> GHOST_MOVE_SPEED_REDUCTION),
                 new ParamDef("decay_rate", nameKey("ghost_fuselage_items", "decay_rate"),
-                        Config::getGhostFuselageDecayRate),
+                        () -> GHOST_DECAY_RATE),
                 new ParamDef("min_decay", nameKey("ghost_fuselage_items", "min_decay"),
-                        Config::getGhostFuselageMinDecay),
+                        () -> GHOST_MIN_DECAY),
                 new ParamDef("full_stealth_ticks", nameKey("ghost_fuselage_items", "full_stealth_ticks"),
-                        () -> Config.getGhostFuselageFullStealthTicks())
+                        () -> GHOST_FULL_STEALTH_TICKS)
         );
 
         // ===== 积怨 (grudge) =====
         register("grudge_items",
                 new ParamDef("conversion_ratio", nameKey("grudge_items", "conversion_ratio"),
-                        Config::getGrudgeConversionRatio),
+                        () -> GRUDGE_CONVERSION_RATIO),
                 new ParamDef("fade_base", nameKey("grudge_items", "fade_base"),
-                        Config::getGrudgeFadeBase),
+                        () -> GRUDGE_FADE_BASE),
                 new ParamDef("fade_percent", nameKey("grudge_items", "fade_percent"),
-                        Config::getGrudgeFadePercent),
+                        () -> GRUDGE_FADE_PERCENT),
                 new ParamDef("move_speed_penalty", nameKey("grudge_items", "move_speed_penalty"),
-                        Config::getGrudgeMovementSpeedPenalty)
+                        () -> GRUDGE_MOVE_SPEED_PENALTY)
         );
 
         // ===== 精密构造 (precision_construct) =====
         register("precision_construct_items",
                 new ParamDef("bonus_per_level", nameKey("precision_construct_items", "bonus_per_level"),
-                        () -> Config.PRECISION_CONSTRUCT_BONUS_PER_LEVEL.get())
+                        () -> PRECISION_CONSTRUCT_BONUS_PER_LEVEL)
         );
 
         // ===== 高等工程 (advanced_engineering) =====
         register("advanced_engineering_items",
                 new ParamDef("bonus_per_level", nameKey("advanced_engineering_items", "bonus_per_level"),
-                        () -> Config.ADVANCED_ENGINEERING_BONUS_PER_LEVEL.get())
+                        () -> ADVANCED_ENGINEERING_BONUS_PER_LEVEL)
         );
 
         // ===== 僚机进化模块 (wingman_evolution_module) =====
         register("wingman_evolution_module_items",
                 new ParamDef("bonus_per_level", nameKey("wingman_evolution_module_items", "bonus_per_level"),
-                        Config::getWingmanEvolutionBonusPerLevel)
+                        () -> WINGMAN_EVOLUTION_BONUS_PER_LEVEL)
         );
 
         // ===== 僚机纳米再生模块 (wingman_nano_regen_module) =====
         register("wingman_nano_regen_module_items",
                 new ParamDef("regen_percent", nameKey("wingman_nano_regen_module_items", "regen_percent"),
-                        Config::getWingmanNanoRegenPercent)
+                        () -> WINGMAN_NANO_REGEN_PERCENT)
         );
 
         // ===== 生命护盾转化 (conversion，实例化机制：每个来源物品一个转化实例) =====
         register("conversion_items",
                 new ParamDef("conversion_ratio", nameKey("conversion_items", "conversion_ratio"),
-                        () -> Config.CONVERSION_RATIO.get()),
+                        () -> CONVERSION_RATIO),
                 // 转化方向：0=双向比较（默认，较少一方按比例转化给较多一方），1=仅护盾转生命，2=仅生命转护盾
                 new ParamDef("conversion_direction", nameKey("conversion_items", "conversion_direction"),
                         () -> 0.0)
@@ -120,85 +198,101 @@ public final class MechanicValueDefs {
         // ===== 结界 (barrier) =====
         register("barrier_items",
                 new ParamDef("barrier_max_damage", nameKey("barrier_items", "barrier_max_damage"),
-                        () -> Config.BARRIER_MAX_DAMAGE.get().doubleValue())
+                        () -> BARRIER_MAX_DAMAGE)
         );
 
         // ===== 护盾移植 (shield_transfer) =====
         register("shield_transfer_items",
                 new ParamDef("penalty_per_entity", nameKey("shield_transfer_items", "penalty_per_entity"),
-                        () -> Config.SHIELD_TRANSFER_EFFECT_PENALTY_PER_ENTITY.get())
+                        () -> SHIELD_TRANSFER_PENALTY)
         );
 
         // ===== 电能释放 (electric_discharge) =====
         register("electric_discharge_items",
                 new ParamDef("burn_duration", nameKey("electric_discharge_items", "burn_duration"),
-                        () -> Config.getElectricDischargeBurnDuration()),
+                        () -> ELECTRIC_BURN_DURATION),
                 new ParamDef("burn_charge", nameKey("electric_discharge_items", "burn_charge"),
-                        Config::getElectricDischargeBurnCharge)
+                        () -> ELECTRIC_BURN_CHARGE)
         );
 
         // ===== 强袭 (assault，非实例化：走默认叠/单合并策略) =====
         register("assault_items",
                 new ParamDef("attack_speed_per_stack", nameKey("assault_items", "attack_speed_per_stack"),
-                        Config::getAssaultAttackSpeedPerStack),
+                        () -> ASSAULT_ATTACK_SPEED_PER_STACK),
                 new ParamDef("self_damage_per_stack", nameKey("assault_items", "self_damage_per_stack"),
-                        Config::getAssaultSelfDamagePerStack),
+                        () -> ASSAULT_SELF_DAMAGE_PER_STACK),
                 new ParamDef("overflow_damage_efficiency", nameKey("assault_items", "overflow_damage_efficiency"),
-                        Config::getAssaultOverflowDamageEfficiency),
+                        () -> ASSAULT_OVERFLOW_EFFICIENCY),
                 new ParamDef("move_speed_penalty", nameKey("assault_items", "move_speed_penalty"),
-                        Config::getAssaultMovementSpeedPenalty)
+                        () -> ASSAULT_MOVE_SPEED_PENALTY)
+        );
+
+        // ===== 征途 (journey_module，非实例化：叠层参数按物品解析) =====
+        register("journey_module_items",
+                new ParamDef("attack_speed_per_stack", nameKey("journey_module_items", "attack_speed_per_stack"),
+                        () -> JOURNEY_ATTACK_SPEED_PER_STACK),
+                new ParamDef("movement_speed_per_stack", nameKey("journey_module_items", "movement_speed_per_stack"),
+                        () -> JOURNEY_MOVE_SPEED_PER_STACK),
+                new ParamDef("duration_ticks", nameKey("journey_module_items", "duration_ticks"),
+                        () -> JOURNEY_DURATION_TICKS),
+                new ParamDef("max_stacks", nameKey("journey_module_items", "max_stacks"),
+                        () -> JOURNEY_MAX_STACKS),
+                new ParamDef("decay_interval_ticks", nameKey("journey_module_items", "decay_interval_ticks"),
+                        () -> JOURNEY_DECAY_INTERVAL_TICKS),
+                new ParamDef("decay_per_interval", nameKey("journey_module_items", "decay_per_interval"),
+                        () -> JOURNEY_DECAY_PER_INTERVAL)
         );
 
         // ===== 湮灭护盾 (explosive_shield) =====
         register("explosive_shield_items",
                 new ParamDef("radius", nameKey("explosive_shield_items", "radius"),
-                        () -> Config.EXPLOSIVE_SHIELD_RADIUS.get()),
+                        () -> EXPLOSIVE_RADIUS),
                 new ParamDef("base_damage", nameKey("explosive_shield_items", "base_damage"),
-                        () -> Config.EXPLOSIVE_SHIELD_DAMAGE.get())
+                        () -> EXPLOSIVE_DAMAGE)
         );
 
         // ===== 武装护盾 (weaponized_shield) =====
         register("weaponized_shield_items",
                 new ParamDef("radius", nameKey("weaponized_shield_items", "radius"),
-                        () -> Config.WEAPONIZED_SHIELD_RADIUS.get()),
+                        () -> WEAPONIZED_RADIUS),
                 new ParamDef("vulnerability", nameKey("weaponized_shield_items", "vulnerability"),
-                        () -> Config.WEAPONIZED_SHIELD_VULNERABILITY.get().doubleValue())
+                        () -> WEAPONIZED_VULNERABILITY)
         );
 
         // ===== 濒死保护 (near_death_protection) =====
         register("near_death_protection_items",
                 new ParamDef("invincible_duration", nameKey("near_death_protection_items", "invincible_duration"),
-                        () -> Config.NEAR_DEATH_PROTECTION_INVINCIBLE_DURATION.get()),
+                        () -> NEAR_DEATH_INVINCIBLE_DURATION),
                 new ParamDef("cooldown", nameKey("near_death_protection_items", "cooldown"),
-                        () -> Config.NEAR_DEATH_PROTECTION_COOLDOWN.get())
+                        () -> NEAR_DEATH_COOLDOWN)
         );
 
         // ===== 自毁装置 (self_destruct) =====
         register("self_destruct_items",
                 new ParamDef("base_damage", nameKey("self_destruct_items", "base_damage"),
-                        () -> Config.SELF_DESTRUCT_BASE_DAMAGE.get()),
+                        () -> SELF_DESTRUCT_BASE_DAMAGE),
                 new ParamDef("base_radius", nameKey("self_destruct_items", "base_radius"),
-                        () -> Config.SELF_DESTRUCT_BASE_RADIUS.get())
+                        () -> SELF_DESTRUCT_BASE_RADIUS)
         );
 
         // ===== 弹射物次级爆炸 (projectile_explosion) =====
         register("projectile_explosion_items",
                 new ParamDef("damage_fraction", nameKey("projectile_explosion_items", "damage_fraction"),
-                        () -> Config.SECONDARY_EXPLOSION_DAMAGE_FRACTION.get()),
+                        () -> PROJECTILE_EXPLOSION_DAMAGE_FRACTION),
                 new ParamDef("radius_base", nameKey("projectile_explosion_items", "radius_base"),
-                        () -> Config.SECONDARY_EXPLOSION_RADIUS_BASE.get()),
+                        () -> PROJECTILE_EXPLOSION_RADIUS_BASE),
                 new ParamDef("radius_per_damage", nameKey("projectile_explosion_items", "radius_per_damage"),
-                        () -> Config.SECONDARY_EXPLOSION_RADIUS_DAMAGE_FRACTION.get())
+                        () -> PROJECTILE_EXPLOSION_RADIUS_PER_DAMAGE)
         );
 
         // ===== 反制脉冲 (counter_pulse) =====
         register("counter_pulse_items",
                 new ParamDef("explosion_radius", nameKey("counter_pulse_items", "explosion_radius"),
-                        () -> Config.COUNTER_PULSE_BASE_EXPLOSION_RADIUS.get()),
+                        () -> COUNTER_PULSE_RADIUS),
                 new ParamDef("explosion_damage", nameKey("counter_pulse_items", "explosion_damage"),
-                        () -> Config.COUNTER_PULSE_BASE_EXPLOSION_DAMAGE.get().doubleValue()),
+                        () -> COUNTER_PULSE_DAMAGE),
                 new ParamDef("cooldown", nameKey("counter_pulse_items", "cooldown"),
-                        () -> Config.COUNTER_PULSE_COOLDOWN.get())
+                        () -> COUNTER_PULSE_COOLDOWN)
         );
 
         // ===== 反射护盾 (reflect_damage，实例化机制：参数按物品独立解析) =====
@@ -232,40 +326,39 @@ public final class MechanicValueDefs {
         // ===== 无人机构建模块 (drone_module，实例化机制：每个来源物品一个无人机实例) =====
         register("drone_module_items",
                 new ParamDef("build_time", nameKey("drone_module_items", "build_time"),
-                        () -> 100.0),
+                        () -> DRONE_BUILD_TIME),
                 new ParamDef("base_health", nameKey("drone_module_items", "base_health"),
-                        Config::getDroneBaseHealth),
+                        () -> DRONE_BASE_HEALTH),
                 new ParamDef("base_damage", nameKey("drone_module_items", "base_damage"),
-                        Config::getDroneBaseDamage),
+                        () -> DRONE_BASE_DAMAGE),
                 new ParamDef("base_count", nameKey("drone_module_items", "base_count"),
-                        () -> (double) Config.getDroneMaxCount()),
-                // 0 = 未定义、沿用 Config 默认；此处默认值取 Config 真实值，编辑器“未覆盖”显示与运行时一致
+                        () -> DRONE_BASE_COUNT),
                 new ParamDef("attack_interval", nameKey("drone_module_items", "attack_interval"),
-                        () -> Config.DRONE_ATTACK_INTERVAL.get()),
+                        () -> DRONE_ATTACK_INTERVAL),
                 new ParamDef("move_speed_multiplier", nameKey("drone_module_items", "move_speed_multiplier"),
                         () -> 1.0),
                 new ParamDef("attack_range", nameKey("drone_module_items", "attack_range"),
-                        () -> Config.DRONE_ATTACK_RANGE.get()),
+                        () -> DRONE_ATTACK_RANGE),
                 new ParamDef("target_range", nameKey("drone_module_items", "target_range"),
-                        () -> Config.DRONE_TARGET_RANGE.get())
+                        () -> DRONE_TARGET_RANGE)
         );
 
         // ===== 蜂群构建模块 (swarm_module，实例化机制：每个来源物品（母舰机身）一个蜂群实例) =====
         register("swarm_module_items",
                 new ParamDef("build_time", nameKey("swarm_module_items", "build_time"),
-                        Config::getSwarmBuildTime),
+                        () -> SWARM_BUILD_TIME),
                 new ParamDef("base_health", nameKey("swarm_module_items", "base_health"),
-                        Config::getSwarmBaseHealth),
+                        () -> SWARM_BASE_HEALTH),
                 new ParamDef("base_damage", nameKey("swarm_module_items", "base_damage"),
-                        Config::getSwarmBaseDamage),
+                        () -> SWARM_BASE_DAMAGE),
                 new ParamDef("base_count", nameKey("swarm_module_items", "base_count"),
-                        () -> (double) Config.getSwarmMaxCount()),
+                        () -> SWARM_BASE_COUNT),
                 new ParamDef("attack_interval", nameKey("swarm_module_items", "attack_interval"),
-                        Config::getSwarmAttackInterval),
+                        () -> SWARM_ATTACK_INTERVAL),
                 new ParamDef("attack_range", nameKey("swarm_module_items", "attack_range"),
-                        Config::getSwarmAttackRange),
+                        () -> SWARM_ATTACK_RANGE),
                 new ParamDef("search_range", nameKey("swarm_module_items", "search_range"),
-                        Config::getSwarmSearchRange),
+                        () -> SWARM_SEARCH_RANGE),
                 new ParamDef("move_speed_multiplier", nameKey("swarm_module_items", "move_speed_multiplier"),
                         () -> 1.0)
         );
@@ -273,17 +366,17 @@ public final class MechanicValueDefs {
         // ===== 僚机构建模块 (wingman_module，实例化机制：每个来源物品一个僚机实例) =====
         register("wingman_module_items",
                 new ParamDef("build_time", nameKey("wingman_module_items", "build_time"),
-                        () -> 500.0),
+                        () -> WINGMAN_BUILD_TIME),
                 new ParamDef("base_health", nameKey("wingman_module_items", "base_health"),
-                        Config::getWingmanBaseHealth),
+                        () -> WINGMAN_BASE_HEALTH),
                 new ParamDef("base_damage", nameKey("wingman_module_items", "base_damage"),
-                        Config::getWingmanExplosiveDamage),
+                        () -> WINGMAN_BASE_DAMAGE),
                 new ParamDef("base_count", nameKey("wingman_module_items", "base_count"),
-                        () -> (double) Config.getWingmanMaxCount()),
+                        () -> WINGMAN_BASE_COUNT),
                 new ParamDef("attack_interval", nameKey("wingman_module_items", "attack_interval"),
-                        Config::getWingmanAttackInterval),
+                        () -> WINGMAN_ATTACK_INTERVAL),
                 new ParamDef("attack_range", nameKey("wingman_module_items", "attack_range"),
-                        Config::getWingmanAttackRange)
+                        () -> WINGMAN_ATTACK_RANGE)
         );
 
         // ===== 环绕阵列 (orbit_array_required，非实例化：攻速 + 环绕速度 + 范围基准，独立乘区作用于所有无人机；
@@ -370,5 +463,11 @@ public final class MechanicValueDefs {
             }
         }
         return null;
+    }
+
+    /** 获取参数默认值，未注册时返回调用方给定的回退值 */
+    public static double defaultValueOf(String mechanicSet, String paramKey, double fallback) {
+        Double value = getDefaultValue(mechanicSet, paramKey);
+        return value != null ? value : fallback;
     }
 }

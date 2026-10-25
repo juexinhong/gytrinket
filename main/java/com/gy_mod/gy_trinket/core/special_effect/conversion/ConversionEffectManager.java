@@ -1,6 +1,7 @@
 package com.gy_mod.gy_trinket.core.special_effect.conversion;
 
 import com.gy_mod.gy_trinket.config.Config;
+import com.gy_mod.gy_trinket.core.defs.MechanicValueDefs;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
 import com.gy_mod.gy_trinket.core.defs.DefsManager;
 import com.gy_mod.gy_trinket.core.shield.DisableSystem;
@@ -153,7 +154,7 @@ public class ConversionEffectManager {
             String namespace = DYNAMIC_ATTRIBUTE_KEY + ":" + itemId;
 
             double ratio = DefsManager.resolveMechanicValueForItem(server, itemId, MECHANIC_SET,
-                    KEY_CONVERSION_RATIO, Config.CONVERSION_RATIO.get());
+                    KEY_CONVERSION_RATIO, MechanicValueDefs.defaultValueOf("conversion_items", "conversion_ratio", 0.3));
             int direction = (int) Math.round(DefsManager.resolveMechanicValueForItem(server, itemId, MECHANIC_SET,
                     KEY_CONVERSION_DIRECTION, DIRECTION_BOTH));
 

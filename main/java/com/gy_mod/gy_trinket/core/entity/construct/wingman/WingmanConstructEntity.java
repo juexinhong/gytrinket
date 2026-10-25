@@ -1,6 +1,7 @@
 package com.gy_mod.gy_trinket.core.entity.construct.wingman;
 
 import com.gy_mod.gy_trinket.config.Config;
+import com.gy_mod.gy_trinket.core.defs.MechanicValueDefs;
 import com.gy_mod.gy_trinket.core.entity.construct.AbstractConstructEntity;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructAttributeApplier;
 import com.gy_mod.gy_trinket.core.entity.construct.ConstructData;
@@ -177,8 +178,8 @@ public class WingmanConstructEntity extends AbstractConstructEntity {
 
     public WingmanConstructEntity(EntityType<? extends PathfinderMob> type, Level level) {
         super(type, level);
-        this.baseMaxHealth = Config.getWingmanBaseHealth();
-        this.baseAttackDamage = Config.getWingmanExplosiveDamage();
+        this.baseMaxHealth = MechanicValueDefs.defaultValueOf("wingman_module_items", "base_health", 24);
+        this.baseAttackDamage = MechanicValueDefs.defaultValueOf("wingman_module_items", "base_damage", 0.5);
     }
 
     public WingmanConstructEntity(Level level, UUID ownerUUID, WingmanConstruct wingmanConstruct) {
@@ -228,7 +229,7 @@ public class WingmanConstructEntity extends AbstractConstructEntity {
     /** 僚机基础攻击间隔（秒）：物品级定义优先，否则 Config 默认 */
     public float getBaseAttackInterval() {
         float iv = getInstanceAttackInterval();
-        return iv > 0 ? iv : (float) Config.getWingmanAttackInterval();
+        return iv > 0 ? iv : (float) MechanicValueDefs.defaultValueOf("wingman_module_items", "attack_interval", 1);
     }
 
     /** 实例攻击范围（格）；0 表示未定义，沿用 Config 默认 */
@@ -239,7 +240,7 @@ public class WingmanConstructEntity extends AbstractConstructEntity {
     /** 僚机基础攻击范围（格）：物品级定义优先，否则 Config 默认 */
     public float getBaseAttackRange() {
         float range = getInstanceAttackRange();
-        return range > 0 ? range : Config.getWingmanAttackRange().floatValue();
+        return range > 0 ? range : (float) MechanicValueDefs.defaultValueOf("wingman_module_items", "attack_range", 20);
     }
 
     /** 僚机基础生命值：物品级定义优先（属性刷新与恢复路径即时生效），否则构造时写入的 Config 默认 */

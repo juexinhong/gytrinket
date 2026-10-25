@@ -1,6 +1,7 @@
 package com.gy_mod.gy_trinket.event;
 
 import com.gy_mod.gy_trinket.config.Config;
+import com.gy_mod.gy_trinket.core.defs.MechanicValueDefs;
 import com.gy_mod.gy_trinket.core.attribute.AttributeManager;
 import com.gy_mod.gy_trinket.core.defs.DefsManager;
 import com.gy_mod.gy_trinket.core.level.ModLevelManager;
@@ -39,7 +40,7 @@ public class AdvancedEngineeringEventHandler {
         // 装备时按当前光点等级计算加成：倍率 = 1 + 等级 × 每级加成（物品级数值覆盖：取首个生效物品的覆盖值）
         int level = Math.max(0, ModLevelManager.getModLevel(playerUUID));
         double bonusPerLevel = DefsManager.resolveMechanicValue(player.getServer(), playerUUID,
-                "advanced_engineering_items", "bonus_per_level", Config.ADVANCED_ENGINEERING_BONUS_PER_LEVEL.get());
+                "advanced_engineering_items", "bonus_per_level", MechanicValueDefs.defaultValueOf("advanced_engineering_items", "bonus_per_level", 0.01));
         double bonus = level * bonusPerLevel;
 
         AttributeManager.setDynamicAttribute(playerUUID, NAMESPACE, "construct_drone_health_independent", bonus);

@@ -1,28 +1,49 @@
 package com.gy_mod.gy_trinket.client.effect.particle;
 
-import com.gy_mod.gy_trinket.config.ClientConfig;
 import com.gy_mod.gy_trinket.client.compat.ShaderModCompat;
 import com.gy_mod.gy_trinket.client.shader.ModShaders;
+import com.gy_mod.gy_trinket.config.ClientConfig;
 import com.mojang.blaze3d.platform.GlStateManager;
-import com.mojang.blaze3d.platform.NativeImage;
+import com.mojang.blaze3d.shaders.Uniform;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.*;
+import com.mojang.blaze3d.vertex.BufferBuilder;
+import com.mojang.blaze3d.vertex.BufferUploader;
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.Tesselator;
+import com.mojang.blaze3d.vertex.VertexFormat;
+import com.mojang.blaze3d.vertex.VertexSorting;
+import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.GameRenderer;
+import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.ShaderInstance;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.packs.resources.Resource;
-import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
+import org.joml.Quaternionf;
+import org.joml.Vector3f;
 
-import java.io.InputStream;
-import java.util.Optional;
-
+/**
+ * 立体护盾粒子渲染器（1.20.1 移植版）。
+ * <p>
+ * 三套形象，靠 {@code ClientConfig.SHIELD_PARTICLE_STYLE} 切换：
+ * <ul>
+ *   <li>0 = 三渲二水晶：14 面刻面六边形宝石（{@link ShieldShardMesh}）；</li>
+ *   <li>1 = 旧立体宝石：历史贴图棱柱（{@link ShieldParticleTexturedRenderer}）；</li>
+ *   <li>2 = 平面四边形：原版透明度渲染（最省性能）。</li>
+ * </ul>
+ * 体积渲染每帧只有三次 draw call：光晕、本体、高光。
+ * <p>
+ * 与 1.21.1 的差异只在渲染 API：
+ * {@code Tesselator.getInstance().getBuilder() + begin(...) + end()}、
+ * 顶点链写 {@code vertex().uv().color().normal().endVertex()}、
+ * {@code RenderSystem.getModelViewStack()} 是 {@link PoseStack} 且要 {@code applyModelViewMatrix()}。
+ */
 public class ShieldParticleRenderer {
 
-    private static final ResourceLocation[] SHIELD_TEXTURES = {
+    static final ResourceLocation[] SHIELD_TEXTURES = {
         new ResourceLocation("gytrinket", "textures/particle/shield_particle_1_1.png"),
         new ResourceLocation("gytrinket", "textures/particle/shield_particle_1_2.png"),
         new ResourceLocation("gytrinket", "textures/particle/shield_particle_1_3.png"),
@@ -30,66 +51,97 @@ public class ShieldParticleRenderer {
         new ResourceLocation("gytrinket", "textures/particle/shield_particle_1_5.png")
     };
 
-    // ===== 体积渲染专用常量 =====
-    private static final float THICKNESS_HALF = 0.06F;
-    private static final float BRIGHTNESS = 8.0F / 15.0F;
-    private static final int RAY_COUNT = 72;
-    private static final int ALPHA_THRESHOLD = 10;
+    // ===== 外观参数 =====
+    /** 粒子最大半径（格），与旧版一致 */
+    private static final float SHARD_MAX_SIZE = 0.16F;
+    /** 出现时的过冲量 */
+    private static final float POP_OVERSHOOT = 1.15F;
 
-    // 轮廓数据（UV空间）
-    private static float[] outlineUVs;
-    private static float[] outlineDu;
-    private static float[] outlineDv;
-    private static float outlineCenterU, outlineCenterV;
-    private static float centerDu, centerDv;
-    private static int outlinePointCount = 0;
-    private static boolean outlineInitialized = false;
-    private static boolean outlineInitFailed = false;
-
-    private static float packNormal(float n) {
-        return n * 0.5F + 0.5F;
-    }
+    /**
+     * 极点带阈值：sinTheta 小于它（≈ 离极点 8.6° 以内）就直接用固定朝向。
+     */
+    private static final float POLE_SIN_THETA = 0.15F;
 
     public static void render(PoseStack poseStack,
-                              net.minecraft.client.renderer.MultiBufferSource bufferSource,
-                              net.minecraft.client.Camera camera,
+                              MultiBufferSource bufferSource,
+                              Camera camera,
                               float partialTicks) {
-        // 阴影pass中跳过渲染，避免写入阴影贴图
         if (ShaderModCompat.isRenderingShadows()) {
             return;
         }
 
         if (ClientConfig.SHIELD_PARTICLE_VOLUMETRIC_RENDERING.get()) {
-            // 始终使用自定义着色器渲染
-            renderVolumetric(poseStack, bufferSource, camera, partialTicks);
+            int style = ClientConfig.SHIELD_PARTICLE_STYLE.get();
+            if (style == 2) {
+                renderVanilla(poseStack, camera, partialTicks);
+            } else if (style == 1) {
+                // 旧版「贴图转立体」：历史棱柱渲染器
+                ShieldParticleTexturedRenderer.render(poseStack, camera, partialTicks);
+            } else {
+                renderVolumetric(poseStack, camera, partialTicks, style);
+            }
         } else {
-            renderVanilla(poseStack, bufferSource, camera, partialTicks);
+            renderVanilla(poseStack, camera, partialTicks);
         }
     }
 
-    // ===== 原版透明度渲染 =====
+    /**
+     * 出现 / 消散 / 让位 的透明度包络 —— **三套形象共用这一份**。
+     */
+    static float particleAlpha(ShieldParticleData particle, float partialTicks) {
+        float age = particle.age + partialTicks;
+        float lifeT = age / particle.lifetime;
+        if (lifeT < 0.0F) {
+            lifeT = 0.0F;
+        }
+        float appear = Math.min(1.0F, lifeT / 0.14F);
+        float fadeIn = appear * appear * (3.0F - 2.0F * appear);
+        float fadeOut = 1.0F - smoothstep((lifeT - 0.50F) / 0.50F);
+
+        float leaving = 1.0F;
+        if (particle.yielding) {
+            float startAge = Math.max((float) particle.yieldMarkAge,
+                    (float) ShieldParticleRenderManager.APPEAR_TICKS);
+            float t = (age - startAge) / (float) ShieldParticleRenderManager.FADE_TICKS;
+            t = t < 0.0F ? 0.0F : (t > 1.0F ? 1.0F : t);
+            leaving = 1.0F - t;
+        }
+        return 0.95F * fadeIn * fadeOut * leaving;
+    }
+
+    // ===== 原版透明度渲染（平面四边形回退） =====
 
     private static void renderVanilla(PoseStack poseStack,
-                                      net.minecraft.client.renderer.MultiBufferSource bufferSource,
-                                      net.minecraft.client.Camera camera,
+                                      Camera camera,
                                       float partialTicks) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null) return;
+
+        Vec3 cameraPos = (camera != null ? camera : mc.gameRenderer.getMainCamera()).getPosition();
+
+        poseStack.pushPose();
+        poseStack.translate(-cameraPos.x, -cameraPos.y, -cameraPos.z);
+        renderVanillaQuads(poseStack.last().pose(), partialTicks);
+        poseStack.popPose();
+    }
+
+    /**
+     * 平面四边形本体。传入的矩阵已经包含「相机旋转 × 平移(-相机位置)」：
+     * 非光影路径由 PoseStack 传入，光影路径传入 AFTER_PARTICLES 保存的矩阵。
+     */
+    private static void renderVanillaQuads(Matrix4f matrix, float partialTicks) {
         ShieldParticleRenderManager manager = ShieldParticleRenderManager.getInstance();
         if (manager.getParticles().isEmpty()) return;
 
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null) return;
 
-        Vec3 cameraPos = mc.gameRenderer.getMainCamera().getPosition();
-
         RenderSystem.enableBlend();
+        RenderSystem.enableDepthTest();
         RenderSystem.disableCull();
         RenderSystem.depthMask(false);
         RenderSystem.blendFunc(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA);
-
-        BufferBuilder bufferBuilder = Tesselator.getInstance().getBuilder();
-
-        poseStack.pushPose();
-        poseStack.translate(-cameraPos.x, -cameraPos.y, -cameraPos.z);
+        RenderSystem.setShader(GameRenderer::getPositionTexColorShader);
 
         for (ShieldParticleData particle : manager.getParticles()) {
             int textureIndex = Math.min(particle.age - 1, SHIELD_TEXTURES.length - 1);
@@ -110,14 +162,11 @@ public class ShieldParticleRenderer {
             double py = originY + particle.offsetY;
             double pz = originZ + particle.offsetZ;
 
-            float size = calculateSize(particle.age);
-            float alpha = calculateAlpha(particle.age);
+            ResourceLocation texture = SHIELD_TEXTURES[textureIndex];
 
-            float dirX = (float) (originX - px);
-            float dirY = (float) (originY - py);
-            float dirZ = (float) (originZ - pz);
-            float length = (float) Math.sqrt(dirX * dirX + dirY * dirY + dirZ * dirZ);
-            if (length > 0) { dirX /= length; dirY /= length; dirZ /= length; }
+            float size = calculateSize(particle.age);
+            float alpha = particleAlpha(particle, partialTicks);
+            if (alpha <= 0.004F) continue;
 
             float dx = (float) (px - originX);
             float dy = (float) (py - originY);
@@ -138,7 +187,7 @@ public class ShieldParticleRenderer {
                 upX = -cosTheta * cosPhi; upY = sinTheta; upZ = -cosTheta * sinPhi;
 
                 if (sinTheta < 0.01f) {
-                    float hDirX = dirX, hDirZ = dirZ;
+                    float hDirX = (float) (originX - px), hDirZ = (float) (originZ - pz);
                     float hLen = (float) Math.sqrt(hDirX * hDirX + hDirZ * hDirZ);
                     if (hLen > 0.001f) {
                         upX = hDirX / hLen; upY = 0; upZ = hDirZ / hLen;
@@ -151,15 +200,13 @@ public class ShieldParticleRenderer {
             }
 
             float[] uvs = {0, 1, 0, 0, 1, 0, 1, 1};
-            Matrix4f matrix = poseStack.last().pose();
 
             float glowSize = size * 1.1F;
             float glowAlpha = alpha * 0.5F;
 
-            RenderSystem.setShader(GameRenderer::getPositionTexColorShader);
-            RenderSystem.setShaderTexture(0, SHIELD_TEXTURES[textureIndex]);
+            RenderSystem.setShaderTexture(0, texture);
 
-            // 辉光层
+            BufferBuilder bufferBuilder = Tesselator.getInstance().getBuilder();
             bufferBuilder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
             float[] glowXyz = calculateVertices(px, py, pz, rightX, rightY, rightZ, upX, upY, upZ, glowSize);
             for (int i = 0; i < 4; i++) {
@@ -170,7 +217,7 @@ public class ShieldParticleRenderer {
             }
             BufferUploader.drawWithShader(bufferBuilder.end());
 
-            // 主层
+            bufferBuilder = Tesselator.getInstance().getBuilder();
             bufferBuilder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
             float[] xyz = calculateVertices(px, py, pz, rightX, rightY, rightZ, upX, upY, upZ, size);
             for (int i = 0; i < 4; i++) {
@@ -182,8 +229,6 @@ public class ShieldParticleRenderer {
             BufferUploader.drawWithShader(bufferBuilder.end());
         }
 
-        poseStack.popPose();
-
         RenderSystem.depthMask(true);
         RenderSystem.enableCull();
         RenderSystem.disableBlend();
@@ -194,7 +239,7 @@ public class ShieldParticleRenderer {
                                              float rightX, float rightY, float rightZ,
                                              float upX, float upY, float upZ,
                                              float size) {
-        float halfSize = size / 1.0F;
+        float halfSize = size;
         float[] xyz = new float[12];
 
         xyz[0] = (float) (px + (-halfSize * rightX - halfSize * upX));
@@ -216,174 +261,147 @@ public class ShieldParticleRenderer {
         return xyz;
     }
 
-    // ===== 体积渲染（3D棱柱体 + 宝石着色器） =====
+    // ===== 体积渲染（六边形晶体 + 光晕） =====
 
     /**
-     * 光影模式：使用保存的矩阵（Iris composite之前捕获的）渲染
-     * 关键：AFTER_LEVEL时事件的PoseStack已被修改（变成投影矩阵），
-     * 必须使用保存的PoseStack矩阵（摄像机旋转）来定位顶点
+     * 光影模式：使用保存的矩阵（Iris composite 之前捕获的）渲染。
      */
     public static void renderWithSavedMatrices(PoseStack poseStack,
-                                                net.minecraft.client.renderer.MultiBufferSource bufferSource,
-                                                net.minecraft.client.Camera camera,
-                                                float partialTicks,
-                                                org.joml.Matrix4f savedProjection,
-                                                org.joml.Matrix4f savedModelView,
-                                                org.joml.Matrix4f savedPoseStackMat) {
+                                               MultiBufferSource bufferSource,
+                                               Camera camera,
+                                               float partialTicks,
+                                               Matrix4f savedProjection,
+                                               Matrix4f savedModelView,
+                                               Matrix4f savedPoseStackMat) {
         if (savedProjection == null || savedModelView == null || savedPoseStackMat == null) return;
-        
-        // 保存当前Iris composite后的矩阵
-        org.joml.Matrix4f irisProjection = new org.joml.Matrix4f(RenderSystem.getProjectionMatrix());
-        org.joml.Matrix4f irisModelView = new org.joml.Matrix4f(RenderSystem.getModelViewStack().last().pose());
-        
-        // 恢复composite之前的正确矩阵
-        RenderSystem.setProjectionMatrix(savedProjection, com.mojang.blaze3d.vertex.VertexSorting.DISTANCE_TO_ORIGIN);
+
+        Matrix4f irisProjection = new Matrix4f(RenderSystem.getProjectionMatrix());
+
+        RenderSystem.setProjectionMatrix(savedProjection, VertexSorting.DISTANCE_TO_ORIGIN);
         PoseStack modelViewStack = RenderSystem.getModelViewStack();
         modelViewStack.pushPose();
-        modelViewStack.last().pose().set(savedModelView);
-        
-        // 使用保存的PoseStack矩阵渲染（而非事件的PoseStack）
-        renderVolumetricWithPoseMatrix(savedPoseStackMat, bufferSource, camera, partialTicks);
-        
-        // 恢复Iris的矩阵
+        modelViewStack.last().pose().identity();
+        RenderSystem.applyModelViewMatrix();
+
+        Minecraft mc = Minecraft.getInstance();
+        Camera cam = camera != null ? camera : mc.gameRenderer.getMainCamera();
+        Vec3 cameraPos = cam.getPosition();
+
+        Matrix4f matrix = new Matrix4f(savedModelView);
+        matrix.translate((float) -cameraPos.x, (float) -cameraPos.y, (float) -cameraPos.z);
+        int style = ClientConfig.SHIELD_PARTICLE_STYLE.get();
+        if (style == 1) {
+            ShieldParticleTexturedRenderer.renderWithMatrix(matrix, cameraPos, partialTicks);
+        } else if (style == 2) {
+            // 平面四边形：用同一份矩阵直接画四边形，保证和另外两套形象同位置、同动画
+            renderVanillaQuads(matrix, partialTicks);
+        } else {
+            drawParticles(matrix, cam, partialTicks, 0);
+        }
+
         modelViewStack.popPose();
-        RenderSystem.setProjectionMatrix(irisProjection, com.mojang.blaze3d.vertex.VertexSorting.DISTANCE_TO_ORIGIN);
-        
-        // 恢复渲染状态
-        RenderSystem.depthMask(true);
-        RenderSystem.enableCull();
-        RenderSystem.disableBlend();
-        RenderSystem.defaultBlendFunc();
+        RenderSystem.applyModelViewMatrix();
+        RenderSystem.setProjectionMatrix(irisProjection, VertexSorting.DISTANCE_TO_ORIGIN);
     }
-    
-    /**
-     * 使用指定的PoseStack矩阵渲染体积护盾（不依赖事件的PoseStack）
-     */
-    private static void renderVolumetricWithPoseMatrix(org.joml.Matrix4f poseStackMat,
-                                                        net.minecraft.client.renderer.MultiBufferSource bufferSource,
-                                                        net.minecraft.client.Camera camera,
-                                                        float partialTicks) {
+
+    private static void renderVolumetric(PoseStack poseStack, Camera camera, float partialTicks, int style) {
         ShieldParticleRenderManager manager = ShieldParticleRenderManager.getInstance();
         if (manager.getParticles().isEmpty()) return;
-
-        ShaderInstance glassShader = ModShaders.getShieldGlassShader();
-        if (glassShader == null) return;
-
-        ensureOutlineInitialized();
-        if (outlinePointCount < 3) return;
 
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null) return;
 
-        Vec3 cameraPos = mc.gameRenderer.getMainCamera().getPosition();
-
-        // 用保存的摄像机旋转矩阵 + translate(-cameraPos) 构建顶点变换矩阵
-        Matrix4f matrix = new Matrix4f(poseStackMat);
-        matrix.translate((float)-cameraPos.x, (float)-cameraPos.y, (float)-cameraPos.z);
-
-        RenderSystem.enableBlend();
-        RenderSystem.blendFunc(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA);
-        RenderSystem.disableCull();
-        RenderSystem.depthMask(false);
-
-        if (glassShader.getUniform("Brightness") != null) {
-            glassShader.getUniform("Brightness").set(BRIGHTNESS);
-        }
-
-        BufferBuilder bufferBuilder = Tesselator.getInstance().getBuilder();
-        RenderSystem.setShader(() -> glassShader);
-
-        for (ShieldParticleData particle : manager.getParticles()) {
-            int textureIndex = Math.min(particle.age - 1, SHIELD_TEXTURES.length - 1);
-            if (textureIndex < 0) continue;
-
-            Entity entity = mc.level.getEntity(particle.entityId);
-            if (entity == null) continue;
-
-            RenderSystem.setShaderTexture(0, SHIELD_TEXTURES[textureIndex]);
-
-            ParticleGeo geo = computeGeometry(particle, entity, partialTicks);
-
-            // 计算从粒子中心指向摄像机的方向（世界空间），用于面剔除
-            float centerX = (geo.fcx + geo.bcx) * 0.5F;
-            float centerY = (geo.fcy + geo.bcy) * 0.5F;
-            float centerZ = (geo.fcz + geo.bcz) * 0.5F;
-            float toCameraX = (float) (cameraPos.x - centerX);
-            float toCameraY = (float) (cameraPos.y - centerY);
-            float toCameraZ = (float) (cameraPos.z - centerZ);
-            float toCameraLen = (float) Math.sqrt(toCameraX * toCameraX + toCameraY * toCameraY + toCameraZ * toCameraZ);
-            if (toCameraLen > 0.001f) { toCameraX /= toCameraLen; toCameraY /= toCameraLen; toCameraZ /= toCameraLen; }
-
-            renderPrism(bufferBuilder, matrix, geo, toCameraX, toCameraY, toCameraZ);
-            BufferUploader.drawWithShader(bufferBuilder.end());
-        }
-    }
-
-    private static void renderVolumetric(PoseStack poseStack,
-                                         net.minecraft.client.renderer.MultiBufferSource bufferSource,
-                                         net.minecraft.client.Camera camera,
-                                         float partialTicks) {
-        ShieldParticleRenderManager manager = ShieldParticleRenderManager.getInstance();
-        if (manager.getParticles().isEmpty()) return;
-
-        ShaderInstance glassShader = ModShaders.getShieldGlassShader();
-        if (glassShader == null) {
-            return;
-        }
-
-        ensureOutlineInitialized();
-        if (outlinePointCount < 3) {
-            return;
-        }
-
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.level == null) return;
-
-        Vec3 cameraPos = mc.gameRenderer.getMainCamera().getPosition();
+        Camera cam = camera != null ? camera : mc.gameRenderer.getMainCamera();
+        Vec3 cameraPos = cam.getPosition();
 
         poseStack.pushPose();
         poseStack.translate(-cameraPos.x, -cameraPos.y, -cameraPos.z);
-        Matrix4f matrix = poseStack.last().pose();
+        drawParticles(poseStack.last().pose(), cam, partialTicks, style);
+        poseStack.popPose();
+    }
+
+    private static void drawParticles(Matrix4f matrix, Camera camera, float partialTicks, int style) {
+        ShieldParticleRenderManager manager = ShieldParticleRenderManager.getInstance();
+        if (manager.getParticles().isEmpty()) return;
+
+        // 1.20.1 的 ShaderInstance.apply() 会按 JSON 里的 blend 覆盖 RenderSystem 的混合状态，
+        // 而自定义 uniform（PassMode / ViewRot）在这条管线里不可靠，所以三个 Pass 各用一个
+        // ShaderInstance：同一套 vsh/fsh，只靠 JSON 里的 blend + PassMode 初值区分。
+        ShaderInstance bodyShader = ModShaders.getShieldGlassShader();
+        ShaderInstance addShader = ModShaders.getShieldGlassAddShader();
+        ShaderInstance hiShader = ModShaders.getShieldGlassHiShader();
+        if (bodyShader == null || addShader == null || hiShader == null) return;
+
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null) return;
+
+        Quaternionf viewRotation = new Quaternionf(camera.rotation()).conjugate(new Quaternionf());
+        Matrix4f viewRotMatrix = new Matrix4f().rotation(viewRotation);
+        float gemTime = animationTime(mc, partialTicks);
+        float styleUniform = style >= 1 ? 1.0F : 0.0F;
+        setCommonUniforms(bodyShader, viewRotMatrix, gemTime, styleUniform);
+        setCommonUniforms(addShader, viewRotMatrix, gemTime, styleUniform);
+        setCommonUniforms(hiShader, viewRotMatrix, gemTime, styleUniform);
+
+        Quaternionf camRotation = new Quaternionf(camera.rotation());
+        Vector3f camRight = new Vector3f(1.0F, 0.0F, 0.0F).rotate(camRotation);
+        Vector3f camUp = new Vector3f(0.0F, 1.0F, 0.0F).rotate(camRotation);
+        Vector3f camForward = new Vector3f(0.0F, 0.0F, -1.0F).rotate(camRotation);
+        Vec3 cameraPos = camera.getPosition();
 
         RenderSystem.enableBlend();
-        RenderSystem.blendFunc(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA);
-        RenderSystem.disableCull();
+        RenderSystem.enableDepthTest();
         RenderSystem.depthMask(false);
+        RenderSystem.disableCull();
 
-        if (glassShader.getUniform("Brightness") != null) {
-            glassShader.getUniform("Brightness").set(BRIGHTNESS);
-        }
-
-        BufferBuilder bufferBuilder = Tesselator.getInstance().getBuilder();
-
-        RenderSystem.setShader(() -> glassShader);
-
+        // ---- 收集本帧所有粒子姿态，并按到摄像机的距离由远到近排序 ----
+        // 半透明叠加必须"远的先画、近的后画"，否则背面的晶体会盖住正面的。
+        java.util.List<Pose> poses = new java.util.ArrayList<>();
         for (ShieldParticleData particle : manager.getParticles()) {
-            int textureIndex = Math.min(particle.age - 1, SHIELD_TEXTURES.length - 1);
-            if (textureIndex < 0) continue;
-
             Entity entity = mc.level.getEntity(particle.entityId);
             if (entity == null) continue;
-
-            RenderSystem.setShaderTexture(0, SHIELD_TEXTURES[textureIndex]);
-
-            ParticleGeo geo = computeGeometry(particle, entity, partialTicks);
-
-            // 计算从粒子中心指向摄像机的方向（世界空间），用于面剔除
-            float centerX = (geo.fcx + geo.bcx) * 0.5F;
-            float centerY = (geo.fcy + geo.bcy) * 0.5F;
-            float centerZ = (geo.fcz + geo.bcz) * 0.5F;
-            float toCameraX = (float) (cameraPos.x - centerX);
-            float toCameraY = (float) (cameraPos.y - centerY);
-            float toCameraZ = (float) (cameraPos.z - centerZ);
-            float toCameraLen = (float) Math.sqrt(toCameraX * toCameraX + toCameraY * toCameraY + toCameraZ * toCameraZ);
-            if (toCameraLen > 0.001f) { toCameraX /= toCameraLen; toCameraY /= toCameraLen; toCameraZ /= toCameraLen; }
-
-            renderPrism(bufferBuilder, matrix, geo, toCameraX, toCameraY, toCameraZ);
-            BufferUploader.drawWithShader(bufferBuilder.end());
+            Pose pose = new Pose();
+            if (!computePose(particle, entity, partialTicks, cameraPos, camUp, camForward, pose)) continue;
+            float ddx = (float) (cameraPos.x - pose.x);
+            float ddy = (float) (cameraPos.y - pose.y);
+            float ddz = (float) (cameraPos.z - pose.z);
+            pose.distSq = ddx * ddx + ddy * ddy + ddz * ddz;
+            poses.add(pose);
         }
+        if (poses.isEmpty()) return;
+        poses.sort((a, b) -> Float.compare(b.distSq, a.distSq));
 
-        poseStack.popPose();
+        // ---- Pass 1: 加色光晕 ----
+        setPassMode(addShader, 1.0F);
+        RenderSystem.setShader(() -> addShader);
+        BufferBuilder haloBuffer = Tesselator.getInstance().getBuilder();
+        haloBuffer.begin(VertexFormat.Mode.TRIANGLES, DefaultVertexFormat.POSITION_TEX_COLOR_NORMAL);
+        for (Pose pose : poses) {
+            ShieldShardMesh.buildHalo(haloBuffer, matrix, pose.x, pose.y, pose.z,
+                    camRight, camUp, pose.dir,
+                    pose.size, pose.alpha, pose.seedA, pose.seedB, pose.heightT);
+        }
+        BufferUploader.drawWithShader(haloBuffer.end());
+
+        // ---- Pass 2: 晶体本体（半透明，由远到近叠加）----
+        setPassMode(bodyShader, 0.0F);
+        RenderSystem.setShader(() -> bodyShader);
+        BufferBuilder bodyBuffer = Tesselator.getInstance().getBuilder();
+        bodyBuffer.begin(VertexFormat.Mode.TRIANGLES, DefaultVertexFormat.POSITION_TEX_COLOR_NORMAL);
+        for (Pose pose : poses) {
+            emitShard(style, bodyBuffer, matrix, pose);
+        }
+        BufferUploader.drawWithShader(bodyBuffer.end());
+
+        // ---- Pass 3: 加色高光（切面反射 / 倒角棱线 / 虹彩）----
+        setPassMode(hiShader, 2.0F);
+        RenderSystem.setShader(() -> hiShader);
+        BufferBuilder highlightBuffer = Tesselator.getInstance().getBuilder();
+        highlightBuffer.begin(VertexFormat.Mode.TRIANGLES, DefaultVertexFormat.POSITION_TEX_COLOR_NORMAL);
+        for (Pose pose : poses) {
+            emitShard(style, highlightBuffer, matrix, pose);
+        }
+        BufferUploader.drawWithShader(highlightBuffer.end());
 
         RenderSystem.depthMask(true);
         RenderSystem.enableCull();
@@ -391,316 +409,186 @@ public class ShieldParticleRenderer {
         RenderSystem.defaultBlendFunc();
     }
 
-    private static void ensureOutlineInitialized() {
-        if (outlineInitialized || outlineInitFailed) return;
-
-        try {
-            ResourceManager rm = Minecraft.getInstance().getResourceManager();
-            Optional<Resource> resourceOpt = rm.getResource(SHIELD_TEXTURES[0]);
-            if (!resourceOpt.isPresent()) {
-                outlineInitFailed = true;
-                return;
-            }
-
-            Resource resource = resourceOpt.get();
-            try (InputStream is = resource.open();
-                 NativeImage image = NativeImage.read(is)) {
-
-                int width = image.getWidth();
-                int height = image.getHeight();
-
-                float cx = 0, cy = 0;
-                int count = 0;
-                for (int y = 0; y < height; y++) {
-                    for (int x = 0; x < width; x++) {
-                        int pixel = image.getPixelRGBA(x, y);
-                        int alpha = (pixel >> 24) & 0xFF;
-                        if (alpha > ALPHA_THRESHOLD) {
-                            cx += x;
-                            cy += y;
-                            count++;
-                        }
-                    }
-                }
-
-                if (count == 0) { outlineInitFailed = true; return; }
-
-                cx /= count;
-                cy /= count;
-
-                float[][] rawOutline = new float[RAY_COUNT][2];
-                int validRays = 0;
-                double maxDist = Math.sqrt(width * width + height * height);
-
-                for (int r = 0; r < RAY_COUNT; r++) {
-                    double angle = 2.0 * Math.PI * r / RAY_COUNT;
-                    double dxCos = Math.cos(angle);
-                    double dySin = Math.sin(angle);
-
-                    float lastU = (float) (cx / width);
-                    float lastV = (float) (cy / height);
-                    boolean foundBoundary = false;
-
-                    for (double d = 0.5; d < maxDist; d += 0.5) {
-                        int px = (int) (cx + dxCos * d);
-                        int py = (int) (cy + dySin * d);
-
-                        if (px < 0 || px >= width || py < 0 || py >= height) break;
-
-                        int pixel = image.getPixelRGBA(px, py);
-                        int alpha = (pixel >> 24) & 0xFF;
-                        if (alpha > ALPHA_THRESHOLD) {
-                            lastU = (float) px / width;
-                            lastV = (float) py / height;
-                            foundBoundary = true;
-                        } else {
-                            break;
-                        }
-                    }
-
-                    if (foundBoundary) {
-                        rawOutline[validRays][0] = lastU;
-                        rawOutline[validRays][1] = lastV;
-                        validRays++;
-                    }
-                }
-
-                if (validRays < 3) { outlineInitFailed = true; return; }
-
-                outlinePointCount = validRays;
-                outlineUVs = new float[validRays * 2];
-                outlineDu = new float[validRays];
-                outlineDv = new float[validRays];
-
-                for (int i = 0; i < validRays; i++) {
-                    float u = rawOutline[i][0];
-                    float v = rawOutline[i][1];
-                    outlineUVs[i * 2] = u;
-                    outlineUVs[i * 2 + 1] = v;
-                    outlineDu[i] = 2 * u - 1;
-                    outlineDv[i] = 1 - 2 * v;
-                }
-
-                outlineCenterU = (float) (cx / width);
-                outlineCenterV = (float) (cy / height);
-                centerDu = 2 * outlineCenterU - 1;
-                centerDv = 1 - 2 * outlineCenterV;
-
-                outlineInitialized = true;
-            }
-        } catch (Exception e) {
-            outlineInitFailed = true;
+    /** 三个 Pass 共用：视角旋转矩阵 / 动画时间 / 形象 */
+    private static void setCommonUniforms(ShaderInstance shader, Matrix4f viewRot, float gemTime, float styleUniform) {
+        Uniform u;
+        if ((u = shader.getUniform("ViewRot")) != null) {
+            u.set(viewRot);
+        }
+        if ((u = shader.getUniform("GemTime")) != null) {
+            u.set(gemTime);
+        }
+        if ((u = shader.getUniform("StyleMode")) != null) {
+            u.set(styleUniform);
         }
     }
 
-    /**
-     * 渲染3D棱柱粒子
-     * @param viewDirX 从粒子中心指向摄像机的方向向量（世界空间，归一化）
-     * @param viewDirY
-     * @param viewDirZ
-     */
-    private static void renderPrism(BufferBuilder buf, Matrix4f matrix, ParticleGeo geo,
-                                     float viewDirX, float viewDirY, float viewDirZ) {
-        int n = outlinePointCount;
-        buf.begin(VertexFormat.Mode.TRIANGLES, DefaultVertexFormat.POSITION_TEX_COLOR);
-
-        float alpha = geo.alpha;
-        float nFx = packNormal(geo.dirX), nFy = packNormal(geo.dirY), nFz = packNormal(geo.dirZ);
-        float nBx = packNormal(-geo.dirX), nBy = packNormal(-geo.dirY), nBz = packNormal(-geo.dirZ);
-
-        // 方向向量 dot 视线方向：>0 表示正面朝向摄像机，<0 表示背面朝向摄像机
-        float facingDot = geo.dirX * viewDirX + geo.dirY * viewDirY + geo.dirZ * viewDirZ;
-        boolean renderFront = facingDot > 0;
-        boolean renderBack = facingDot < 0;
-
-        float fcx = geo.fcx, fcy = geo.fcy, fcz = geo.fcz;
-
-        // 仅渲染朝向摄像机的面，避免正反面重叠导致亮度累加过曝
-        if (renderFront) {
-            for (int i = 0; i < n; i++) {
-                int next = (i + 1) % n;
-                buf.vertex(matrix, fcx, fcy, fcz).uv(outlineCenterU, outlineCenterV).color(nFx, nFy, nFz, alpha).endVertex();
-
-                float px0 = fcx + outlineDu[i] * geo.size * geo.rightX + outlineDv[i] * geo.size * geo.upX;
-                float py0 = fcy + outlineDu[i] * geo.size * geo.rightY + outlineDv[i] * geo.size * geo.upY;
-                float pz0 = fcz + outlineDu[i] * geo.size * geo.rightZ + outlineDv[i] * geo.size * geo.upZ;
-                buf.vertex(matrix, px0, py0, pz0).uv(outlineUVs[i * 2], outlineUVs[i * 2 + 1]).color(nFx, nFy, nFz, alpha).endVertex();
-
-                float px1 = fcx + outlineDu[next] * geo.size * geo.rightX + outlineDv[next] * geo.size * geo.upX;
-                float py1 = fcy + outlineDu[next] * geo.size * geo.rightY + outlineDv[next] * geo.size * geo.upY;
-                float pz1 = fcz + outlineDu[next] * geo.size * geo.rightZ + outlineDv[next] * geo.size * geo.upZ;
-                buf.vertex(matrix, px1, py1, pz1).uv(outlineUVs[next * 2], outlineUVs[next * 2 + 1]).color(nFx, nFy, nFz, alpha).endVertex();
-            }
-        }
-
-        float bcx = geo.bcx, bcy = geo.bcy, bcz = geo.bcz;
-
-        if (renderBack) {
-            for (int i = 0; i < n; i++) {
-                int next = (i + 1) % n;
-                buf.vertex(matrix, bcx, bcy, bcz).uv(outlineCenterU, outlineCenterV).color(nBx, nBy, nBz, alpha).endVertex();
-
-                float px1 = bcx + outlineDu[next] * geo.size * geo.rightX + outlineDv[next] * geo.size * geo.upX;
-                float py1 = bcy + outlineDu[next] * geo.size * geo.rightY + outlineDv[next] * geo.size * geo.upY;
-                float pz1 = bcz + outlineDu[next] * geo.size * geo.rightZ + outlineDv[next] * geo.size * geo.upZ;
-                buf.vertex(matrix, px1, py1, pz1).uv(outlineUVs[next * 2], outlineUVs[next * 2 + 1]).color(nBx, nBy, nBz, alpha).endVertex();
-
-                float px0 = bcx + outlineDu[i] * geo.size * geo.rightX + outlineDv[i] * geo.size * geo.upX;
-                float py0 = bcy + outlineDu[i] * geo.size * geo.rightY + outlineDv[i] * geo.size * geo.upY;
-                float pz0 = bcz + outlineDu[i] * geo.size * geo.rightZ + outlineDv[i] * geo.size * geo.upZ;
-                buf.vertex(matrix, px0, py0, pz0).uv(outlineUVs[i * 2], outlineUVs[i * 2 + 1]).color(nBx, nBy, nBz, alpha).endVertex();
-            }
-        }
-
-        // === 侧面：每条轮廓边一个四边形（两个三角形）===
-        // 仅渲染朝向摄像机的侧面，避免侧面与正面/背面重叠
-        for (int i = 0; i < n; i++) {
-            int next = (i + 1) % n;
-
-            // 计算此侧面的法线 = cross(edgeDir, dir)
-            float edgeDu = outlineDu[next] - outlineDu[i];
-            float edgeDv = outlineDv[next] - outlineDv[i];
-            float eX = edgeDu * geo.rightX + edgeDv * geo.upX;
-            float eY = edgeDu * geo.rightY + edgeDv * geo.upY;
-            float eZ = edgeDu * geo.rightZ + edgeDv * geo.upZ;
-
-            float sX = eY * geo.dirZ - eZ * geo.dirY;
-            float sY = eZ * geo.dirX - eX * geo.dirZ;
-            float sZ = eX * geo.dirY - eY * geo.dirX;
-            float sLen = (float) Math.sqrt(sX * sX + sY * sY + sZ * sZ);
-            if (sLen > 0.0001f) { sX /= sLen; sY /= sLen; sZ /= sLen; }
-
-            // 确保法线朝外（从棱柱中心指向侧面中点方向）
-            float midDu = (outlineDu[i] + outlineDu[next]) * 0.5F;
-            float midDv = (outlineDv[i] + outlineDv[next]) * 0.5F;
-            float oX = midDu * geo.rightX + midDv * geo.upX;
-            float oY = midDu * geo.rightY + midDv * geo.upY;
-            float oZ = midDu * geo.rightZ + midDv * geo.upZ;
-            if (sX * oX + sY * oY + sZ * oZ < 0) { sX = -sX; sY = -sY; sZ = -sZ; }
-
-            // 侧面剔除：仅渲染法线朝向摄像机的侧面
-            float sideFacingDot = sX * viewDirX + sY * viewDirY + sZ * viewDirZ;
-            if (sideFacingDot <= 0) continue;
-
-            float nSx = packNormal(sX), nSy = packNormal(sY), nSz = packNormal(sZ);
-
-            // 正面顶点
-            float fpx0 = fcx + outlineDu[i] * geo.size * geo.rightX + outlineDv[i] * geo.size * geo.upX;
-            float fpy0 = fcy + outlineDu[i] * geo.size * geo.rightY + outlineDv[i] * geo.size * geo.upY;
-            float fpz0 = fcz + outlineDu[i] * geo.size * geo.rightZ + outlineDv[i] * geo.size * geo.upZ;
-            float fpx1 = fcx + outlineDu[next] * geo.size * geo.rightX + outlineDv[next] * geo.size * geo.upX;
-            float fpy1 = fcy + outlineDu[next] * geo.size * geo.rightY + outlineDv[next] * geo.size * geo.upY;
-            float fpz1 = fcz + outlineDu[next] * geo.size * geo.rightZ + outlineDv[next] * geo.size * geo.upZ;
-            // 背面顶点
-            float bpx0 = bcx + outlineDu[i] * geo.size * geo.rightX + outlineDv[i] * geo.size * geo.upX;
-            float bpy0 = bcy + outlineDu[i] * geo.size * geo.rightY + outlineDv[i] * geo.size * geo.upY;
-            float bpz0 = bcz + outlineDu[i] * geo.size * geo.rightZ + outlineDv[i] * geo.size * geo.upZ;
-            float bpx1 = bcx + outlineDu[next] * geo.size * geo.rightX + outlineDv[next] * geo.size * geo.upX;
-            float bpy1 = bcy + outlineDu[next] * geo.size * geo.rightY + outlineDv[next] * geo.size * geo.upY;
-            float bpz1 = bcz + outlineDu[next] * geo.size * geo.rightZ + outlineDv[next] * geo.size * geo.upZ;
-
-            float u0 = outlineUVs[i * 2], v0 = outlineUVs[i * 2 + 1];
-            float u1 = outlineUVs[next * 2], v1 = outlineUVs[next * 2 + 1];
-
-            // 三角形 1: front[i], front[next], back[i]
-            buf.vertex(matrix, fpx0, fpy0, fpz0).uv(u0, v0).color(nSx, nSy, nSz, alpha).endVertex();
-            buf.vertex(matrix, fpx1, fpy1, fpz1).uv(u1, v1).color(nSx, nSy, nSz, alpha).endVertex();
-            buf.vertex(matrix, bpx0, bpy0, bpz0).uv(u0, v0).color(nSx, nSy, nSz, alpha).endVertex();
-            // 三角形 2: front[next], back[next], back[i]
-            buf.vertex(matrix, fpx1, fpy1, fpz1).uv(u1, v1).color(nSx, nSy, nSz, alpha).endVertex();
-            buf.vertex(matrix, bpx1, bpy1, bpz1).uv(u1, v1).color(nSx, nSy, nSz, alpha).endVertex();
-            buf.vertex(matrix, bpx0, bpy0, bpz0).uv(u0, v0).color(nSx, nSy, nSz, alpha).endVertex();
+    private static void setPassMode(ShaderInstance shader, float mode) {
+        Uniform u = shader.getUniform("PassMode");
+        if (u != null) {
+            u.set(mode);
         }
     }
 
-    /**
-     * 粒子几何数据
-     */
-    private static class ParticleGeo {
-        // 正面中心
-        float fcx, fcy, fcz;
-        // 背面中心
-        float bcx, bcy, bcz;
-        // 方向向量（正面法线）
-        float dirX, dirY, dirZ;
-        // 右向量和上向量（定义面平面）
-        float rightX, rightY, rightZ;
-        float upX, upY, upZ;
-        // 粒子尺寸
-        float size;
-        // 透明度
-        float alpha;
+    /** 按形象选网格：0 = 新（14 面水晶），1 = 旧版立体宝石 */
+    private static void emitShard(int style, BufferBuilder buffer, Matrix4f matrix, Pose pose) {
+        if (style >= 1) {
+            ShieldShardMeshLegacy.buildShard(buffer, matrix, pose.x, pose.y, pose.z,
+                    pose.right, pose.up, pose.dir,
+                    pose.size, pose.alpha, pose.seedA, pose.seedB, pose.heightT,
+                    pose.viewX, pose.viewY, pose.viewZ);
+        } else {
+            ShieldShardMesh.buildShard(buffer, matrix, pose.x, pose.y, pose.z,
+                    pose.right, pose.up, pose.dir,
+                    pose.size, pose.alpha, pose.seedA, pose.seedB, pose.heightT,
+                    pose.viewX, pose.viewY, pose.viewZ);
+        }
+    }
+
+    private static float animationTime(Minecraft mc, float partialTicks) {
+        long gameTime = mc.level != null ? mc.level.getGameTime() : 0L;
+        float seconds = (gameTime + partialTicks) * 0.05F;
+        return seconds % 1200.0F;
+    }
+
+    /** 每颗粒子的几何/动画状态 */
+    private static final class Pose {
+        float x, y, z;
+        float viewX, viewY, viewZ;
+        final Vector3f right = new Vector3f();
+        final Vector3f up = new Vector3f();
+        final Vector3f dir = new Vector3f();
+        float size, alpha, heightT, seedA, seedB;
+        /** 到摄像机的距离平方，用于由远到近排序 */
+        float distSq;
     }
 
     /**
-     * 计算粒子的3D棱柱几何
+     * 计算粒子当前的姿态：位置、六边形平面基向量、尺寸与透明度。
      */
-    private static ParticleGeo computeGeometry(ShieldParticleData particle, Entity entity, float partialTicks) {
-        ParticleGeo geo = new ParticleGeo();
+    private static boolean computePose(ShieldParticleData particle, Entity entity, float partialTicks,
+                                       Vec3 cameraPos, Vector3f camUp, Vector3f camForward, Pose out) {
+        float age = particle.age + partialTicks;
+        float lifeT = age / particle.lifetime;
+        if (lifeT >= 1.0F) {
+            return false;
+        }
+        if (lifeT < 0.0F) {
+            lifeT = 0.0F;
+        }
+
+        // 弹出曲线：easeOutBack
+        float appear = Math.min(1.0F, lifeT / 0.14F);
+        float a1 = appear - 1.0F;
+        float c1 = POP_OVERSHOOT;
+        float c3 = c1 + 1.0F;
+        float pop = 1.0F + c3 * a1 * a1 * a1 + c1 * a1 * a1;
+        if (pop < 0.0F) {
+            pop = 0.0F;
+        }
+
+        // 透明度：出现 / 消散 / 让位，统一走 particleAlpha（三套形象共用）
+        out.alpha = particleAlpha(particle, partialTicks);
+        if (out.alpha <= 0.004F) {
+            return false;
+        }
+
+        float sizeJitter = 0.92F + particle.seedB * 0.16F;
+        out.size = SHARD_MAX_SIZE * pop * sizeJitter;
+        out.seedA = particle.seedA;
+        out.seedB = particle.seedB;
+        // 三渲二水晶的垂直色带：粒子生成在半径 1 的球面上，offsetY 就是它的"海拔"。
+        float altitude = 0.5F + 0.5F * (float) particle.offsetY;
+        out.heightT = altitude < 0.0F ? 0.0F : (altitude > 1.0F ? 1.0F : altitude);
 
         double entityX = entity.xOld + (entity.getX() - entity.xOld) * partialTicks;
         double entityY = entity.yOld + (entity.getY() - entity.yOld) * partialTicks;
         double entityZ = entity.zOld + (entity.getZ() - entity.zOld) * partialTicks;
 
-        double originX = entityX + particle.originOffsetX;
-        double originY = entityY + particle.originOffsetY;
-        double originZ = entityZ + particle.originOffsetZ;
+        out.x = (float) (entityX + particle.originOffsetX + particle.offsetX);
+        out.y = (float) (entityY + particle.originOffsetY + particle.offsetY);
+        out.z = (float) (entityZ + particle.originOffsetZ + particle.offsetZ);
 
-        double px = originX + particle.offsetX;
-        double py = originY + particle.offsetY;
-        double pz = originZ + particle.offsetZ;
+        // 指向摄像机的方向（用于正反面/侧面剔除）
+        float vx = (float) (cameraPos.x - out.x);
+        float vy = (float) (cameraPos.y - out.y);
+        float vz = (float) (cameraPos.z - out.z);
+        float vlen = (float) Math.sqrt(vx * vx + vy * vy + vz * vz);
+        if (vlen > 1.0E-4F) {
+            out.viewX = vx / vlen;
+            out.viewY = vy / vlen;
+            out.viewZ = vz / vlen;
+        } else {
+            out.viewX = 0.0F;
+            out.viewY = 0.0F;
+            out.viewZ = 1.0F;
+        }
 
-        geo.size = calculateSize(particle.age);
-        geo.alpha = calculateAlpha(particle.age);
-
-        // 粒子到球心方向（归一化，作为正面法线）
-        float dirX = (float) (originX - px);
-        float dirY = (float) (originY - py);
-        float dirZ = (float) (originZ - pz);
-        float length = (float) Math.sqrt(dirX * dirX + dirY * dirY + dirZ * dirZ);
-        if (length > 0) { dirX /= length; dirY /= length; dirZ /= length; }
-        geo.dirX = dirX; geo.dirY = dirY; geo.dirZ = dirZ;
-
-        // 计算 right 和 up 向量
-        float dx = (float) (px - originX);
-        float dy = (float) (py - originY);
-        float dz = (float) (pz - originZ);
+        // 球面法线（粒子指向球心方向的反向），与旧版一致
+        float dx = (float) (particle.offsetX);
+        float dy = (float) (particle.offsetY);
+        float dz = (float) (particle.offsetZ);
         float r = (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
+        float dirX, dirY, dirZ;
+        if (r > 1.0E-4F) {
+            dirX = dx / r;
+            dirY = dy / r;
+            dirZ = dz / r;
+        } else {
+            dirX = 0.0F;
+            dirY = 1.0F;
+            dirZ = 0.0F;
+        }
+        // 球面排列：法线 = 粒子相对球心的方向
+        out.dir.set(dirX, dirY, dirZ);
 
-        if (r > 0.0001f) {
-            float theta = (float) Math.acos(Math.max(-1.0, Math.min(1.0, dy / r)));
-            float phi = (float) Math.atan2(dz, dx);
+        // ---- 面内基向量：恢复 git 原版的球面公式 ----
+        Vector3f dir = new Vector3f(dirX, dirY, dirZ);
+        out.dir.set(dirX, dirY, dirZ);
+        float upX, upY, upZ;
+
+        if (r > 1.0E-4F) {
+            float theta = (float) Math.acos(Math.max(-1.0, Math.min(1.0, dirY)));
+            float phi = (float) Math.atan2(dirZ, dirX);
             float sinTheta = (float) Math.sin(theta);
             float cosTheta = (float) Math.cos(theta);
             float sinPhi = (float) Math.sin(phi);
             float cosPhi = (float) Math.cos(phi);
 
-            geo.rightX = -sinPhi; geo.rightY = 0; geo.rightZ = cosPhi;
-            geo.upX = -cosTheta * cosPhi; geo.upY = sinTheta; geo.upZ = -cosTheta * sinPhi;
+            upX = -cosTheta * cosPhi;
+            upY = sinTheta;
+            upZ = -cosTheta * sinPhi;
 
-            if (sinTheta < 0.01f) {
-                float hDirX = dirX, hDirZ = dirZ;
-                float hLen = (float) Math.sqrt(hDirX * hDirX + hDirZ * hDirZ);
-                if (hLen > 0.001f) {
-                    geo.upX = hDirX / hLen; geo.upY = 0; geo.upZ = hDirZ / hLen;
-                    geo.rightX = -geo.upZ; geo.rightY = 0; geo.rightZ = geo.upX;
-                }
+            // ---- 极点：整段用同一个常量朝向，什么都不依赖 ----
+            if (sinTheta < POLE_SIN_THETA) {
+                upX = 0.0F;
+                upY = 0.0F;
+                upZ = 1.0F;
             }
         } else {
-            geo.rightX = 1; geo.rightY = 0; geo.rightZ = 0;
-            geo.upX = 0; geo.upY = 1; geo.upZ = 0;
+            // dir 退化：固定朝向
+            upX = 0.0F;
+            upY = 0.0F;
+            upZ = 1.0F;
         }
 
-        // 正面中心
-        geo.fcx = (float) px + dirX * THICKNESS_HALF;
-        geo.fcy = (float) py + dirY * THICKNESS_HALF;
-        geo.fcz = (float) pz + dirZ * THICKNESS_HALF;
-        // 背面中心
-        geo.bcx = (float) px - dirX * THICKNESS_HALF;
-        geo.bcy = (float) py - dirY * THICKNESS_HALF;
-        geo.bcz = (float) pz - dirZ * THICKNESS_HALF;
+        Vector3f up = new Vector3f(upX, upY, upZ);
+        up.fma(-dir.dot(up), dir);                          // 严格垂直于法线
+        if (up.lengthSquared() < 1.0E-6F) {
+            up.set(0.0F, 0.0F, 1.0F);
+            up.fma(-dir.dot(up), dir);
+        }
+        up.normalize();
 
-        return geo;
+        out.up.set(up);
+        dir.cross(up, out.right);
+        out.right.normalize();
+        return true;
+    }
+
+    private static float smoothstep(float t) {
+        float x = t < 0.0F ? 0.0F : (t > 1.0F ? 1.0F : t);
+        return x * x * (3.0F - 2.0F * x);
     }
 
     private static float calculateAlpha(int age) {

@@ -1,6 +1,7 @@
 package com.gy_mod.gy_trinket.core.entity.construct.wingman;
 
 import com.gy_mod.gy_trinket.config.Config;
+import com.gy_mod.gy_trinket.core.defs.MechanicValueDefs;
 import com.gy_mod.gy_trinket.core.defs.DefsManager;
 import net.minecraft.server.MinecraftServer;
 
@@ -62,8 +63,8 @@ public final class WingmanInstanceParams {
     private static double fallbackFor(String paramKey) {
         return switch (paramKey) {
             case KEY_BUILD_TIME -> DEFAULT_BUILD_TIME;
-            case KEY_BASE_HEALTH -> Config.getWingmanBaseHealth();
-            case KEY_BASE_DAMAGE -> Config.getWingmanExplosiveDamage();
+            case KEY_BASE_HEALTH -> MechanicValueDefs.defaultValueOf("wingman_module_items", "base_health", 24);
+            case KEY_BASE_DAMAGE -> MechanicValueDefs.defaultValueOf("wingman_module_items", "base_damage", 0.5);
             case KEY_BASE_COUNT -> Config.getWingmanMaxCount();
             case KEY_ATTACK_INTERVAL -> 0.0D;
             case KEY_ATTACK_RANGE -> 0.0D;

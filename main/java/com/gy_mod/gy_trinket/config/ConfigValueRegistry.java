@@ -38,9 +38,11 @@ public final class ConfigValueRegistry {
         public final boolean bool;
         /** 客户端专属项（ClientConfig，不参与服务端同步，客户端修改后直接落盘） */
         public final boolean clientOnly;
+        /** 多选一选项数（0 = 普通数值，点击打开数值编辑框；>0 = 点击在 0..choices-1 之间循环） */
+        public final int choices;
 
         Entry(String id, int group, DoubleSupplier getter, DoubleConsumer applier,
-              double min, double max, boolean bool, boolean clientOnly) {
+              double min, double max, boolean bool, boolean clientOnly, int choices) {
             this.id = id;
             this.group = group;
             this.getter = getter;
@@ -49,6 +51,7 @@ public final class ConfigValueRegistry {
             this.max = max;
             this.bool = bool;
             this.clientOnly = clientOnly;
+            this.choices = choices;
         }
 
         public double clamp(double v) {
@@ -68,23 +71,28 @@ public final class ConfigValueRegistry {
 
     /** 注册服务端 double 配置项 */
     private static void d(String id, int group, DoubleSupplier getter, DoubleConsumer applier, double min, double max) {
-        add(new Entry(id, group, getter, applier, min, max, false, false));
+        add(new Entry(id, group, getter, applier, min, max, false, false, 0));
     }
 
     /** 注册服务端 int 配置项 */
     private static void i(String id, int group, DoubleSupplier getter, DoubleConsumer applier, int min, int max) {
-        add(new Entry(id, group, getter, applier, min, max, false, false));
+        add(new Entry(id, group, getter, applier, min, max, false, false, 0));
     }
 
     /** 注册服务端 boolean 配置项 */
     private static void b(String id, int group, DoubleSupplier getter, DoubleConsumer applier) {
-        add(new Entry(id, group, getter, applier, 0, 1, true, false));
+        add(new Entry(id, group, getter, applier, 0, 1, true, false, 0));
     }
 
     /** 注册客户端专属配置项 */
     private static void c(String id, int group, DoubleSupplier getter, DoubleConsumer applier,
                           double min, double max, boolean bool) {
-        add(new Entry(id, group, getter, applier, min, max, bool, true));
+        add(new Entry(id, group, getter, applier, min, max, bool, true, 0));
+    }
+
+    /** 注册客户端专属的「多选一」配置项：界面点击在 0..choices-1 之间循环 */
+    private static void ce(String id, int group, DoubleSupplier getter, DoubleConsumer applier, int choices) {
+        add(new Entry(id, group, getter, applier, 0, choices - 1, false, true, choices));
     }
 
     public static List<Entry> entries() {
@@ -134,59 +142,25 @@ public final class ConfigValueRegistry {
         b("random_build.tokenEnabled", GROUP_MECHANICS, () -> Config.RANDOM_BUILD_TOKEN_ENABLED.get() ? 1.0 : 0.0, v -> Config.RANDOM_BUILD_TOKEN_ENABLED.set(v != 0.0));
 
         // 光环护盾
-        d("aura_shield.auraRadius", GROUP_MECHANICS, () -> Config.AURA_RADIUS.get(), v -> Config.AURA_RADIUS.set(v), 0.0, 100.0);
-        d("aura_shield.auraDamage", GROUP_MECHANICS, () -> Config.AURA_DAMAGE.get(), v -> Config.AURA_DAMAGE.set(v), 0.0, 100.0);
-        i("aura_shield.auraTriggerFrequency", GROUP_MECHANICS, () -> Config.AURA_TRIGGER_FREQUENCY.get(), v -> Config.AURA_TRIGGER_FREQUENCY.set((int) Math.round(v)), 1, 200);
-        d("aura_shield.auraShieldCost", GROUP_MECHANICS, () -> Config.AURA_SHIELD_COST.get(), v -> Config.AURA_SHIELD_COST.set(v), 0.0, 10.0);
 
         // 虹吸护盾
-        d("siphon_shield.siphonRadius", GROUP_MECHANICS, () -> Config.SIPHON_RADIUS.get(), v -> Config.SIPHON_RADIUS.set(v), 0.0, 100.0);
-        d("siphon_shield.siphonDamage", GROUP_MECHANICS, () -> Config.SIPHON_DAMAGE.get(), v -> Config.SIPHON_DAMAGE.set(v), 0.0, 100.0);
-        i("siphon_shield.siphonTickInterval", GROUP_MECHANICS, () -> Config.SIPHON_TICK_INTERVAL.get(), v -> Config.SIPHON_TICK_INTERVAL.set((int) Math.round(v)), 1, 200);
-        d("siphon_shield.siphonHealRatio", GROUP_MECHANICS, () -> Config.SIPHON_HEAL_RATIO.get(), v -> Config.SIPHON_HEAL_RATIO.set(v), 0.0, 1.0);
-        i("siphon_shield.siphonDurationTicks", GROUP_MECHANICS, () -> Config.SIPHON_DURATION_TICKS.get(), v -> Config.SIPHON_DURATION_TICKS.set((int) Math.round(v)), 1, 200);
-        d("siphon_shield.siphonEffectPerStack", GROUP_MECHANICS, () -> Config.SIPHON_EFFECT_PER_STACK.get(), v -> Config.SIPHON_EFFECT_PER_STACK.set(v), 0.001, 1.0);
-        d("siphon_shield.siphonMaxEffect", GROUP_MECHANICS, () -> Config.SIPHON_MAX_EFFECT.get(), v -> Config.SIPHON_MAX_EFFECT.set(v), 0.01, 1.0);
-        d("siphon_shield.siphonDecayRatio", GROUP_MECHANICS, () -> Config.SIPHON_DECAY_RATIO.get(), v -> Config.SIPHON_DECAY_RATIO.set(v), 0.0, 1.0);
 
         // 反射护盾
-        d("reflect_shield.reflectRadius", GROUP_MECHANICS, () -> Config.REFLECT_RADIUS.get(), v -> Config.REFLECT_RADIUS.set(v), 0.0, 100.0);
-        d("reflect_shield.reflectSpeedBaseModifier", GROUP_MECHANICS, () -> Config.REFLECT_SPEED_BASE_MODIFIER.get(), v -> Config.REFLECT_SPEED_BASE_MODIFIER.set(v), 0.0, 10.0);
-        d("reflect_shield.reflectSpeedExtraModifier", GROUP_MECHANICS, () -> Config.REFLECT_SPEED_EXTRA_MODIFIER.get(), v -> Config.REFLECT_SPEED_EXTRA_MODIFIER.set(v), 0.0, 10.0);
-        d("reflect_shield.reflectDamageEffectMultiplier", GROUP_MECHANICS, () -> Config.REFLECT_DAMAGE_EFFECT_MULTIPLIER.get(), v -> Config.REFLECT_DAMAGE_EFFECT_MULTIPLIER.set(v), 0.0, 10.0);
 
         // 增幅护盾
-        d("amplification_shield.amplificationBaseAmplification", GROUP_MECHANICS, () -> Config.AMPLIFICATION_BASE_AMPLIFICATION.get(), v -> Config.AMPLIFICATION_BASE_AMPLIFICATION.set(v), 0.0, 2.0);
-        d("amplification_shield.amplificationThreatAmplification", GROUP_MECHANICS, () -> Config.AMPLIFICATION_THREAT_AMPLIFICATION.get(), v -> Config.AMPLIFICATION_THREAT_AMPLIFICATION.set(v), 0.0, 1.0);
-        d("amplification_shield.amplificationHealthAmplificationPerPoint", GROUP_MECHANICS, () -> Config.AMPLIFICATION_HEALTH_AMPLIFICATION_PER_POINT.get(), v -> Config.AMPLIFICATION_HEALTH_AMPLIFICATION_PER_POINT.set(v), 0.0, 0.1);
-        d("amplification_shield.amplificationCheckRadius", GROUP_MECHANICS, () -> Config.AMPLIFICATION_CHECK_RADIUS.get(), v -> Config.AMPLIFICATION_CHECK_RADIUS.set(v), 1.0, 20.0);
-        d("amplification_shield.amplificationMaxAmplification", GROUP_MECHANICS, () -> Config.AMPLIFICATION_MAX_AMPLIFICATION.get(), v -> Config.AMPLIFICATION_MAX_AMPLIFICATION.set(v), 0.0, 3.0);
-        d("amplification_shield.amplificationMovementSpeedBonus", GROUP_MECHANICS, () -> Config.AMPLIFICATION_MOVEMENT_SPEED_BONUS.get(), v -> Config.AMPLIFICATION_MOVEMENT_SPEED_BONUS.set(v), 0.0, 2.0);
 
         // 跃传护盾
-        i("warp_shield.warpShieldInvincibleDuration", GROUP_MECHANICS, () -> Config.WARP_SHIELD_INVINCIBLE_DURATION.get(), v -> Config.WARP_SHIELD_INVINCIBLE_DURATION.set((int) Math.round(v)), 1, 100);
-        d("warp_shield.warpShieldExplosionDamage", GROUP_MECHANICS, () -> Config.WARP_SHIELD_EXPLOSION_DAMAGE.get(), v -> Config.WARP_SHIELD_EXPLOSION_DAMAGE.set(v), 0.0, 100.0);
-        d("warp_shield.warpShieldExplosionRadius", GROUP_MECHANICS, () -> Config.WARP_SHIELD_EXPLOSION_RADIUS.get(), v -> Config.WARP_SHIELD_EXPLOSION_RADIUS.set(v), 1.0, 20.0);
-        d("warp_shield.warpShieldWarpDistance", GROUP_MECHANICS, () -> Config.WARP_SHIELD_WARP_DISTANCE.get(), v -> Config.WARP_SHIELD_WARP_DISTANCE.set(v), 1.0, 20.0);
 
         // 屏障
-        d("barrier.barrierMaxDamage", GROUP_MECHANICS, () -> Config.BARRIER_MAX_DAMAGE.get(), v -> Config.BARRIER_MAX_DAMAGE.set(v), 0.0, 1000.0);
 
         // 反射护盾伤害处理器
-        d("reflect_damage.reflectDamageBaseDamage", GROUP_MECHANICS, () -> Config.REFLECT_DAMAGE_BASE_DAMAGE.get(), v -> Config.REFLECT_DAMAGE_BASE_DAMAGE.set(v), 0.0, 10.0);
-        d("reflect_damage.reflectDamageRayLength", GROUP_MECHANICS, () -> Config.REFLECT_DAMAGE_RAY_LENGTH.get(), v -> Config.REFLECT_DAMAGE_RAY_LENGTH.set(v), 1.0, 20.0);
 
         // 易爆护盾
-        d("explosive_shield.explosiveShieldDamage", GROUP_MECHANICS, () -> Config.EXPLOSIVE_SHIELD_DAMAGE.get(), v -> Config.EXPLOSIVE_SHIELD_DAMAGE.set(v), 0.0, 100.0);
-        d("explosive_shield.explosiveShieldRadius", GROUP_MECHANICS, () -> Config.EXPLOSIVE_SHIELD_RADIUS.get(), v -> Config.EXPLOSIVE_SHIELD_RADIUS.set(v), 0.0, 10.0);
 
         // 电能释放
-        d("electric_discharge.electricDischargeBurnCharge", GROUP_MECHANICS, () -> Config.ELECTRIC_DISCHARGE_BURN_CHARGE.get(), v -> Config.ELECTRIC_DISCHARGE_BURN_CHARGE.set(v), 0.1, 10.0);
         i("electric_discharge.electricDischargeBurnDuration", GROUP_MECHANICS, () -> Config.ELECTRIC_DISCHARGE_BURN_DURATION.get(), v -> Config.ELECTRIC_DISCHARGE_BURN_DURATION.set((int) Math.round(v)), 1, 200);
 
         // 武器化护盾
-        d("weaponized_shield.weaponizedShieldVulnerability", GROUP_MECHANICS, () -> Config.WEAPONIZED_SHIELD_VULNERABILITY.get(), v -> Config.WEAPONIZED_SHIELD_VULNERABILITY.set(v), 0.0, 10.0);
-        d("weaponized_shield.weaponizedShieldRadius", GROUP_MECHANICS, () -> Config.WEAPONIZED_SHIELD_RADIUS.get(), v -> Config.WEAPONIZED_SHIELD_RADIUS.set(v), 1.0, 20.0);
 
         // 镀层
         d("coating_system.coatingReductionPerLayer", GROUP_MECHANICS, () -> Config.COATING_REDUCTION_PER_LAYER.get(), v -> Config.COATING_REDUCTION_PER_LAYER.set(v), 0.0, 10.0);
@@ -200,9 +174,6 @@ public final class ConfigValueRegistry {
         d("arc_barrier.positionDeviationThreshold", GROUP_MECHANICS, () -> Config.ARC_BARRIER_POSITION_DEVIATION_THRESHOLD.get(), v -> Config.ARC_BARRIER_POSITION_DEVIATION_THRESHOLD.set(v), 0.5, 10.0);
 
         // 反制脉冲
-        i("counter_pulse.cooldown", GROUP_MECHANICS, () -> Config.COUNTER_PULSE_COOLDOWN.get(), v -> Config.COUNTER_PULSE_COOLDOWN.set((int) Math.round(v)), 20, 600);
-        d("counter_pulse.baseExplosionRadius", GROUP_MECHANICS, () -> Config.COUNTER_PULSE_BASE_EXPLOSION_RADIUS.get(), v -> Config.COUNTER_PULSE_BASE_EXPLOSION_RADIUS.set(v), 0.5, 10.0);
-        d("counter_pulse.baseExplosionDamage", GROUP_MECHANICS, () -> Config.COUNTER_PULSE_BASE_EXPLOSION_DAMAGE.get(), v -> Config.COUNTER_PULSE_BASE_EXPLOSION_DAMAGE.set(v), 0.1, 100.0);
         i("counter_pulse.chargeInterval", GROUP_MECHANICS, () -> Config.COUNTER_PULSE_CHARGE_INTERVAL.get(), v -> Config.COUNTER_PULSE_CHARGE_INTERVAL.set((int) Math.round(v)), 1, 100);
         i("counter_pulse.maxChargeLevel", GROUP_MECHANICS, () -> Config.COUNTER_PULSE_MAX_CHARGE_LEVEL.get(), v -> Config.COUNTER_PULSE_MAX_CHARGE_LEVEL.set((int) Math.round(v)), 10, 10000);
 
@@ -212,39 +183,18 @@ public final class ConfigValueRegistry {
         i("reshaping.damageReductionDuration", GROUP_MECHANICS, () -> Config.RESHAPING_DAMAGE_REDUCTION_DURATION.get(), v -> Config.RESHAPING_DAMAGE_REDUCTION_DURATION.set((int) Math.round(v)), 20, 6000);
 
         // 自毁装置
-        d("self_destruct.selfDestructBaseDamage", GROUP_MECHANICS, () -> Config.SELF_DESTRUCT_BASE_DAMAGE.get(), v -> Config.SELF_DESTRUCT_BASE_DAMAGE.set(v), 0.0, 1000.0);
-        d("self_destruct.selfDestructBaseRadius", GROUP_MECHANICS, () -> Config.SELF_DESTRUCT_BASE_RADIUS.get(), v -> Config.SELF_DESTRUCT_BASE_RADIUS.set(v), 0.0, 100.0);
         d("self_destruct.selfDestructDamagePerMaxHealth", GROUP_MECHANICS, () -> Config.SELF_DESTRUCT_DAMAGE_PER_MAX_HEALTH.get(), v -> Config.SELF_DESTRUCT_DAMAGE_PER_MAX_HEALTH.set(v), 0.0, 100.0);
         d("self_destruct.selfDestructRadiusPerMaxHealth", GROUP_MECHANICS, () -> Config.SELF_DESTRUCT_RADIUS_PER_MAX_HEALTH.get(), v -> Config.SELF_DESTRUCT_RADIUS_PER_MAX_HEALTH.set(v), 0.0, 10.0);
 
         // 积怨
-        d("grudge.conversionRatio", GROUP_MECHANICS, () -> Config.GRUDGE_CONVERSION_RATIO.get(), v -> Config.GRUDGE_CONVERSION_RATIO.set(v), 0.001, 1.0);
-        d("grudge.fadeBase", GROUP_MECHANICS, () -> Config.GRUDGE_FADE_BASE.get(), v -> Config.GRUDGE_FADE_BASE.set(v), 0.0, 10.0);
-        d("grudge.fadePercent", GROUP_MECHANICS, () -> Config.GRUDGE_FADE_PERCENT.get(), v -> Config.GRUDGE_FADE_PERCENT.set(v), 0.0, 1.0);
-        d("grudge.movementSpeedPenalty", GROUP_MECHANICS, () -> Config.GRUDGE_MOVEMENT_SPEED_PENALTY.get(), v -> Config.GRUDGE_MOVEMENT_SPEED_PENALTY.set(v), -0.99, 0.0);
 
         // 幽灵机身
-        d("ghost_fuselage.stealthSpeedBonusPerLevel", GROUP_MECHANICS, () -> Config.GHOST_FUSELAGE_STEALTH_SPEED_BONUS_PER_LEVEL.get(), v -> Config.GHOST_FUSELAGE_STEALTH_SPEED_BONUS_PER_LEVEL.set(v), 0.0, 1.0);
-        d("ghost_fuselage.maxBonusPerLevel", GROUP_MECHANICS, () -> Config.GHOST_FUSELAGE_MAX_BONUS_PER_LEVEL.get(), v -> Config.GHOST_FUSELAGE_MAX_BONUS_PER_LEVEL.set(v), 0.0, 1.0);
-        d("ghost_fuselage.baseMaxDamageBonus", GROUP_MECHANICS, () -> Config.GHOST_FUSELAGE_BASE_MAX_DAMAGE_BONUS.get(), v -> Config.GHOST_FUSELAGE_BASE_MAX_DAMAGE_BONUS.set(v), 0.0, 100.0);
-        d("ghost_fuselage.moveSpeedThreshold", GROUP_MECHANICS, () -> Config.GHOST_FUSELAGE_MOVE_SPEED_THRESHOLD.get(), v -> Config.GHOST_FUSELAGE_MOVE_SPEED_THRESHOLD.set(v), 0.0, 10.0);
-        d("ghost_fuselage.moveSpeedReduction", GROUP_MECHANICS, () -> Config.GHOST_FUSELAGE_MOVE_SPEED_REDUCTION.get(), v -> Config.GHOST_FUSELAGE_MOVE_SPEED_REDUCTION.set(v), 0.0, 1.0);
-        d("ghost_fuselage.decayRate", GROUP_MECHANICS, () -> Config.GHOST_FUSELAGE_DECAY_RATE.get(), v -> Config.GHOST_FUSELAGE_DECAY_RATE.set(v), 0.01, 0.99);
-        d("ghost_fuselage.minDecay", GROUP_MECHANICS, () -> Config.GHOST_FUSELAGE_MIN_DECAY.get(), v -> Config.GHOST_FUSELAGE_MIN_DECAY.set(v), 0.0, 0.1);
         i("ghost_fuselage.fullStealthTicks", GROUP_MECHANICS, () -> Config.GHOST_FUSELAGE_FULL_STEALTH_TICKS.get(), v -> Config.GHOST_FUSELAGE_FULL_STEALTH_TICKS.set((int) Math.round(v)), 1, 600);
 
         // 充能护盾
-        d("charged_shield.chargeRatio", GROUP_MECHANICS, () -> Config.CHARGED_SHIELD_CHARGE_RATIO.get(), v -> Config.CHARGED_SHIELD_CHARGE_RATIO.set(v), 0.01, 1.0);
-        d("charged_shield.maxBonus", GROUP_MECHANICS, () -> Config.CHARGED_SHIELD_MAX_BONUS.get(), v -> Config.CHARGED_SHIELD_MAX_BONUS.set(v), 0.1, 5.0);
-        d("charged_shield.decayRate", GROUP_MECHANICS, () -> Config.CHARGED_SHIELD_DECAY_RATE.get(), v -> Config.CHARGED_SHIELD_DECAY_RATE.set(v), 0.005, 0.5);
-        d("charged_shield.movementSpeedPenalty", GROUP_MECHANICS, () -> Config.CHARGED_SHIELD_MOVEMENT_SPEED_PENALTY.get(), v -> Config.CHARGED_SHIELD_MOVEMENT_SPEED_PENALTY.set(v), -0.99, 0.0);
 
         // 强袭
-        d("assault.attackSpeedPerStack", GROUP_MECHANICS, () -> Config.ASSAULT_ATTACK_SPEED_PER_STACK.get(), v -> Config.ASSAULT_ATTACK_SPEED_PER_STACK.set(v), 0.01, 1.0);
         i("assault.durationTicks", GROUP_MECHANICS, () -> Config.ASSAULT_DURATION_TICKS.get(), v -> Config.ASSAULT_DURATION_TICKS.set((int) Math.round(v)), 10, 200);
-        d("assault.selfDamagePerStack", GROUP_MECHANICS, () -> Config.ASSAULT_SELF_DAMAGE_PER_STACK.get(), v -> Config.ASSAULT_SELF_DAMAGE_PER_STACK.set(v), 0.01, 10.0);
-        d("assault.movementSpeedPenalty", GROUP_MECHANICS, () -> Config.ASSAULT_MOVEMENT_SPEED_PENALTY.get(), v -> Config.ASSAULT_MOVEMENT_SPEED_PENALTY.set(v), -0.99, 0.0);
-        d("assault.overflowDamageEfficiency", GROUP_MECHANICS, () -> Config.ASSAULT_OVERFLOW_DAMAGE_EFFICIENCY.get(), v -> Config.ASSAULT_OVERFLOW_DAMAGE_EFFICIENCY.set(v), 0.0, 1.0);
 
         // 远征
         d("journey.attackSpeedPerStack", GROUP_MECHANICS, () -> Config.JOURNEY_ATTACK_SPEED_PER_STACK.get(), v -> Config.JOURNEY_ATTACK_SPEED_PER_STACK.set(v), 0.001, 0.1);
@@ -263,14 +213,10 @@ public final class ConfigValueRegistry {
         d("charged_attack.itemUseChargeDefaultSpeedModifier", GROUP_MECHANICS, () -> Config.CHARGED_ATTACK_ITEM_USE_DEFAULT_SPEED_MODIFIER.get(), v -> Config.CHARGED_ATTACK_ITEM_USE_DEFAULT_SPEED_MODIFIER.set(v), -4.0, 0.0);
 
         // 护盾转移
-        d("shield_transfer.effectPenaltyPerEntity", GROUP_MECHANICS, () -> Config.SHIELD_TRANSFER_EFFECT_PENALTY_PER_ENTITY.get(), v -> Config.SHIELD_TRANSFER_EFFECT_PENALTY_PER_ENTITY.set(v), 0.0, 1.0);
 
         // 转换
-        d("conversion.conversionRatio", GROUP_MECHANICS, () -> Config.CONVERSION_RATIO.get(), v -> Config.CONVERSION_RATIO.set(v), 0.0, 1.0);
 
         // 濒死保护
-        i("near_death_protection.nearDeathProtectionCooldown", GROUP_MECHANICS, () -> Config.NEAR_DEATH_PROTECTION_COOLDOWN.get(), v -> Config.NEAR_DEATH_PROTECTION_COOLDOWN.set((int) Math.round(v)), 20, 6000);
-        i("near_death_protection.nearDeathProtectionInvincibleDuration", GROUP_MECHANICS, () -> Config.NEAR_DEATH_PROTECTION_INVINCIBLE_DURATION.get(), v -> Config.NEAR_DEATH_PROTECTION_INVINCIBLE_DURATION.set((int) Math.round(v)), 1, 200);
 
         // 濒死爆炸
         i("near_death_explosion.nearDeathExplosionInvincibleDuration", GROUP_MECHANICS, () -> Config.NEAR_DEATH_EXPLOSION_INVINCIBLE_DURATION.get(), v -> Config.NEAR_DEATH_EXPLOSION_INVINCIBLE_DURATION.set((int) Math.round(v)), 20, 6000);
@@ -281,12 +227,8 @@ public final class ConfigValueRegistry {
         d("near_death_explosion.nearDeathExplosionSpeedAcceleration", GROUP_MECHANICS, () -> Config.NEAR_DEATH_EXPLOSION_SPEED_ACCELERATION.get(), v -> Config.NEAR_DEATH_EXPLOSION_SPEED_ACCELERATION.set(v), 0.001, 1.0);
 
         // 追击阵列/突击无人机
-        d("pursuit_array.droneBaseHealth", GROUP_MECHANICS, () -> Config.DRONE_BASE_HEALTH.get(), v -> Config.DRONE_BASE_HEALTH.set(v), 1.0, 1000.0);
-        d("pursuit_array.droneBaseDamage", GROUP_MECHANICS, () -> Config.DRONE_BASE_DAMAGE.get(), v -> Config.DRONE_BASE_DAMAGE.set(v), 0.01, 100.0);
         i("pursuit_array.droneMaxCount", GROUP_MECHANICS, () -> Config.DRONE_MAX_COUNT.get(), v -> Config.DRONE_MAX_COUNT.set((int) Math.round(v)), 1, 20);
         d("pursuit_array.droneFollowRange", GROUP_MECHANICS, () -> Config.DRONE_FOLLOW_RANGE.get(), v -> Config.DRONE_FOLLOW_RANGE.set(v), 4.0, 64.0);
-        d("pursuit_array.droneAttackRange", GROUP_MECHANICS, () -> Config.DRONE_ATTACK_RANGE.get(), v -> Config.DRONE_ATTACK_RANGE.set(v), 1.0, 64.0);
-        d("pursuit_array.droneTargetRange", GROUP_MECHANICS, () -> Config.DRONE_TARGET_RANGE.get(), v -> Config.DRONE_TARGET_RANGE.set(v), 1.0, 64.0);
 
         // 无人机处决
         b("drone_execute.droneExecuteEnabled", GROUP_MECHANICS, () -> Config.DRONE_EXECUTE_ENABLED.get() ? 1.0 : 0.0, v -> Config.DRONE_EXECUTE_ENABLED.set(v != 0.0));
@@ -297,40 +239,26 @@ public final class ConfigValueRegistry {
         d("commander.commanderVulnerability", GROUP_MECHANICS, () -> Config.COMMANDER_VULNERABILITY.get(), v -> Config.COMMANDER_VULNERABILITY.set(v), 0.001, 1.0);
 
         // 僚机
-        d("wingman.wingmanBaseHealth", GROUP_MECHANICS, () -> Config.WINGMAN_BASE_HEALTH.get(), v -> Config.WINGMAN_BASE_HEALTH.set(v), 1.0, 1000.0);
         i("wingman.wingmanMaxCount", GROUP_MECHANICS, () -> Config.WINGMAN_MAX_COUNT.get(), v -> Config.WINGMAN_MAX_COUNT.set((int) Math.round(v)), 1, 20);
-        d("wingman.wingmanAttackInterval", GROUP_MECHANICS, () -> Config.WINGMAN_ATTACK_INTERVAL.get(), v -> Config.WINGMAN_ATTACK_INTERVAL.set(v), 0.05, 100.0);
-        d("wingman.wingmanAttackRange", GROUP_MECHANICS, () -> Config.WINGMAN_ATTACK_RANGE.get(), v -> Config.WINGMAN_ATTACK_RANGE.set(v), 1.0, 64.0);
         i("wingman.wingmanExplosiveCount", GROUP_MECHANICS, () -> Config.WINGMAN_EXPLOSIVE_COUNT.get(), v -> Config.WINGMAN_EXPLOSIVE_COUNT.set((int) Math.round(v)), 1, 20);
-        d("wingman.wingmanExplosiveDamage", GROUP_MECHANICS, () -> Config.WINGMAN_EXPLOSIVE_DAMAGE.get(), v -> Config.WINGMAN_EXPLOSIVE_DAMAGE.set(v), 0.01, 100.0);
         d("wingman.wingmanExplosionDamage", GROUP_MECHANICS, () -> Config.WINGMAN_EXPLOSION_DAMAGE.get(), v -> Config.WINGMAN_EXPLOSION_DAMAGE.set(v), 0.01, 100.0);
         d("wingman.wingmanExplosionRadius", GROUP_MECHANICS, () -> Config.WINGMAN_EXPLOSION_RADIUS.get(), v -> Config.WINGMAN_EXPLOSION_RADIUS.set(v), 0.1, 10.0);
         i("wingman.wingmanInterceptorChargeDurationTicks", GROUP_MECHANICS, () -> Config.WINGMAN_INTERCEPTOR_CHARGE_DURATION_TICKS.get(), v -> Config.WINGMAN_INTERCEPTOR_CHARGE_DURATION_TICKS.set((int) Math.round(v)), 10, 600);
         i("wingman.wingmanInterceptorMaxChargeDurationTicks", GROUP_MECHANICS, () -> Config.WINGMAN_INTERCEPTOR_MAX_CHARGE_DURATION_TICKS.get(), v -> Config.WINGMAN_INTERCEPTOR_MAX_CHARGE_DURATION_TICKS.set((int) Math.round(v)), 20, 1200);
         d("wingman.wingmanInterceptorChargedSweepBaseRange", GROUP_MECHANICS, () -> Config.WINGMAN_INTERCEPTOR_CHARGED_SWEEP_BASE_RANGE.get(), v -> Config.WINGMAN_INTERCEPTOR_CHARGED_SWEEP_BASE_RANGE.set(v), 0.5, 10.0);
-        d("wingman.wingmanEvolutionBonusPerLevel", GROUP_MECHANICS, () -> Config.WINGMAN_EVOLUTION_BONUS_PER_LEVEL.get(), v -> Config.WINGMAN_EVOLUTION_BONUS_PER_LEVEL.set(v), 0.0, 1.0);
-        d("wingman.wingmanNanoRegenPercent", GROUP_MECHANICS, () -> Config.WINGMAN_NANO_REGEN_PERCENT.get(), v -> Config.WINGMAN_NANO_REGEN_PERCENT.set(v), 0.0, 1.0);
         d("wingman.wingmanShockwaveDamageMultiplier", GROUP_MECHANICS, () -> Config.WINGMAN_SHOCKWAVE_DAMAGE_MULTIPLIER.get(), v -> Config.WINGMAN_SHOCKWAVE_DAMAGE_MULTIPLIER.set(v), 1.0, 10.0);
         d("wingman.wingmanShockwaveSplashLengthMultiplier", GROUP_MECHANICS, () -> Config.WINGMAN_SHOCKWAVE_SPLASH_LENGTH_MULTIPLIER.get(), v -> Config.WINGMAN_SHOCKWAVE_SPLASH_LENGTH_MULTIPLIER.set(v), 1.0, 10.0);
 
         // 蜂群
-        d("swarm.swarmBaseHealth", GROUP_MECHANICS, () -> Config.SWARM_BASE_HEALTH.get(), v -> Config.SWARM_BASE_HEALTH.set(v), 0.1, 1000.0);
-        d("swarm.swarmBaseDamage", GROUP_MECHANICS, () -> Config.SWARM_BASE_DAMAGE.get(), v -> Config.SWARM_BASE_DAMAGE.set(v), 0.01, 100.0);
-        d("swarm.swarmAttackInterval", GROUP_MECHANICS, () -> Config.SWARM_ATTACK_INTERVAL.get(), v -> Config.SWARM_ATTACK_INTERVAL.set(v), 0.05, 100.0);
-        d("swarm.swarmAttackRange", GROUP_MECHANICS, () -> Config.SWARM_ATTACK_RANGE.get(), v -> Config.SWARM_ATTACK_RANGE.set(v), 0.5, 32.0);
-        d("swarm.swarmSearchRange", GROUP_MECHANICS, () -> Config.SWARM_SEARCH_RANGE.get(), v -> Config.SWARM_SEARCH_RANGE.set(v), 1.0, 64.0);
         i("swarm.swarmMaxCount", GROUP_MECHANICS, () -> Config.SWARM_MAX_COUNT.get(), v -> Config.SWARM_MAX_COUNT.set((int) Math.round(v)), 1, 100);
         i("swarm.swarmCountLimit", GROUP_MECHANICS, () -> Config.SWARM_COUNT_LIMIT.get(), v -> Config.SWARM_COUNT_LIMIT.set((int) Math.round(v)), 0, 100);
         d("swarm.swarmMoveSpeed", GROUP_MECHANICS, () -> Config.SWARM_MOVE_SPEED.get(), v -> Config.SWARM_MOVE_SPEED.set(v), 0.01, 10.0);
-        i("swarm.swarmBuildTime", GROUP_MECHANICS, () -> Config.SWARM_BUILD_TIME.get(), v -> Config.SWARM_BUILD_TIME.set((int) Math.round(v)), 1, 6000);
         d("swarm.swarmTierUpgradeChanceStandard", GROUP_MECHANICS, () -> Config.SWARM_TIER_UPGRADE_CHANCE_STANDARD.get(), v -> Config.SWARM_TIER_UPGRADE_CHANCE_STANDARD.set(v), 0.0, 1.0);
         d("swarm.swarmTierUpgradeChanceAdvanced", GROUP_MECHANICS, () -> Config.SWARM_TIER_UPGRADE_CHANCE_ADVANCED.get(), v -> Config.SWARM_TIER_UPGRADE_CHANCE_ADVANCED.set(v), 0.0, 1.0);
         d("swarm.swarmVulnerabilityValue", GROUP_MECHANICS, () -> Config.SWARM_VULNERABILITY_VALUE.get(), v -> Config.SWARM_VULNERABILITY_VALUE.set(v), 0.0, 10.0);
         d("swarm.swarmShieldRepairMultiplier", GROUP_MECHANICS, () -> Config.SWARM_SHIELD_REPAIR_MULTIPLIER.get(), v -> Config.SWARM_SHIELD_REPAIR_MULTIPLIER.set(v), 0.0, 100.0);
         // 高级工程学
-        d("advanced_engineering.advancedEngineeringBonusPerLevel", GROUP_MECHANICS, () -> Config.ADVANCED_ENGINEERING_BONUS_PER_LEVEL.get(), v -> Config.ADVANCED_ENGINEERING_BONUS_PER_LEVEL.set(v), 0.0, 1.0);
         // 精密构造
-        d("precision_construct.precisionConstructBonusPerLevel", GROUP_MECHANICS, () -> Config.PRECISION_CONSTRUCT_BONUS_PER_LEVEL.get(), v -> Config.PRECISION_CONSTRUCT_BONUS_PER_LEVEL.set(v), 0.0, 1.0);
         // 敌对目标标记
         i("hostile_target.markDuration", GROUP_MECHANICS, () -> Config.HOSTILE_TARGET_MARK_DURATION.get(), v -> Config.HOSTILE_TARGET_MARK_DURATION.set((int) Math.round(v)), 1, 10000);
         // 格挡无敌帧
@@ -345,9 +273,6 @@ public final class ConfigValueRegistry {
         i("secondary_damage_merge.secondaryDamageMergeWindowTicks", GROUP_MECHANICS, () -> Config.SECONDARY_DAMAGE_MERGE_WINDOW_TICKS.get(), v -> Config.SECONDARY_DAMAGE_MERGE_WINDOW_TICKS.set((int) Math.round(v)), 1, 100);
 
         // 二次爆炸
-        d("secondary_explosion.secondaryExplosionDamageFraction", GROUP_MECHANICS, () -> Config.SECONDARY_EXPLOSION_DAMAGE_FRACTION.get(), v -> Config.SECONDARY_EXPLOSION_DAMAGE_FRACTION.set(v), 0.0, 1.0);
-        d("secondary_explosion.secondaryExplosionRadiusBase", GROUP_MECHANICS, () -> Config.SECONDARY_EXPLOSION_RADIUS_BASE.get(), v -> Config.SECONDARY_EXPLOSION_RADIUS_BASE.set(v), 0.0, 32.0);
-        d("secondary_explosion.secondaryExplosionRadiusDamageFraction", GROUP_MECHANICS, () -> Config.SECONDARY_EXPLOSION_RADIUS_DAMAGE_FRACTION.get(), v -> Config.SECONDARY_EXPLOSION_RADIUS_DAMAGE_FRACTION.set(v), 0.0, 8.0);
 
         // ==================== 自然恢复 ====================
         d("shield_natural_recovery.naturalRecoveryShieldRecoveryPerTick", GROUP_RECOVERY, () -> Config.NATURAL_RECOVERY_SHIELD_RECOVERY_PER_TICK.get(), v -> Config.NATURAL_RECOVERY_SHIELD_RECOVERY_PER_TICK.set(v), 0.0, 0.1);
@@ -362,6 +287,7 @@ public final class ConfigValueRegistry {
         // ==================== 客户端 HUD（客户端专属，不走网络同步） ====================
         c("shield_idle_particle.enabled", GROUP_HUD, () -> ClientConfig.SHIELD_IDLE_PARTICLE_ENABLED.get() ? 1.0 : 0.0, v -> ClientConfig.SHIELD_IDLE_PARTICLE_ENABLED.set(v != 0.0), 0, 1, true);
         c("shield_particle_rendering.volumetricRendering", GROUP_HUD, () -> ClientConfig.SHIELD_PARTICLE_VOLUMETRIC_RENDERING.get() ? 1.0 : 0.0, v -> ClientConfig.SHIELD_PARTICLE_VOLUMETRIC_RENDERING.set(v != 0.0), 0, 1, true);
+        ce("shield_particle_rendering.style", GROUP_HUD, () -> (double) ClientConfig.SHIELD_PARTICLE_STYLE.get(), v -> ClientConfig.SHIELD_PARTICLE_STYLE.set((int) Math.round(v)), 3);
 
         c("shield_hud.vanillaStyle", GROUP_HUD, () -> ClientConfig.VANILLA_STYLE_HUD.get() ? 1.0 : 0.0, v -> ClientConfig.VANILLA_STYLE_HUD.set(v != 0.0), 0, 1, true);
 

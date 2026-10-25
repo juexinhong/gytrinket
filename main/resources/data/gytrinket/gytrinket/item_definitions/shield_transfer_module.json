@@ -5,6 +5,14 @@
       "sets": [
         "shield_transfer_items"
       ],
+      "values": {
+        "shield_transfer_items": {
+          "penalty_per_entity": {
+            "value": 0.04,
+            "stackable": false
+          }
+        }
+      },
       "attributes": {
         "shield_damage_reduction": -0.5,
         "player_damage_reduction": -0.1,

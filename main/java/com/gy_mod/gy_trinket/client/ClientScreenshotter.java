@@ -4,9 +4,9 @@ import com.gy_mod.gy_trinket.gytrinket;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
 import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
-import net.minecraftforge.event.TickEvent;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -17,9 +17,13 @@ import java.util.List;
 /**
  * 开发辅助：一次启动批量出图。
  * <p>
- * 读 {@code run/gytrinket_cams.txt}，每行一个机位：
- * {@code x y z yaw pitch delay name}。
- * 依次传送、等待、调用原版截图，输出 {@code screenshots/<name>.png}。
+ * 读 {@code run/gytrinket_cams.txt}，每行一个条目（按顺序执行）：
+ * <ul>
+ *   <li>{@code x y z yaw pitch delay name}：传送到机位、等待 delay tick、截图到
+ *       {@code screenshots/<name>.png}；</li>
+ *   <li>{@code !命令}：以服务端控制台身份执行一条命令（如 {@code !summon ...}），
+ *       用于摆好要拍的实体/方块，不出图。</li>
+ * </ul>
  */
 @EventBusSubscriber(modid = gytrinket.MODID, value = Dist.CLIENT)
 public final class ClientScreenshotter {
@@ -41,17 +45,12 @@ public final class ClientScreenshotter {
             return;
         }
         Path job = mc.gameDirectory.toPath().resolve("gytrinket_cams.txt");
-        if (!Files.exists(job)) {
-            QUEUE.clear();
-            remaining = -1;
-            prepared = false;
-            return;
-        }
-        mc.options.pauseOnLostFocus = false;
-        if (mc.screen != null) {
-            mc.setScreen(null);
-        }
         if (!prepared) {
+            if (!Files.exists(job)) {
+                QUEUE.clear();
+                remaining = -1;
+                return;
+            }
             try {
                 List<String> lines = Files.readAllLines(job);
                 QUEUE.clear();
@@ -60,22 +59,47 @@ public final class ClientScreenshotter {
                     if (trimmed.isEmpty() || trimmed.startsWith("#")) {
                         continue;
                     }
+                    if (trimmed.startsWith("!")) {
+                        QUEUE.add(new String[]{trimmed});
+                        continue;
+                    }
                     QUEUE.add(trimmed.split("\\s+"));
                 }
                 Files.deleteIfExists(job);
                 prepared = true;
                 remaining = -1;
-                gytrinket.LOGGER.info("[cam] queued {} shots", QUEUE.size());
+                gytrinket.LOGGER.info("[cam] queued {} entries", QUEUE.size());
             } catch (Exception e) {
                 gytrinket.LOGGER.warn("[cam] bad job file: {}", e.getMessage());
+                prepared = false;
                 return;
             }
+        }
+        mc.options.pauseOnLostFocus = false;
+        if (mc.screen != null) {
+            mc.setScreen(null);
         }
         if (QUEUE.isEmpty()) {
             prepared = false;
             return;
         }
         String[] next = QUEUE.peek();
+        // 命令条目：以服务端控制台身份执行，不出图
+        if (next.length == 1 && next[0].startsWith("!")) {
+            String command = next[0].substring(1).trim();
+            var server = mc.getSingleplayerServer();
+            try {
+                if (server != null) {
+                    server.getCommands().performPrefixedCommand(
+                            server.createCommandSourceStack().withSuppressedOutput(), command);
+                }
+                gytrinket.LOGGER.info("[cam] cmd {}", command);
+            } catch (Exception e) {
+                gytrinket.LOGGER.warn("[cam] cmd failed: {} -> {}", command, e.getMessage());
+            }
+            QUEUE.poll();
+            return;
+        }
         if (remaining < 0) {
             try {
                 double x = Double.parseDouble(next[0]);

@@ -1,9 +1,11 @@
 package com.gy_mod.gy_trinket.core.entity.construct.drone.behavior;
 
 import com.gy_mod.gy_trinket.config.Config;
+import com.gy_mod.gy_trinket.core.defs.MechanicValueDefs;
 import com.gy_mod.gy_trinket.core.shield.DisableSystem;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.DroneConstructEntity;
 import com.gy_mod.gy_trinket.core.explosion.SimulatedExplosion;
+import com.gy_mod.gy_trinket.core.projectile.MultipartHitScan;
 import com.gy_mod.gy_trinket.core.entity.construct.HostileTargetManager;
 import com.gy_mod.gy_trinket.core.defs.DefsManager;
 import com.gy_mod.gy_trinket.storage.PlayerStoreUtils;
@@ -133,7 +135,7 @@ public class CounterPulseBehavior implements IDroneSpecialBehavior {
         info.resetCharge();
 
         if (!isDamageTriggered) {
-            info.cooldown = Config.COUNTER_PULSE_COOLDOWN.get();
+            info.cooldown = (int) MechanicValueDefs.defaultValueOf("counter_pulse_items", "cooldown", 60);
         }
     }
 
@@ -146,26 +148,33 @@ public class CounterPulseBehavior implements IDroneSpecialBehavior {
         AABB boundingBox = drone.getBoundingBox().inflate(radius);
         Player owner = drone.getOwner() instanceof Player p ? p : null;
 
+        // 多体节：体节不注册进 level 实体列表，只查父实体会漏掉伸出的身体节段；
+        // 每个父实体只记一次（脉冲伤害由 SimulatedExplosion 结算，本身也是多体节感知的）。
+        // 本方法每 tick 执行，体节探测外扩取 2 格
         List<LivingEntity> enemies = new ArrayList<>();
-        for (LivingEntity entity : drone.level().getEntitiesOfClass(LivingEntity.class, boundingBox)) {
-            if (entity == drone || !entity.isAlive() || entity.isInvisible()) continue;
-            if (entity instanceof Player) continue;
-            if (owner != null && HostileTargetManager.isEntityProtectedByPlayer(entity, owner)) continue;
-            if (!HostileTargetManager.shouldAttackPlayer(entity, owner)) continue;
-            enemies.add(entity);
+        for (MultipartHitScan.Hit hit : MultipartHitScan.collectInRegion(
+                drone.level(), boundingBox, drone.position(),
+                entity -> entity != drone && entity.isAlive() && !entity.isInvisible()
+                        && !(entity instanceof Player)
+                        && (owner == null || !HostileTargetManager.isEntityProtectedByPlayer(entity, owner))
+                        && HostileTargetManager.shouldAttackPlayer(entity, owner),
+                boundingBox::intersects,
+                false,
+                2.0D)) {
+            enemies.add(hit.target());
         }
         return enemies;
     }
 
     private double calculateExplosionRadius(DroneConstructEntity drone, int chargeLevel) {
         double baseRadius = DefsManager.resolveMechanicValue(drone.level().getServer(), drone.getOwnerUUID(),
-                "counter_pulse_items", "explosion_radius", Config.COUNTER_PULSE_BASE_EXPLOSION_RADIUS.get());
+                "counter_pulse_items", "explosion_radius", MechanicValueDefs.defaultValueOf("counter_pulse_items", "explosion_radius", 1.3));
         return baseRadius * calculateChargeMultiplier(chargeLevel);
     }
 
     private float calculateExplosionDamage(DroneConstructEntity drone, int chargeLevel) {
         float baseDamage = (float) DefsManager.resolveMechanicValue(drone.level().getServer(), drone.getOwnerUUID(),
-                "counter_pulse_items", "explosion_damage", Config.COUNTER_PULSE_BASE_EXPLOSION_DAMAGE.get().doubleValue());
+                "counter_pulse_items", "explosion_damage", MechanicValueDefs.defaultValueOf("counter_pulse_items", "explosion_damage", 1));
         return baseDamage * (float) calculateChargeMultiplier(chargeLevel);
     }
 

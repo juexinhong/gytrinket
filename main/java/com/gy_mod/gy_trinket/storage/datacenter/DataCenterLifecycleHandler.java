@@ -82,17 +82,20 @@ public class DataCenterLifecycleHandler {
         // Phase 1: 加载基础数据（光点核心物品、护盾类型、护盾值）
         PlayerDataCenter.onLogin(player);
 
-        // Phase 2: 触发光点核心内容变化 → 属性重算（此时物品已加载，属性会正确计算）
+        // Phase 1.5: 暂存存档护盾快照（含实例明细）。
+        // 必须先于 Phase 2 的属性重算：重算会重建实例并把「shield」槽覆盖成新实例的聚合值
+        // （带冷却的物品新实例从 0 开始充能），读取/恢复晚于重算就只能读到 0。
+        ShieldData savedShield = PlayerDataCenter.getData(player.getUUID(), "shield");
+        if (savedShield != null) {
+            ShieldManager.stageRestore(player.getUUID(), savedShield);
+        }
+
+        // Phase 2: 触发光点核心内容变化 → 属性重算（此时物品已加载，属性会正确计算；
+        // 护盾实例在这一步重建，并按 identityKey 从 Phase 1.5 暂存的快照迁移池量/破盾/冷却）
         net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(
             new com.gy_mod.gy_trinket.event.PlayerLightPointStoreChangedEvent(player.getUUID()));
 
-        // Phase 3: 属性重算完成后，恢复护盾值（此时maxShield已正确计算）
-        ShieldData savedShield = PlayerDataCenter.getData(player.getUUID(), "shield");
-        if (savedShield != null && savedShield.getCurrentShield() > 0) {
-            ShieldManager.restoreShield(player.getUUID(), savedShield.getCurrentShield());
-        }
-
-        // Phase 3.5: 恢复当前血量（属性重算后maxHealth已恢复，此时可以安全设置）
+        // Phase 3: 恢复当前血量（属性重算后 maxHealth 已恢复，此时可以安全设置）
         Double savedHealth = PlayerDataCenter.getData(player.getUUID(), "health");
         if (savedHealth != null && savedHealth > 0) {
             float maxHealth = serverPlayer.getMaxHealth();

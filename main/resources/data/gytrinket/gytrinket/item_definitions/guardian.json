@@ -1,0 +1,12 @@
+{
+  "items": {
+    "gytrinket:guardian": {
+      "attributes": {
+        "shield_effect_percent": 0.10,
+        "shield_effect_radius": 0.25,
+        "shield_damage_reduction": -0.1,
+        "attack_speed_percent": -0.1
+      }
+    }
+  }
+}

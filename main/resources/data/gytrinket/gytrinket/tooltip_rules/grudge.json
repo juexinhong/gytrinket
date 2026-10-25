@@ -1,0 +1,1 @@
+{"itemSet":"grudge_items","titleKey":"grudge","descKey":"grudge_effect","color":"red","params":[{"type":"value","source":"grudgeConversionRatio"},{"type":"percentInt","source":"grudgeFadePercent"},{"type":"value","source":"grudgeFadeBase"},{"type":"absPercentInt","source":"grudgeMovementSpeedPenalty"}]}

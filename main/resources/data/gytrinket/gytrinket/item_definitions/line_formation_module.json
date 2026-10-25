@@ -1,0 +1,10 @@
+{
+    "items":  {
+                  "gytrinket:line_formation_module":  {
+                                                          "mechanic":  true,
+                                                          "sets":  [
+                                                                       "formation_array_required_items"
+                                                                   ]
+                                                      }
+              }
+}

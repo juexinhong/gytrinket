@@ -1,0 +1,13 @@
+{
+  "items": {
+    "gytrinket:interceptor_module": {
+      "mechanic": true,
+      "sets": [
+        "wingman_interceptor_module_items"
+      ],
+      "attributes": {
+        "construct_wingman_explosive_count_base": 1
+      }
+    }
+  }
+}

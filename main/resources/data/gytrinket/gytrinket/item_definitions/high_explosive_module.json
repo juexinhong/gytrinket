@@ -1,0 +1,9 @@
+{
+  "items": {
+    "gytrinket:high_explosive_module": {
+      "attributes": {
+        "explosion_radius_independent": 0.2
+      }
+    }
+  }
+}

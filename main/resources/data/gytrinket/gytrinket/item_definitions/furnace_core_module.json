@@ -1,0 +1,17 @@
+{
+  "items": {
+    "gytrinket:furnace_core_module": {
+      "mechanic": true,
+      "sets": [
+        "furnace_core_items"
+      ],
+      "attributes": {
+        "construct_non_shield_build_speed_percent": 0.30,
+        "construct_attack_speed_percent": 0.30,
+        "construct_move_speed_percent": 0.30,
+        "construct_orbit_speed_percent": 0.30,
+        "construct_rotation_speed_percent": 0.30
+      }
+    }
+  }
+}

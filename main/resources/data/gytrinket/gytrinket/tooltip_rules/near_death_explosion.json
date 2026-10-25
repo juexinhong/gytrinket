@@ -1,0 +1,1 @@
+{"itemSet":"near_death_explosion_items","titleKey":"near_death_explosion","descKey":"near_death_explosion_effect","color":"red","params":[{"type":"seconds","source":"nearDeathExplosionInvincibleDuration"},{"type":"value","source":"nearDeathExplosionCoefficient"},{"type":"value","source":"nearDeathExplosionRadius"}]}

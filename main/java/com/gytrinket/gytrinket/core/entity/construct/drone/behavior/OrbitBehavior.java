@@ -1,0 +1,204 @@
+package com.gytrinket.gytrinket.core.entity.construct.drone.behavior;
+
+import com.gytrinket.gytrinket.config.Config;
+import com.gytrinket.gytrinket.core.defs.MechanicValueDefs;
+import com.gytrinket.gytrinket.core.entity.construct.ConstructGroupCache;
+import com.gytrinket.gytrinket.core.entity.construct.ConstructManager;
+import com.gytrinket.gytrinket.core.entity.construct.IConstructEntity;
+import com.gytrinket.gytrinket.core.entity.construct.drone.DroneArrayType;
+import com.gytrinket.gytrinket.core.entity.construct.drone.DroneArrayParams;
+import com.gytrinket.gytrinket.core.entity.construct.drone.DroneBullet;
+import com.gytrinket.gytrinket.core.entity.construct.drone.DroneConstructTypes;
+import com.gytrinket.gytrinket.core.entity.construct.drone.DroneConstructEntity;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
+
+import java.util.Comparator;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+/**
+ * 环绕行为
+ * <p>
+ * 基础环绕行为，匹配标签：array + orbit
+ */
+public class OrbitBehavior implements IDroneBehavior {
+    /** 环绕半径（格） */
+    private static final float ORBIT_RADIUS = 3.0f;
+
+    /** 垂直偏移（格，玩家上方） */
+    private static final float VERTICAL_OFFSET = 1.7f;
+
+    /** 角速度（弧度/秒） */
+    private static final float ANGULAR_VELOCITY = 0.2f;
+
+    /** 移动速度（格/秒） */
+    private static final float MOVE_SPEED = 10.0f;
+
+    @Override
+    public Set<String> getRequiredTags() {
+        return Set.of(DroneArrayType.Tags.ARRAY, DroneArrayType.Tags.ORBIT);
+    }
+
+    @Override
+    public Vec3 updatePosition(Entity drone, LivingEntity owner, float orbitAngle, float deltaTime) {
+        // 直接从 ConstructManager 获取玩家的所有无人机
+        Map<UUID, net.minecraft.world.entity.Entity> entitiesMap =
+            ConstructManager.getInstance().getActiveConstructEntities(owner.getUUID(), DroneConstructTypes.DRONE);
+
+        List<DroneConstructEntity> allDrones = new ArrayList<>();
+        for (net.minecraft.world.entity.Entity entity : entitiesMap.values()) {
+            if (entity instanceof DroneConstructEntity droneEntity &&
+                droneEntity.isAlive() &&
+                droneEntity.isOrbitArray()) {
+                allDrones.add(droneEntity);
+            }
+        }
+
+        // 按ID排序（越老越先创建，索引越小），确保索引稳定
+        allDrones.sort(Comparator.comparingInt(Entity::getId));
+
+        int totalDrones = allDrones.size();
+        int droneIndex = allDrones.indexOf(drone);
+        if (droneIndex < 0) {
+            droneIndex = 0;
+        }
+
+        // 使用游戏时间计算旋转角度
+        double gameTime = owner.getLevel().getGameTime() / 20.0;
+        // 环绕转速受 orbitSpeedMultiplier 影响（炉心融解等模块）
+        double orbitMultiplier = drone instanceof IConstructEntity cEntity ? cEntity.getOrbitSpeedMultiplier() : 1.0;
+        // 阵列物品级环绕速度倍率（独立乘区，客户端也按 owner 镜像解析，保证模型位置与实际一致）
+        orbitMultiplier *= DroneArrayParams.getOrbitSpeedMultiplier(owner);
+        double rotationAngle = gameTime * ANGULAR_VELOCITY * Math.PI * 2 * orbitMultiplier;
+
+        // 计算每个无人机的初始角度，确保均匀分布
+        // 公式：2π * (droneIndex / totalDrones)
+        double initialAngle = Math.PI * 2.0D * droneIndex / Math.max(totalDrones, 1);
+
+        // 最终角度 = 初始角度 + 旋转角度
+        double finalAngle = initialAngle + rotationAngle;
+
+        // 计算目标位置
+        float verticalOffset = VERTICAL_OFFSET;
+        if (drone instanceof DroneConstructEntity droneEntity && droneEntity.isDefenseDrone()) {
+            verticalOffset = 0.0f;
+        }
+
+        Vec3 targetPos = new Vec3(
+            owner.getX() + ORBIT_RADIUS * Math.cos(finalAngle),
+            owner.getY() + verticalOffset,
+            owner.getZ() + ORBIT_RADIUS * Math.sin(finalAngle)
+        );
+
+        // 检查与玩家的距离，超出40格视为丢失，移除无人机
+        double distanceToOwner = drone.distanceTo(owner);
+        if (distanceToOwner > 40.0) {
+            if (drone instanceof DroneConstructEntity droneEntity) {
+                UUID ownerUUID = owner.getUUID();
+                String constructId = droneEntity.getConstructTypeId();
+                UUID entityUUID = droneEntity.getUUID();
+                droneEntity.remove(Entity.RemovalReason.DISCARDED);
+                ConstructManager manager = ConstructManager.getInstance();
+                manager.unregisterConstructEntity(ownerUUID, constructId, entityUUID);
+                manager.removeConstruct(ownerUUID, entityUUID);
+            }
+            return Vec3.ZERO;
+        }
+
+        // 所有无人机直接定位到目标位置，确保阵列刚性与连贯性
+        drone.setPos(targetPos.x, targetPos.y, targetPos.z);
+        drone.setDeltaMovement(Vec3.ZERO);
+
+        return Vec3.ZERO;
+    }
+
+    @Override
+    public List<LivingEntity> searchTargets(Entity drone, LivingEntity owner, float range) {
+        // 范围由调用方按实例基础索敌范围 × 阵列索敌范围倍率传入
+        return ConstructGroupCache.getInstance().findTargetsInRange(
+            owner.getUUID(), owner, drone.position(), range);
+    }
+
+    @Override
+    public void executeAttack(Entity drone, LivingEntity owner, LivingEntity target, boolean canAttack) {
+        if (!canAttack) {
+            return;
+        }
+
+        Level level = drone.getLevel();
+        if (level.isClientSide) {
+            return;
+        }
+
+        // 先检查攻击冷却
+        if (drone instanceof DroneConstructEntity droneEntity && droneEntity.getAttackCooldown() > 0) {
+            return;
+        }
+
+        double distance = drone.distanceTo(target);
+
+        // 二次防御判定：有效攻击范围（基础攻击范围 × 环绕阵列攻击范围倍率）
+        float attackRange = drone instanceof DroneConstructEntity droneEntity
+                ? droneEntity.getEffectiveAttackRange(DroneArrayParams.SET_ORBIT) : 8.0f;
+        if (distance > attackRange) {
+            return;
+        }
+
+        // 检测视线（朝向逻辑已迁移到 DroneConstructEntity）
+        boolean hasLineOfSight = drone instanceof LivingEntity livingDrone && livingDrone.hasLineOfSight(target);
+
+        if (!hasLineOfSight) {
+            return;
+        }
+
+        // 发射子弹
+        fireBullet(drone, owner, target);
+    }
+
+    private void fireBullet(Entity drone, LivingEntity owner, LivingEntity target) {
+        if (drone.getLevel().isClientSide) {
+            return;
+        }
+
+        Vec3 dronePos = drone.position();
+        Vec3 targetPos = target.position().add(0, target.getEyeHeight() * 0.5, 0);
+
+        Vec3 direction = targetPos.subtract(dronePos).normalize();
+
+        float damage = DroneBullet.getBaseDamage();
+
+        if (drone instanceof DroneConstructEntity droneEntity) {
+            damage = (float) droneEntity.getAttributeValue(Attributes.ATTACK_DAMAGE);
+            // 阵列伤害倍率（独立乘区）：最终伤害 = 攻击力属性 × 环绕阵列伤害倍率
+            damage *= (float) DroneArrayParams.getDamageMultiplier(
+                    owner.getServer(), owner.getUUID(), DroneArrayParams.SET_ORBIT);
+            // 阵列攻速修正：基础间隔 × 环绕阵列倍率（独立乘区）
+            droneEntity.applyArrayAttackCooldown(DroneArrayParams.SET_ORBIT);
+
+            DroneBullet bullet = new DroneBullet(drone.getLevel(), droneEntity, damage);
+            bullet.setPos(dronePos.x, dronePos.y + 0.4, dronePos.z);
+            bullet.shoot(direction.x, direction.y, direction.z, 1.3f, 0.0f);
+            drone.getLevel().addFreshEntity(bullet);
+        }
+    }
+
+    @Override
+    public float getAttackInterval() {
+        return (float) MechanicValueDefs.defaultValueOf("drone_module_items", "attack_interval", 0.5);
+    }
+
+    @Override
+    public boolean isCombatMode() {
+        return false;
+    }
+}
+

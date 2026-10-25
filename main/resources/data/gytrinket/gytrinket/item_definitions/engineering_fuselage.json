@@ -1,0 +1,12 @@
+{
+  "items": {
+    "gytrinket:engineering_fuselage": {
+      "attributes": {
+        "construct_standard_count_base": 2,
+        "construct_advanced_count_base": 1,
+        "shield_percent": -0.10,
+        "player_health": -2
+      }
+    }
+  }
+}

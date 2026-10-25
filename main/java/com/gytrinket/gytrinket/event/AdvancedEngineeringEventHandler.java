@@ -1,0 +1,67 @@
+package com.gytrinket.gytrinket.event;
+
+import com.gytrinket.gytrinket.config.Config;
+import com.gytrinket.gytrinket.core.defs.MechanicValueDefs;
+import com.gytrinket.gytrinket.core.attribute.AttributeManager;
+import com.gytrinket.gytrinket.core.defs.DefsManager;
+import com.gytrinket.gytrinket.core.level.ModLevelManager;
+import com.gytrinket.gytrinket.gytrinket;
+import com.gytrinket.gytrinket.storage.PlayerStoreUtils;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
+
+import java.util.Set;
+import java.util.UUID;
+
+@Mod.EventBusSubscriber(modid = gytrinket.MODID)
+public class AdvancedEngineeringEventHandler {
+
+    private static final String NAMESPACE = "advanced_engineering";
+
+    @SubscribeEvent
+    public static void onAttributesCalculated(PlayerAttributesCalculatedEvent event) {
+        ServerPlayer player = event.getPlayer();
+        if (player != null) {
+            applyEngineeringBonus(player);
+        }
+    }
+
+    public static void applyEngineeringBonus(ServerPlayer player) {
+        UUID playerUUID = player.getUUID();
+
+        if (!hasRequiredItem(playerUUID)) {
+            // 卸下/不满足前置：按比例降低无人机生命值与伤害（移除独立乘区加成）
+            AttributeManager.removeDynamicAttribute(playerUUID, NAMESPACE, "construct_drone_health_independent");
+            AttributeManager.removeDynamicAttribute(playerUUID, NAMESPACE, "construct_drone_damage_independent");
+            return;
+        }
+
+        // 装备时按当前光点等级计算加成：倍率 = 1 + 等级 × 每级加成（物品级数值覆盖：取首个生效物品的覆盖值）
+        int level = Math.max(0, ModLevelManager.getModLevel(playerUUID));
+        double bonusPerLevel = DefsManager.resolveMechanicValue(player.getServer(), playerUUID,
+                "advanced_engineering_items", "bonus_per_level", MechanicValueDefs.defaultValueOf("advanced_engineering_items", "bonus_per_level", 0.01));
+        double bonus = level * bonusPerLevel;
+
+        AttributeManager.setDynamicAttribute(playerUUID, NAMESPACE, "construct_drone_health_independent", bonus);
+        AttributeManager.setDynamicAttribute(playerUUID, NAMESPACE, "construct_drone_damage_independent", bonus);
+    }
+
+    private static boolean hasRequiredItem(UUID playerUUID) {
+        Set<String> requiredItems = DefsManager.getItemSet("advanced_engineering_items");
+        if (requiredItems.isEmpty()) {
+            return false;
+        }
+
+        // 已装备物品 = 光点核心存储 + Curios 饰品栏（光点核心内容扩展）
+        Set<String> ownedItemIds = PlayerStoreUtils.getAllEquippedItemIds(playerUUID);
+
+        for (String requiredId : requiredItems) {
+            if (ownedItemIds.contains(requiredId)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+}

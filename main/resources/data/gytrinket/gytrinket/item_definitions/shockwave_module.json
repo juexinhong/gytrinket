@@ -1,0 +1,10 @@
+{
+    "items":  {
+                  "gytrinket:shockwave_module":  {
+                                                     "mechanic":  true,
+                                                     "sets":  [
+                                                                  "wingman_shockwave_module_items"
+                                                              ]
+                                                 }
+              }
+}

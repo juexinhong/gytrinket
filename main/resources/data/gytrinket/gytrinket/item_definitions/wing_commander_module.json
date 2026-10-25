@@ -1,0 +1,15 @@
+{
+  "items": {
+    "gytrinket:wing_commander_module": {
+      "mechanic": true,
+      "sets": [
+        "commander_required_items"
+      ],
+      "attributes": {
+        "construct_drone_count_base": 1,
+        "construct_commander_health_percent": 2.0,
+        "construct_commander_damage_percent": 2.0
+      }
+    }
+  }
+}

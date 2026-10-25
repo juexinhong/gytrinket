@@ -1,0 +1,219 @@
+package com.gytrinket.gytrinket.core.special_effect.weaponized_shield;
+
+import com.gytrinket.gytrinket.config.Config;
+import com.gytrinket.gytrinket.core.defs.MechanicValueDefs;
+import com.gytrinket.gytrinket.core.attribute.AttributeManager;
+import com.gytrinket.gytrinket.core.shield.DisableSystem;
+import com.gytrinket.gytrinket.core.entity.construct.HostileTargetManager;
+import com.gytrinket.gytrinket.core.defs.DefsManager;
+import com.gytrinket.gytrinket.core.projectile.MultipartHitScan;
+import com.gytrinket.gytrinket.core.shield.ShieldManager;
+import com.gytrinket.gytrinket.core.shield_transfer.ShieldTransferManager;
+import com.gytrinket.gytrinket.core.vulnerability.VulnerabilityApplyEvent;
+import com.gytrinket.gytrinket.core.vulnerability.VulnerabilityManager;
+import com.gytrinket.gytrinket.event.PlayerAttributesCalculatedEvent;
+import com.gytrinket.gytrinket.storage.PlayerStoreUtils;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.phys.AABB;
+import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
+
+import java.util.*;
+
+@Mod.EventBusSubscriber(modid = com.gytrinket.gytrinket.gytrinket.MODID)
+public class WeaponizedShieldManager {
+
+    private static final Set<UUID> PLAYER_HAS_WEAPONIZED_SHIELD = new java.util.concurrent.CopyOnWriteArraySet<>();
+    
+    private static final Map<UUID, Set<UUID>> PLAYER_VULNERABILITY_TARGETS = new java.util.concurrent.ConcurrentHashMap<>();
+    
+    private static final Map<UUID, Integer> TICK_COUNTER = new java.util.concurrent.ConcurrentHashMap<>();
+    
+    private static final int CHECK_INTERVAL = 5;
+    private static final String VULNERABILITY_NAME = "weaponized_shield";
+
+    @SubscribeEvent
+    public static void onPlayerTick(TickEvent.PlayerTickEvent event) {
+        if (event.phase != TickEvent.Phase.END) {
+            return;
+        }
+
+        Player player = event.player;
+        if (player.getLevel().isClientSide) {
+            return;
+        }
+
+        UUID playerUUID = player.getUUID();
+
+        if (!PLAYER_HAS_WEAPONIZED_SHIELD.contains(playerUUID)) {
+            clearAllVulnerabilities(playerUUID);
+            return;
+        }
+
+        double currentShield = ShieldManager.getCurrentShield(playerUUID);
+        if (currentShield <= 0) {
+            clearAllVulnerabilities(playerUUID);
+            return;
+        }
+
+        int tickCounter = TICK_COUNTER.getOrDefault(playerUUID, 0);
+        tickCounter++;
+        TICK_COUNTER.put(playerUUID, tickCounter);
+
+        if (tickCounter < CHECK_INTERVAL) {
+            return;
+        }
+        TICK_COUNTER.put(playerUUID, 0);
+
+        processWeaponizedShield(player);
+    }
+
+    private static void processWeaponizedShield(Player player) {
+        UUID playerUUID = player.getUUID();
+
+        List<LivingEntity> effectCenters;
+        if (!ShieldTransferManager.shouldProtectPlayer(player)) {
+            effectCenters = ShieldTransferManager.getProtectedEntities(playerUUID, player.getLevel());
+        } else {
+            effectCenters = List.of(player);
+        }
+
+        double shieldEffectRadius = AttributeManager.getGroupAttribute(playerUUID, "shield_effect_radius");
+        double baseRadius = DefsManager.resolveMechanicValue(player.getServer(), playerUUID,
+                "weaponized_shield_items", "radius", MechanicValueDefs.defaultValueOf("weaponized_shield_items", "radius", 4));
+        double radius = baseRadius * shieldEffectRadius;
+
+        double shieldEffect = AttributeManager.getGroupAttribute(playerUUID, "shield_effect");
+        float baseVulnerability = (float) DefsManager.resolveMechanicValue(player.getServer(), playerUUID,
+                "weaponized_shield_items", "vulnerability", MechanicValueDefs.defaultValueOf("weaponized_shield_items", "vulnerability", 0.2));
+        float vulnerabilityValue = (float)(baseVulnerability * shieldEffect);
+
+        Set<UUID> currentTargets = new HashSet<>();
+
+        for (LivingEntity center : effectCenters) {
+            if (center == null || !center.isAlive()) {
+                continue;
+            }
+
+            AABB boundingBox = center.getBoundingBox().inflate(radius);
+            // 多体节：体节不注册进 level 实体列表，只查父实体会漏掉伸出的身体节段；
+            // 易伤按生物结算（每个父实体只记一次）
+            for (MultipartHitScan.Hit hit : MultipartHitScan.collectInRegion(
+                    player.getLevel(), boundingBox, center.position(),
+                    entity -> isValidTarget((LivingEntity) entity, player),
+                    boundingBox::intersects,
+                    false)) {
+                LivingEntity target = hit.target();
+                UUID targetUUID = target.getUUID();
+                currentTargets.add(targetUUID);
+
+                applyVulnerability(target, vulnerabilityValue);
+            }
+        }
+
+        Set<UUID> previousTargets = PLAYER_VULNERABILITY_TARGETS.getOrDefault(playerUUID, Collections.emptySet());
+
+        for (UUID targetUUID : previousTargets) {
+            if (!currentTargets.contains(targetUUID)) {
+                removeVulnerabilityForTarget(playerUUID, targetUUID);
+            }
+        }
+
+        PLAYER_VULNERABILITY_TARGETS.put(playerUUID, currentTargets);
+    }
+
+    private static boolean isValidTarget(LivingEntity entity, Player player) {
+        if (entity == null || !entity.isAlive()) {
+            return false;
+        }
+
+        if (!(entity instanceof net.minecraft.world.entity.LivingEntity)) {
+            return false;
+        }
+
+        return HostileTargetManager.shouldAttackPlayer(entity, player);
+    }
+
+    private static void applyVulnerability(LivingEntity target, float vulnerabilityValue) {
+        VulnerabilityApplyEvent event = new VulnerabilityApplyEvent(
+            VULNERABILITY_NAME,
+            vulnerabilityValue,
+            target,
+            false
+        );
+        MinecraftForge.EVENT_BUS.post(event);
+    }
+
+    private static void removeVulnerabilityForTarget(UUID playerUUID, UUID targetUUID) {
+        var server = net.minecraftforge.server.ServerLifecycleHooks.getCurrentServer();
+        if (server == null) {
+            return;
+        }
+
+        server.getPlayerList().getPlayers().forEach(player -> {
+            if (player.getUUID().equals(targetUUID)) {
+                VulnerabilityManager.removeVulnerability(player, VULNERABILITY_NAME);
+            }
+        });
+
+        for (var level : server.getAllLevels()) {
+            level.getEntitiesOfClass(LivingEntity.class, new AABB(0, 0, 0, 0, 0, 0).inflate(1000),
+                entity -> entity.getUUID().equals(targetUUID)
+            ).forEach(entity -> {
+                VulnerabilityManager.removeVulnerability(entity, VULNERABILITY_NAME);
+            });
+        }
+    }
+
+    private static void clearAllVulnerabilities(UUID playerUUID) {
+        Set<UUID> targets = PLAYER_VULNERABILITY_TARGETS.remove(playerUUID);
+        if (targets != null) {
+            for (UUID targetUUID : targets) {
+                removeVulnerabilityForTarget(playerUUID, targetUUID);
+            }
+        }
+    }
+
+    @SubscribeEvent
+    public static void onAttributesCalculated(PlayerAttributesCalculatedEvent event) {
+        UUID playerUUID = event.getPlayerUUID();
+
+        boolean hasWeaponizedShield = false;
+
+        // 已装备物品 = 光点核心存储 + Curios 饰品栏（光点核心内容扩展）
+        for (ItemStack stack : PlayerStoreUtils.getEquippedStacks(playerUUID)) {
+            if (!DisableSystem.isItemDisabled(playerUUID, stack) && Config.isWeaponizedShieldItem(stack.getItem())) {
+                hasWeaponizedShield = true;
+                break;
+            }
+        }
+
+        if (hasWeaponizedShield) {
+            PLAYER_HAS_WEAPONIZED_SHIELD.add(playerUUID);
+        } else {
+            PLAYER_HAS_WEAPONIZED_SHIELD.remove(playerUUID);
+            clearAllVulnerabilities(playerUUID);
+        }
+    }
+
+    public static void clearPlayerData(UUID playerUUID) {
+        PLAYER_HAS_WEAPONIZED_SHIELD.remove(playerUUID);
+        clearAllVulnerabilities(playerUUID);
+        TICK_COUNTER.remove(playerUUID);
+    }
+
+    public static void clearAllData() {
+        PLAYER_HAS_WEAPONIZED_SHIELD.clear();
+        PLAYER_VULNERABILITY_TARGETS.forEach((playerUUID, targets) -> {
+            for (UUID targetUUID : targets) {
+                removeVulnerabilityForTarget(playerUUID, targetUUID);
+            }
+        });
+        PLAYER_VULNERABILITY_TARGETS.clear();
+        TICK_COUNTER.clear();
+    }
+}

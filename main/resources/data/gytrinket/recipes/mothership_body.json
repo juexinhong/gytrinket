@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "A A",
+    " B ",
+    "A A"
+  ],
+  "key": {
+    "A": { "item": "minecraft:copper_ingot" },
+    "B": { "item": "minecraft:copper_block" }
+  },
+  "result": {
+    "item": "gytrinket:mothership_body",
+    "count": 1
+  }
+}

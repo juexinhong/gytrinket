@@ -1,0 +1,1 @@
+{"itemSet":"shield_transfer_items","titleKey":"shield_transfer","descKey":"shield_transfer_effect","color":"light_purple","params":[{"type":"percent","source":"shieldTransferEffectPenaltyPerEntity"}]}

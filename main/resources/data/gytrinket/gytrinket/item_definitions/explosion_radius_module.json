@@ -1,0 +1,29 @@
+{
+  "items": {
+    "gytrinket:explosion_radius_module": {
+      "mechanic": true,
+      "sets": [
+        "projectile_explosion_items"
+      ],
+      "attributes": {
+        "explosion_radius_independent": 0.1
+      },
+      "values": {
+        "projectile_explosion_items": {
+          "damage_fraction": {
+            "value": 0.15,
+            "stackable": false
+          },
+          "radius_base": {
+            "value": 2,
+            "stackable": false
+          },
+          "radius_per_damage": {
+            "value": 0.5,
+            "stackable": false
+          }
+        }
+      }
+    }
+  }
+}

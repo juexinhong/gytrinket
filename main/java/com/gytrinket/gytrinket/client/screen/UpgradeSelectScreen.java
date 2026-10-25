@@ -1,0 +1,172 @@
+package com.gytrinket.gytrinket.client.screen;
+
+import com.mojang.blaze3d.vertex.PoseStack;
+
+import com.gytrinket.gytrinket.network.NetworkHandler;
+import com.gytrinket.gytrinket.network.packet.UpgradeConsumeMessage;
+import com.gytrinket.gytrinket.network.packet.UpgradeReturnMessage;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.core.Registry;
+
+public class UpgradeSelectScreen extends AbstractPanelScreen {
+
+    private final String baseItemKey;
+    private final String upgradedItemKey;
+    private final ListTag ingredients;
+
+    private ItemStack hoveredItem = ItemStack.EMPTY;
+    private int hoveredSlotIndex = -1;
+
+    public UpgradeSelectScreen(Screen parentScreen, String baseItemKey, String upgradedItemKey, ListTag ingredients) {
+        super(Component.translatable("screen.gytrinket.upgrade_select"), parentScreen, SolidUIRenderer.UPGRADE);
+        this.baseItemKey = baseItemKey;
+        this.upgradedItemKey = upgradedItemKey;
+        this.ingredients = ingredients != null ? ingredients : new ListTag();
+    }
+
+    public String getBaseItemKey() {
+        return baseItemKey;
+    }
+
+    public String getUpgradedItemKey() {
+        return upgradedItemKey;
+    }
+
+    public void updateIngredients(ListTag newIngredients) {
+        if (newIngredients != null) {
+            ingredients.clear();
+            for (int i = 0; i < newIngredients.size(); i++) {
+                ingredients.add(newIngredients.getCompound(i));
+            }
+        }
+    }
+
+    @Override
+    protected void init() {
+        super.init();
+        initPanelSize(200, 260, 20, 40);
+
+        int btnY = panelY + panelHeight + 5;
+        this.addRenderableWidget(SciFiButton.create(
+                Component.translatable("screen.gytrinket.return_materials"),
+                button -> {
+                    NetworkHandler.INSTANCE.sendToServer(new UpgradeReturnMessage(baseItemKey, upgradedItemKey));
+                    Minecraft.getInstance().setScreen(parentScreen);
+                }
+        ).bounds(panelX + 5, btnY, 90, 16).renderer(renderer).build());
+
+        this.addRenderableWidget(SciFiButton.create(
+                Component.translatable("screen.gytrinket.back"),
+                button -> Minecraft.getInstance().setScreen(parentScreen)
+        ).bounds(panelX + panelWidth - 95, btnY, 90, 16).renderer(renderer).build());
+    }
+
+    @Override
+    public void render(PoseStack poseStack, int mouseX, int mouseY, float partialTick) {
+        GuiCanvas guiGraphics = GuiCanvas.of(poseStack, this);
+        this.renderBackground(poseStack);
+        renderPanelBackground(guiGraphics, mouseX, mouseY, partialTick);
+
+        guiGraphics.drawString(font, Component.translatable("screen.gytrinket.upgrade_select_title").getString(),
+                panelX + 8, panelY + 6, renderer.getAccentColor());
+
+        int y = panelY + 18;
+        for (int i = 0; i < ingredients.size(); i++) {
+            CompoundTag ing = ingredients.getCompound(i);
+            String itemKey = ing.getString("itemKey");
+            int required = ing.getInt("required");
+            int collected = ing.getInt("collected");
+
+            Item item = Registry.ITEM.get(new ResourceLocation(itemKey));
+            String itemName = item != null ? new ItemStack(item).getHoverName().getString() : itemKey;
+
+            String text = itemName + " " + collected + "/" + required;
+            int color = collected >= required ? renderer.getValueColor() : renderer.getTextColor();
+            guiGraphics.drawString(font, text, panelX + 10, y, color);
+            y += 10;
+        }
+
+        y += 4;
+        guiGraphics.drawString(font, Component.translatable("screen.gytrinket.upgrade_select_hint").getString(),
+                panelX + 8, y, renderer.getHintColor());
+        y += 12;
+
+        Player player = Minecraft.getInstance().player;
+        if (player == null) return;
+
+        Inventory inventory = player.getInventory();
+        int cols = 9;
+        int slotSize = 20; // 网格步进（格子 18px，间隙 2px）
+        int startX = panelX + (panelWidth - cols * slotSize) / 2;
+        int startY = y;
+
+        hoveredItem = ItemStack.EMPTY;
+        hoveredSlotIndex = -1;
+
+        for (int row = 0; row < 3; row++) {
+            for (int col = 0; col < cols; col++) {
+                int slot = 9 + row * cols + col;
+                int x = startX + col * slotSize;
+                int iy = startY + row * slotSize;
+
+                boolean hovered = mouseX >= x && mouseX < x + slotSize && mouseY >= iy && mouseY < iy + slotSize;
+                renderer.drawSlot(guiGraphics, x, iy, slotSize - 2, slotSize - 2, hovered);
+
+                ItemStack stack = inventory.getItem(slot);
+                if (!stack.isEmpty()) {
+                    guiGraphics.renderItem(stack, x + 1, iy + 1);
+                    guiGraphics.renderItemDecorations(font, stack, x + 1, iy + 1);
+                    if (hovered) {
+                        hoveredItem = stack;
+                        hoveredSlotIndex = slot;
+                    }
+                }
+            }
+        }
+
+        int hotbarY = startY + 3 * slotSize + 4;
+        for (int col = 0; col < cols; col++) {
+            int slot = col;
+            int x = startX + col * slotSize;
+
+            boolean hovered = mouseX >= x && mouseX < x + slotSize && mouseY >= hotbarY && mouseY < hotbarY + slotSize;
+            renderer.drawSlot(guiGraphics, x, hotbarY, slotSize - 2, slotSize - 2, hovered);
+
+            ItemStack stack = inventory.getItem(slot);
+            if (!stack.isEmpty()) {
+                guiGraphics.renderItem(stack, x + 1, hotbarY + 1);
+                guiGraphics.renderItemDecorations(font, stack, x + 1, hotbarY + 1);
+                if (hovered) {
+                    hoveredItem = stack;
+                    hoveredSlotIndex = slot;
+                }
+            }
+        }
+
+        for (var renderable : this.renderables) {
+            renderable.render(poseStack, mouseX, mouseY, partialTick);
+        }
+
+        if (!hoveredItem.isEmpty()) {
+            guiGraphics.renderTooltip(font, hoveredItem, mouseX, mouseY);
+        }
+    }
+
+    @Override
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (button == 0 && hoveredSlotIndex >= 0 && !hoveredItem.isEmpty()) {
+            NetworkHandler.INSTANCE.sendToServer(new UpgradeConsumeMessage(hoveredSlotIndex, baseItemKey, upgradedItemKey));
+            return true;
+        }
+        return super.mouseClicked(mouseX, mouseY, button);
+    }
+}

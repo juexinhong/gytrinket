@@ -1,0 +1,1 @@
+{"itemSet":"commander_required_items","titleKey":"commander","descKey":"commander_effect","color":"light_purple","params":[{"type":"value","source":"commanderMaxCount"},{"type":"seconds","source":"commanderAppointDelay"}]}

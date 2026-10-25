@@ -1,0 +1,12 @@
+{
+  "items": {
+    "gytrinket:colossus_module": {
+      "attributes": {
+        "player_health_percent": 0.25,
+        "player_knockback_percent": 0.4,
+        "knockback_resistance": 0.2,
+        "movement_speed_independent": -0.25
+      }
+    }
+  }
+}

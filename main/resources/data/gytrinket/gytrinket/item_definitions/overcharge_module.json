@@ -1,0 +1,12 @@
+{
+  "items": {
+    "gytrinket:overcharge_module": {
+      "attributes": {
+        "attack_damage_percent": 0.3,
+        "weapon_projectile_size_percent": 0.12,
+        "explosion_radius_independent": 0.05,
+        "attack_speed_percent": -0.12
+      }
+    }
+  }
+}

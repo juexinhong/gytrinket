@@ -1,0 +1,10 @@
+{
+    "items":  {
+                  "gytrinket:arc_barrier_module":  {
+                                                       "mechanic":  true,
+                                                       "sets":  [
+                                                                    "arc_barrier_items"
+                                                                ]
+                                                   }
+              }
+}

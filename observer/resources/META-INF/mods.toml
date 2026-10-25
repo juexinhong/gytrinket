@@ -1,0 +1,35 @@
+# Gytrinket Observer：独立工具模组（Forge 1.20.1）
+# 1.20.1 的模组元数据文件名必须是 META-INF/mods.toml，且使用 mandatory 而不是 type="required"
+modLoader="javafml"
+loaderVersion="[47,)"
+license="All Rights Reserved"
+
+[[mods]]
+modId="gytrinket_observer"
+version="${mod_version}"
+displayName="Gytrinket Observer"
+description='''
+Observation and control tooling: server HTTP API (/status /block /region /command /top /dump),
+/obs commands, client HTTP API + file console for camera/screenshot/FOV/HUD.
+'''
+
+[[dependencies.gytrinket_observer]]
+    modId="forge"
+    mandatory=true
+    versionRange="[47,)"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.gytrinket_observer]]
+    modId="minecraft"
+    mandatory=true
+    versionRange="[1.20.1,1.21)"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.gytrinket_observer]]
+    modId="gytrinket"
+    mandatory=true
+    versionRange="[1.1.7,)"
+    ordering="AFTER"
+    side="BOTH"

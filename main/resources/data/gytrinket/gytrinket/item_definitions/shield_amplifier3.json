@@ -1,0 +1,21 @@
+{
+  "items": {
+    "gytrinket:shield_amplifier3": {
+      "shieldTypes": [
+        "amplification"
+      ],
+      "shieldValues": {
+        "shield_base": 10,
+        "shield_cooldown_time": 6,
+        "shield_hit_cooldown_extend": 40,
+        "shield_hit_cooldown_extend_multiplier": 0.1,
+        "base_amplification": 0.2,
+        "threat_amplification": 0.2,
+        "health_amplification_per_point": 0.02,
+        "max_amplification": 1,
+        "check_radius": 5,
+        "movement_speed_bonus": 0.2
+      }
+    }
+  }
+}

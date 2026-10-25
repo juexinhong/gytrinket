@@ -1,0 +1,1 @@
+{"itemSet":"charged_shield_items","titleKey":"charged_shield","descKey":"charged_shield_effect","color":"aqua","params":[{"type":"percentInt","source":"chargedShieldChargeRatio"},{"type":"percentInt","source":"chargedShieldMaxBonus"},{"type":"absPercentInt","source":"chargedShieldMovementSpeedPenalty"}]}

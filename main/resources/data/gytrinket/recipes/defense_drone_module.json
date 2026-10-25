@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " C ",
+    "SPS",
+    " W "
+  ],
+  "key": {
+    "S": {
+      "item": "minecraft:string"
+    },
+    "C": {
+      "item": "gytrinket:construct_frame"
+    },
+    "P": {
+      "item": "gytrinket:defense_drone_part"
+    },
+    "W": {
+      "item": "minecraft:blue_wool"
+    }
+  },
+  "result": {
+    "item": "gytrinket:defense_drone_module",
+    "count": 1
+  }
+}

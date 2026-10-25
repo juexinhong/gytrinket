@@ -1,0 +1,193 @@
+package com.gytrinket.gytrinket.client;
+
+import com.gytrinket.gytrinket.blocks.ModBlockEntities;
+import com.gytrinket.gytrinket.core.attack_mode.electric_discharge.client.LightningRenderManager;
+import com.gytrinket.gytrinket.core.entity.construct.drone.client.renderer.DroneBulletTrailManager;
+import com.gytrinket.gytrinket.client.effect.energywave.EnergyWaveVisualManager;
+import com.gytrinket.gytrinket.client.effect.particle.ShieldParticleRenderEvent;
+import com.gytrinket.gytrinket.client.effect.particle.ShieldParticleTickEvent;
+import com.gytrinket.gytrinket.client.shader.ModShaders;
+import com.gytrinket.gytrinket.core.entity.construct.drone.ModEntities;
+import com.gytrinket.gytrinket.core.entity.meteor.MeteorEntities;
+import com.gytrinket.gytrinket.core.entity.meteor.client.MeteorRenderer;
+import com.gytrinket.gytrinket.core.entity.construct.drone.DroneRenderer;
+import com.gytrinket.gytrinket.core.entity.construct.drone.DroneBulletRenderer;
+import com.gytrinket.gytrinket.core.entity.construct.drone.ArmorFragmentEntityModel;
+import com.gytrinket.gytrinket.core.entity.construct.drone.AssaultDroneEntityModel;
+import com.gytrinket.gytrinket.core.entity.construct.drone.DefenseDroneEntityModel;
+import com.gytrinket.gytrinket.core.entity.construct.drone.DroneBeamEntityModel;
+import com.gytrinket.gytrinket.core.entity.construct.drone.DroneEntityModel;
+import com.gytrinket.gytrinket.core.entity.construct.drone.client.renderer.DroneBeamRenderer;
+import com.gytrinket.gytrinket.core.entity.construct.drone.client.renderer.ArmorShardRenderer;
+import com.gytrinket.gytrinket.core.entity.construct.wingman.WingmanRenderer;
+import com.gytrinket.gytrinket.core.entity.construct.wingman.WingmanEntityModel;
+import com.gytrinket.gytrinket.core.entity.construct.wingman.ExplosiveProjectileRenderer;
+import com.gytrinket.gytrinket.core.entity.construct.wingman.InterceptorConfigContainer;
+import com.gytrinket.gytrinket.client.screen.InterceptorConfigContainerScreen;
+import com.gytrinket.gytrinket.client.model.LightPointCoreBlockModel;
+import com.gytrinket.gytrinket.core.entity.construct.swarm.SwarmEntityModel;
+import com.gytrinket.gytrinket.core.entity.construct.swarm.SwarmRenderer;
+import com.gytrinket.gytrinket.items.ModItems;
+import com.gytrinket.gytrinket.key.KeyInputHandler;
+import com.gytrinket.gytrinket.core.entity.construct.drone.DroneInputHandler;
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
+import net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer;
+import net.minecraft.client.renderer.ShaderInstance;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.client.event.EntityRenderersEvent;
+import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
+import net.minecraftforge.client.event.RegisterShadersEvent;
+import net.minecraftforge.client.extensions.common.IClientItemExtensions;
+import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
+
+/**
+ * 客户端初始化类
+ * 负责注册客户端相关的渲染器
+ */
+@Mod.EventBusSubscriber(modid = com.gytrinket.gytrinket.gytrinket.MODID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
+public class ModClient {
+    /**
+     * 客户端设置事件
+     */
+    @SubscribeEvent
+    public static void onClientSetup(FMLClientSetupEvent event) {
+        event.enqueueWork(() -> {
+            net.minecraft.client.gui.screens.MenuScreens.register(
+                    InterceptorConfigContainer.TYPE, InterceptorConfigContainerScreen::new);
+            net.minecraft.client.gui.screens.MenuScreens.register(
+                    com.gytrinket.gytrinket.items.ModMenus.LIGHT_POINT_CORE.get(), com.gytrinket.gytrinket.client.screen.LightPointCoreScreen::new);
+        });
+
+        MinecraftForge.EVENT_BUS.addListener(LightningRenderManager::onRenderLevelLast);
+        MinecraftForge.EVENT_BUS.addListener(EnergyWaveVisualManager::onRenderLevelLast);
+        MinecraftForge.EVENT_BUS.addListener(DroneBulletTrailManager::onRenderLevelLast);
+        ShieldParticleRenderEvent.init();
+        ShieldParticleTickEvent.init();
+        com.gytrinket.gytrinket.client.attack_mode.burst_fire.BurstFireClientHandler.init();
+    }
+
+    @SubscribeEvent
+    public static void onRegisterKeyMappings(RegisterKeyMappingsEvent event) {
+        KeyInputHandler.onRegisterKeyMappings(event);
+        DroneInputHandler.onRegisterKeyMappings(event);
+    }
+
+    /**
+     * 注册自定义着色器
+     * shield_glass: 三渲二水晶（顶点带法线，法线长度编码面类型）
+     * gytrinket_energy_wave_vol: 能量波体积渲染（3D raymarching）
+     * gytrinket_lightning_vol: 闪电3D圆柱体积渲染
+     */
+    @SubscribeEvent
+    public static void onRegisterShaders(RegisterShadersEvent event) throws java.io.IOException {
+        event.registerShader(
+            new ShaderInstance(
+                event.getResourceManager(),
+                new ResourceLocation(com.gytrinket.gytrinket.gytrinket.MODID, "shield_glass"),
+                DefaultVertexFormat.POSITION_TEX_COLOR_NORMAL
+            ),
+            ModShaders::setShieldGlassShader
+        );
+        // 同一套 vsh/fsh 的加色版本（blend = srcalpha, one）：光晕 Pass 用
+        event.registerShader(
+            new ShaderInstance(
+                event.getResourceManager(),
+                new ResourceLocation(com.gytrinket.gytrinket.gytrinket.MODID, "shield_glass_add"),
+                DefaultVertexFormat.POSITION_TEX_COLOR_NORMAL
+            ),
+            ModShaders::setShieldGlassAddShader
+        );
+        // 高光 Pass：同样的加色 blend，但 PassMode 在 JSON 里写死 2.0
+        // （1.20.1 的自定义 uniform 在部分驱动/管线组合下拿不到，不能依赖运行时设置）
+        event.registerShader(
+            new ShaderInstance(
+                event.getResourceManager(),
+                new ResourceLocation(com.gytrinket.gytrinket.gytrinket.MODID, "shield_glass_hi"),
+                DefaultVertexFormat.POSITION_TEX_COLOR_NORMAL
+            ),
+            ModShaders::setShieldGlassHiShader
+        );
+        // 旧版「贴图转立体」：历史 glass 着色器（贴图 + 顶点色编码法线），顶点格式只到 UV/Color
+        event.registerShader(
+            new ShaderInstance(
+                event.getResourceManager(),
+                new ResourceLocation(com.gytrinket.gytrinket.gytrinket.MODID, "shield_glass_legacy"),
+                DefaultVertexFormat.POSITION_TEX_COLOR
+            ),
+            ModShaders::setShieldGlassLegacyShader
+        );
+        event.registerShader(
+            new ShaderInstance(
+                event.getResourceManager(),
+                new ResourceLocation(com.gytrinket.gytrinket.gytrinket.MODID, "gytrinket_energy_wave_vol"),
+                DefaultVertexFormat.POSITION_TEX
+            ),
+            ModShaders::setEnergyWaveVolShader
+        );
+        event.registerShader(
+            new ShaderInstance(
+                event.getResourceManager(),
+                new ResourceLocation(com.gytrinket.gytrinket.gytrinket.MODID, "gytrinket_lightning_vol"),
+                DefaultVertexFormat.POSITION_TEX
+            ),
+            ModShaders::setLightningVolShader
+        );
+        event.registerShader(
+            new ShaderInstance(
+                event.getResourceManager(),
+                new ResourceLocation(com.gytrinket.gytrinket.gytrinket.MODID, "island_sky"),
+                DefaultVertexFormat.POSITION
+            ),
+            ModShaders::setIslandSkyShader
+        );
+    }
+
+    /**
+     * 注册方块实体渲染器事件
+     * 在此事件中注册方块实体的渲染器
+     * @param event 渲染器注册事件
+     */
+    @SubscribeEvent
+    public static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
+        // 注册光点核心方块的渲染器
+        event.registerBlockEntityRenderer(ModBlockEntities.LIGHT_POINT_CORE.get(), LightPointCoreBlockRenderer::new);
+        // 注册无人机渲染器
+        event.registerEntityRenderer(ModEntities.DRONE_CONSTRUCT.get(), DroneRenderer::new);
+        // 注册无人机子弹渲染器
+        event.registerEntityRenderer(ModEntities.DRONE_BULLET.get(), DroneBulletRenderer::new);
+        // 注册无人机光束炮渲染器
+        event.registerEntityRenderer(ModEntities.DRONE_BEAM.get(), DroneBeamRenderer::new);
+        event.registerEntityRenderer(ModEntities.ARMOR_SHARD.get(), ArmorShardRenderer::new);
+        // 注册僚机渲染器
+        event.registerEntityRenderer(ModEntities.WINGMAN_CONSTRUCT.get(), WingmanRenderer::new);
+        // 注册爆破弹渲染器
+        event.registerEntityRenderer(ModEntities.EXPLOSIVE_PROJECTILE.get(), ExplosiveProjectileRenderer::new);
+        // 注册蜂群渲染器
+        event.registerEntityRenderer(ModEntities.SWARM_CONSTRUCT.get(), SwarmRenderer::new);
+        // 陨石
+        event.registerEntityRenderer(MeteorEntities.METEOR_SMALL.get(), MeteorRenderer::new);
+        event.registerEntityRenderer(MeteorEntities.METEOR_MEDIUM.get(), MeteorRenderer::new);
+        event.registerEntityRenderer(MeteorEntities.METEOR_LARGE.get(), MeteorRenderer::new);
+        event.registerEntityRenderer(MeteorEntities.METEOR_HUGE.get(), MeteorRenderer::new);
+    }
+
+    /**
+     * 注册模型层定义（LayerDefinitions）
+     * 标准 EntityModel 渲染需要在此烘焙模型的 LayerLocation
+     */
+    @SubscribeEvent
+    public static void registerLayerDefinitions(EntityRenderersEvent.RegisterLayerDefinitions event) {
+        event.registerLayerDefinition(WingmanEntityModel.LAYER_LOCATION, WingmanEntityModel::createBodyLayer);
+        event.registerLayerDefinition(DroneEntityModel.LAYER_LOCATION, DroneEntityModel::createBodyLayer);
+        event.registerLayerDefinition(AssaultDroneEntityModel.LAYER_LOCATION, AssaultDroneEntityModel::createBodyLayer);
+        event.registerLayerDefinition(DefenseDroneEntityModel.LAYER_LOCATION, DefenseDroneEntityModel::createBodyLayer);
+        event.registerLayerDefinition(ArmorFragmentEntityModel.LAYER_LOCATION, ArmorFragmentEntityModel::createBodyLayer);
+        event.registerLayerDefinition(DroneBeamEntityModel.LAYER_LOCATION, DroneBeamEntityModel::createBodyLayer);
+        event.registerLayerDefinition(SwarmEntityModel.LAYER_LOCATION, SwarmEntityModel::createBodyLayer);
+        event.registerLayerDefinition(LightPointCoreBlockModel.LAYER_LOCATION, LightPointCoreBlockModel::createBodyLayer);
+    }
+}

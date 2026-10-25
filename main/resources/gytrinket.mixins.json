@@ -1,0 +1,27 @@
+{
+  "required": true,
+  "package": "com.gytrinket.gytrinket.mixin",
+  "refmap": "gytrinket.refmap.json",
+  "compatibilityLevel": "JAVA_17",
+  "mixins": [
+    "LivingEntityMixin",
+    "MovementSpeedSwimMixin",
+    "PlayerMixin",
+    "TargetingConditionsMixin",
+    "LevelMixin"
+  ],
+  "client": [
+    "LivingEntityClientMixin",
+    "GameRendererMixin",
+    "MinecraftClientMixin",
+    "MouseHandlerMixin",
+    "ParticleEngineAccessor",
+    "EntityRenderDispatcherMixin",
+    "ClientLevelMixin",
+    "Matrix4fAccessor"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "minVersion": "0.8"
+}

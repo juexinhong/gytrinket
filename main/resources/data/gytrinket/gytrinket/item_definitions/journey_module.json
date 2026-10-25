@@ -1,0 +1,38 @@
+{
+  "items": {
+    "gytrinket:journey_module": {
+      "mechanic": true,
+      "sets": [
+        "journey_module_items"
+      ],
+      "values": {
+        "journey_module_items": {
+          "attack_speed_per_stack": {
+            "value": 0.0075,
+            "stackable": false
+          },
+          "movement_speed_per_stack": {
+            "value": 0.0075,
+            "stackable": false
+          },
+          "duration_ticks": {
+            "value": 100,
+            "stackable": false
+          },
+          "max_stacks": {
+            "value": 40,
+            "stackable": false
+          },
+          "decay_interval_ticks": {
+            "value": 3,
+            "stackable": false
+          },
+          "decay_per_interval": {
+            "value": 2,
+            "stackable": false
+          }
+        }
+      }
+    }
+  }
+}

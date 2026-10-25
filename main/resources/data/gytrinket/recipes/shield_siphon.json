@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "H": {
+      "item": "minecraft:hopper"
+    },
+    "G": {
+      "item": "gytrinket:shield_gy"
+    }
+  },
+  "pattern": [
+    " H ",
+    " G "
+  ],
+  "result": {
+    "item": "gytrinket:shield_siphon"
+  }
+}

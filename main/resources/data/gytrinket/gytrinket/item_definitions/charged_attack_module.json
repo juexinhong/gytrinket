@@ -1,0 +1,10 @@
+{
+    "items":  {
+                  "gytrinket:charged_attack_module":  {
+                                                          "mechanic":  true,
+                                                          "sets":  [
+                                                                       "charged_attack_items"
+                                                                   ]
+                                                      }
+              }
+}

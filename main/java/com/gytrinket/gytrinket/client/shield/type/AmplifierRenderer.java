@@ -1,0 +1,133 @@
+package com.gytrinket.gytrinket.client.shield.type;
+
+import com.gytrinket.gytrinket.client.shield.ShieldHudRenderer;
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.*;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.GameRenderer;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.Mth;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.phys.Vec3;
+import com.mojang.math.Matrix4f;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.client.event.RenderLevelStageEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * 增幅护盾渲染器（与光环护盾 AuraRenderer 同款逻辑）
+ * <p>
+ * 在玩家（或被保护实体）脚下渲染 amplifier.png 地面贴图，
+ * 透明度与尺寸由 AmplifierClientData 插值驱动。
+ */
+@Mod.EventBusSubscriber(modid = com.gytrinket.gytrinket.gytrinket.MODID, value = Dist.CLIENT)
+public class AmplifierRenderer {
+
+    private static final ResourceLocation AMPLIFIER_TEXTURE = new ResourceLocation(
+        com.gytrinket.gytrinket.gytrinket.MODID, "textures/particle/amplifier.png"
+    );
+
+    private AmplifierRenderer() {}
+
+    @SubscribeEvent
+    public static void onRenderLevelLast(RenderLevelStageEvent event) {
+        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_PARTICLES) {
+            return;
+        }
+
+        Minecraft mc = Minecraft.getInstance();
+        Player player = mc.player;
+        if (player == null) return;
+
+        double currentShield = ShieldHudRenderer.getInstance().getCurrentShield();
+        if (currentShield <= 0) return;
+
+        List<AmplifierClientData.State> states = AmplifierClientData.getRenderStates();
+        if (states.isEmpty()) return;
+
+        float pt = event.getPartialTick();
+        Vec3 camPos = event.getCamera().getPosition();
+
+        List<double[]> renderPositions = getRenderPositions(mc, player, pt, camPos);
+
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.enableDepthTest();
+        RenderSystem.depthMask(false);
+        RenderSystem.setShader(GameRenderer::getPositionTexColorShader);
+        RenderSystem.setShaderTexture(0, AMPLIFIER_TEXTURE);
+
+        PoseStack poseStack = event.getPoseStack();
+        poseStack.pushPose();
+
+        if (renderPositions.isEmpty()) {
+            poseStack.popPose();
+            RenderSystem.depthMask(true);
+            RenderSystem.disableBlend();
+            return;
+        }
+
+        Matrix4f matrix = poseStack.last().pose();
+
+        Tesselator tessellator = Tesselator.getInstance();
+        BufferBuilder bufferBuilder = tessellator.getBuilder();
+        bufferBuilder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
+
+        // 每个增幅实例各自独立绘制贴图（各用各的尺寸、透明度与亮度）
+        for (AmplifierClientData.State state : states) {
+            float alpha = (float) state.displayAlpha;
+            float halfSize = (float) state.displaySize / 2.0f;
+            // 亮度（8~15）映射为颜色缩放：基础8时较暗，达上限15时为全白
+            float colorScale = (float)(state.getDisplayBrightness() / 15.0);
+            int rgb = (int)(colorScale * 255);
+            int packedColor = ((int)(alpha * 255) << 24) | (rgb << 16) | (rgb << 8) | rgb;
+
+            for (double[] pos : renderPositions) {
+                float px = (float) pos[0];
+                float py = (float) pos[1];
+                float pz = (float) pos[2];
+
+                bufferBuilder.vertex(matrix, px - halfSize, py, pz - halfSize).uv(0.0f, 0.0f).color(packedColor).endVertex();
+                bufferBuilder.vertex(matrix, px - halfSize, py, pz + halfSize).uv(0.0f, 1.0f).color(packedColor).endVertex();
+                bufferBuilder.vertex(matrix, px + halfSize, py, pz + halfSize).uv(1.0f, 1.0f).color(packedColor).endVertex();
+                bufferBuilder.vertex(matrix, px + halfSize, py, pz - halfSize).uv(1.0f, 0.0f).color(packedColor).endVertex();
+            }
+        }
+
+        BufferUploader.drawWithShader(bufferBuilder.end());
+
+        poseStack.popPose();
+
+        RenderSystem.depthMask(true);
+        RenderSystem.disableBlend();
+    }
+
+    private static List<double[]> getRenderPositions(Minecraft mc, Player player, float partialTick, Vec3 camPos) {
+        List<double[]> positions = new ArrayList<>();
+
+        int[] protectedIds = SiphonClientData.getProtectedEntityIds();
+        if (protectedIds.length > 0) {
+            for (int entityId : protectedIds) {
+                Entity entity = mc.level.getEntity(entityId);
+                if (entity != null) {
+                    double x = Mth.lerp(partialTick, entity.xOld, entity.getX()) - camPos.x;
+                    double y = Mth.lerp(partialTick, entity.yOld, entity.getY()) + 0.05 - camPos.y;
+                    double z = Mth.lerp(partialTick, entity.zOld, entity.getZ()) - camPos.z;
+                    positions.add(new double[]{x, y, z});
+                }
+            }
+        } else {
+            double x = Mth.lerp(partialTick, player.xOld, player.getX()) - camPos.x;
+            double y = Mth.lerp(partialTick, player.yOld, player.getY()) + 0.05 - camPos.y;
+            double z = Mth.lerp(partialTick, player.zOld, player.getZ()) - camPos.z;
+            positions.add(new double[]{x, y, z});
+        }
+
+        return positions;
+    }
+}

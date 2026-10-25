@@ -1,0 +1,10 @@
+{
+    "items":  {
+                  "gytrinket:last_order_module":  {
+                                                      "mechanic":  true,
+                                                      "sets":  [
+                                                                   "near_death_explosion_items"
+                                                               ]
+                                                  }
+              }
+}

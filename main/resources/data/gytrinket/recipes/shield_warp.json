@@ -1,0 +1,23 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "E": {
+      "item": "minecraft:ender_pearl"
+    },
+    "S": {
+      "item": "gytrinket:shield_gy"
+    },
+    "R": {
+      "item": "minecraft:redstone"
+    }
+  },
+  "pattern": [
+    " E ",
+    " S ",
+    " R "
+  ],
+  "result": {
+    "item": "gytrinket:shield_warp"
+  }
+}

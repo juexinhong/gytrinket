@@ -1,0 +1,10 @@
+{
+  "items": {
+    "gytrinket:implosion_module": {
+      "attributes": {
+        "explosion_damage_percent": 0.35,
+        "explosion_radius_independent": -0.3
+      }
+    }
+  }
+}

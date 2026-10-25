@@ -1,0 +1,22 @@
+{
+  "items": {
+    "gytrinket:wide_protocol_module": {
+      "mechanic": true,
+      "sets": [
+        "near_death_protection_items"
+      ],
+      "values": {
+        "near_death_protection_items": {
+          "invincible_duration": {
+            "value": 20,
+            "stackable": false
+          },
+          "cooldown": {
+            "value": 300,
+            "stackable": false
+          }
+        }
+      }
+    }
+  }
+}

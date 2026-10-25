@@ -1,0 +1,9 @@
+{
+  "items": {
+    "gytrinket:thrust_boost_module": {
+      "attributes": {
+        "movement_speed_percent": 0.25
+      }
+    }
+  }
+}

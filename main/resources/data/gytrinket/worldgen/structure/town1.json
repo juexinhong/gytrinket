@@ -1,0 +1,9 @@
+{
+  "type": "gytrinket:town1",
+  "biomes": [
+    "gytrinket:island"
+  ],
+  "step": "surface_structures",
+  "spawn_overrides": {},
+  "terrain_adaptation": "none"
+}

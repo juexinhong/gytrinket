@@ -1,0 +1,11 @@
+{
+  "items": {
+    "gytrinket:focused_shield_module": {
+      "attributes": {
+        "shield_effect_percent": 0.25,
+        "shield_percent": 0.05,
+        "shield_effect_radius": -0.2
+      }
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "items": {
+    "gytrinket:reflect_shield_module": {
+      "mechanic": true,
+      "sets": [
+        "reflect_damage_items"
+      ],
+      "attributes": {
+        "shield_percent": 0.05
+      }
+    }
+  }
+}

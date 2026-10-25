@@ -1,0 +1,370 @@
+package com.gytrinket.gytrinket.core.shield.type;
+
+import com.gytrinket.gytrinket.config.Config;
+import com.gytrinket.gytrinket.core.defs.ShieldValueDefs;
+import com.gytrinket.gytrinket.core.attribute.AttributeManager;
+import com.gytrinket.gytrinket.core.damage.DamageAttributionWindow;
+import com.gytrinket.gytrinket.core.defs.DefsManager;
+import com.gytrinket.gytrinket.core.entity.construct.HostileTargetManager;
+import com.gytrinket.gytrinket.core.modifier.player.knockback.KnockbackManager;
+import com.gytrinket.gytrinket.core.projectile.MultipartHitScan;
+import com.gytrinket.gytrinket.core.shield.ShieldManager;
+import com.gytrinket.gytrinket.core.shield_transfer.ShieldTransferManager;
+import com.gytrinket.gytrinket.core.damage.ModDamageTypes;
+import com.gytrinket.gytrinket.network.NetworkHandler;
+import net.minecraft.core.Registry;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.phys.AABB;
+import net.minecraftforge.server.ServerLifecycleHooks;
+
+import java.util.*;
+
+public class SiphonShieldType implements IShieldType {
+
+    /** 虹吸状态：键 = playerUUID + "|" + itemId（每物品实例独立；同物品多件共享同一实例状态） */
+    private static final Map<String, SiphonData> PLAYER_SIPHON_DATA = new HashMap<>();
+
+    // 方案B追踪Map：目标UUID → (玩家UUID, 物品id)，用于SiphonDamageListener按实例取 heal_ratio
+    private static final Map<UUID, SiphonTargetRef> SIPHON_TARGET_TO_PLAYER = new HashMap<>();
+
+    /** 物品实例状态键（UUID 与 itemId 均不含 '|'，前缀匹配可安全清理） */
+    private static String instanceKey(UUID playerUUID, String itemId) {
+        return playerUUID + "|" + itemId;
+    }
+
+    /**
+     * 实例级激活条件：该物品的虹吸护盾池实例存在且有池量。
+     * 实例破裂（池量归零）或实例不存在（物品卸下/禁用）→ 效果关闭
+     */
+    private static boolean isInstancePoolEmpty(UUID playerUUID, String itemId) {
+        return ShieldManager.isInstancePoolEmpty(playerUUID, itemId, "siphon");
+    }
+
+    /** 虹吸伤害归属引用：玩家 UUID + 提供虹吸的物品 id（数值按该物品实例取） */
+    public record SiphonTargetRef(UUID playerUUID, String itemId) {}
+
+    /** 物品实例取值：UI 覆盖优先，未覆盖回退 Config 默认值 */
+    private static double valueFor(MinecraftServer server, String itemId, String paramKey, double configDefault) {
+        return DefsManager.resolveShieldTypeValueForItem(server, itemId, "siphon", paramKey, configDefault);
+    }
+
+    private static class SiphonData {
+        int stacks;
+        int remainingTicks;
+        int tickCounter;
+        boolean decaying;
+        int lastSyncedStacks;
+
+        SiphonData() {
+            this.stacks = 0;
+            this.remainingTicks = 0;
+            this.tickCounter = 0;
+            this.decaying = false;
+            this.lastSyncedStacks = 0;
+        }
+    }
+
+    @Override
+    public String getName() {
+        return "siphon";
+    }
+
+    @Override
+    public boolean isCompatible() {
+        return false;
+    }
+
+    @Override
+    public void onRemoved(Player player) {
+        if (player.getLevel().isClientSide) return;
+        UUID uuid = player.getUUID();
+        String prefix = uuid + "|";
+        PLAYER_SIPHON_DATA.keySet().removeIf(key -> key.startsWith(prefix));
+        AttributeManager.removeDynamicAttribute(uuid, "siphon", "shield_effect_percent");
+        AttributeManager.removeDynamicAttribute(uuid, "siphon", "shield_effect_radius");
+        if (player instanceof ServerPlayer serverPlayer) {
+            NetworkHandler.sendShieldSyncToPlayer(serverPlayer,
+                ShieldManager.getCurrentShield(uuid), ShieldManager.getMaxShield(uuid));
+        }
+    }
+
+    @Override
+    public void onTick(Player player, ItemStack source) {
+        if (player.getLevel().isClientSide) return;
+        double currentShield = ShieldManager.getCurrentShield(player.getUUID());
+        if (currentShield <= 0) return;
+
+        UUID uuid = player.getUUID();
+        String itemId = Registry.ITEM.getKey(source.getItem()).toString();
+        String key = instanceKey(uuid, itemId);
+        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+
+        // [实例级闸门] 本实例护盾池量归零或实例不存在时：清空实例层数并重算聚合属性（破裂实例不再虹吸、层数加成关闭）
+        if (isInstancePoolEmpty(uuid, itemId)) {
+            SiphonData removed = PLAYER_SIPHON_DATA.remove(key);
+            if (removed != null && removed.stacks > 0) {
+                updateSiphonAttributes(uuid);
+                syncSiphonStacksToClient(player, 0);
+            }
+            return;
+        }
+
+        SiphonData data = PLAYER_SIPHON_DATA.computeIfAbsent(key, k -> new SiphonData());
+
+        data.tickCounter++;
+        int tickInterval = (int) valueFor(server, itemId, "tick_interval", ShieldValueDefs.defaultValueOf("siphon", "tick_interval", 5.0));
+        if (data.tickCounter >= tickInterval) {
+            data.tickCounter = 0;
+            performSiphon(player, data, server, itemId);
+        }
+
+        updateSiphonDecay(data, server, itemId);
+        updateSiphonAttributes(uuid);
+
+        if (data.stacks != data.lastSyncedStacks) {
+            data.lastSyncedStacks = data.stacks;
+            syncSiphonStacksToClient(player, data.stacks);
+        }
+    }
+
+    private void performSiphon(Player player, SiphonData data, MinecraftServer server, String itemId) {
+        List<LivingEntity> effectCenters;
+        if (!ShieldTransferManager.shouldProtectPlayer(player)) {
+            effectCenters = ShieldTransferManager.getProtectedEntities(player.getUUID(), player.getLevel());
+        } else {
+            effectCenters = List.of(player);
+        }
+
+        double shieldEffectRadius = AttributeManager.getGroupAttribute(player.getUUID(), "shield_effect_radius");
+        double baseRadius = valueFor(server, itemId, "radius", ShieldValueDefs.defaultValueOf("siphon", "radius", 4.0));
+        double radius = baseRadius * shieldEffectRadius;
+
+        double shieldEffect = AttributeManager.getGroupAttribute(player.getUUID(), "shield_effect");
+        double baseDamage = valueFor(server, itemId, "damage", ShieldValueDefs.defaultValueOf("siphon", "damage", 0.3));
+        double totalDamage = baseDamage * shieldEffect;
+
+        List<LivingEntity> targets = new ArrayList<>();
+
+        for (LivingEntity center : effectCenters) {
+            if (center == null || !center.isAlive()) continue;
+
+            AABB boundingBox = center.getBoundingBox().inflate(radius);
+            // 多体节：体节不注册进 level 实体列表，只查父实体会漏掉伸出的身体节段；
+            // 虹吸伤害按生物结算（每个父实体只记一次）
+            for (MultipartHitScan.Hit hit : MultipartHitScan.collectInRegion(
+                    player.getLevel(), boundingBox, center.position(),
+                    entity -> isValidTarget((LivingEntity) entity, center),
+                    boundingBox::intersects,
+                    false)) {
+                LivingEntity target = hit.target();
+                if (target.isAlive() && target.getHealth() > 0) {
+                    targets.add(target);
+                }
+            }
+        }
+
+        if (!targets.isEmpty()) {
+            float damagePerTarget = (float) (totalDamage / targets.size());
+
+            for (LivingEntity target : targets) {
+                KnockbackManager.markNoKnockback(target.getUUID());
+                target.invulnerableTime = 0;
+
+                // 伤害源恒不带玩家（避免非致死时对玩家触发仇恨）：
+                // 预估致死时由 ExecuteDamageHandler 取消原伤害并改用归属玩家的
+                // 斩杀伤害源（execute_damage）完成最后一击
+                DamageSource siphonSource = ModDamageTypes.getSiphonDamageSource(player.getLevel(), null);
+                DamageAttributionWindow.mark(target, player);
+
+                // 记录目标→(玩家,物品)映射，供SiphonDamageListener按实例取值
+                SIPHON_TARGET_TO_PLAYER.put(target.getUUID(), new SiphonTargetRef(player.getUUID(), itemId));
+
+                try {
+                    target.hurt(siphonSource, damagePerTarget);
+                } finally {
+                    DamageAttributionWindow.unmark(target);
+                }
+                target.invulnerableTime = 0;  //这个决定不能删除!害我找半天哪里有问题.
+
+                // hurt()同步执行，监听器已处理完毕，移除追踪
+                SIPHON_TARGET_TO_PLAYER.remove(target.getUUID());
+
+                sendSiphonParticles(player, target);
+            }
+
+            data.stacks++;
+            data.remainingTicks = (int) valueFor(server, itemId, "duration_ticks", ShieldValueDefs.defaultValueOf("siphon", "duration_ticks", 20.0));
+            data.decaying = false;
+        }
+    }
+
+    private boolean isValidTarget(LivingEntity entity, LivingEntity center) {
+        if (entity == center) return false;
+        if (entity instanceof Player targetPlayer) {
+            if (!HostileTargetManager.shouldAttackPlayer(center, targetPlayer)) return false;
+        }
+        if (center instanceof Player centerPlayer) {
+            return HostileTargetManager.shouldAttackPlayer(entity, centerPlayer);
+        }
+        UUID ownerUUID = ShieldTransferManager.getShieldOwnerUUID(center);
+        if (ownerUUID != null) {
+            Player owner = ServerLifecycleHooks.getCurrentServer().getPlayerList().getPlayer(ownerUUID);
+            if (owner != null) return HostileTargetManager.shouldAttackPlayer(entity, owner);
+        }
+        return false;
+    }
+
+    private void updateSiphonDecay(SiphonData data, MinecraftServer server, String itemId) {
+        if (data.stacks <= 0) return;
+
+        if (!data.decaying) {
+            data.remainingTicks--;
+            if (data.remainingTicks <= 0) {
+                data.decaying = true;
+            }
+        }
+
+        if (data.decaying) {
+            double decayRatio = valueFor(server, itemId, "decay_ratio", ShieldValueDefs.defaultValueOf("siphon", "decay_ratio", 0.03));
+            int decayAmount = 1 + (int) Math.floor(data.stacks * decayRatio);
+            data.stacks -= decayAmount;
+            if (data.stacks <= 0) {
+                data.stacks = 0;
+                data.decaying = false;
+                data.remainingTicks = 0;
+            }
+        }
+    }
+
+    /**
+     * 重算玩家虹吸动态属性：聚合该玩家全部 siphon 实例的层数加成
+     * （动态属性命名空间为单值，多实例并存时写入总和）。
+     */
+    private void updateSiphonAttributes(UUID uuid) {
+        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+        String prefix = uuid + "|";
+        double shieldEffectBonus = 0;
+        double shieldEffectRadiusBonus = 0;
+        for (var e : PLAYER_SIPHON_DATA.entrySet()) {
+            if (!e.getKey().startsWith(prefix)) continue;
+            SiphonData data = e.getValue();
+            if (data.stacks <= 0) continue;
+            String instItemId = e.getKey().substring(prefix.length());
+            double effectPerStack = valueFor(server, instItemId, "effect_per_stack", ShieldValueDefs.defaultValueOf("siphon", "effect_per_stack", 0.025));
+            double maxEffect = valueFor(server, instItemId, "max_effect", ShieldValueDefs.defaultValueOf("siphon", "max_effect", 0.4));
+            shieldEffectBonus += Math.min(data.stacks * effectPerStack, maxEffect);
+            shieldEffectRadiusBonus += Math.min(data.stacks * effectPerStack, maxEffect);
+        }
+
+        AttributeManager.setDynamicAttribute(uuid, "siphon", "shield_effect_percent", shieldEffectBonus);
+        AttributeManager.setDynamicAttribute(uuid, "siphon", "shield_effect_radius", shieldEffectRadiusBonus);
+    }
+
+    private void syncSiphonStacksToClient(Player player, int stacks) {
+        if (player instanceof ServerPlayer serverPlayer) {
+            double currentShield = ShieldManager.getCurrentShield(player.getUUID());
+            double maxShield = ShieldManager.getMaxShield(player.getUUID());
+            NetworkHandler.sendShieldSyncToPlayer(serverPlayer, currentShield, maxShield);
+        }
+    }
+
+    private void sendSiphonParticles(Player player, LivingEntity target) {
+        if (!(player instanceof ServerPlayer serverPlayer)) return;
+
+        double targetCenterX = target.getX();
+        double targetCenterY = target.getY() + target.getBbHeight() / 2.0;
+        double targetCenterZ = target.getZ();
+        double targetHeight = target.getBbHeight();
+
+        LivingEntity nearestCenter = findNearestEffectCenter(player, target);
+        double destX = nearestCenter.getX();
+        double destY = nearestCenter.getY() + nearestCenter.getBbHeight() / 2.0;
+        double destZ = nearestCenter.getZ();
+
+        NetworkHandler.sendSiphonParticlesToPlayer(serverPlayer,
+            targetCenterX, targetCenterY, targetCenterZ, targetHeight,
+            destX, destY, destZ);
+    }
+
+    private LivingEntity findNearestEffectCenter(Player player, LivingEntity target) {
+        List<LivingEntity> effectCenters;
+        if (!ShieldTransferManager.shouldProtectPlayer(player)) {
+            effectCenters = ShieldTransferManager.getProtectedEntities(player.getUUID(), player.getLevel());
+        } else {
+            return player;
+        }
+
+        LivingEntity nearest = player;
+        double minDist = target.distanceToSqr(player);
+
+        for (LivingEntity center : effectCenters) {
+            if (center == null || !center.isAlive()) continue;
+            double dist = target.distanceToSqr(center);
+            if (dist < minDist) {
+                minDist = dist;
+                nearest = center;
+            }
+        }
+
+        return nearest;
+    }
+
+    /** 玩家全部 siphon 实例的层数总和（显示/HUD 用） */
+    public static int getSiphonStacks(UUID playerUUID) {
+        int total = 0;
+        String prefix = playerUUID + "|";
+        for (var e : PLAYER_SIPHON_DATA.entrySet()) {
+            if (e.getKey().startsWith(prefix)) {
+                total += e.getValue().stacks;
+            }
+        }
+        return total;
+    }
+
+    /** 单实例查询：该物品实例的虹吸层数 */
+    public static int getSiphonStacksForItem(UUID playerUUID, String itemId) {
+        SiphonData data = PLAYER_SIPHON_DATA.get(instanceKey(playerUUID, itemId));
+        return data != null ? data.stacks : 0;
+    }
+
+    public static boolean hasSiphonShieldType(UUID playerUUID) {
+        return ShieldTypeManager.hasActiveShieldType(playerUUID, "siphon");
+    }
+
+    /** 获取完整归属引用（玩家 + 物品实例），供 SiphonDamageListener 按实例取 heal_ratio */
+    public static SiphonTargetRef getSiphonTargetRef(UUID targetUUID) {
+        return SIPHON_TARGET_TO_PLAYER.get(targetUUID);
+    }
+
+    public static void clearPlayerData(UUID playerUUID) {
+        String prefix = playerUUID + "|";
+        boolean removed = PLAYER_SIPHON_DATA.keySet().removeIf(key -> key.startsWith(prefix));
+        if (removed) {
+            AttributeManager.removeDynamicAttribute(playerUUID, "siphon", "shield_effect_percent");
+            AttributeManager.removeDynamicAttribute(playerUUID, "siphon", "shield_effect_radius");
+        }
+    }
+
+    public static void clearAllData() {
+        Set<UUID> uuids = new HashSet<>();
+        for (String key : PLAYER_SIPHON_DATA.keySet()) {
+            int idx = key.indexOf('|');
+            if (idx > 0) {
+                try {
+                    uuids.add(UUID.fromString(key.substring(0, idx)));
+                } catch (IllegalArgumentException ignored) {
+                }
+            }
+        }
+        for (UUID uuid : uuids) {
+            AttributeManager.removeDynamicAttribute(uuid, "siphon", "shield_effect_percent");
+            AttributeManager.removeDynamicAttribute(uuid, "siphon", "shield_effect_radius");
+        }
+        PLAYER_SIPHON_DATA.clear();
+    }
+}

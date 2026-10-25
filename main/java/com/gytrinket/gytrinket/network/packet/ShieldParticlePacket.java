@@ -1,0 +1,84 @@
+package com.gytrinket.gytrinket.network.packet;
+
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.fml.DistExecutor;
+import net.minecraftforge.network.NetworkEvent;
+
+import java.util.function.Supplier;
+
+public class ShieldParticlePacket {
+
+    private final int entityId;
+    private final double originOffsetX, originOffsetY, originOffsetZ;
+    private final double offsetX, offsetY, offsetZ;
+    private final double dirX, dirY, dirZ;
+    private final int delayTicks;
+    /** 这一次受击的编号（同一批共用；0 = 不参与让位体系，比如待机粒子） */
+    private final int burstId;
+
+    public ShieldParticlePacket(int entityId,
+                               double originOffsetX, double originOffsetY, double originOffsetZ,
+                               double offsetX, double offsetY, double offsetZ,
+                               double dirX, double dirY, double dirZ,
+                               int delayTicks, int burstId) {
+        this.entityId = entityId;
+        this.originOffsetX = originOffsetX;
+        this.originOffsetY = originOffsetY;
+        this.originOffsetZ = originOffsetZ;
+        this.offsetX = offsetX;
+        this.offsetY = offsetY;
+        this.offsetZ = offsetZ;
+        this.dirX = dirX;
+        this.dirY = dirY;
+        this.dirZ = dirZ;
+        this.delayTicks = delayTicks;
+        this.burstId = burstId;
+    }
+
+    public ShieldParticlePacket(FriendlyByteBuf buf) {
+        this.entityId = buf.readInt();
+        this.originOffsetX = buf.readDouble();
+        this.originOffsetY = buf.readDouble();
+        this.originOffsetZ = buf.readDouble();
+        this.offsetX = buf.readDouble();
+        this.offsetY = buf.readDouble();
+        this.offsetZ = buf.readDouble();
+        this.dirX = buf.readDouble();
+        this.dirY = buf.readDouble();
+        this.dirZ = buf.readDouble();
+        this.delayTicks = buf.readVarInt();
+        this.burstId = buf.readVarInt();
+    }
+
+    public void toBytes(FriendlyByteBuf buf) {
+        buf.writeInt(entityId);
+        buf.writeDouble(originOffsetX);
+        buf.writeDouble(originOffsetY);
+        buf.writeDouble(originOffsetZ);
+        buf.writeDouble(offsetX);
+        buf.writeDouble(offsetY);
+        buf.writeDouble(offsetZ);
+        buf.writeDouble(dirX);
+        buf.writeDouble(dirY);
+        buf.writeDouble(dirZ);
+        buf.writeVarInt(delayTicks);
+        buf.writeVarInt(burstId);
+    }
+
+    public void handle(Supplier<NetworkEvent.Context> contextSupplier) {
+        NetworkEvent.Context context = contextSupplier.get();
+        context.enqueueWork(() -> {
+            DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> {
+                if (delayTicks > 0) {
+                    com.gytrinket.gytrinket.client.effect.particle.ShieldParticleTimerManager.getInstance()
+                        .addPendingParticle(entityId, originOffsetX, originOffsetY, originOffsetZ, offsetX, offsetY, offsetZ, dirX, dirY, dirZ, delayTicks, burstId);
+                } else {
+                    com.gytrinket.gytrinket.client.effect.particle.ShieldParticleRenderManager.getInstance()
+                        .addParticle(entityId, originOffsetX, originOffsetY, originOffsetZ, offsetX, offsetY, offsetZ, dirX, dirY, dirZ, burstId);
+                }
+            });
+        });
+        context.setPacketHandled(true);
+    }
+}

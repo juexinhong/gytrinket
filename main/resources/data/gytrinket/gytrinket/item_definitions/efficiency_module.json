@@ -1,0 +1,10 @@
+{
+    "items":  {
+                  "gytrinket:efficiency_module":  {
+                                                      "mechanic":  true,
+                                                      "sets":  [
+                                                                   "attack_cooldown_efficiency_items"
+                                                               ]
+                                                  }
+              }
+}

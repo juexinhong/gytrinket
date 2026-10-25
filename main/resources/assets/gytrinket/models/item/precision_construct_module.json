@@ -1,0 +1,6 @@
+{
+  "parent": "item/generated",
+  "textures": {
+    "layer0": "gytrinket:item/precision_construct_module"
+  }
+}

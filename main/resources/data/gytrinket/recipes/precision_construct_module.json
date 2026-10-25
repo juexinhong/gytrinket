@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "S": {
+      "item": "minecraft:string"
+    },
+    "F": {
+      "item": "gytrinket:construct_frame"
+    },
+    "P": {
+      "item": "gytrinket:precision_construct_part"
+    },
+    "W": {
+      "item": "minecraft:blue_wool"
+    }
+  },
+  "pattern": [
+    " F ",
+    "SPS",
+    " W "
+  ],
+  "result": {
+    "item": "gytrinket:precision_construct_module",
+    "count": 1
+  }
+}

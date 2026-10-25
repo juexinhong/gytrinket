@@ -1,0 +1,215 @@
+package com.gytrinket.gytrinket.items;
+
+import com.gytrinket.gytrinket.blocks.ModBlocks;
+import net.minecraft.world.item.Item;
+import net.minecraftforge.registries.DeferredRegister;
+import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraftforge.registries.RegistryObject;
+
+public class ModItems {
+    public static final DeferredRegister<Item> ITEMS = DeferredRegister.create(ForgeRegistries.ITEMS, com.gytrinket.gytrinket.gytrinket.MODID);
+
+    // 基础方块（使用 GeoItem 渲染3D模型）
+    public static final RegistryObject<Item> LIGHT_POINT_CORE = ITEMS.register("light_point_core", () -> new LightPointCoreBlockItem(ModBlocks.LIGHT_POINT_CORE.get(), new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 光点核心方块
+    
+    // 机身物品
+    public static final RegistryObject<Item> GUARDIAN = ITEMS.register("guardian", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 哨卫机身
+    public static final RegistryObject<Item> SWARM_MODULE = ITEMS.register("mothership_body", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 母舰机身
+    public static final RegistryObject<Item> GHOST_FUSELAGE = ITEMS.register("ghost_fuselage", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 幽灵机身
+    public static final RegistryObject<Item> ENGINEERING_FUSELAGE = ITEMS.register("engineering_fuselage", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 工程机身
+
+    // 基础护盾物品
+    public static final RegistryObject<Item> SHIELD_GY = ITEMS.register("shield_gy", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 基础护盾
+    public static final RegistryObject<Item> SHIELD_GY1 = ITEMS.register("shield_gy1", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 基础护盾+
+    public static final RegistryObject<Item> SHIELD_GY2 = ITEMS.register("shield_gy2", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 基础护盾++
+    public static final RegistryObject<Item> SHIELD_GY3 = ITEMS.register("shield_gy3", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 基础护盾+++
+
+    // 光环护盾物品
+    public static final RegistryObject<Item> SHIELD_AURA_RING = ITEMS.register("shield_aura_ring", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 光环护盾
+    public static final RegistryObject<Item> SHIELD_AURA_RING1 = ITEMS.register("shield_aura_ring1", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 光环护盾+
+    public static final RegistryObject<Item> SHIELD_AURA_RING2 = ITEMS.register("shield_aura_ring2", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 光环护盾++
+    public static final RegistryObject<Item> SHIELD_AURA_RING3 = ITEMS.register("shield_aura_ring3", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 光环护盾+++
+
+    // 虹吸护盾物品
+    public static final RegistryObject<Item> SHIELD_SIPHON = ITEMS.register("shield_siphon", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 虹吸护盾
+    public static final RegistryObject<Item> SHIELD_SIPHON1 = ITEMS.register("shield_siphon1", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 虹吸护盾+
+    public static final RegistryObject<Item> SHIELD_SIPHON2 = ITEMS.register("shield_siphon2", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 虹吸护盾++
+    public static final RegistryObject<Item> SHIELD_SIPHON3 = ITEMS.register("shield_siphon3", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 虹吸护盾+++
+
+    // 反射护盾物品
+    public static final RegistryObject<Item> SHIELD_REFLECT = ITEMS.register("shield_reflect", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 反射护盾
+    public static final RegistryObject<Item> SHIELD_REFLECT1 = ITEMS.register("shield_reflect1", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 反射护盾+
+    public static final RegistryObject<Item> SHIELD_REFLECT2 = ITEMS.register("shield_reflect2", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 反射护盾++
+    public static final RegistryObject<Item> SHIELD_REFLECT3 = ITEMS.register("shield_reflect3", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 反射护盾+++
+    //增幅护盾物品
+    public static final RegistryObject<Item> SHIELD_AMPLIFIER = ITEMS.register("shield_amplifier", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 增幅护盾
+    public static final RegistryObject<Item> SHIELD_AMPLIFIER1 = ITEMS.register("shield_amplifier1", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 增幅护盾+
+    public static final RegistryObject<Item> SHIELD_AMPLIFIER2 = ITEMS.register("shield_amplifier2", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 增幅护盾++
+    public static final RegistryObject<Item> SHIELD_AMPLIFIER3 = ITEMS.register("shield_amplifier3", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 增幅护盾+++
+
+    // 跃传护盾物品
+    public static final RegistryObject<Item> SHIELD_WARP = ITEMS.register("shield_warp", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 跃传护盾
+    public static final RegistryObject<Item> SHIELD_WARP1 = ITEMS.register("shield_warp1", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 跃传护盾+
+    public static final RegistryObject<Item> SHIELD_WARP2 = ITEMS.register("shield_warp2", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 跃传护盾++
+    public static final RegistryObject<Item> SHIELD_WARP3 = ITEMS.register("shield_warp3", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 跃传护盾+++
+
+    // 框架物品
+    public static final RegistryObject<Item> MODULAR_FRAMEWORK = ITEMS.register("modular_framework", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 模块化框架
+    public static final RegistryObject<Item> CONSTRUCT_FRAME = ITEMS.register("construct_frame", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 构造体框架
+    public static final RegistryObject<Item> MOVEMENT_FRAME = ITEMS.register("movement_frame", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 移动框架
+    public static final RegistryObject<Item> LIFE_FRAME = ITEMS.register("life_frame", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 生命框架
+    public static final RegistryObject<Item> ATTACK_FRAME = ITEMS.register("attack_frame", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 攻击框架
+    public static final RegistryObject<Item> SHIELD_RECEIVER = ITEMS.register("shield_receiver", () -> new ShieldReceiverItem(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 护盾接收器
+
+    // 护盾值物品
+    public static final RegistryObject<Item> SHIELD_AMPLIFIER_MODULE = ITEMS.register("shield_amplifier_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 护盾值提升模块
+    public static final RegistryObject<Item> BARRIER_SHIELD_MODULE = ITEMS.register("barrier_shield_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 屏障护盾模块
+    public static final RegistryObject<Item> REFLECT_SHIELD_MODULE = ITEMS.register("reflect_shield_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 反射护盾模块
+    public static final RegistryObject<Item> ULTIMATE_SHIELD_MODULE = ITEMS.register("ultimate_shield_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 至高之盾模块
+
+    // 护盾冷却物品
+    public static final RegistryObject<Item> SHIELD_COOLDOWN_REDUCTION_MODULE = ITEMS.register("shield_cooldown_reduction_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 护盾冷却缩减模块
+    public static final RegistryObject<Item> SHIELD_QUICK_CHARGE_MODULE = ITEMS.register("shield_quick_charge_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 闪充护盾模块
+    public static final RegistryObject<Item> EXPLOSIVE_SHIELD_MODULE = ITEMS.register("explosive_shield_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 易爆护盾模块
+    public static final RegistryObject<Item> ELECTRIC_ENERGY_RELEASE_MODULE = ITEMS.register("electric_energy_release_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 电能释放模块
+
+    // 护盾效果物品
+    public static final RegistryObject<Item> SHIELD_EFFECT_BOOST_MODULE = ITEMS.register("shield_effect_boost_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 护盾效果增强模块
+    public static final RegistryObject<Item> DIVERGENT_SHIELD_MODULE = ITEMS.register("divergent_shield_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 发散护盾模块
+    public static final RegistryObject<Item> FOCUSED_SHIELD_MODULE = ITEMS.register("focused_shield_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 收束护盾模块
+    public static final RegistryObject<Item> WEAPONIZED_SHIELD_MODULE = ITEMS.register("weaponized_shield_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 武器化护盾模块
+    
+    // 生命物品
+    public static final RegistryObject<Item> HEALTH_BOOST_MODULE = ITEMS.register("health_boost_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 生命提升模块
+    public static final RegistryObject<Item> COATING_MODULE = ITEMS.register("coating_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 镀层模块
+    public static final RegistryObject<Item> COLOSSUS_MODULE = ITEMS.register("colossus_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 巨像模块
+
+    // 适应性装甲物品
+    public static final RegistryObject<Item> ADAPTIVE_ARMOR_MODULE = ITEMS.register("adaptive_armor_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 适应性装甲模块
+    public static final RegistryObject<Item> BOND_MODULE = ITEMS.register("bond_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 联结模块
+    public static final RegistryObject<Item> CORE_ARMOR_MODULE = ITEMS.register("core_armor_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 核心装甲模块
+
+    // 再生物品
+    public static final RegistryObject<Item> REGEN_MODULE = ITEMS.register("regen_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 再生模块
+    public static final RegistryObject<Item> QUICK_RECONSTRUCTION_MODULE = ITEMS.register("quick_reconstruction_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 快速重构模块
+    public static final RegistryObject<Item> REGEN_SHIELD_MODULE = ITEMS.register("regen_shield_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 护盾再生模块
+
+    // 协同物品
+    public static final RegistryObject<Item> EFFICIENCY_MODULE = ITEMS.register("efficiency_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 效率模块
+    public static final RegistryObject<Item> TRANSFORMATION_MODULE = ITEMS.register("transformation_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 转化模块
+    public static final RegistryObject<Item> BINARY_PROTOCOL_MODULE = ITEMS.register("binary_protocol_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 二原协议模块
+    
+    // 攻击速度物品
+    public static final RegistryObject<Item> FAST_SHOOTING_MODULE = ITEMS.register("fast_shooting_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 快速射击模块
+    public static final RegistryObject<Item> BURST_FIRE_MODULE = ITEMS.register("burst_fire_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 点射模块
+    // 征途模块（装备后击杀累积战意，提供攻击速度/移动速度独立乘区加成）
+    public static final RegistryObject<Item> JOURNEY_MODULE = ITEMS.register("journey_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 征途模块
+    public static final RegistryObject<Item> ASSAULT_MODULE = ITEMS.register("assault_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 强袭模块
+
+    // 攻击伤害物品
+    public static final RegistryObject<Item> GIANT_STAR_MODULE = ITEMS.register("giant_star_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 巨星弹模块
+    public static final RegistryObject<Item> OVERCHARGE_MODULE = ITEMS.register("overcharge_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 超荷弹模块
+    public static final RegistryObject<Item> CHARGED_ATTACK_MODULE = ITEMS.register("charged_attack_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 充能攻击模块
+
+    // 爆炸类物品
+    public static final RegistryObject<Item> EXPLOSION_RADIUS_MODULE = ITEMS.register("explosion_radius_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 爆炸半径模块
+    public static final RegistryObject<Item> HIGH_EXPLOSIVE_MODULE = ITEMS.register("high_explosive_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 高爆模块
+    public static final RegistryObject<Item> IMPLOSION_MODULE = ITEMS.register("implosion_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 聚爆模块
+
+    // 速度物品
+    public static final RegistryObject<Item> THRUST_BOOST_MODULE = ITEMS.register("thrust_boost_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 推进改良模块
+    public static final RegistryObject<Item> AERODYNAMIC_FRAMEWORK_MODULE = ITEMS.register("aerodynamic_framework_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 流线构型模块
+    public static final RegistryObject<Item> FLASH_MODULE = ITEMS.register("flash_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 闪现模块
+    // 构造体物品
+    public static final RegistryObject<Item> PRECISION_CONSTRUCT_MODULE = ITEMS.register("precision_construct_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 精密构造模块
+    public static final RegistryObject<Item> SHIELD_TRANSFER_MODULE = ITEMS.register("shield_transfer_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 护盾移植模块
+    public static final RegistryObject<Item> SELF_DESTRUCT_MODULE = ITEMS.register("self_destruct_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 自毁装置模块
+    public static final RegistryObject<Item> TASKMASTER_MODULE = ITEMS.register("taskmaster_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 督战者模块
+
+    // 无人机构建物品
+    public static final RegistryObject<Item> DRONE_MODULE = ITEMS.register("drone_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 无人机模块
+    public static final RegistryObject<Item> WIDE_PROTOCOL_MODULE = ITEMS.register("wide_protocol_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 宽限协议模块
+    public static final RegistryObject<Item> ADVANCED_ENGINEERING_MODULE = ITEMS.register("advanced_engineering_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 高等工程模块
+
+    // 突击无人机物品
+    public static final RegistryObject<Item> ASSAULT_DRONE_MODULE = ITEMS.register("assault_drone_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 突击无人机模块
+    public static final RegistryObject<Item> LAST_ORDER_MODULE = ITEMS.register("last_order_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 最后指令模块
+    public static final RegistryObject<Item> LINE_FORMATION_MODULE = ITEMS.register("line_formation_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 列队阵列模块
+    public static final RegistryObject<Item> WING_COMMANDER_MODULE = ITEMS.register("wing_commander_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 指挥官模块
+
+    // 防御无人机物品
+    public static final RegistryObject<Item> DEFENSE_DRONE_MODULE = ITEMS.register("defense_drone_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 防御无人机模块
+    public static final RegistryObject<Item> COUNTER_PULSE_MODULE = ITEMS.register("counter_pulse_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 反制脉冲模块
+    public static final RegistryObject<Item> ARC_BARRIER_MODULE = ITEMS.register("arc_barrier_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 弧形屏障模块
+    public static final RegistryObject<Item> RESHAPING_MODULE = ITEMS.register("reshaping_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 重塑模块
+
+    // 僚机物品
+    public static final RegistryObject<Item> WINGMAN_MODULE = ITEMS.register("wingman_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 僚机模块
+    public static final RegistryObject<Item> INTERCEPTOR_MODULE = ITEMS.register("interceptor_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 拦截机模块
+    public static final RegistryObject<Item> EVOLUTION_MODULE = ITEMS.register("evolution_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 进化模块
+    public static final RegistryObject<Item> NANO_REGEN_MODULE = ITEMS.register("nano_regen_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 纳米再生模块
+    public static final RegistryObject<Item> SUPPRESSION_MODULE = ITEMS.register("suppression_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 压制模块
+    public static final RegistryObject<Item> SHOCKWAVE_MODULE = ITEMS.register("shockwave_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 震撼弹模块
+    public static final RegistryObject<Item> WRENCH = ITEMS.register("wrench", () -> new WrenchItem(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB).stacksTo(1))); // 扳手
+
+    // 超越模块
+    public static final RegistryObject<Item> CHARGED_SHIELD_MODULE = ITEMS.register("charged_shield_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 充能护盾模块
+    public static final RegistryObject<Item> GRUDGE_MODULE = ITEMS.register("grudge_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 积怨模块
+    public static final RegistryObject<Item> APEX_APPARATUS_MODULE = ITEMS.register("apex_apparatus_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 尖端器械模块
+    public static final RegistryObject<Item> FURNACE_CORE_MODULE = ITEMS.register("furnace_core_module", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 炉心融解模块
+    
+    // 零件
+    public static final RegistryObject<Item> BEAM = ITEMS.register("beam", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 光束
+    public static final RegistryObject<Item> BARRIER = ITEMS.register("barrier", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 屏障
+    public static final RegistryObject<Item> ULTIMATE_SHIELD = ITEMS.register("ultimate_shield", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 至高之盾
+    public static final RegistryObject<Item> CLOCK = ITEMS.register("clock", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 时钟
+    public static final RegistryObject<Item> GALE = ITEMS.register("gale", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 旋风
+    public static final RegistryObject<Item> LIGHT_BULB = ITEMS.register("light_bulb", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 电球
+    public static final RegistryObject<Item> EFFECT_CORE = ITEMS.register("effect_core", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 效果核心
+    public static final RegistryObject<Item> DIVERGENT_SHIELD = ITEMS.register("divergent_shield", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 发散护盾
+    public static final RegistryObject<Item> CONVERGENT_SHIELD = ITEMS.register("convergent_shield", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 收束护盾
+    public static final RegistryObject<Item> WEAPONIZED_CORE = ITEMS.register("weaponized_core", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 武器化核心
+    public static final RegistryObject<Item> LIFE_ESSENCE = ITEMS.register("life_essence", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 生命精华
+    public static final RegistryObject<Item> COATING = ITEMS.register("coating", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 镀层模块
+    public static final RegistryObject<Item> STATUE = ITEMS.register("statue", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 雕像
+    public static final RegistryObject<Item> ADAPTIVE_ARMOR = ITEMS.register("adaptive_armor", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 适应性装甲
+    public static final RegistryObject<Item> BOND = ITEMS.register("bond", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 联结
+    public static final RegistryObject<Item> CORE_ARMOR = ITEMS.register("core_armor", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 核心装甲
+    public static final RegistryObject<Item> GEAR = ITEMS.register("gear", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 齿轮
+    public static final RegistryObject<Item> TRANSMUTE_RUNE = ITEMS.register("transmute_rune", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 转化符
+    public static final RegistryObject<Item> PROTOCOL = ITEMS.register("protocol", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 协议
+    public static final RegistryObject<Item> PARTICLE_STREAM = ITEMS.register("particle_stream", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 粒子流
+    public static final RegistryObject<Item> OVERCLOCK = ITEMS.register("overclock", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 超频
+    public static final RegistryObject<Item> STAR_SPEAR = ITEMS.register("star_spear", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 星宇之矛
+    public static final RegistryObject<Item> FOCUS_CORE = ITEMS.register("focus_core", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 聚能核心
+    public static final RegistryObject<Item> THRUSTER = ITEMS.register("thruster", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 推进器
+    public static final RegistryObject<Item> AERODYNAMIC_DESIGN_DRAFT = ITEMS.register("aerodynamic_design_draft", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 流线设计稿
+    public static final RegistryObject<Item> COORDINATE = ITEMS.register("coordinate", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 坐标
+    public static final RegistryObject<Item> PRECISION_CONSTRUCT_PART = ITEMS.register("precision_construct_part", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 精密构造零件
+    public static final RegistryObject<Item> TASKMASTER_PART = ITEMS.register("taskmaster_part", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 督战者零件
+    public static final RegistryObject<Item> SHIELD_TRANSFER_PART = ITEMS.register("shield_transfer_part", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 护盾移植零件
+    public static final RegistryObject<Item> DRONE_PART = ITEMS.register("drone_part", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 无人机零件
+    public static final RegistryObject<Item> WIDE_PROTOCOL = ITEMS.register("wide_protocol", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 宽限协议
+    public static final RegistryObject<Item> ADVANCED_ENGINEERING_PART = ITEMS.register("advanced_engineering_part", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 高等工程零件
+    public static final RegistryObject<Item> ASSAULT_DRONE_PART = ITEMS.register("assault_drone_part", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 突击无人机零件
+    public static final RegistryObject<Item> LAST_ORDER_PART = ITEMS.register("last_order_part", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 最后指令零件
+    public static final RegistryObject<Item> LINE_FORMATION_PART = ITEMS.register("line_formation_part", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 列队阵列零件
+    public static final RegistryObject<Item> WING_COMMANDER_PART = ITEMS.register("wing_commander_part", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 指挥官零件
+    public static final RegistryObject<Item> DEFENSE_DRONE_PART = ITEMS.register("defense_drone_part", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 防御无人机零件
+    public static final RegistryObject<Item> COUNTER_PULSE_PART = ITEMS.register("counter_pulse_part", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 反制脉冲零件
+    public static final RegistryObject<Item> ARC_BARRIER_PART = ITEMS.register("arc_barrier_part", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 弧形屏障零件
+    public static final RegistryObject<Item> RESHAPING_PART = ITEMS.register("reshaping_part", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 重塑零件
+    public static final RegistryObject<Item> WINGMAN_PART = ITEMS.register("wingman_part", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 僚机零件
+    public static final RegistryObject<Item> INTERCEPTOR_PART = ITEMS.register("interceptor_part", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 拦截机零件
+    public static final RegistryObject<Item> EVOLUTION_PART = ITEMS.register("evolution_part", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 进化零件
+    public static final RegistryObject<Item> SHOCKWAVE_PART = ITEMS.register("shockwave_part", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 震撼弹零件
+    public static final RegistryObject<Item> NANO_REGEN_PART = ITEMS.register("nano_regen_part", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 纳米再生零件
+    public static final RegistryObject<Item> SUPPRESSION_PART = ITEMS.register("suppression_part", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 压制零件
+
+    // 代币（随机构建代币机制，默认代币；不可合成、无战利品掉落）
+    public static final RegistryObject<Item> TOKEN = ITEMS.register("token", () -> new TokenItem(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 代币（掉落物免疫常规销毁+头顶遮挡时穿透上浮）
+
+    // 战魂（独立物品，暂无装备逻辑，保留数据驱动兼容）
+    public static final RegistryObject<Item> WAR_SOUL = ITEMS.register("war_soul", () -> new Item(new Item.Properties().tab(ModCreativeModeTabs.GY_TRINKET_TAB))); // 战魂
+
+}

@@ -1,0 +1,216 @@
+package com.gytrinket.gytrinket.core.burn;
+
+import net.minecraft.world.damagesource.DamageSource;
+
+import com.gytrinket.gytrinket.core.damage.ModDamageTypes;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
+
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+
+@Mod.EventBusSubscriber(modid = com.gytrinket.gytrinket.gytrinket.MODID)
+public class BurnManager {
+
+    private static final int DEFAULT_BURN_DURATION = 20;
+    private static final float MIN_BURN_DAMAGE = 1f;
+
+    private static final Map<UUID, BurnData> ENTITY_BURN_DATA = new HashMap<>();
+    private static final Map<String, Long> BURN_COOLDOWN = new HashMap<>();
+    private static final long BURN_COOLDOWN_TICKS = 5;
+    private static long lastProcessedTick = -1;
+    /** 两段式灼烧伤害施加中窗口（目标UUID），供斩杀死效预估识别 */
+    private static final Set<UUID> BURN_APPLYING = new HashSet<>();
+
+    private static String getCooldownKey(UUID targetUUID, String sourceName) {
+        return targetUUID.toString() + "_" + sourceName;
+    }
+
+    public static BurnData getOrCreateBurnData(LivingEntity entity) {
+        return ENTITY_BURN_DATA.computeIfAbsent(
+            entity.getUUID(),
+            uuid -> new BurnData(entity, DEFAULT_BURN_DURATION)
+        );
+    }
+
+    public static BurnData getBurnData(LivingEntity entity) {
+        return ENTITY_BURN_DATA.get(entity.getUUID());
+    }
+
+    public static boolean isBurning(LivingEntity entity) {
+        BurnData data = getBurnData(entity);
+        return data != null && data.isBurning();
+    }
+
+    public static void applyBurnCharge(LivingEntity target, float chargeRate, IBurnSource source) {
+        if (target == null || target.isDeadOrDying()) {
+            return;
+        }
+
+        UUID targetUUID = target.getUUID();
+        String sourceName = source.getName();
+        String cooldownKey = getCooldownKey(targetUUID, sourceName);
+
+        if (isOnCooldown(cooldownKey)) {
+            return;
+        }
+
+        long currentTick = target.getLevel().getGameTime();
+        BurnData burnData = getOrCreateBurnData(target);
+
+        burnData.addCharge(chargeRate, source, currentTick);
+
+        setCooldown(cooldownKey);
+    }
+
+    @SubscribeEvent
+    public static void onServerTick(TickEvent.ServerTickEvent event) {
+        if (event.phase != TickEvent.Phase.END) {
+            return;
+        }
+
+        long currentTick = event.getServer().getLevel(net.minecraft.world.level.Level.OVERWORLD).getGameTime();
+
+        if (currentTick == lastProcessedTick) {
+            return;
+        }
+        lastProcessedTick = currentTick;
+
+        for (UUID uuid : new HashMap<UUID, BurnData>(ENTITY_BURN_DATA).keySet()) {
+            BurnData burnData = ENTITY_BURN_DATA.get(uuid);
+            if (burnData == null) {
+                continue;
+            }
+
+            LivingEntity target = burnData.getTarget();
+
+            if (target == null || !target.isAlive()) {
+                removeBurnData(uuid);
+                continue;
+            }
+
+            processBurnTick(uuid, currentTick);
+        }
+    }
+
+    private static void processBurnTick(UUID targetUUID, long currentTick) {
+        BurnData burnData = ENTITY_BURN_DATA.get(targetUUID);
+        if (burnData == null || !burnData.isBurning()) {
+            return;
+        }
+
+        LivingEntity target = burnData.getTarget();
+        if (target == null || !target.isAlive()) {
+            removeBurnData(targetUUID);
+            return;
+        }
+
+        if (burnData.isComplete(currentTick)) {
+            completeBurn(burnData, target);
+            return;
+        }
+    }
+
+    private static void completeBurn(BurnData burnData, LivingEntity target) {
+        float finalDamage = Math.max(MIN_BURN_DAMAGE, burnData.getAccumulatedDamage());
+
+        // 施加时不带攻击者（避免非致死时触发仇恨）：
+        // 预估致死时由 ExecuteDamageHandler 取消原伤害并改用归属玩家的
+        // 斩杀伤害源（execute_damage）完成最后一击
+        applyBurnDamage(target, finalDamage);
+
+        burnData.reset();
+    }
+
+    private static void applyBurnDamage(LivingEntity target, float damage) {
+        if (target.getLevel().isClientSide) {
+            return;
+        }
+
+        float halfDamage = damage / 2f;
+
+        com.gytrinket.gytrinket.core.modifier.player.knockback.KnockbackManager.markNoKnockback(target.getUUID());
+
+        // 两段式伤害（灼烧伤害源半份 + magic 半份）施加期间打标记，
+        // 供 ExecuteDamageHandler 识别 magic 半份属于灼烧并解析归属
+        BURN_APPLYING.add(target.getUUID());
+        try {
+            target.invulnerableTime = 0;
+            target.hurt(ModDamageTypes.getBurnDamageSource(target.getLevel(), null), halfDamage);
+
+            target.invulnerableTime = 0;
+            target.hurt(DamageSource.MAGIC, halfDamage);
+        } finally {
+            BURN_APPLYING.remove(target.getUUID());
+        }
+
+        spawnBurnParticles(target);
+    }
+
+    /**
+     * 灼烧伤害是否正在施加中（两段式施加窗口，供斩杀死效预估识别）
+     */
+    public static boolean isBurnApplying(LivingEntity target) {
+        return BURN_APPLYING.contains(target.getUUID());
+    }
+
+    /**
+     * 获取当前灼烧的归属发起者（贡献最多的灼烧源，供斩杀死效预估解析归属）
+     */
+    public static Entity getCurrentBurnInitiator(LivingEntity target) {
+        BurnData burnData = getBurnData(target);
+        return burnData != null ? burnData.getPrimaryInitiator() : null;
+    }
+
+    @SuppressWarnings("resource")
+    private static void spawnBurnParticles(LivingEntity target) {
+        ServerLevel serverLevel = (ServerLevel) target.getLevel();
+        double x = target.getX();
+        double y = target.getY() + target.getBbHeight() / 2.0;
+        double z = target.getZ();
+
+        serverLevel.sendParticles(ParticleTypes.CRIMSON_SPORE, x, y, z, 20, 0.5, 0.5, 0.5, 0.05);
+        serverLevel.sendParticles(ParticleTypes.FLAME, x, y, z, 5, 0.3, 0.3, 0.3, 0.1);
+        serverLevel.sendParticles(ParticleTypes.LAVA, x, y, z, 3, 0.2, 0.2, 0.2, 0.05);
+        serverLevel.sendParticles(ParticleTypes.LARGE_SMOKE, x, y, z, 5, 0.5, 0.5, 0.5, 0.05);
+    }
+
+    private static void setCooldown(String cooldownKey) {
+        BURN_COOLDOWN.put(cooldownKey, System.currentTimeMillis());
+    }
+
+    private static boolean isOnCooldown(String cooldownKey) {
+        Long lastTime = BURN_COOLDOWN.get(cooldownKey);
+        if (lastTime == null) {
+            return false;
+        }
+        if (System.currentTimeMillis() - lastTime > BURN_COOLDOWN_TICKS) {
+            BURN_COOLDOWN.remove(cooldownKey);
+            return false;
+        }
+        return true;
+    }
+
+    public static void removeBurnData(UUID targetUUID) {
+        ENTITY_BURN_DATA.remove(targetUUID);
+    }
+
+    public static void clearAllBurnData() {
+        ENTITY_BURN_DATA.clear();
+        BURN_COOLDOWN.clear();
+    }
+
+    public static void clearBurn(LivingEntity entity) {
+        if (entity != null) {
+            removeBurnData(entity.getUUID());
+        }
+    }
+}

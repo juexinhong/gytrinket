@@ -1,0 +1,20 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "III",
+    "ISI",
+    "III"
+  ],
+  "key": {
+    "I": {
+      "item": "minecraft:iron_ingot"
+    },
+    "S": {
+      "item": "gytrinket:shield_aura_ring"
+    }
+  },
+  "result": {
+    "item": "gytrinket:shield_aura_ring1",
+    "count": 1
+  }
+}

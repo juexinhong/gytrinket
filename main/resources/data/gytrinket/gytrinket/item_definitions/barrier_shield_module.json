@@ -1,0 +1,22 @@
+{
+  "items": {
+    "gytrinket:barrier_shield_module": {
+      "mechanic": true,
+      "sets": [
+        "barrier_items"
+      ],
+      "values": {
+        "barrier_items": {
+          "barrier_max_damage": {
+            "value": 5,
+            "stackable": false
+          }
+        }
+      },
+      "attributes": {
+        "shield_percent": 0.05,
+        "shield_cooldown_reduction_percent": -0.05
+      }
+    }
+  }
+}

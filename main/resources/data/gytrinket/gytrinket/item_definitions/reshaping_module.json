@@ -1,0 +1,10 @@
+{
+    "items":  {
+                  "gytrinket:reshaping_module":  {
+                                                     "mechanic":  true,
+                                                     "sets":  [
+                                                                  "reshaping_items"
+                                                              ]
+                                                 }
+              }
+}

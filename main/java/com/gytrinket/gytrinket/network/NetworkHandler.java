@@ -1,0 +1,568 @@
+package com.gytrinket.gytrinket.network;
+
+import com.gytrinket.gytrinket.compat.CuriosCompat;
+import com.gytrinket.gytrinket.core.defs.ShieldValueDefs;
+import com.gytrinket.gytrinket.config.Config;
+import com.gytrinket.gytrinket.config.ConfigValueRegistry;
+import com.gytrinket.gytrinket.core.defs.DefsManager;
+import com.gytrinket.gytrinket.core.attribute.AttributeManager;
+import com.gytrinket.gytrinket.core.level.ModLevelManager;
+import com.gytrinket.gytrinket.core.random_build.RandomBuildManager;
+import com.gytrinket.gytrinket.core.shield.cooldown.ShieldCooldownManager;
+import com.gytrinket.gytrinket.core.upgrade.UpgradeData;
+import com.gytrinket.gytrinket.core.upgrade.UpgradeManager;
+import com.gytrinket.gytrinket.event.QuickEquipEvent;
+import com.gytrinket.gytrinket.network.packet.*;
+import com.gytrinket.gytrinket.storage.PlayerStore;
+import com.gytrinket.gytrinket.storage.PlayerStoreManager;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.phys.Vec3;
+import net.minecraftforge.network.NetworkRegistry;
+import net.minecraftforge.network.PacketDistributor;
+import net.minecraftforge.network.simple.SimpleChannel;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+
+public class NetworkHandler {
+    private static final String PROTOCOL_VERSION = "1";
+
+    public static final SimpleChannel INSTANCE = NetworkRegistry.newSimpleChannel(
+        new ResourceLocation("gytrinket", "main"),
+        () -> PROTOCOL_VERSION,
+        PROTOCOL_VERSION::equals,
+        PROTOCOL_VERSION::equals
+    );
+
+    private static int messageId = 0;
+
+    public static void registerMessages() {
+        // ======================== C->S: empty packets ========================
+        INSTANCE.registerMessage(messageId++, ClientSyncRequestMessage.class, ClientSyncRequestMessage::toBytes, ClientSyncRequestMessage::new, ClientSyncRequestMessage::handle);
+        INSTANCE.registerMessage(messageId++, RequestAttributesMessage.class, RequestAttributesMessage::toBytes, RequestAttributesMessage::new, RequestAttributesMessage::handle);
+        INSTANCE.registerMessage(messageId++, RequestShieldCooldownMessage.class, RequestShieldCooldownMessage::toBytes, RequestShieldCooldownMessage::new, RequestShieldCooldownMessage::handle);
+        INSTANCE.registerMessage(messageId++, SwitchDroneArrayMessage.class, SwitchDroneArrayMessage::toBytes, SwitchDroneArrayMessage::new, SwitchDroneArrayMessage::handle);
+        INSTANCE.registerMessage(messageId++, ElectricDischargeMessage.class, ElectricDischargeMessage::toBytes, ElectricDischargeMessage::new, ElectricDischargeMessage::handle);
+        INSTANCE.registerMessage(messageId++, RequestPanelDataMessage.class, RequestPanelDataMessage::toBytes, RequestPanelDataMessage::new, RequestPanelDataMessage::handle);
+        INSTANCE.registerMessage(messageId++, RequestConfigDataMessage.class, RequestConfigDataMessage::toBytes, RequestConfigDataMessage::new, RequestConfigDataMessage::handle);
+        INSTANCE.registerMessage(messageId++, ConfigResetMessage.class, ConfigResetMessage::toBytes, ConfigResetMessage::new, ConfigResetMessage::handle);
+        INSTANCE.registerMessage(messageId++, ConfigSpecialMechanicMessage.class, ConfigSpecialMechanicMessage::toBytes, ConfigSpecialMechanicMessage::new, ConfigSpecialMechanicMessage::handle);
+        INSTANCE.registerMessage(messageId++, ConfigShieldTypesMessage.class, ConfigShieldTypesMessage::toBytes, ConfigShieldTypesMessage::new, ConfigShieldTypesMessage::handle);
+        INSTANCE.registerMessage(messageId++, AssaultAttackMessage.class, AssaultAttackMessage::toBytes, AssaultAttackMessage::new, AssaultAttackMessage::handle);
+        INSTANCE.registerMessage(messageId++, ToggleExecuteMessage.class, ToggleExecuteMessage::toBytes, ToggleExecuteMessage::new, ToggleExecuteMessage::handle);
+
+        // ======================== C->S: with data ========================
+        INSTANCE.registerMessage(messageId++, UpgradeConsumeMessage.class, UpgradeConsumeMessage::toBytes, UpgradeConsumeMessage::new, UpgradeConsumeMessage::handle);
+        INSTANCE.registerMessage(messageId++, UpgradeReturnMessage.class, UpgradeReturnMessage::toBytes, UpgradeReturnMessage::new, UpgradeReturnMessage::handle);
+        INSTANCE.registerMessage(messageId++, ConfigUpdateMessage.class, ConfigUpdateMessage::toBytes, ConfigUpdateMessage::new, ConfigUpdateMessage::handle);
+        INSTANCE.registerMessage(messageId++, ConfigDeleteItemMessage.class, ConfigDeleteItemMessage::toBytes, ConfigDeleteItemMessage::new, ConfigDeleteItemMessage::handle);
+        INSTANCE.registerMessage(messageId++, ConfigAddItemMessage.class, ConfigAddItemMessage::toBytes, ConfigAddItemMessage::new, ConfigAddItemMessage::handle);
+        INSTANCE.registerMessage(messageId++, ConfigRemoveAttrMessage.class, ConfigRemoveAttrMessage::toBytes, ConfigRemoveAttrMessage::new, ConfigRemoveAttrMessage::handle);
+        INSTANCE.registerMessage(messageId++, AttackStateMessage.class, AttackStateMessage::toBytes, AttackStateMessage::new, AttackStateMessage::handle);
+        INSTANCE.registerMessage(messageId++, ChargedAttackMessage.class, ChargedAttackMessage::toBytes, ChargedAttackMessage::new, ChargedAttackMessage::handle);
+        INSTANCE.registerMessage(messageId++, ItemUseChargeMessage.class, ItemUseChargeMessage::toBytes, ItemUseChargeMessage::new, ItemUseChargeMessage::handle);
+        INSTANCE.registerMessage(messageId++, SyncMovementSpeedMultiplierMessage.class, SyncMovementSpeedMultiplierMessage::toBytes, SyncMovementSpeedMultiplierMessage::new, SyncMovementSpeedMultiplierMessage::handle);
+ 
+        // ======================== S->C ========================
+        INSTANCE.registerMessage(messageId++, ResponseAttributesMessage.class, ResponseAttributesMessage::toBytes, ResponseAttributesMessage::new, ResponseAttributesMessage::handle);
+        INSTANCE.registerMessage(messageId++, SyncShieldMessage.class, SyncShieldMessage::toBytes, SyncShieldMessage::new, SyncShieldMessage::handle);
+        INSTANCE.registerMessage(messageId++, AuraParticlePacket.class, AuraParticlePacket::toBytes, AuraParticlePacket::new, AuraParticlePacket::handle);
+        INSTANCE.registerMessage(messageId++, ReflectParticlePacket.class, ReflectParticlePacket::toBytes, ReflectParticlePacket::new, ReflectParticlePacket::handle);
+        INSTANCE.registerMessage(messageId++, LightningRenderMessage.class, LightningRenderMessage::toBytes, LightningRenderMessage::new, LightningRenderMessage::handle);
+        INSTANCE.registerMessage(messageId++, SyncLightPointCoreMessage.class, SyncLightPointCoreMessage::toBytes, SyncLightPointCoreMessage::new, SyncLightPointCoreMessage::handle);
+        INSTANCE.registerMessage(messageId++, ExplosiveShieldFlashPacket.class, ExplosiveShieldFlashPacket::toBytes, ExplosiveShieldFlashPacket::new, ExplosiveShieldFlashPacket::handle);
+        INSTANCE.registerMessage(messageId++, SyncComboCooldownMessage.class, SyncComboCooldownMessage::toBytes, SyncComboCooldownMessage::new, SyncComboCooldownMessage::handle);
+        INSTANCE.registerMessage(messageId++, SyncAttackStrengthMessage.class, SyncAttackStrengthMessage::toBytes, SyncAttackStrengthMessage::new, SyncAttackStrengthMessage::handle);
+        INSTANCE.registerMessage(messageId++, ShieldParticlePacket.class, ShieldParticlePacket::toBytes, ShieldParticlePacket::new, ShieldParticlePacket::handle);
+        INSTANCE.registerMessage(messageId++, SiphonParticlePacket.class, SiphonParticlePacket::toBytes, SiphonParticlePacket::new, SiphonParticlePacket::handle);
+        INSTANCE.registerMessage(messageId++, SyncPlayerDataSnapshotMessage.class, SyncPlayerDataSnapshotMessage::toBytes, SyncPlayerDataSnapshotMessage::new, SyncPlayerDataSnapshotMessage::handle);
+        INSTANCE.registerMessage(messageId++, ResponsePanelDataMessage.class, ResponsePanelDataMessage::toBytes, ResponsePanelDataMessage::new, ResponsePanelDataMessage::handle);
+        INSTANCE.registerMessage(messageId++, ResponseConfigDataMessage.class, ResponseConfigDataMessage::toBytes, ResponseConfigDataMessage::new, ResponseConfigDataMessage::handle);
+        INSTANCE.registerMessage(messageId++, ConfigDefsSyncMessage.class, ConfigDefsSyncMessage::toBytes, ConfigDefsSyncMessage::new, ConfigDefsSyncMessage::handle);
+        INSTANCE.registerMessage(messageId++, SyncChargedAttackMessage.class, SyncChargedAttackMessage::toBytes, SyncChargedAttackMessage::new, SyncChargedAttackMessage::handle);
+        INSTANCE.registerMessage(messageId++, SyncBurstFiringMessage.class, SyncBurstFiringMessage::toBytes, SyncBurstFiringMessage::new, SyncBurstFiringMessage::handle);
+        INSTANCE.registerMessage(messageId++, ChargedSweepParticleMessage.class, ChargedSweepParticleMessage::toBytes, ChargedSweepParticleMessage::new, ChargedSweepParticleMessage::handle);
+        INSTANCE.registerMessage(messageId++, SwarmEnergyWavePacket.class, SwarmEnergyWavePacket::toBytes, SwarmEnergyWavePacket::new, SwarmEnergyWavePacket::handle);
+        INSTANCE.registerMessage(messageId++, EnergyWaveExplosionPacket.class, EnergyWaveExplosionPacket::toBytes, EnergyWaveExplosionPacket::new, EnergyWaveExplosionPacket::handle);
+        // 模拟爆炸贴图特效
+        INSTANCE.registerMessage(messageId++, SimulatedExplosionFXPacket.class, SimulatedExplosionFXPacket::toBytes, SimulatedExplosionFXPacket::new, SimulatedExplosionFXPacket::handle);
+
+        // 幽灵机身
+        INSTANCE.registerMessage(messageId++, SyncGhostStealthMessage.class, SyncGhostStealthMessage::toBytes, SyncGhostStealthMessage::new, SyncGhostStealthMessage::handle);
+        INSTANCE.registerMessage(messageId++, ResponseRandomBuildMessage.class, ResponseRandomBuildMessage::toBytes, ResponseRandomBuildMessage::new, ResponseRandomBuildMessage::handle);
+        INSTANCE.registerMessage(messageId++, SyncModLevelMessage.class, SyncModLevelMessage::toBytes, SyncModLevelMessage::new, SyncModLevelMessage::handle);
+        INSTANCE.registerMessage(messageId++, SyncTokenCountMessage.class, SyncTokenCountMessage::toBytes, SyncTokenCountMessage::new, SyncTokenCountMessage::handle);
+        INSTANCE.registerMessage(messageId++, SyncDisabledReasonsMessage.class, SyncDisabledReasonsMessage::toBytes, SyncDisabledReasonsMessage::new, SyncDisabledReasonsMessage::handle);
+        INSTANCE.registerMessage(messageId++, SyncGhostMoveSpeedMessage.class, SyncGhostMoveSpeedMessage::toBytes, SyncGhostMoveSpeedMessage::new, SyncGhostMoveSpeedMessage::handle);
+
+        // 拦截机
+        INSTANCE.registerMessage(messageId++, SetInterceptorWeaponMessage.class, SetInterceptorWeaponMessage::toBytes, SetInterceptorWeaponMessage::new, SetInterceptorWeaponMessage::handle);
+        INSTANCE.registerMessage(messageId++, SyncInterceptorWeaponMessage.class, SyncInterceptorWeaponMessage::toBytes, SyncInterceptorWeaponMessage::new, SyncInterceptorWeaponMessage::handle);
+        INSTANCE.registerMessage(messageId++, SetInterceptorAttackModeMessage.class, SetInterceptorAttackModeMessage::toBytes, SetInterceptorAttackModeMessage::new, SetInterceptorAttackModeMessage::handle);
+        INSTANCE.registerMessage(messageId++, SyncInterceptorAttackModeMessage.class, SyncInterceptorAttackModeMessage::toBytes, SyncInterceptorAttackModeMessage::new, SyncInterceptorAttackModeMessage::handle);
+        INSTANCE.registerMessage(messageId++, SetInterceptorAmmoMessage.class, SetInterceptorAmmoMessage::toBytes, SetInterceptorAmmoMessage::new, SetInterceptorAmmoMessage::handle);
+        INSTANCE.registerMessage(messageId++, GhostFuselageAttackMessage.class, GhostFuselageAttackMessage::toBytes, GhostFuselageAttackMessage::new, GhostFuselageAttackMessage::handle);
+        INSTANCE.registerMessage(messageId++, RequestRandomBuildMessage.class, RequestRandomBuildMessage::toBytes, RequestRandomBuildMessage::new, RequestRandomBuildMessage::handle);
+        INSTANCE.registerMessage(messageId++, RandomBuildEquipMessage.class, RandomBuildEquipMessage::toBytes, RandomBuildEquipMessage::new, RandomBuildEquipMessage::handle);
+        INSTANCE.registerMessage(messageId++, RequestRefreshRandomPoolMessage.class, RequestRefreshRandomPoolMessage::toBytes, RequestRefreshRandomPoolMessage::new, RequestRefreshRandomPoolMessage::handle);
+        INSTANCE.registerMessage(messageId++, SortLightPointCoreMessage.class, SortLightPointCoreMessage::toBytes, SortLightPointCoreMessage::new, SortLightPointCoreMessage::handle);
+
+        // 弹射物大小同步
+        INSTANCE.registerMessage(messageId++, ProjectileScaleMessage.class, ProjectileScaleMessage::toBytes, ProjectileScaleMessage::new, ProjectileScaleMessage::handle);
+
+        // 配置项界面（特殊机制/自然恢复/客户端HUD）
+        INSTANCE.registerMessage(messageId++, ConfigValuesRequestMessage.class, ConfigValuesRequestMessage::toBytes, ConfigValuesRequestMessage::new, ConfigValuesRequestMessage::handle);
+        INSTANCE.registerMessage(messageId++, ConfigValueUpdateMessage.class, ConfigValueUpdateMessage::toBytes, ConfigValueUpdateMessage::new, ConfigValueUpdateMessage::handle);
+        INSTANCE.registerMessage(messageId++, ConfigValuesSyncMessage.class, ConfigValuesSyncMessage::toBytes, ConfigValuesSyncMessage::new, ConfigValuesSyncMessage::handle);
+        // 物品级特殊机制数值覆盖（机制数值编辑）
+        INSTANCE.registerMessage(messageId++, ConfigMechanicValuesMessage.class, ConfigMechanicValuesMessage::toBytes, ConfigMechanicValuesMessage::new, ConfigMechanicValuesMessage::handle);
+        INSTANCE.registerMessage(messageId++, ConfigShieldValuesMessage.class, ConfigShieldValuesMessage::toBytes, ConfigShieldValuesMessage::new, ConfigShieldValuesMessage::handle);
+    }
+
+    // ======================== Helper send methods ========================
+
+    /** 护盾受击批次号：每次受击 +1，客户端靠它判断"新一圈"，让旧圈粒子让位 */
+    private static int shieldBurstCounter = 0;
+
+    public static int nextShieldBurstId() {
+        return ++shieldBurstCounter;
+    }
+
+    public static void sendShieldParticleToPlayer(ServerPlayer player, net.minecraft.world.entity.Entity trackedEntity,
+                                                   double x, double y, double z,
+                                                   double dirX, double dirY, double dirZ,
+                                                   double originX, double originY, double originZ,
+                                                   int delayTicks, int burstId) {
+        // 计算偏移量：从实体脚底到球心的偏移
+        double originOffsetX = originX - trackedEntity.getX();
+        double originOffsetY = originY - trackedEntity.getY();
+        double originOffsetZ = originZ - trackedEntity.getZ();
+        // 计算偏移量：从球心到粒子位置的偏移
+        double offsetX = x - originX;
+        double offsetY = y - originY;
+        double offsetZ = z - originZ;
+
+        INSTANCE.send(PacketDistributor.TRACKING_ENTITY_AND_SELF.with(() -> player),
+            new ShieldParticlePacket(trackedEntity.getId(), originOffsetX, originOffsetY, originOffsetZ, offsetX, offsetY, offsetZ, dirX, dirY, dirZ, delayTicks, burstId));
+    }
+
+    public static void sendShieldSyncToPlayer(ServerPlayer player, double currentShield, double maxShield) {
+        SyncShieldMessage message = buildShieldSyncMessage(player, currentShield, maxShield);
+        INSTANCE.send(PacketDistributor.PLAYER.with(() -> player), message);
+    }
+
+    /**
+     * 构造护盾同步消息：护盾类型渲染状态按物品实例收集，
+     * 多个护盾实例在客户端各自独立渲染贴图
+     */
+    public static SyncShieldMessage buildShieldSyncMessage(ServerPlayer player, double currentShield, double maxShield) {
+        java.util.UUID uuid = player.getUUID();
+        int currentCooldown = ShieldCooldownManager.getCurrentCooldown(uuid);
+        int maxCooldown = ShieldCooldownManager.getMaxCooldown(uuid);
+        double adaptiveArmorReduction = com.gytrinket.gytrinket.core.damage.AdaptiveArmorManager.calculateDamageReduction(player);
+        double shieldEffectRadius = AttributeManager.getGroupAttribute(uuid, "shield_effect_radius");
+        int[] protectedEntityIds = com.gytrinket.gytrinket.core.shield_transfer.ShieldTransferManager.getProtectedEntityIds(uuid, player.getLevel());
+
+        // 按 itemId 聚合各类型实例状态（同物品多类型并存时合并到同一条）
+        java.util.Map<String, SyncShieldMessage.ItemShieldState> byItem = new java.util.LinkedHashMap<>();
+        for (com.gytrinket.gytrinket.core.shield.type.IShieldType.ShieldTypeData data :
+                com.gytrinket.gytrinket.core.shield.type.ShieldTypeManager.getPlayerShieldTypes(uuid)) {
+            if (!data.active()) continue;
+            String itemId = net.minecraft.core.Registry.ITEM.getKey(data.source().getItem()).toString();
+            SyncShieldMessage.ItemShieldState state = byItem.computeIfAbsent(itemId,
+                k -> new SyncShieldMessage.ItemShieldState(k));
+            String typeName = data.type().getName();
+            if ("aura".equals(typeName)) {
+                if (com.gytrinket.gytrinket.core.shield.type.AuraShieldType.isAuraDamagingForItem(uuid, itemId)) {
+                    state.auraDamaging = true;
+                }
+                state.auraRadius = DefsManager.resolveShieldTypeValueForItem(player.getServer(), itemId,
+                        "aura", "radius", ShieldValueDefs.defaultValueOf("aura", "radius", 3.5)) * shieldEffectRadius;
+            } else if ("siphon".equals(typeName)) {
+                state.siphonStacks += com.gytrinket.gytrinket.core.shield.type.SiphonShieldType.getSiphonStacksForItem(uuid, itemId);
+                state.siphonRadius = DefsManager.resolveShieldTypeValueForItem(player.getServer(), itemId,
+                        "siphon", "radius", ShieldValueDefs.defaultValueOf("siphon", "radius", 4.0)) * shieldEffectRadius;
+            } else if ("amplification".equals(typeName)) {
+                state.amplificationProgress = Math.max(state.amplificationProgress,
+                    com.gytrinket.gytrinket.core.shield.type.AmplificationShieldType.getProgressForItem(uuid, itemId));
+                state.amplificationRadius = DefsManager.resolveShieldTypeValueForItem(player.getServer(), itemId,
+                        "amplification", "check_radius", ShieldValueDefs.defaultValueOf("amplification", "check_radius", 5.0)) * shieldEffectRadius;
+            }
+        }
+
+        // 护盾实例列表（ShieldInstance 镜像，客户端 HUD 顶条按焦点实例显示池量/冷却）
+        java.util.List<SyncShieldMessage.InstanceShieldData> instances = new ArrayList<>();
+        for (com.gytrinket.gytrinket.core.shield.ShieldInstance inst : com.gytrinket.gytrinket.core.shield.ShieldManager.getInstances(uuid)) {
+            instances.add(new SyncShieldMessage.InstanceShieldData(
+                    inst.getItemId(), inst.getShieldTypeName() == null ? "" : inst.getShieldTypeName(),
+                    inst.getCurrentShield(), inst.getMaxShield(), inst.isBroken(),
+                    inst.getCooldownProgress(), inst.getMaxCooldown()));
+        }
+        return new SyncShieldMessage(currentShield, maxShield, currentCooldown, maxCooldown, adaptiveArmorReduction,
+            protectedEntityIds, new ArrayList<>(byItem.values()), instances);
+    }
+
+    public static void sendShieldCooldownRequestToServer() {
+        INSTANCE.sendToServer(new RequestShieldCooldownMessage());
+    }
+
+    /** 客户端：请求整理光点核心容器（容器界面内鼠标中键） */
+    public static void sendSortLightPointCore() {
+        INSTANCE.sendToServer(new SortLightPointCoreMessage());
+    }
+
+    public static void sendAuraParticlesToPlayer(ServerPlayer player, double x, double y, double z, double radius) {
+        INSTANCE.send(PacketDistributor.TRACKING_ENTITY_AND_SELF.with(() -> player), new AuraParticlePacket(x, y, z, radius));
+    }
+
+    /** 向该维度所有玩家广播模拟爆炸贴图特效 */
+    public static void sendSimulatedExplosionFX(net.minecraft.server.level.ServerLevel level, net.minecraft.world.phys.Vec3 center, double radius) {
+        INSTANCE.send(PacketDistributor.DIMENSION.with(() -> level.dimension()),
+            new SimulatedExplosionFXPacket(center.x, center.y, center.z, radius));
+    }
+
+    public static void sendReflectParticlesToPlayer(ServerPlayer player, double x, double y, double z,
+                                                     double dirX, double dirY, double dirZ,
+                                                     int particleCount, double maxAngleDegrees, double speedMultiplier) {
+        INSTANCE.send(PacketDistributor.PLAYER.with(() -> player), new ReflectParticlePacket(x, y, z, dirX, dirY, dirZ, particleCount, maxAngleDegrees, speedMultiplier));
+    }
+
+    public static void sendLightningToAll(net.minecraft.server.level.ServerLevel level, List<com.gytrinket.gytrinket.core.attack_mode.electric_discharge.ElectricDischargeManager.LightningSegment> segments) {
+        INSTANCE.send(PacketDistributor.ALL.noArg(), new LightningRenderMessage(segments));
+    }
+
+    public static void sendLightningToAll(net.minecraft.server.level.ServerLevel level, List<com.gytrinket.gytrinket.core.attack_mode.electric_discharge.ElectricDischargeManager.LightningSegment> segments, int duration, float maxWidth) {
+        INSTANCE.send(PacketDistributor.ALL.noArg(), new LightningRenderMessage(segments, duration, maxWidth));
+    }
+
+    /**
+     * 发送蜂群能量波渲染包给所有玩家
+     */
+    public static void sendSwarmEnergyWaveToAll(net.minecraft.server.level.ServerLevel level, int entityId, Vec3 position, Vec3 direction, boolean isRepair) {
+        INSTANCE.send(PacketDistributor.ALL.noArg(), new SwarmEnergyWavePacket(entityId, position.x, position.y, position.z, direction.x, direction.y, direction.z, isRepair));
+    }
+
+    public static void sendEnergyWaveExplosionToAll(net.minecraft.server.level.ServerLevel level, Vec3 center, Vec3 direction, double splashLength) {
+        sendEnergyWaveExplosionToAll(level, center, direction, splashLength, -1, 0, 0.0);
+    }
+
+    public static void sendEnergyWaveExplosionToAll(net.minecraft.server.level.ServerLevel level, Vec3 center, Vec3 direction, double splashLength, int positionSyncEntityId) {
+        sendEnergyWaveExplosionToAll(level, center, direction, splashLength, positionSyncEntityId, 0, 0.0);
+    }
+
+    public static void sendEnergyWaveExplosionToAll(net.minecraft.server.level.ServerLevel level, Vec3 center, Vec3 direction, double splashLength, int positionSyncEntityId, int colorType) {
+        sendEnergyWaveExplosionToAll(level, center, direction, splashLength, positionSyncEntityId, colorType, 0.0);
+    }
+
+    /**
+     * 发送能量波爆炸渲染包给所有玩家（完整参数）
+     *
+     * @param positionSyncEntityId 位置同步实体ID（-1 = 固定位置，>= 0 = 跟随实体位置但保持初始方向）
+     * @param colorType            颜色方案（0 = 默认黄橙红，1 = 蓝色系）
+     * @param offsetDistance       位置同步时的沿方向偏移距离（格）
+     */
+    public static void sendEnergyWaveExplosionToAll(net.minecraft.server.level.ServerLevel level, Vec3 center, Vec3 direction, double splashLength, int positionSyncEntityId, int colorType, double offsetDistance) {
+        INSTANCE.send(PacketDistributor.ALL.noArg(), new EnergyWaveExplosionPacket(center.x, center.y, center.z, direction.x, direction.y, direction.z, splashLength, positionSyncEntityId, colorType, offsetDistance));
+    }
+
+    public static void sendExplosiveShieldFlashToAll(net.minecraft.server.level.ServerLevel level, net.minecraft.world.entity.Entity entity) {
+        INSTANCE.send(PacketDistributor.ALL.noArg(), new ExplosiveShieldFlashPacket(entity.getX(), entity.getY() + entity.getBbHeight() / 2.0, entity.getZ()));
+    }
+
+    public static void sendExplosiveShieldFlashToAll(net.minecraft.server.level.ServerLevel level, double x, double y, double z) {
+        INSTANCE.send(PacketDistributor.ALL.noArg(), new ExplosiveShieldFlashPacket(x, y, z));
+    }
+
+    public static void sendLightPointCoreSyncToClient(ServerPlayer player, ListTag itemList, int slotCount) {
+        INSTANCE.send(PacketDistributor.PLAYER.with(() -> player), new SyncLightPointCoreMessage(itemList, slotCount));
+    }
+
+    public static void sendComboCooldownToPlayer(ServerPlayer player, boolean inCooldown, int remainingTicks) {
+        INSTANCE.send(PacketDistributor.PLAYER.with(() -> player), new SyncComboCooldownMessage(inCooldown, remainingTicks));
+    }
+
+    public static void sendAttackStrengthToPlayer(ServerPlayer player, boolean reflectToFull) {
+        INSTANCE.send(PacketDistributor.PLAYER.with(() -> player), new SyncAttackStrengthMessage(reflectToFull));
+    }
+
+    public static void sendSiphonParticlesToPlayer(ServerPlayer player, double targetX, double targetY, double targetZ, double targetHeight,
+                                                    double playerHeadX, double playerHeadY, double playerHeadZ) {
+        INSTANCE.send(PacketDistributor.TRACKING_ENTITY_AND_SELF.with(() -> player),
+            new SiphonParticlePacket(targetX, targetY, targetZ, targetHeight, playerHeadX, playerHeadY, playerHeadZ));
+    }
+
+    public static void sendPlayerDataSnapshotToClient(ServerPlayer player, CompoundTag snapshotData) {
+        INSTANCE.send(PacketDistributor.PLAYER.with(() -> player),
+            new SyncPlayerDataSnapshotMessage(snapshotData));
+    }
+
+    public static void sendChargedAttackSyncToPlayer(ServerPlayer player, double chargeValue) {
+        double attackDamage = player.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE);
+        double chargedDamage = attackDamage * (1.0 + chargeValue);
+        INSTANCE.send(PacketDistributor.PLAYER.with(() -> player),
+            new SyncChargedAttackMessage(chargeValue, chargedDamage));
+    }
+
+    public static void sendBurstFiringToPlayer(ServerPlayer player, boolean isBurstFiring) {
+        INSTANCE.send(PacketDistributor.PLAYER.with(() -> player),
+            new SyncBurstFiringMessage(isBurstFiring));
+    }
+
+    /**
+     * 发送充能横扫粒子渲染数据包给所有可见此玩家的客户端
+     */
+    public static void sendChargedSweepParticleToAll(ServerPlayer player,
+                                                      double x, double y, double z,
+                                                      float yaw, float pitch, float scale,
+                                                      long gameTime, int lifetime) {
+        INSTANCE.send(PacketDistributor.TRACKING_ENTITY_AND_SELF.with(() -> player),
+            new ChargedSweepParticleMessage(x, y, z, yaw, pitch, scale, gameTime, lifetime));
+    }
+
+    public static void sendInterceptorWeaponToPlayer(ServerPlayer player, ItemStack weapon) {
+        INSTANCE.send(PacketDistributor.PLAYER.with(() -> player), new SyncInterceptorWeaponMessage(weapon));
+    }
+
+    public static void sendInterceptorAttackModeToPlayer(ServerPlayer player, com.gytrinket.gytrinket.core.entity.construct.wingman.InterceptorAttackMode attackMode) {
+        INSTANCE.send(PacketDistributor.PLAYER.with(() -> player), new SyncInterceptorAttackModeMessage(attackMode.getSerializedName()));
+    }
+
+    // ======================== Internal send helpers ========================
+
+    /** 生成并推送随机构建随机池到客户端 */
+    public static void sendRandomBuildPoolToPlayer(ServerPlayer player) {
+        sendRandomBuildPoolToPlayer(player, false);
+    }
+
+    /** 生成并推送随机构建随机池到客户端
+     *  @param avoidLast 为 true 时尽量不与上一轮随机池重复（刷新用） */
+    public static void sendRandomBuildPoolToPlayer(ServerPlayer player, boolean avoidLast) {
+        List<String> lastPool = avoidLast ? RandomBuildManager.getCurrentPool(player.getUUID()) : List.of();
+        List<String> pool = RandomBuildManager.generatePool(player, new java.util.HashSet<>(lastPool));
+        INSTANCE.send(PacketDistributor.PLAYER.with(() -> player), new ResponseRandomBuildMessage(pool));
+    }
+
+    /** 同步光点等级/经验/升级点到客户端 */
+    public static void sendModLevelSyncToPlayer(ServerPlayer player) {
+        java.util.UUID uuid = player.getUUID();
+        INSTANCE.send(PacketDistributor.PLAYER.with(() -> player), new SyncModLevelMessage(
+            ModLevelManager.getModLevel(uuid),
+            ModLevelManager.getUpgradeExp(uuid),
+            ModLevelManager.getUpgradePoints(uuid),
+            ModLevelManager.getRandomPoints(uuid)));
+    }
+
+    /** 同步玩家背包代币数量到客户端（随机构建代币机制） */
+    public static void sendTokenCountToPlayer(ServerPlayer player) {
+        INSTANCE.send(PacketDistributor.PLAYER.with(() -> player),
+            new SyncTokenCountMessage(RandomBuildManager.countTokens(player)));
+    }
+
+    /**
+     * 计算玩家光点核心各槽位禁用原因（27 槽，空串=未禁用）
+     * 玩家面板（ResponsePanelDataMessage）与容器界面（SyncDisabledReasonsMessage）共用此入口
+     */
+    public static java.util.List<String> buildDisabledReasons(ServerPlayer player) {
+        java.util.List<String> reasons = new ArrayList<>();
+        PlayerStore store = PlayerStoreManager.getPlayerStore(player);
+        if (store != null) {
+            int slotCount = store.getItemHandler().getSlots();
+            for (int i = 0; i < slotCount; i++) {
+                ItemStack stack = store.getItemHandler().getStackInSlot(i);
+                if (!stack.isEmpty()) {
+                    String itemId = net.minecraft.core.Registry.ITEM.getKey(stack.getItem()).toString();
+                    String reason = com.gytrinket.gytrinket.core.shield.DisableSystem.getDisabledReason(player.getUUID(), itemId);
+                    reasons.add(reason != null ? reason : "");
+                } else {
+                    reasons.add("");
+                }
+            }
+        }
+        return reasons;
+    }
+
+    /** 同步光点核心各槽位禁用原因到客户端（容器界面灰色遮罩用） */
+    public static void sendDisabledReasonsToPlayer(ServerPlayer player) {
+        INSTANCE.send(PacketDistributor.PLAYER.with(() -> player), new SyncDisabledReasonsMessage(buildDisabledReasons(player)));
+    }
+
+    /**
+     * 判断饰品栏物品是否注册了本模组属性或特殊机制（决定是否在玩家面板显示）。
+     * <p>
+     * 复用 {@link QuickEquipEvent#isQuickEquipItem} 的统一判定：注册了本模组属性，
+     * 或注册了护盾类型/机身/任意模块等特殊机制（datapack 可配置任意命名空间物品）。
+     */
+    private static boolean isGytrinketRegisteredItem(ItemStack stack) {
+        if (stack.isEmpty()) {
+            return false;
+        }
+        String itemId = net.minecraft.core.Registry.ITEM.getKey(stack.getItem()).toString();
+        return QuickEquipEvent.isQuickEquipItem(itemId, stack.getItem());
+    }
+
+    public static void sendPanelUpdate(ServerPlayer player) {
+        var attributes = AttributeManager.getPlayerAttributes(player);
+        PlayerStore store = PlayerStoreManager.getPlayerStore(player);
+        ListTag items = new ListTag();
+        int slotCount = 0;
+        ListTag upgradeTargets = new ListTag();
+        String[] disabledReasons = new String[0];
+        if (store != null) {
+            slotCount = store.getItemHandler().getSlots();
+            disabledReasons = buildDisabledReasons(player).toArray(new String[0]);
+            for (int i = 0; i < slotCount; i++) {
+                ItemStack stack = store.getItemHandler().getStackInSlot(i);
+                if (!stack.isEmpty()) {
+                    CompoundTag itemTag = new CompoundTag();
+                    stack.save(itemTag);
+                    itemTag.putInt("slot", i);
+                    items.add(itemTag);
+                }
+            }
+            if (Config.UPGRADE_SYSTEM_ENABLED.get()) {
+                UpgradeData upgradeData = UpgradeManager.getUpgradeData(player.getUUID());
+                upgradeTargets = UpgradeManager.buildUpgradeTargets(
+                    store.getItemHandler(), upgradeData,
+                    player.getLevel().getRecipeManager(),
+                    player.getLevel().registryAccess()
+                );
+            }
+        }
+
+        // 光点核心内容扩展：饰品栏（Curios）中注册了本模组属性或特殊机制的物品，同样显示在玩家面板装备区
+        if (CuriosCompat.isCuriosLoaded()) {
+            int curiosSlotBase = slotCount;
+            for (ItemStack stack : CuriosCompat.getEquippedCurios(player)) {
+                if (isGytrinketRegisteredItem(stack)) {
+                    CompoundTag itemTag = new CompoundTag();
+                    stack.save(itemTag);
+                    itemTag.putInt("slot", curiosSlotBase++);
+                    items.add(itemTag);
+                }
+            }
+            slotCount = curiosSlotBase;
+        }
+
+        UpgradeData upgradeData = UpgradeManager.getUpgradeData(player.getUUID());
+        CompoundTag upgradeTag = upgradeData.save();
+        int modLevel = ModLevelManager.getModLevel(player.getUUID());
+        int upgradeExp = ModLevelManager.getUpgradeExp(player.getUUID());
+        int upgradePoints = ModLevelManager.getUpgradePoints(player.getUUID());
+        int randomPoints = ModLevelManager.getRandomPoints(player.getUUID());
+        int tokenCount = RandomBuildManager.countTokens(player);
+        INSTANCE.send(PacketDistributor.PLAYER.with(() -> player),
+            new ResponsePanelDataMessage(attributes, items, slotCount, upgradeTag, upgradeTargets, modLevel, upgradeExp, upgradePoints, randomPoints, tokenCount, disabledReasons));
+    }
+
+    public static void sendConfigDataToPlayer(ServerPlayer player) {
+        ResponseConfigDataMessage msg = buildConfigDataMessage(true);
+        INSTANCE.send(PacketDistributor.PLAYER.with(() -> player), msg);
+    }
+
+    public static void sendConfigDataToAllPlayers(ServerPlayer source) {
+        ResponseConfigDataMessage msg = buildConfigDataMessage(false);
+        for (var p : source.server.getPlayerList().getPlayers()) {
+            INSTANCE.send(PacketDistributor.PLAYER.with(() -> p), msg);
+        }
+    }
+
+    // ======================== 定义（特殊机制/护盾类型）同步 ========================
+
+    private static ConfigDefsSyncMessage buildDefsSyncMessage() {
+        return new ConfigDefsSyncMessage(
+            DefsManager.getServerShieldTypes(),
+            DefsManager.getServerSpecialMechanicItems(),
+            DefsManager.getServerAllEffectiveSets(),
+            DefsManager.getServerTooltipRules(),
+            DefsManager.getServerSpecialMechanicOverrides(),
+            DefsManager.getServerShieldTypeOverrides(),
+            DefsManager.getServerShieldTypeParamDefaultDoubles(),
+            DefsManager.collectEffectiveItemAttributes()
+        );
+    }
+
+    /** 发送完整定义同步给单个玩家（登录/维度切换） */
+    public static void sendDefsSyncToPlayer(ServerPlayer player) {
+        INSTANCE.send(PacketDistributor.PLAYER.with(() -> player), buildDefsSyncMessage());
+    }
+
+    /** 发送完整定义同步给所有在线玩家（编辑生效后广播） */
+    public static void sendDefsSyncToAllPlayers(MinecraftServer server) {
+        ConfigDefsSyncMessage msg = buildDefsSyncMessage();
+        for (var p : server.getPlayerList().getPlayers()) {
+            INSTANCE.send(PacketDistributor.PLAYER.with(() -> p), msg);
+        }
+    }
+
+    /** 发送完整定义同步给来源玩家周边的所有玩家（兼容旧调用名） */
+    public static void sendDefsOverridesToAllPlayers(ServerPlayer source) {
+        sendDefsSyncToAllPlayers(source.server);
+    }
+
+    private static ResponseConfigDataMessage buildConfigDataMessage(boolean openScreen) {
+        // 物品列表 = 声明属性的物品（覆写层 + 权威定义） ∪ 注册了特殊机制的物品 ∪ 定义了护盾类型的物品 ∪ UI 禁用态物品（供再次删除回退）
+        java.util.LinkedHashSet<String> itemIds = new java.util.LinkedHashSet<>(DefsManager.getEffectiveItemAttributeItemIds());
+        itemIds.addAll(DefsManager.getSpecialMechanicItems());
+        itemIds.addAll(DefsManager.getItemShieldTypes().keySet());
+        itemIds.addAll(DefsManager.getUiDisabledItemIds());
+
+        ListTag itemConfigList = new ListTag();
+        for (String itemId : itemIds) {
+            CompoundTag itemTag = new CompoundTag();
+            itemTag.putString("itemId", itemId);
+            itemTag.putBoolean("uiDisabled", DefsManager.isUiDisabledItem(itemId));
+            ListTag attrsTag = new ListTag();
+            // 有效属性 = 权威定义 + 覆写层合并（服务端权威数据源，客户端 tooltip/UI 显示链）
+            Map<String, DefsManager.ParamValue> effective = DefsManager.getEffectiveItemAttributes(itemId);
+            if (effective != null) {
+                for (var entry : effective.entrySet()) {
+                    CompoundTag attrTag = new CompoundTag();
+                    attrTag.putString("name", entry.getKey());
+                    attrTag.putDouble("value", entry.getValue().value());
+                    attrsTag.add(attrTag);
+                }
+            }
+            itemTag.put("attributes", attrsTag);
+            itemConfigList.add(itemTag);
+        }
+
+        List<String> allAttrs = new ArrayList<>(AttributeManager.getAllRegisteredAttributes());
+        Collections.sort(allAttrs);
+
+        return new ResponseConfigDataMessage(itemConfigList, allAttrs, openScreen);
+    }
+
+    // ======================== 配置项（特殊机制/自然恢复）同步 ========================
+
+    /** 构建全量配置项同步消息（跳过客户端专属项，服务端专用） */
+    private static ConfigValuesSyncMessage buildConfigValuesSyncMessage(boolean openScreen) {
+        List<String> ids = new ArrayList<>();
+        List<Double> values = new ArrayList<>();
+        for (ConfigValueRegistry.Entry e : ConfigValueRegistry.entries()) {
+            if (e.clientOnly) continue;
+            ids.add(e.id);
+            values.add(e.getter.getAsDouble());
+        }
+        return new ConfigValuesSyncMessage(ids, values, openScreen);
+    }
+
+    /** 发送全量配置项同步给单个玩家（打开界面时） */
+    public static void sendConfigValuesToPlayer(ServerPlayer player, boolean openScreen) {
+        INSTANCE.send(PacketDistributor.PLAYER.with(() -> player), buildConfigValuesSyncMessage(openScreen));
+    }
+
+    /** 发送全量配置项同步给所有在线玩家（编辑生效后广播刷新） */
+    public static void sendConfigValuesToAllPlayers(ServerPlayer source, boolean openScreen) {
+        ConfigValuesSyncMessage msg = buildConfigValuesSyncMessage(openScreen);
+        for (var p : source.server.getPlayerList().getPlayers()) {
+            INSTANCE.send(PacketDistributor.PLAYER.with(() -> p), msg);
+        }
+    }
+}

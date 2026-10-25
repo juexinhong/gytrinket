@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " M ",
+    "LCL",
+    " B "
+  ],
+  "key": {
+    "L": {
+      "item": "minecraft:string"
+    },
+    "M": {
+      "item": "gytrinket:movement_frame"
+    },
+    "C": {
+      "item": "gytrinket:coordinate"
+    },
+    "B": {
+      "item": "minecraft:blue_wool"
+    }
+  },
+  "result": {
+    "item": "gytrinket:flash_module",
+    "count": 1
+  }
+}

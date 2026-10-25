@@ -1,0 +1,9 @@
+{
+  "items": {
+    "gytrinket:fast_shooting_module": {
+      "attributes": {
+        "attack_speed_percent": 0.15
+      }
+    }
+  }
+}

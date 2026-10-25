@@ -1,0 +1,28 @@
+package com.gytrinket.gytrinket.core.entity.construct.swarm;
+
+import com.gytrinket.gytrinket.core.entity.construct.ConstructBuilder;
+import com.gytrinket.gytrinket.core.entity.construct.ConstructType;
+import net.minecraft.world.entity.player.Player;
+
+/**
+ * 蜂群构造体构建器
+ * <p>
+ * 扩展基础构建器，添加溢出倍率对构建速度的修正：
+ * 当蜂群数量超过上限倍率时，构建速度降低（等阶越高构建越慢）。
+ */
+public class SwarmBuilder extends ConstructBuilder {
+
+    public SwarmBuilder(Player player, ConstructType constructType) {
+        super(player, constructType);
+    }
+
+    @Override
+    protected void updateBuildSpeed() {
+        super.updateBuildSpeed();
+        double overflowMult = MothershipManager.getOverflowMultiplier(getPlayer().getUUID());
+        if (overflowMult > 1.0) {
+            setBuildSpeedMultiplier(getBuildSpeedMultiplier() / overflowMult);
+        }
+    }
+}
+

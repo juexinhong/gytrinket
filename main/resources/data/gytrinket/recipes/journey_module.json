@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " F ",
+    "SWS",
+    " B "
+  ],
+  "key": {
+    "F": {
+      "item": "gytrinket:attack_frame"
+    },
+    "S": {
+      "item": "minecraft:string"
+    },
+    "W": {
+      "item": "gytrinket:war_soul"
+    },
+    "B": {
+      "item": "minecraft:blue_wool"
+    }
+  },
+  "result": {
+    "item": "gytrinket:journey_module",
+    "count": 1
+  }
+}

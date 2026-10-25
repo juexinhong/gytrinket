@@ -1,0 +1,8 @@
+{
+  "variants": {
+    "": {
+      "model": "gytrinket:block/light_point_core",
+      "render_type": "translucent"
+    }
+  }
+}

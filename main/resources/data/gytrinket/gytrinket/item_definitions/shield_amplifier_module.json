@@ -1,0 +1,9 @@
+{
+  "items": {
+    "gytrinket:shield_amplifier_module": {
+      "attributes": {
+        "shield_percent": 0.2
+      }
+    }
+  }
+}

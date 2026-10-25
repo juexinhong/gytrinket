@@ -1,0 +1,10 @@
+{
+    "items":  {
+                  "gytrinket:adaptive_armor_module":  {
+                                                          "mechanic":  true,
+                                                          "sets":  [
+                                                                       "adaptive_armor_items"
+                                                                   ]
+                                                      }
+              }
+}

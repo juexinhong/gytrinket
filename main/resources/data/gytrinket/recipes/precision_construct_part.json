@@ -1,0 +1,20 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": {
+      "item": "minecraft:copper_block"
+    },
+    "P": {
+      "item": "minecraft:paper"
+    }
+  },
+  "pattern": [
+    " C ",
+    "P P"
+  ],
+  "result": {
+    "item": "gytrinket:precision_construct_part",
+    "count": 1
+  }
+}

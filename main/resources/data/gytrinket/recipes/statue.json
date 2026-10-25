@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    " B ",
+    " B ",
+    "CCC"
+  ],
+  "key": {
+    "B": {
+      "item": "minecraft:stone"
+    },
+    "C": {
+      "item": "minecraft:stone_stairs"
+    }
+  },
+  "result": {
+    "item": "gytrinket:statue",
+    "count": 1
+  }
+}

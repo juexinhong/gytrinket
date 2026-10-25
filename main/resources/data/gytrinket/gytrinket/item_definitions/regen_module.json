@@ -1,0 +1,9 @@
+{
+  "items": {
+    "gytrinket:regen_module": {
+      "attributes": {
+        "recovery_efficiency_percent": 0.4
+      }
+    }
+  }
+}

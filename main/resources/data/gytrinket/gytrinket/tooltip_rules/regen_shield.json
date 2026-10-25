@@ -1,0 +1,1 @@
+{"itemSet":"shield_natural_recovery_items","titleKey":"regen_shield","descKey":"regen_shield_effect","color":"green","params":[{"type":"percentInt","source":"shieldNaturalRecoveryPresentHealthModifier"},{"type":"percentInt","source":"shieldNaturalRecoveryPresentShieldModifier"}]}

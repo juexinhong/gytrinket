@@ -1,0 +1,13 @@
+{
+  "items": {
+    "gytrinket:ultimate_shield_module": {
+      "attributes": {
+        "shield_base": 11.0,
+        "shield_damage_reduction": -0.15,
+        "shield_effect_percent": 0.15,
+        "shield_hit_cooldown_extend_final_multiplier": -0.65,
+        "player_health_independent": -0.85
+      }
+    }
+  }
+}

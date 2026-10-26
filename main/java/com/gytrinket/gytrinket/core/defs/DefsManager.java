@@ -254,7 +254,7 @@ public class DefsManager {
     private static final Set<String> ITEM_UI_OWNED = new HashSet<>();
 
     /** 数据包 item_definitions 声明的物品 id（纯数据文件来源，不含 UI 覆写；删除功能判定用） */
-    private static final Set<String> ITEM_DATA_PACK_IDS = new HashSet<>();
+    private static volatile Set<String> ITEM_DATA_PACK_IDS = new HashSet<>();
 
     /** 机制参数覆盖值：数值 + 是否可叠加（false = 各物品独立比对取最大，true = 多物品求和） */
     public record ParamValue(double value, boolean stackable) {
@@ -401,32 +401,35 @@ public class DefsManager {
     }
 
     /** 声明为"特殊机制"的物品集合（special_mechanics 文件夹声明并集），供快速装备等统一判定 */
-    private static final Set<String> SPECIAL_MECHANIC_ITEMS = ConcurrentHashMap.newKeySet();
+    private static volatile Set<String> SPECIAL_MECHANIC_ITEMS = ConcurrentHashMap.newKeySet();
 
     /** 物品声明的特殊机制集合（itemId -> 机制集合名列表；special_mechanics 定义，覆盖优先）。
      *  与 1.21.1 的 SPECIAL_MECHANICS registry 语义对齐：只含机制声明，不含 item_sets 普通集合 */
-    private static final Map<String, List<String>> SPECIAL_MECHANIC_SETS = new ConcurrentHashMap<>();
+    private static volatile Map<String, List<String>> SPECIAL_MECHANIC_SETS = new ConcurrentHashMap<>();
 
     // ===== 加载缓存（服务端与客户端共用） =====
-    private static final Map<String, Set<String>> ITEM_SETS = new ConcurrentHashMap<>();
-    private static final Map<String, Set<String>> ENTITY_SETS = new ConcurrentHashMap<>();
-    private static final Map<String, Boolean> SHIELD_TYPES = new ConcurrentHashMap<>();
+    private static volatile Map<String, Set<String>> ITEM_SETS = new ConcurrentHashMap<>();
+    private static volatile Map<String, Set<String>> ENTITY_SETS = new ConcurrentHashMap<>();
+    private static volatile Map<String, Boolean> SHIELD_TYPES = new ConcurrentHashMap<>();
     /** 护盾类型基础参数默认值缓存（shield_types/*.json 的 shieldValues 段）：四项基础属性的类型级回退层 */
-    private static final Map<String, Map<String, ParamValue>> SHIELD_TYPE_PARAM_DEFAULTS = new ConcurrentHashMap<>();
-    private static final Map<String, List<String>> ITEM_SHIELD_TYPES = new ConcurrentHashMap<>();
-    private static final List<AttributeEntry> ATTRIBUTE_DEFS = new ArrayList<>();
-    private static final Map<String, Set<String>> DISABLE_TARGETS = new HashMap<>();
-    private static final Map<String, Set<String>> DEPENDENCIES = new HashMap<>();
-    private static final Map<String, Set<String>> DISABLE_CATEGORIES = new HashMap<>();
-    private static final Map<String, List<List<String>>> DEPENDENCIES_ALL = new HashMap<>();
-    private static final Map<String, ModuleTreeDef> MODULE_TREES = new LinkedHashMap<>();
-    private static final Map<String, List<String>> UPGRADE_PATHS = new HashMap<>();
-    private static final List<TooltipRuleDef> TOOLTIP_RULES = new CopyOnWriteArrayList<>();
+    private static volatile Map<String, Map<String, ParamValue>> SHIELD_TYPE_PARAM_DEFAULTS = new ConcurrentHashMap<>();
+    private static volatile Map<String, List<String>> ITEM_SHIELD_TYPES = new ConcurrentHashMap<>();
+    private static volatile List<AttributeEntry> ATTRIBUTE_DEFS = new ArrayList<>();
+    private static volatile Map<String, Set<String>> DISABLE_TARGETS = new HashMap<>();
+    private static volatile Map<String, Set<String>> DEPENDENCIES = new HashMap<>();
+    private static volatile Map<String, Set<String>> DISABLE_CATEGORIES = new HashMap<>();
+    private static volatile Map<String, List<List<String>>> DEPENDENCIES_ALL = new HashMap<>();
+    private static volatile Map<String, ModuleTreeDef> MODULE_TREES = new LinkedHashMap<>();
+    private static volatile Map<String, List<String>> UPGRADE_PATHS = new HashMap<>();
+    private static volatile List<TooltipRuleDef> TOOLTIP_RULES = new CopyOnWriteArrayList<>();
     /** 统一物品定义（item_definitions 数据文件按 key 排序合并后的结果），供有效查询入口取基线 */
-    private static final Map<String, ItemDefinition> ITEM_DEFINITIONS = new LinkedHashMap<>();
+    private static volatile Map<String, ItemDefinition> ITEM_DEFINITIONS = new LinkedHashMap<>();
 
     /** 客户端惰性加载标记 */
     private static boolean clientLoaded = false;
+
+    /** 本次定义加载的解析错误计数（0 = 全量成功，可发布） */
+    private static int loadErrorCount = 0;
 
     private DefsManager() {}
 
@@ -457,6 +460,25 @@ public class DefsManager {
         if (resourceManager == null) {
             return;
         }
+        int loadErrorCountBefore = loadErrorCount;
+        loadErrorCount = 0;
+        Map<String, Set<String>> itemSets = new ConcurrentHashMap<>();
+        Map<String, Set<String>> entitySets = new ConcurrentHashMap<>();
+        Set<String> specialMechanicItems = ConcurrentHashMap.newKeySet();
+        Map<String, List<String>> specialMechanicSets = new ConcurrentHashMap<>();
+        Map<String, Boolean> shieldTypes = new ConcurrentHashMap<>();
+        Map<String, Map<String, ParamValue>> shieldTypeParamDefaults = new ConcurrentHashMap<>();
+        Map<String, List<String>> itemShieldTypes = new ConcurrentHashMap<>();
+        List<AttributeEntry> attributeDefs = new ArrayList<>();
+        Map<String, Set<String>> disableTargets = new HashMap<>();
+        Map<String, Set<String>> dependencies = new HashMap<>();
+        Map<String, Set<String>> disableCategories = new HashMap<>();
+        Map<String, List<List<String>>> dependenciesAll = new HashMap<>();
+        Map<String, ModuleTreeDef> moduleTrees = new LinkedHashMap<>();
+        Map<String, List<String>> upgradePaths = new HashMap<>();
+        List<TooltipRuleDef> tooltipRules = new CopyOnWriteArrayList<>();
+        Map<String, ItemDefinition> itemDefinitions = new LinkedHashMap<>();
+        Set<String> itemDataPackIds = new HashSet<>();
         // 每次定义加载（世界启动/重载/手动应用）先读入运行时覆盖文件，保证持久化与优先级
         MinecraftServer server = net.minecraftforge.server.ServerLifecycleHooks.getCurrentServer();
         if (server != null) {
@@ -467,24 +489,26 @@ public class DefsManager {
         // 工具提示/禁用判定等机制全部失效。
         boolean hasItemSets = !resourceManager.listResources("gytrinket/item_sets", p -> p.getPath().endsWith(".json")).isEmpty();
         if (!hasItemSets && (!ITEM_SETS.isEmpty() || !TOOLTIP_RULES.isEmpty() || !SHIELD_TYPES.isEmpty())) {
+            // 资源管理器还没就绪：不要用空局部状态覆盖上一份缓存
+            loadErrorCount = loadErrorCountBefore;
             return;
         }
-        ITEM_SETS.clear();
-        ENTITY_SETS.clear();
-        SPECIAL_MECHANIC_ITEMS.clear();
-        SPECIAL_MECHANIC_SETS.clear();
-        SHIELD_TYPES.clear();
-        SHIELD_TYPE_PARAM_DEFAULTS.clear();
-        ITEM_SHIELD_TYPES.clear();
-        ATTRIBUTE_DEFS.clear();
-        DISABLE_TARGETS.clear();
-        DEPENDENCIES.clear();
-        DISABLE_CATEGORIES.clear();
-        DEPENDENCIES_ALL.clear();
-        MODULE_TREES.clear();
-        UPGRADE_PATHS.clear();
-        TOOLTIP_RULES.clear();
-        ITEM_DEFINITIONS.clear();
+        itemSets.clear();
+        entitySets.clear();
+        specialMechanicItems.clear();
+        specialMechanicSets.clear();
+        shieldTypes.clear();
+        shieldTypeParamDefaults.clear();
+        itemShieldTypes.clear();
+        attributeDefs.clear();
+        disableTargets.clear();
+        dependencies.clear();
+        disableCategories.clear();
+        dependenciesAll.clear();
+        moduleTrees.clear();
+        upgradePaths.clear();
+        tooltipRules.clear();
+        itemDefinitions.clear();
 
         // 物品集合
         for (Map.Entry<ResourceLocation, Resource> e : resourceManager.listResources("gytrinket/item_sets", p -> p.getPath().endsWith(".json")).entrySet()) {
@@ -492,10 +516,10 @@ public class DefsManager {
             ItemSetDef def = parseResource(e.getValue(), ItemSetDef.CODEC);
             if (def == null) continue;
             if (!def.items().isEmpty()) {
-                ITEM_SETS.put(id, new HashSet<>(def.items()));
+                itemSets.put(id, new HashSet<>(def.items()));
             }
             if (!def.entities().isEmpty()) {
-                ENTITY_SETS.put(id, new HashSet<>(def.entities()));
+                entitySets.put(id, new HashSet<>(def.entities()));
             }
         }
 
@@ -503,9 +527,9 @@ public class DefsManager {
         for (Map.Entry<ResourceLocation, Resource> e : resourceManager.listResources("gytrinket/shield_types", p -> p.getPath().endsWith(".json")).entrySet()) {
             ShieldTypeDef def = parseResource(e.getValue(), ShieldTypeDef.CODEC);
             if (def != null) {
-                SHIELD_TYPES.put(fileId(e.getKey()), def.compatible());
+                shieldTypes.put(fileId(e.getKey()), def.compatible());
                 if (!def.shieldValues().isEmpty()) {
-                    SHIELD_TYPE_PARAM_DEFAULTS.put(fileId(e.getKey()), def.shieldValues());
+                    shieldTypeParamDefaults.put(fileId(e.getKey()), def.shieldValues());
                 }
             }
         }
@@ -514,7 +538,7 @@ public class DefsManager {
         for (Map.Entry<ResourceLocation, Resource> e : resourceManager.listResources("gytrinket/item_shield_types", p -> p.getPath().endsWith(".json")).entrySet()) {
             ItemShieldTypeDef def = parseResource(e.getValue(), ItemShieldTypeDef.CODEC);
             if (def != null && !itemOverrideOwnsShieldTypes(def.item())) {
-                ITEM_SHIELD_TYPES.put(def.item(), new ArrayList<>(def.types()));
+                itemShieldTypes.put(def.item(), new ArrayList<>(def.types()));
             }
         }
 
@@ -524,7 +548,7 @@ public class DefsManager {
             if (itemOverrideOwnsShieldTypes(e.getKey())) {
                 continue;
             }
-            ITEM_SHIELD_TYPES.put(e.getKey(), new ArrayList<>(e.getValue().types()));
+            itemShieldTypes.put(e.getKey(), new ArrayList<>(e.getValue().types()));
         }
 
         // 特殊机制（路径定义 + 分类声明）：文件名 = 物品 id（完整注册名，带命名空间；快速装备/判定用）
@@ -543,35 +567,35 @@ public class DefsManager {
                 if (ov.removed()) {
                     continue;
                 }
-                SPECIAL_MECHANIC_ITEMS.add(itemId);
-                SPECIAL_MECHANIC_SETS.put(itemId, new ArrayList<>(ov.sets()));
+                specialMechanicItems.add(itemId);
+                specialMechanicSets.put(itemId, new ArrayList<>(ov.sets()));
                 for (String setName : ov.sets()) {
                     if (setName == null || setName.isEmpty()) continue;
-                    ITEM_SETS.computeIfAbsent(setName, k -> new HashSet<>()).add(itemId);
+                    itemSets.computeIfAbsent(setName, k -> new HashSet<>()).add(itemId);
                 }
                 continue;
             }
             if (def.removed()) {
                 continue;
             }
-            SPECIAL_MECHANIC_ITEMS.add(itemId);
-            SPECIAL_MECHANIC_SETS.put(itemId, new ArrayList<>(def.sets()));
+            specialMechanicItems.add(itemId);
+            specialMechanicSets.put(itemId, new ArrayList<>(def.sets()));
             for (String setName : def.sets()) {
                 if (setName == null || setName.isEmpty()) continue;
-                ITEM_SETS.computeIfAbsent(setName, k -> new HashSet<>()).add(itemId);
+                itemSets.computeIfAbsent(setName, k -> new HashSet<>()).add(itemId);
             }
         }
 
         // 运行时覆盖：新增 JAR/资源中不存在的条目（机制声明已被 items 覆写显式接管的除外）
         for (var e : SERVER_SPECIAL_MECHANIC_OVERRIDES.entrySet()) {
-            if (SPECIAL_MECHANIC_ITEMS.contains(e.getKey()) || e.getValue().removed() || itemOverrideOwnsMechanic(e.getKey())) {
+            if (specialMechanicItems.contains(e.getKey()) || e.getValue().removed() || itemOverrideOwnsMechanic(e.getKey())) {
                 continue;
             }
-            SPECIAL_MECHANIC_ITEMS.add(e.getKey());
-            SPECIAL_MECHANIC_SETS.put(e.getKey(), new ArrayList<>(e.getValue().sets()));
+            specialMechanicItems.add(e.getKey());
+            specialMechanicSets.put(e.getKey(), new ArrayList<>(e.getValue().sets()));
             for (String setName : e.getValue().sets()) {
                 if (setName == null || setName.isEmpty()) continue;
-                ITEM_SETS.computeIfAbsent(setName, k -> new HashSet<>()).add(e.getKey());
+                itemSets.computeIfAbsent(setName, k -> new HashSet<>()).add(e.getKey());
             }
         }
 
@@ -579,7 +603,7 @@ public class DefsManager {
         for (Map.Entry<ResourceLocation, Resource> e : resourceManager.listResources("gytrinket/attribute_definitions", p -> p.getPath().endsWith(".json")).entrySet()) {
             AttributeDefs defs = parseResource(e.getValue(), AttributeDefs.CODEC);
             if (defs != null) {
-                ATTRIBUTE_DEFS.addAll(defs.attributes());
+                attributeDefs.addAll(defs.attributes());
             }
         }
 
@@ -588,16 +612,16 @@ public class DefsManager {
             ItemDependencyDef def = parseResource(e.getValue(), ItemDependencyDef.CODEC);
             if (def == null) continue;
             if (!def.disables().isEmpty()) {
-                DISABLE_TARGETS.put(def.item(), new HashSet<>(def.disables()));
+                disableTargets.put(def.item(), new HashSet<>(def.disables()));
             }
             if (!def.dependsOn().isEmpty()) {
-                DEPENDENCIES.put(def.item(), new HashSet<>(def.dependsOn()));
+                dependencies.put(def.item(), new HashSet<>(def.dependsOn()));
             }
             if (!def.disablesCategories().isEmpty()) {
-                DISABLE_CATEGORIES.put(def.item(), new HashSet<>(def.disablesCategories()));
+                disableCategories.put(def.item(), new HashSet<>(def.disablesCategories()));
             }
             if (!def.dependsOnAll().isEmpty()) {
-                DEPENDENCIES_ALL.put(def.item(), def.dependsOnAll());
+                dependenciesAll.put(def.item(), def.dependsOnAll());
             }
         }
 
@@ -605,7 +629,7 @@ public class DefsManager {
         for (Map.Entry<ResourceLocation, Resource> e : resourceManager.listResources("gytrinket/module_trees", p -> p.getPath().endsWith(".json")).entrySet()) {
             ModuleTreeDef def = parseResource(e.getValue(), ModuleTreeDef.CODEC);
             if (def != null) {
-                MODULE_TREES.put(fileId(e.getKey()), def);
+                moduleTrees.put(fileId(e.getKey()), def);
             }
         }
 
@@ -613,7 +637,7 @@ public class DefsManager {
         for (Map.Entry<ResourceLocation, Resource> e : resourceManager.listResources("gytrinket/upgrade_paths", p -> p.getPath().endsWith(".json")).entrySet()) {
             UpgradePathDef def = parseResource(e.getValue(), UpgradePathDef.CODEC);
             if (def != null) {
-                UPGRADE_PATHS.put(def.base(), new ArrayList<>(def.upgrades()));
+                upgradePaths.put(def.base(), new ArrayList<>(def.upgrades()));
             }
         }
 
@@ -621,12 +645,12 @@ public class DefsManager {
         for (Map.Entry<ResourceLocation, Resource> e : resourceManager.listResources("gytrinket/tooltip_rules", p -> p.getPath().endsWith(".json")).entrySet()) {
             TooltipRuleDef def = parseResource(e.getValue(), TooltipRuleDef.CODEC);
             if (def != null) {
-                TOOLTIP_RULES.add(def);
+                tooltipRules.add(def);
             }
         }
 
         // 统一物品定义合并：item_definitions 数据文件（按 key 排序防多文件同物品顺序不定）+ SERVER_ITEM_OVERRIDES
-        ITEM_DATA_PACK_IDS.clear();
+        itemDataPackIds.clear();
         List<Map.Entry<ResourceLocation, Resource>> itemDefEntries = new ArrayList<>(
                 resourceManager.listResources("gytrinket/item_definitions", p -> p.getPath().endsWith(".json")).entrySet());
         itemDefEntries.sort(Map.Entry.comparingByKey());
@@ -635,51 +659,76 @@ public class DefsManager {
             if (file == null) continue;
             for (var item : file.items().entrySet()) {
                 String id = normalizeItemId(item.getKey());
-                ITEM_DATA_PACK_IDS.add(id);
-                ITEM_DEFINITIONS.merge(id, item.getValue(), ItemDefinition::merge);
+                itemDataPackIds.add(id);
+                itemDefinitions.merge(id, item.getValue(), ItemDefinition::merge);
             }
         }
         for (var e : SERVER_ITEM_OVERRIDES.entrySet()) {
-            ITEM_DEFINITIONS.merge(e.getKey(), e.getValue(), ItemDefinition::merge);
+            itemDefinitions.merge(e.getKey(), e.getValue(), ItemDefinition::merge);
         }
 
         // items 统一定义派生旧缓存：遍历合并后全量条目（JAR 数据 + 覆写），
         // 显式接管的字段以合并后定义为准（合并链保留下层 sets/shieldTypes）
-        for (var e : ITEM_DEFINITIONS.entrySet()) {
+        for (var e : itemDefinitions.entrySet()) {
             String itemId = e.getKey();
             ItemDefinition def = e.getValue();
             if (def != null && def.removed()) {
                 // removed：整体撤销机制声明与护盾类型
-                SPECIAL_MECHANIC_ITEMS.remove(itemId);
-                SPECIAL_MECHANIC_SETS.remove(itemId);
-                ITEM_SHIELD_TYPES.remove(itemId);
+                specialMechanicItems.remove(itemId);
+                specialMechanicSets.remove(itemId);
+                itemShieldTypes.remove(itemId);
                 continue;
             }
             if (def != null && def.mechanic() != null) {
                 if (def.mechanic()) {
-                    SPECIAL_MECHANIC_ITEMS.add(itemId);
-                    SPECIAL_MECHANIC_SETS.put(itemId, def.sets() != null ? new ArrayList<>(def.sets()) : new ArrayList<>());
+                    specialMechanicItems.add(itemId);
+                    specialMechanicSets.put(itemId, def.sets() != null ? new ArrayList<>(def.sets()) : new ArrayList<>());
                     if (def.sets() != null) {
                         for (String setName : def.sets()) {
                             if (setName == null || setName.isEmpty()) continue;
-                            ITEM_SETS.computeIfAbsent(setName, k -> new HashSet<>()).add(itemId);
+                            itemSets.computeIfAbsent(setName, k -> new HashSet<>()).add(itemId);
                         }
                     }
                 } else {
-                    SPECIAL_MECHANIC_ITEMS.remove(itemId);
-                    SPECIAL_MECHANIC_SETS.remove(itemId);
+                    specialMechanicItems.remove(itemId);
+                    specialMechanicSets.remove(itemId);
                 }
             }
             if (def != null && def.shieldTypes() != null) {
                 if (def.shieldTypes().isEmpty()) {
-                    ITEM_SHIELD_TYPES.remove(itemId);
+                    itemShieldTypes.remove(itemId);
                 } else {
-                    ITEM_SHIELD_TYPES.put(itemId, new ArrayList<>(def.shieldTypes()));
+                    itemShieldTypes.put(itemId, new ArrayList<>(def.shieldTypes()));
                 }
             }
         }
 
         // 仅当加载到实际数据时才视为完成；否则保持可重试（客户端资源管理器可能尚未就绪）
+        if (loadErrorCount > 0) {
+            gytrinket.LOGGER.error("定义类数据加载失败：{} 个文件解析错误，保留上一份缓存（本次不发布）", loadErrorCount);
+            loadErrorCount = loadErrorCountBefore;
+            return;
+        }
+
+        // 解析全部成功后才一次性替换静态缓存：失败时旧缓存保持不变
+        ITEM_SETS = itemSets;
+        ENTITY_SETS = entitySets;
+        SPECIAL_MECHANIC_ITEMS = specialMechanicItems;
+        SPECIAL_MECHANIC_SETS = specialMechanicSets;
+        SHIELD_TYPES = shieldTypes;
+        SHIELD_TYPE_PARAM_DEFAULTS = shieldTypeParamDefaults;
+        ITEM_SHIELD_TYPES = itemShieldTypes;
+        ATTRIBUTE_DEFS = attributeDefs;
+        DISABLE_TARGETS = disableTargets;
+        DEPENDENCIES = dependencies;
+        DISABLE_CATEGORIES = disableCategories;
+        DEPENDENCIES_ALL = dependenciesAll;
+        MODULE_TREES = moduleTrees;
+        UPGRADE_PATHS = upgradePaths;
+        TOOLTIP_RULES = tooltipRules;
+        ITEM_DEFINITIONS = itemDefinitions;
+        ITEM_DATA_PACK_IDS = itemDataPackIds;
+        loadErrorCount = 0;
         clientLoaded = !ITEM_SETS.isEmpty() || !SHIELD_TYPES.isEmpty() || !TOOLTIP_RULES.isEmpty() || !ATTRIBUTE_DEFS.isEmpty();
 
         // 填充 Config 集合并触发依赖定义数据的子系统重载
@@ -715,11 +764,15 @@ public class DefsManager {
     private static <T> T parseResource(Resource resource, Codec<T> codec) {
         try (Reader reader = resource.openAsReader()) {
             JsonElement json = JsonParser.parseReader(reader);
-            return codec.parse(JsonOps.INSTANCE, json)
-                    .resultOrPartial(err -> gytrinket.LOGGER.error("定义类数据解析失败: {}", err))
-                    .orElse(null);
+            var result = codec.parse(JsonOps.INSTANCE, json);
+            result.error().ifPresent(err -> {
+                loadErrorCount++;
+                gytrinket.LOGGER.error("定义类数据解析失败 [{}]: {}", resource, err);
+            });
+            return result.result().orElse(null);
         } catch (Exception e) {
-            gytrinket.LOGGER.error("读取定义类数据失败", e);
+            loadErrorCount++;
+            gytrinket.LOGGER.error("读取定义类数据失败 [{}]", resource, e);
             return null;
         }
     }

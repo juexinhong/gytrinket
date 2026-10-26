@@ -325,8 +325,8 @@ public class ConfigDefsSyncMessage {
             if (attributeDefs != null) {
                 for (DefsManager.AttributeEntry def : attributeDefs) {
                     try {
-                        com.gytrinket.gytrinket.core.attribute.AttributeType type =
-                                com.gytrinket.gytrinket.core.attribute.AttributeType.valueOf(def.combine());
+                        com.gytrinket.gytrinket.engine.math.AttributeType type =
+                                com.gytrinket.gytrinket.engine.math.AttributeType.valueOf(def.combine());
                         AttributeManager.registerAttribute(def.name(), type,
                                 def.group().isEmpty() ? null : def.group());
                     } catch (IllegalArgumentException ignored) {

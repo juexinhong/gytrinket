@@ -1,6 +1,6 @@
 package com.gytrinket.gytrinket.core.entity.construct;
 
-import com.gytrinket.gytrinket.core.attribute.AttributeType;
+import com.gytrinket.gytrinket.engine.math.AttributeType;
 
 import javax.annotation.Nullable;
 import java.util.*;

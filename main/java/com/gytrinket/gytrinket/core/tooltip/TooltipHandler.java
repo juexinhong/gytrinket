@@ -5,7 +5,7 @@ import com.gytrinket.gytrinket.core.defs.MechanicValueDefs;
 import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.attribute.AttributeDefinition;
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
-import com.gytrinket.gytrinket.core.attribute.AttributeType;
+import com.gytrinket.gytrinket.engine.math.AttributeType;
 import com.gytrinket.gytrinket.core.attribute.ItemAttributeConfig;
 import com.gytrinket.gytrinket.core.defs.DefsManager;
 import com.gytrinket.gytrinket.core.defs.ShieldValueDefs;

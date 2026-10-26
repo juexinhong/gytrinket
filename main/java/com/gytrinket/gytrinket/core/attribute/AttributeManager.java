@@ -1,5 +1,8 @@
 package com.gytrinket.gytrinket.core.attribute;
 
+import com.gytrinket.gytrinket.engine.math.AttributeMath;
+import com.gytrinket.gytrinket.engine.math.AttributeType;
+
 import com.gytrinket.gytrinket.core.TickScheduler;
 import com.gytrinket.gytrinket.core.defs.DefsManager;
 import com.gytrinket.gytrinket.core.shield.DisableSystem;
@@ -100,36 +103,24 @@ public class AttributeManager {
             double staticValue = getStaticAttributeValue(staticAttrs, attrName, type);
             double dynamicValue = getDynamicAttributeValue(dynamicAttrs, attrName, type);
 
-            result.put(attrName, calculateFinalAttributeValue(staticValue, dynamicValue, type));
+            result.put(attrName, AttributeMath.combine(staticValue, dynamicValue, type));
         }
 
         return result;
     }
 
     private static double getStaticAttributeValue(Map<String, AttributeValueSet> attrs, String attrName, AttributeType type) {
-        if (attrs == null) return getDefaultValue(type);
+        if (attrs == null) return AttributeMath.defaultValue(type);
         AttributeValueSet valueSet = attrs.get(attrName);
-        if (valueSet == null) return getDefaultValue(type);
+        if (valueSet == null) return AttributeMath.defaultValue(type);
         return valueSet.getFinalValue(type);
     }
 
     private static double getDynamicAttributeValue(Map<String, AttributeValueSet> attrs, String attrName, AttributeType type) {
-        if (attrs == null) return getDynamicDefaultValue(type);
+        if (attrs == null) return AttributeMath.dynamicDefaultValue(type);
         AttributeValueSet valueSet = attrs.get(attrName);
-        if (valueSet == null) return getDynamicDefaultValue(type);
+        if (valueSet == null) return AttributeMath.dynamicDefaultValue(type);
         return valueSet.getDynamicFinalValue(type);
-    }
-
-    private static double getDefaultValue(AttributeType type) {
-        return switch (type) { case BASE -> 0; case PERCENT -> 1; case INDEPENDENT_MULTIPLY -> 1; case POST_ADD -> 0; };
-    }
-
-    private static double getDynamicDefaultValue(AttributeType type) {
-        return switch (type) { case BASE -> 0; case PERCENT -> 0; case INDEPENDENT_MULTIPLY -> 1; case POST_ADD -> 0; };
-    }
-
-    private static double calculateFinalAttributeValue(double staticValue, double dynamicValue, AttributeType type) {
-        return switch (type) { case BASE -> staticValue + dynamicValue; case PERCENT -> staticValue + dynamicValue; case INDEPENDENT_MULTIPLY -> staticValue * dynamicValue; case POST_ADD -> staticValue + dynamicValue; };
     }
 
     public static double getPlayerAttribute(Player player, String attributeName) {
@@ -164,13 +155,13 @@ public class AttributeManager {
         Map<String, AttributeValueSet> dynamicAttrs = PLAYER_DYNAMIC_ATTRIBUTES.get(playerUUID);
         double dynamicValue = getDynamicAttributeValueExcluding(dynamicAttrs, attributeName, type, excludePrefix);
 
-        return calculateFinalAttributeValue(staticValue, dynamicValue, type);
+        return AttributeMath.combine(staticValue, dynamicValue, type);
     }
 
     private static double getDynamicAttributeValueExcluding(Map<String, AttributeValueSet> attrs, String attrName, AttributeType type, String excludePrefix) {
-        if (attrs == null) return getDynamicDefaultValue(type);
+        if (attrs == null) return AttributeMath.dynamicDefaultValue(type);
         AttributeValueSet valueSet = attrs.get(attrName);
-        if (valueSet == null) return getDynamicDefaultValue(type);
+        if (valueSet == null) return AttributeMath.dynamicDefaultValue(type);
         return valueSet.getDynamicFinalValueExcluding(type, excludePrefix);
     }
 
@@ -210,7 +201,7 @@ public class AttributeManager {
             AttributeType type = entry.getValue().getType();
 
             AttributeValueSet valueSet = staticAttrs.get(attrName);
-            double finalValue = valueSet != null ? valueSet.getFinalValue(type) : getDefaultValue(type);
+            double finalValue = valueSet != null ? valueSet.getFinalValue(type) : AttributeMath.defaultValue(type);
             result.setAttribute(attrName, finalValue);
         }
 
@@ -416,13 +407,13 @@ public class AttributeManager {
         Map<String, AttributeValueSet> dynamicAttrs = PLAYER_DYNAMIC_ATTRIBUTES.get(playerUUID);
         if (dynamicAttrs == null) {
             AttributeDefinition def = ATTRIBUTE_DEFINITIONS.get(attributeName);
-            return def != null ? getDynamicDefaultValue(def.getType()) : 0;
+            return def != null ? AttributeMath.dynamicDefaultValue(def.getType()) : 0;
         }
 
         AttributeValueSet valueSet = dynamicAttrs.get(attributeName);
         if (valueSet == null) {
             AttributeDefinition def = ATTRIBUTE_DEFINITIONS.get(attributeName);
-            return def != null ? getDynamicDefaultValue(def.getType()) : 0;
+            return def != null ? AttributeMath.dynamicDefaultValue(def.getType()) : 0;
         }
 
         AttributeDefinition def = ATTRIBUTE_DEFINITIONS.get(attributeName);
@@ -658,47 +649,18 @@ public class AttributeManager {
         }
 
         public double getFinalValue(AttributeType type) {
-            Map<String, Double> typeValues = values.get(type);
-
-            return switch (type) {
-                case BASE -> typeValues.values().stream().mapToDouble(Double::doubleValue).sum();
-                case PERCENT -> typeValues.values().stream().mapToDouble(Double::doubleValue).sum() + 1;
-                case INDEPENDENT_MULTIPLY -> typeValues.values().stream().mapToDouble(v -> 1 + v).reduce(1, (a, b) -> a * b);
-                case POST_ADD -> typeValues.values().stream().mapToDouble(Double::doubleValue).sum();
-            };
+            return AttributeMath.staticTotal(type, values.get(type));
         }
 
         public double getDynamicFinalValue(AttributeType type) {
-            Map<String, Double> typeValues = values.get(type);
-
-            return switch (type) {
-                case BASE -> typeValues.values().stream().mapToDouble(Double::doubleValue).sum();
-                case PERCENT -> typeValues.values().stream().mapToDouble(Double::doubleValue).sum();
-                case INDEPENDENT_MULTIPLY -> typeValues.values().stream().mapToDouble(v -> 1 + v).reduce(1, (a, b) -> a * b);
-                case POST_ADD -> typeValues.values().stream().mapToDouble(Double::doubleValue).sum();
-            };
+            return AttributeMath.dynamicTotal(type, values.get(type));
         }
 
         /**
          * 获取排除指定前缀provider后的动态最终值
          */
         public double getDynamicFinalValueExcluding(AttributeType type, String excludePrefix) {
-            Map<String, Double> typeValues = values.get(type);
-
-            return switch (type) {
-                case BASE -> typeValues.entrySet().stream()
-                        .filter(e -> !e.getKey().startsWith(excludePrefix))
-                        .mapToDouble(Map.Entry::getValue).sum();
-                case PERCENT -> typeValues.entrySet().stream()
-                        .filter(e -> !e.getKey().startsWith(excludePrefix))
-                        .mapToDouble(Map.Entry::getValue).sum();
-                case INDEPENDENT_MULTIPLY -> typeValues.entrySet().stream()
-                        .filter(e -> !e.getKey().startsWith(excludePrefix))
-                        .mapToDouble(e -> 1 + e.getValue()).reduce(1, (a, b) -> a * b);
-                case POST_ADD -> typeValues.entrySet().stream()
-                        .filter(e -> !e.getKey().startsWith(excludePrefix))
-                        .mapToDouble(Map.Entry::getValue).sum();
-            };
+            return AttributeMath.dynamicTotalExcluding(type, values.get(type), excludePrefix);
         }
 
         public boolean isEmpty() {

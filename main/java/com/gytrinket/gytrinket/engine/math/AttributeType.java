@@ -1,4 +1,4 @@
-package com.gytrinket.gytrinket.core.attribute;
+package com.gytrinket.gytrinket.engine.math;
 
 /**
  * 属性计算方法枚举

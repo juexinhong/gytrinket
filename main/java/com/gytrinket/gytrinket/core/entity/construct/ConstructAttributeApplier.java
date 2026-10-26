@@ -2,7 +2,7 @@ package com.gytrinket.gytrinket.core.entity.construct;
 
 import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
-import com.gytrinket.gytrinket.core.attribute.AttributeType;
+import com.gytrinket.gytrinket.engine.math.AttributeType;
 import com.gytrinket.gytrinket.core.entity.construct.drone.DroneConstructEntity;
 import com.gytrinket.gytrinket.core.entity.construct.drone.DroneConstructTypes;
 import com.gytrinket.gytrinket.core.entity.construct.swarm.MothershipManager;

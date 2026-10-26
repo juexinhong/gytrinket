@@ -2,7 +2,7 @@ package com.gytrinket.gytrinket.config;
 
 import com.gytrinket.gytrinket.gytrinket;
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
-import com.gytrinket.gytrinket.core.attribute.AttributeType;
+import com.gytrinket.gytrinket.engine.math.AttributeType;
 import com.gytrinket.gytrinket.core.defs.DefsManager;
 import com.gytrinket.gytrinket.core.shield.DisableSystem;
 import com.gytrinket.gytrinket.core.shield.type.ShieldTypeManager;

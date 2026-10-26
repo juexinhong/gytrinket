@@ -1,5 +1,7 @@
 package com.gytrinket.gytrinket.core.attribute;
 
+import com.gytrinket.gytrinket.engine.math.AttributeType;
+
 import java.util.HashMap;
 import java.util.Map;
 

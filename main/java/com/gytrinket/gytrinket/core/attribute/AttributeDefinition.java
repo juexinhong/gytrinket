@@ -1,5 +1,7 @@
 package com.gytrinket.gytrinket.core.attribute;
 
+import com.gytrinket.gytrinket.engine.math.AttributeType;
+
 /**
  * 属性定义类
  * 用于在 Config 中注册单个属性的配置
@@ -43,13 +45,7 @@ public class AttributeDefinition {
      * 根据类型获取默认值
      */
     private double getDefaultValueForType(AttributeType type) {
-        switch (type) {
-            case PERCENT:
-            case INDEPENDENT_MULTIPLY:
-                return 1.0;
-            default:
-                return 0.0;
-        }
+        return com.gytrinket.gytrinket.engine.math.AttributeMath.defaultValue(type);
     }
 
     /**

@@ -159,13 +159,8 @@ public class GhostFuselageManager {
     /**
      * 玩家tick逻辑：处理隐身进度增减和属性更新
      */
-    @SubscribeEvent
-    public static void onPlayerTick(TickEvent.PlayerTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) {
-            return;
-        }
-
-        if (!(event.player instanceof ServerPlayer player)) {
+    public static void onPlayerTick(Player eventPlayer) {
+        if (!(eventPlayer instanceof ServerPlayer player)) {
             return;
         }
 

@@ -57,11 +57,8 @@ public class AttackCooldownEfficiencyModifier {
         }
     }
 
-    @SubscribeEvent
-    public static void onPlayerTick(TickEvent.PlayerTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) return;
-
-        Player player = event.player;
+    public static void onPlayerTick(Player eventPlayer) {
+        Player player = eventPlayer;
         if (!(player instanceof net.minecraft.server.level.ServerPlayer)) {
             return;
         }

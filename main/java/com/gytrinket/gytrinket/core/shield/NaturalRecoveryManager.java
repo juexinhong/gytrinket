@@ -1,4 +1,5 @@
 package com.gytrinket.gytrinket.core.shield;
+import net.minecraft.world.entity.player.Player;
 
 import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
@@ -64,13 +65,8 @@ public class NaturalRecoveryManager {
      * 监听玩家刻事件
      * 每3刻执行一次自然恢复逻辑
      */
-    @SubscribeEvent
-    public static void onPlayerTick(PlayerTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) {
-            return;
-        }
-
-        if (!(event.player instanceof ServerPlayer player)) {
+    public static void onPlayerTick(Player eventPlayer) {
+        if (!(eventPlayer instanceof ServerPlayer player)) {
             return;
         }
 

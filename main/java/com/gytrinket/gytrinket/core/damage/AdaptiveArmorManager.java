@@ -164,11 +164,8 @@ public class AdaptiveArmorManager {
     /**
      * 每刻更新装甲叠层的剩余时间，移除过期的批次
      */
-    @SubscribeEvent
-    public static void onPlayerTick(TickEvent.PlayerTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) return;
-
-        Player player = event.player;
+    public static void onPlayerTick(Player eventPlayer) {
+        Player player = eventPlayer;
         if (player.getLevel().isClientSide()) {
             return;
         }

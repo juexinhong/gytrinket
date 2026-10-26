@@ -289,13 +289,8 @@ public class AttackModeManager {
 
     // ===== Tick处理 =====
 
-    @SubscribeEvent
-    public static void onPlayerTick(TickEvent.PlayerTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) {
-            return;
-        }
-
-        if (!(event.player instanceof ServerPlayer player)) {
+    public static void onPlayerTick(Player eventPlayer) {
+        if (!(eventPlayer instanceof ServerPlayer player)) {
             return;
         }
 

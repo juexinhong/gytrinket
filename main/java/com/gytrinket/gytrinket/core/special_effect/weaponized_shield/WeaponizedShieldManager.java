@@ -38,13 +38,8 @@ public class WeaponizedShieldManager {
     private static final int CHECK_INTERVAL = 5;
     private static final String VULNERABILITY_NAME = "weaponized_shield";
 
-    @SubscribeEvent
-    public static void onPlayerTick(TickEvent.PlayerTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) {
-            return;
-        }
-
-        Player player = event.player;
+    public static void onPlayerTick(Player eventPlayer) {
+        Player player = eventPlayer;
         if (player.getLevel().isClientSide) {
             return;
         }

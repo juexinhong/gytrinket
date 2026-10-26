@@ -1,4 +1,5 @@
 package com.gytrinket.gytrinket.core.random_build;
+import net.minecraft.world.entity.player.Player;
 
 import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.gytrinket;
@@ -27,10 +28,8 @@ public class TokenSyncHandler {
 
     private TokenSyncHandler() {}
 
-    @SubscribeEvent
-    public static void onPlayerTick(TickEvent.PlayerTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) return;
-        if (!(event.player instanceof ServerPlayer player)) return;
+    public static void onPlayerTick(Player eventPlayer) {
+        if (!(eventPlayer instanceof ServerPlayer player)) return;
         if (!Config.isRandomBuildEnabled() || !Config.isRandomBuildTokenEnabled()) {
             LAST_TOKEN_COUNT.remove(player.getUUID());
             return;

@@ -67,12 +67,8 @@ public class ShieldCooldownManager {
         SPEED_FACTOR.put(playerUUID, Math.max(0, speedFactor));
     }
 
-    @SubscribeEvent
-    public static void onPlayerTick(TickEvent.PlayerTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) {
-            return;
-        }
-        Player player = event.player;
+    public static void onPlayerTick(Player eventPlayer) {
+        Player player = eventPlayer;
         if (!(player instanceof ServerPlayer)) {
             return;
         }

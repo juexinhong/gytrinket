@@ -252,12 +252,8 @@ public class ShieldTypeManager {
         }
     }
 
-    @SubscribeEvent
-    public static void onPlayerTick(PlayerTickEvent event) {
-        if (event.phase != TickEvent.Phase.START) {
-            return;
-        }
-        Player player = event.player;
+    public static void onPlayerTick(Player eventPlayer) {
+        Player player = eventPlayer;
         if (!(player instanceof ServerPlayer)) {
             return;
         }

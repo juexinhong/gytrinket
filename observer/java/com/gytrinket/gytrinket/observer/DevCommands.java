@@ -243,6 +243,14 @@ public final class DevCommands {
                         .executes(ctx -> dumpEventListeners(ctx.getSource()))
                         .then(Commands.literal("reset")
                                 .executes(ctx -> resetEventProbe(ctx.getSource()))))
+                .then(Commands.literal("damage")
+                        .requires(source -> source.hasPermission(2))
+                        .executes(ctx -> dumpDamageChains(ctx.getSource())))
+                .then(Commands.literal("hurt")
+                        .requires(source -> source.hasPermission(2))
+                        .then(Commands.argument("amount", DoubleArgumentType.doubleArg(0.0D, 10000.0D))
+                                .executes(ctx -> hurtSelf(ctx.getSource(),
+                                        (float) DoubleArgumentType.getDouble(ctx, "amount")))))
         );
     }
 
@@ -1191,6 +1199,35 @@ public final class DevCommands {
     private static int resetEventProbe(CommandSourceStack source) {
         EventProbe.reset();
         source.sendSuccess(Component.literal("event post counters cleared"), false);
+        return 1;
+    }
+
+    private static int dumpDamageChains(CommandSourceStack source) {
+        String shield = String.join(", ", com.gytrinket.gytrinket.core.damage.DamageHandlerChain
+                .getInstance().describeHandlers());
+        String last = String.join(", ", com.gytrinket.gytrinket.core.damage_last.LastDamageHandlerChain
+                .getInstance().describeHandlers());
+        source.sendSuccess(Component.literal("shield chain(" + shield.split(", ").length + "): " + shield), false);
+        source.sendSuccess(Component.literal("final chain(" + last.split(", ").length + "): " + last), false);
+        return 1;
+    }
+
+    private static int hurtSelf(CommandSourceStack source, float amount) {
+        ServerPlayer player = source.getPlayer();
+        if (player == null) {
+            source.sendFailure(Component.literal("需要玩家执行"));
+            return 0;
+        }
+        double beforeShield = com.gytrinket.gytrinket.core.shield.ShieldManager.getCurrentShield(player.getUUID());
+        float beforeHealth = player.getHealth();
+        player.hurt(com.gytrinket.gytrinket.core.damage.DamageSourcesCompat.genericKill(), amount);
+        double afterShield = com.gytrinket.gytrinket.core.shield.ShieldManager.getCurrentShield(player.getUUID());
+        float afterHealth = player.getHealth();
+        String text = "[hurt] amount=" + amount + " creative=" + player.isCreative()
+                + " hp=" + beforeHealth + "->" + afterHealth
+                + " shield=" + beforeShield + "->" + afterShield;
+        gytrinket.LOGGER.info(text);
+        source.sendSuccess(Component.literal(text), false);
         return 1;
     }
 

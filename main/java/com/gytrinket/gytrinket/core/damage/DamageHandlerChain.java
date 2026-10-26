@@ -1,91 +1,68 @@
 package com.gytrinket.gytrinket.core.damage;
 
+import com.gytrinket.gytrinket.engine.pipeline.Pipeline;
+
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
 /**
- * 伤害处理器责任链管理器
+ * 护盾拦截链（{@code LivingAttackEvent} 阶段）。
  * <p>
- * 该类是责任链模式的核心实现，负责管理和执行所有的伤害处理器。
- * 采用单例模式，确保整个游戏中只有一个责任链实例。
+ * 与其他链的关系：本链处理「受击最开始」的护盾归属、取消与伤害转化；
+ * {@link com.gytrinket.gytrinket.core.damage_last.LastDamageHandlerChain} 处理扣血前的最终伤害，
+ * 两条链阶段不同，<b>不能合并</b>。P5 只共用 {@link Pipeline} 实现原语。
  * <p>
- * 功能特点：
- * <ul>
- *   <li>单例模式，保证全局唯一性</li>
- *   <li>自动按优先级排序处理器</li>
- *   <li>支持动态注册和注销处理器</li>
- *   <li>当伤害被取消时自动跳过后续处理器</li>
- * </ul>
- * <p>
- * 使用示例：
- * <pre>
- * // 注册处理器
- * DamageHandlerChain.getInstance().registerHandler(new ShieldHandler());
- *
- * // 处理伤害
- * DamageContext context = new DamageContext(...);
- * DamageHandlerChain.getInstance().process(context);
- * </pre>
+ * 顺序：按 handler 优先级降序，同优先级保持注册顺序；context 取消后短路。
  */
 public class DamageHandlerChain {
 
-    /** 单例实例 */
     private static final DamageHandlerChain INSTANCE = new DamageHandlerChain();
 
-    /** 处理器列表，按优先级排序 */
     private final List<DamageHandler> handlers = new ArrayList<>();
+    private volatile Pipeline<DamageContext> pipeline = buildPipeline();
 
-    /**
-     * 私有构造函数，确保单例模式
-     */
-    private DamageHandlerChain() {}
+    private DamageHandlerChain() {
+    }
 
-    /**
-     * 获取单例实例
-     *
-     * @return 责任链管理器实例
-     */
     public static DamageHandlerChain getInstance() {
         return INSTANCE;
     }
 
-    /**
-     * 注册伤害处理器
-     * <p>
-     * 注册后处理器会自动按优先级从高到低排序。
-     * 相同优先级的处理器按注册顺序排列。
-     *
-     * @param handler 要注册的伤害处理器
-     */
-    public void registerHandler(DamageHandler handler) {
+    public synchronized void registerHandler(DamageHandler handler) {
         handlers.add(handler);
         handlers.sort(Comparator.comparingInt(DamageHandler::getPriority).reversed());
+        pipeline = buildPipeline();
     }
 
-    /**
-     * 注销伤害处理器
-     *
-     * @param handler 要注销的伤害处理器
-     */
-    public void unregisterHandler(DamageHandler handler) {
+    public synchronized void unregisterHandler(DamageHandler handler) {
         handlers.remove(handler);
+        pipeline = buildPipeline();
     }
 
-    /**
-     * 处理伤害上下文
-     * <p>
-     * 遍历所有已注册的处理器，按优先级从高到低依次执行。
-     * 如果context被标记为取消状态，则停止执行后续处理器。
-     *
-     * @param context 伤害上下文对象
-     */
     public void process(DamageContext context) {
+        pipeline.process(context);
+    }
+
+    /** 诊断用：按实际执行顺序输出 handler 类名与优先级。 */
+    public synchronized List<String> describeHandlers() {
+        List<String> description = new ArrayList<>(handlers.size());
         for (DamageHandler handler : handlers) {
-            if (context.isCanceled()) {
-                break;
-            }
-            handler.handle(context);
+            description.add(handler.getClass().getSimpleName() + "@" + handler.getPriority());
         }
+        return description;
+    }
+
+    private Pipeline<DamageContext> buildPipeline() {
+        Pipeline.Builder<DamageContext> builder = Pipeline.builder();
+        int index = 0;
+        for (DamageHandler handler : handlers) {
+            String stageId = "damage." + handler.getClass().getSimpleName() + "." + index++;
+            builder.stage(stageId, handler.getPriority(), context -> {
+                handler.handle(context);
+                return context.isCanceled() ? Pipeline.Result.CANCEL : Pipeline.Result.CONTINUE;
+            });
+        }
+        return builder.build();
     }
 }

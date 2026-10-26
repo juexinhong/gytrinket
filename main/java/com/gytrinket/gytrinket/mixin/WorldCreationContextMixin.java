@@ -2,10 +2,6 @@ package com.gytrinket.gytrinket.mixin;
 
 import com.mojang.serialization.Lifecycle;
 import net.minecraft.client.gui.screens.worldselection.WorldCreationContext;
-import net.minecraft.core.Registry;
-import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.level.dimension.LevelStem;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -19,28 +15,22 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  * {@code WorldOpenFlows.confirmWorldCreation(...)}：stable 直接建世界，
  * {@code experimental} 弹"这些设置是实验性的"确认框。
  * <p>
- * 这个 stability 由数据包应用阶段重新计算（{@code WorldGenSettings.CODEC} 解码 lifecycle
- * 再 {@code .add(registryAccess.allElementsLifecycle())}）。本模组的 {@code gytrinket:island}
- * 维度会让"维度表只有原版三个"的稳定性判定失败，注册表元素生命周期也会被拖成 experimental，
- * 于是每次新建世界都弹框。上游 {@code WorldGenSettings.guardExperimental()} 的修正
- * （{@link WorldGenSettingsMixin}）不足以覆盖 {@code allElementsLifecycle} 这一层，
- * 因此这里在消费端直接钉成 stable。
+ * 这个 stability 由数据包应用阶段计算（{@code WorldGenSettings.CODEC} 解码 lifecycle
+ * 再 {@code .add(registryAccess.allElementsLifecycle())}）。
  * <p>
- * 仍按维度表是否包含 {@code gytrinket:island} 限定，避免把与模组无关的实验性数据包警告一起吞掉。
+ * 为什么不再按"维度表包含 gytrinket:island"判断：1.19.2 切换世界类型（超平坦/放大化/单一群系等）
+ * 会走 {@code WorldPreset.recreateWorldGenSettings()}，它用预设固定的三维度表（overworld/nether/end）
+ * 重建 worldGenSettings，**本模组的 island 维度会从维度表里消失**（预设表本身也带
+ * {@code Lifecycle.experimental()} 基底），因此按 island 判定必然漏掉非默认世界类型。
+ * <p>
+ * 本模组自带自定义维度，1.19.2 的"维度表必须正好只有原版三个才算 stable"判定对它天然不成立，
+ * 所以这里统一按 stable 处理（产品取舍：会连带吞掉"与本模组无关的实验性数据包"确认框）。
  */
 @Mixin(WorldCreationContext.class)
 public abstract class WorldCreationContextMixin {
 
-    private static final ResourceKey<LevelStem> GYTRINKET_ISLAND =
-            ResourceKey.create(Registry.LEVEL_STEM_REGISTRY, new ResourceLocation("gytrinket", "island"));
-
     @Inject(method = "worldSettingsStability", at = @At("HEAD"), cancellable = true)
-    private void gytrinket$stableSettingsForIslandDimension(CallbackInfoReturnable<Lifecycle> cir) {
-        WorldCreationContext self = (WorldCreationContext) (Object) this;
-        if (self.worldGenSettings() != null
-                && self.worldGenSettings().dimensions() != null
-                && self.worldGenSettings().dimensions().containsKey(GYTRINKET_ISLAND)) {
-            cir.setReturnValue(Lifecycle.stable());
-        }
+    private void gytrinket$stableWorldSettings(CallbackInfoReturnable<Lifecycle> cir) {
+        cir.setReturnValue(Lifecycle.stable());
     }
 }

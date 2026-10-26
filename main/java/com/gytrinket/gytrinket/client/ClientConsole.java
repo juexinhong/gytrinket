@@ -39,6 +39,9 @@ public final class ClientConsole {
     /** >0 时倒计时，归零后打印"创建新的世界"界面的 worldgen lifecycle（实验性警告诊断用） */
     private static int pendingWorldCheckTicks = -1;
 
+    /** worldcheck 的可选世界类型 id（如 flat / amplified），非空时在倒计时中途切换预设 */
+    private static String pendingWorldCheckPreset = null;
+
     private ClientConsole() {
     }
 
@@ -48,8 +51,14 @@ public final class ClientConsole {
             return;
         }
         Minecraft mc = Minecraft.getInstance();
-        if (pendingWorldCheckTicks > 0 && --pendingWorldCheckTicks == 0) {
-            logWorldCreationStability(mc);
+        if (pendingWorldCheckTicks > 0) {
+            --pendingWorldCheckTicks;
+            if (pendingWorldCheckTicks == 70 && pendingWorldCheckPreset != null) {
+                applyWorldPreset(pendingWorldCheckPreset);
+            }
+            if (pendingWorldCheckTicks == 0) {
+                logWorldCreationStability(mc);
+            }
         }
         // 控制台命令文件先读出来：join/quit 这类命令在主菜单阶段就要能执行（自动化验证用）
         Path file = mc.gameDirectory.toPath().resolve("gytrinket_cmd.txt");
@@ -98,15 +107,18 @@ public final class ClientConsole {
             return;
         }
         if (line != null && line.startsWith("worldcheck")) {
-            // 实验性警告诊断：主菜单/世界内都可执行；打开"创建新的世界"界面并稍后打印 lifecycle
+            // 实验性警告诊断：主菜单/世界内都可执行；可带世界类型参数（如 worldcheck flat）验证预设切换路径
             try {
                 Files.deleteIfExists(file);
             } catch (Exception ignored) {
             }
-            gytrinket.LOGGER.info("[cmd] worldcheck: opening CreateWorldScreen");
+            String[] head = line.split("\\s+");
+            pendingWorldCheckPreset = head.length > 1 ? head[1] : null;
+            gytrinket.LOGGER.info("[cmd] worldcheck: opening CreateWorldScreen (preset={})",
+                    pendingWorldCheckPreset == null ? "current" : pendingWorldCheckPreset);
             mc.setScreen(null);
             net.minecraft.client.gui.screens.worldselection.CreateWorldScreen.openFresh(mc, null);
-            pendingWorldCheckTicks = 80;
+            pendingWorldCheckTicks = 100;
             return;
         }
         if (mc.player == null || mc.level == null) {
@@ -601,6 +613,35 @@ public final class ClientConsole {
             return null;
         }
         return mc.getSingleplayerServer().getPlayerList().getPlayer(mc.player.getUUID());
+    }
+
+    /** 把"创建新的世界"界面切到指定世界类型（flat/amplified/...），模拟用户点世界类型按钮。 */
+    private static void applyWorldPreset(String presetId) {
+        Minecraft mc = Minecraft.getInstance();
+        if (!(mc.screen instanceof net.minecraft.client.gui.screens.worldselection.CreateWorldScreen cws)) {
+            gytrinket.LOGGER.info("[worldcheck] apply preset skipped（screen 不是 CreateWorldScreen）");
+            return;
+        }
+        try {
+            var component = cws.worldGenSettingsComponent;
+            var presets = component.registryHolder()
+                    .registryOrThrow(net.minecraft.core.Registry.WORLD_PRESET_REGISTRY);
+            var key = net.minecraft.resources.ResourceKey.create(
+                    net.minecraft.core.Registry.WORLD_PRESET_REGISTRY,
+                    net.minecraft.resources.ResourceLocation.tryParse(
+                            presetId.contains(":") ? presetId : "minecraft:" + presetId));
+            var holder = presets.getHolderOrThrow(key);
+            var updaterClass = Class.forName(
+                    "net.minecraft.client.gui.screens.worldselection.WorldCreationContext$SimpleUpdater");
+            var method = component.getClass().getDeclaredMethod("updateSettings", updaterClass);
+            method.setAccessible(true);
+            net.minecraft.client.gui.screens.worldselection.WorldCreationContext.SimpleUpdater updater =
+                    settings -> holder.value().recreateWorldGenSettings(settings);
+            method.invoke(component, updater);
+            gytrinket.LOGGER.info("[worldcheck] applied world preset {}", key.location());
+        } catch (Throwable t) {
+            gytrinket.LOGGER.error("[worldcheck] apply preset failed", t);
+        }
     }
 
     /** 打印"创建新的世界"界面的 worldgen lifecycle（stable = 点创建不会弹实验性确认框）与维度表。 */

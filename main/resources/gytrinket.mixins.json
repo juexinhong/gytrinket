@@ -10,7 +10,8 @@
     "TargetingConditionsMixin",
     "LevelMixin",
     "LivingEntityHurtEventMixin",
-    "PrimaryLevelDataMixin"
+    "PrimaryLevelDataMixin",
+    "WorldGenSettingsMixin"
   ],
   "client": [
     "GameRendererMixin",
@@ -19,7 +20,8 @@
     "ParticleEngineAccessor",
     "EntityRenderDispatcherMixin",
     "ClientLevelMixin",
-    "Matrix4fAccessor"
+    "Matrix4fAccessor",
+    "WorldCreationContextMixin"
   ],
   "injectors": {
     "defaultRequire": 1

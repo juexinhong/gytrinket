@@ -36,6 +36,9 @@ import java.nio.file.Path;
 @EventBusSubscriber(modid = gytrinket.MODID, value = Dist.CLIENT)
 public final class ClientConsole {
 
+    /** >0 时倒计时，归零后打印"创建新的世界"界面的 worldgen lifecycle（实验性警告诊断用） */
+    private static int pendingWorldCheckTicks = -1;
+
     private ClientConsole() {
     }
 
@@ -45,6 +48,9 @@ public final class ClientConsole {
             return;
         }
         Minecraft mc = Minecraft.getInstance();
+        if (pendingWorldCheckTicks > 0 && --pendingWorldCheckTicks == 0) {
+            logWorldCreationStability(mc);
+        }
         // 控制台命令文件先读出来：join/quit 这类命令在主菜单阶段就要能执行（自动化验证用）
         Path file = mc.gameDirectory.toPath().resolve("gytrinket_cmd.txt");
         String line = null;
@@ -89,6 +95,18 @@ public final class ClientConsole {
                         mc.screen, mc, address,
                         new net.minecraft.client.multiplayer.ServerData("dev", head[1], false));
             }
+            return;
+        }
+        if (line != null && line.startsWith("worldcheck")) {
+            // 实验性警告诊断：主菜单/世界内都可执行；打开"创建新的世界"界面并稍后打印 lifecycle
+            try {
+                Files.deleteIfExists(file);
+            } catch (Exception ignored) {
+            }
+            gytrinket.LOGGER.info("[cmd] worldcheck: opening CreateWorldScreen");
+            mc.setScreen(null);
+            net.minecraft.client.gui.screens.worldselection.CreateWorldScreen.openFresh(mc, null);
+            pendingWorldCheckTicks = 80;
             return;
         }
         if (mc.player == null || mc.level == null) {
@@ -583,6 +601,29 @@ public final class ClientConsole {
             return null;
         }
         return mc.getSingleplayerServer().getPlayerList().getPlayer(mc.player.getUUID());
+    }
+
+    /** 打印"创建新的世界"界面的 worldgen lifecycle（stable = 点创建不会弹实验性确认框）与维度表。 */
+    private static void logWorldCreationStability(Minecraft mc) {
+        try {
+            if (!(mc.screen instanceof net.minecraft.client.gui.screens.worldselection.CreateWorldScreen cws)) {
+                gytrinket.LOGGER.info("[worldcheck] screen={}（不是 CreateWorldScreen）",
+                        mc.screen == null ? "null" : mc.screen.getClass().getName());
+                return;
+            }
+            var context = cws.worldGenSettingsComponent.settings();
+            com.mojang.serialization.Lifecycle stability = context.worldSettingsStability();
+            boolean stable = stability == com.mojang.serialization.Lifecycle.stable();
+            java.util.List<String> dimensions = new java.util.ArrayList<>();
+            for (var key : context.worldGenSettings().dimensions().keySet()) {
+                dimensions.add(key.toString());
+            }
+            java.util.Collections.sort(dimensions);
+            gytrinket.LOGGER.info("[worldcheck] stability={} stable={} dimensions={}", stability, stable, dimensions);
+
+        } catch (Exception e) {
+            gytrinket.LOGGER.error("[worldcheck] failed", e);
+        }
     }
 
     private static BlockState blockByName(String id) {

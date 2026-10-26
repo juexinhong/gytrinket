@@ -1,4 +1,5 @@
 package com.gytrinket.gytrinket.core.entity.construct.drone;
+import com.gytrinket.gytrinket.core.defs.DefsQueries;
 
 import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.defs.DefsManager;
@@ -201,7 +202,7 @@ public class DroneManager {
             // 实例化机制：命中 Config 无人机模块物品、或声明 drone_module_items 机制集的
             // 物品各成一个实例（并集）；实例键为物品 ID
             if (Config.isDroneModuleItem(item)
-                    || (server != null && DefsManager.getEffectiveSpecialMechanicSets(itemId)
+                    || (server != null && DefsQueries.getEffectiveSpecialMechanicSets(itemId)
                             .contains(DroneInstanceParams.MECHANIC_SET))) {
                 hasDroneModule = true;
                 instanceItems.add(itemId);

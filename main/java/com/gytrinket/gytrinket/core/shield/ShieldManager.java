@@ -1,4 +1,5 @@
 package com.gytrinket.gytrinket.core.shield;
+import com.gytrinket.gytrinket.core.defs.DefsQueries;
 
 import com.gytrinket.gytrinket.core.defs.DefsTypes;
 
@@ -116,7 +117,7 @@ public class ShieldManager {
 
     /** 实例冷却上限（tick）＝ shield_cooldown_time × 20 / shield_cooldown_reduction 组值，物品/类型未配置时回退玩家级全局属性 */
     public static int computeMaxCooldown(UUID playerUUID, String itemId, String shieldTypeName) {
-        double seconds = DefsManager.resolveShieldParam(ServerLifecycleHooks.getCurrentServer(), itemId, shieldTypeName,
+        double seconds = DefsQueries.resolveShieldParam(ServerLifecycleHooks.getCurrentServer(), itemId, shieldTypeName,
                 "shield_cooldown_time", AttributeManager.getPlayerAttribute(playerUUID, "shield_cooldown_time"));
         double reduction = Math.max(AttributeManager.getGroupAttribute(playerUUID, "shield_cooldown_reduction"), 0.01);
         return Math.max(1, (int) (seconds * 20 / reduction));
@@ -150,7 +151,7 @@ public class ShieldManager {
             if (!Config.getItemShieldTypes(new ResourceLocation(itemId)).isEmpty()) {
                 // 护盾类型物品：自带底数来自实例参数
                 for (String typeName : Config.getItemShieldTypes(new ResourceLocation(itemId))) {
-                    double baseShield = DefsManager.resolveShieldParam(ServerLifecycleHooks.getCurrentServer(), itemId, typeName,
+                    double baseShield = DefsQueries.resolveShieldParam(ServerLifecycleHooks.getCurrentServer(), itemId, typeName,
                             "shield_base", 0.0);
                     if (baseShield > 0) {
                         instanceBaseSum += baseShield;
@@ -158,7 +159,7 @@ public class ShieldManager {
                 }
                 continue;
             }
-            Map<String, DefsTypes.ParamValue> attrs = DefsManager.getEffectiveItemAttributes(itemId);
+            Map<String, DefsTypes.ParamValue> attrs = DefsQueries.getEffectiveItemAttributes(itemId);
             if (attrs != null && attrs.containsKey("shield_base")) {
                 moduleBaseSum += attrs.get("shield_base").value();
             }
@@ -225,7 +226,7 @@ public class ShieldManager {
             if (!Config.getItemShieldTypes(new ResourceLocation(itemId)).isEmpty()) {
                 continue; // 护盾类型物品的底数来自实例参数，不参与分配
             }
-            Map<String, DefsTypes.ParamValue> attrs = DefsManager.getEffectiveItemAttributes(itemId);
+            Map<String, DefsTypes.ParamValue> attrs = DefsQueries.getEffectiveItemAttributes(itemId);
             if (attrs != null && attrs.containsKey("shield_base")) {
                 moduleBaseSum += attrs.get("shield_base").value();
             }
@@ -252,7 +253,7 @@ public class ShieldManager {
             }
 
             for (String typeName : Config.getItemShieldTypes(new ResourceLocation(itemId))) {
-                double baseShield = DefsManager.resolveShieldParam(ServerLifecycleHooks.getCurrentServer(), itemId, typeName,
+                double baseShield = DefsQueries.resolveShieldParam(ServerLifecycleHooks.getCurrentServer(), itemId, typeName,
                         "shield_base", 0.0);
                 if (baseShield <= 0) {
                     continue;

@@ -1,4 +1,5 @@
 package com.gytrinket.gytrinket.core.entity.construct.drone.behavior;
+import com.gytrinket.gytrinket.core.defs.DefsQueries;
 
 import com.gytrinket.gytrinket.core.damage.DamageSourcesCompat;
 
@@ -169,13 +170,13 @@ public class CounterPulseBehavior implements IDroneSpecialBehavior {
     }
 
     private double calculateExplosionRadius(DroneConstructEntity drone, int chargeLevel) {
-        double baseRadius = DefsManager.resolveMechanicValue(drone.getLevel().getServer(), drone.getOwnerUUID(),
+        double baseRadius = DefsQueries.resolveMechanicValue(drone.getLevel().getServer(), drone.getOwnerUUID(),
                 "counter_pulse_items", "explosion_radius", MechanicValueDefs.defaultValueOf("counter_pulse_items", "explosion_radius", 1.3));
         return baseRadius * calculateChargeMultiplier(chargeLevel);
     }
 
     private float calculateExplosionDamage(DroneConstructEntity drone, int chargeLevel) {
-        float baseDamage = (float) DefsManager.resolveMechanicValue(drone.getLevel().getServer(), drone.getOwnerUUID(),
+        float baseDamage = (float) DefsQueries.resolveMechanicValue(drone.getLevel().getServer(), drone.getOwnerUUID(),
                 "counter_pulse_items", "explosion_damage", MechanicValueDefs.defaultValueOf("counter_pulse_items", "explosion_damage", 1));
         return baseDamage * (float) calculateChargeMultiplier(chargeLevel);
     }
@@ -216,7 +217,7 @@ public class CounterPulseBehavior implements IDroneSpecialBehavior {
         if (ownerUUID == null) return false;
         MinecraftServer server = drone.getLevel().getServer();
         if (server == null) return false;
-        return DefsManager.playerHasEquippedMechanic(server, ownerUUID, "counter_pulse_items");
+        return DefsQueries.playerHasEquippedMechanic(server, ownerUUID, "counter_pulse_items");
     }
 
     private static class DroneCounterPulseInfo {

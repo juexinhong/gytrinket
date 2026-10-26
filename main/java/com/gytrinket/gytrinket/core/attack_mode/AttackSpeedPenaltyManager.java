@@ -1,4 +1,5 @@
 package com.gytrinket.gytrinket.core.attack_mode;
+import com.gytrinket.gytrinket.core.defs.DefsQueries;
 
 import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.defs.MechanicValueDefs;
@@ -108,15 +109,15 @@ public class AttackSpeedPenaltyManager {
 
         // 物品级数值覆盖：取装备物品的叠/单合并值，未覆盖回退 Config 默认
         applyOrRemoveModifier(speedAttribute, ASSAULT_PENALTY_UUID, MODIFIER_PREFIX + "assault", currentState.assault,
-                DefsManager.resolveMechanicValue(player.getServer(), uuid, "assault_items",
+                DefsQueries.resolveMechanicValue(player.getServer(), uuid, "assault_items",
                         "move_speed_penalty", MechanicValueDefs.defaultValueOf("assault_items", "move_speed_penalty", -0.6)));
         applyOrRemoveModifier(speedAttribute, CHARGED_PENALTY_UUID, MODIFIER_PREFIX + "charged", currentState.charged, Config.getChargedAttackMovementSpeedPenalty());
         // 物品级数值覆盖：取首个生效物品的覆盖值，未覆盖回退 Config 默认
         applyOrRemoveModifier(speedAttribute, CHARGED_SHIELD_PENALTY_UUID, MODIFIER_PREFIX + "charged_shield", currentState.chargedShield,
-                DefsManager.resolveMechanicValue(player.getServer(), uuid, "charged_shield_items",
+                DefsQueries.resolveMechanicValue(player.getServer(), uuid, "charged_shield_items",
                         "move_speed_penalty", MechanicValueDefs.defaultValueOf("charged_shield_items", "move_speed_penalty", -0.15)));
         applyOrRemoveModifier(speedAttribute, GRUDGE_PENALTY_UUID, MODIFIER_PREFIX + "grudge", currentState.grudge,
-                DefsManager.resolveMechanicValue(player.getServer(), uuid, "grudge_items",
+                DefsQueries.resolveMechanicValue(player.getServer(), uuid, "grudge_items",
                         "move_speed_penalty", MechanicValueDefs.defaultValueOf("grudge_items", "move_speed_penalty", -0.15)));
     }
 

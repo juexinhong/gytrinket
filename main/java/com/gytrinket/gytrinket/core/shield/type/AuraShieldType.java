@@ -1,4 +1,5 @@
 package com.gytrinket.gytrinket.core.shield.type;
+import com.gytrinket.gytrinket.core.defs.DefsQueries;
 
 import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.defs.ShieldValueDefs;
@@ -47,7 +48,7 @@ public class AuraShieldType implements IShieldType {
 
     /** 物品实例取值：UI 覆盖优先，未覆盖回退 Config 默认值 */
     private static double valueFor(MinecraftServer server, String itemId, String paramKey, double configDefault) {
-        return DefsManager.resolveShieldTypeValueForItem(server, itemId, "aura", paramKey, configDefault);
+        return DefsQueries.resolveShieldTypeValueForItem(server, itemId, "aura", paramKey, configDefault);
     }
 
     private static class AuraBurnSource implements IBurnSource {

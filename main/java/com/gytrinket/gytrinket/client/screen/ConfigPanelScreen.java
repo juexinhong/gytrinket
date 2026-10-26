@@ -1,4 +1,5 @@
 package com.gytrinket.gytrinket.client.screen;
+import com.gytrinket.gytrinket.core.defs.DefsClientView;
 
 import com.gytrinket.gytrinket.core.defs.DefsTypes;
 
@@ -194,7 +195,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
         }
         String itemId = itemConfigData.getCompound(selectedItemIndex).getString("itemId");
         shieldTypeSelection.clear();
-        shieldTypeSelection.addAll(DefsManager.clientItemShieldTypes(itemId));
+        shieldTypeSelection.addAll(DefsClientView.clientItemShieldTypes(itemId));
         isSelectingShieldTypes = true;
     }
 
@@ -207,20 +208,20 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
         mechanicPickList.clear();
         mechanicPickNames.clear();
         if (add) {
-            List<String> currentSets = DefsManager.clientSpecialMechanicSets(itemId);
+            List<String> currentSets = DefsClientView.clientSpecialMechanicSets(itemId);
             // 数据包声明的集合之外，并入已注册数值参数的机制集合（如环绕阵列无数据包声明，也允许为物品添加）
-            java.util.LinkedHashSet<String> candidates = new java.util.LinkedHashSet<>(DefsManager.clientAllMechanicSets());
+            java.util.LinkedHashSet<String> candidates = new java.util.LinkedHashSet<>(DefsClientView.clientAllMechanicSets());
             candidates.addAll(MechanicValueDefs.allSets());
             for (String set : candidates) {
                 if (!currentSets.contains(set)) {
                     mechanicPickList.add(set);
-                    mechanicPickNames.add(DefsManager.clientMechanicDisplayName(set));
+                    mechanicPickNames.add(DefsClientView.clientMechanicDisplayName(set));
                 }
             }
         } else {
-            for (String set : DefsManager.clientSpecialMechanicSets(itemId)) {
+            for (String set : DefsClientView.clientSpecialMechanicSets(itemId)) {
                 mechanicPickList.add(set);
-                mechanicPickNames.add(DefsManager.clientMechanicDisplayName(set));
+                mechanicPickNames.add(DefsClientView.clientMechanicDisplayName(set));
             }
         }
         selectingMechanicAdd = add;
@@ -237,7 +238,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
 
     /** 打开特殊机制数值编辑器：默认选中物品声明的第一个机制集合 */
     private void openMechanicValuesEditor(String itemId) {
-        List<String> sets = DefsManager.clientSpecialMechanicSets(itemId);
+        List<String> sets = DefsClientView.clientSpecialMechanicSets(itemId);
         if (sets.isEmpty()) {
             return;
         }
@@ -257,7 +258,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
         for (MechanicValueDefs.ParamDef def : MechanicValueDefs.getParams(set)) {
             mechanicValuesParamKeys.add(def.key());
         }
-        DefsTypes.SpecialMechanicOverride ov = DefsManager.getClientSpecialMechanicOverride(mechanicValuesItemId);
+        DefsTypes.SpecialMechanicOverride ov = DefsClientView.getClientSpecialMechanicOverride(mechanicValuesItemId);
         if (ov != null && !ov.removed() && ov.values() != null) {
             Map<String, DefsTypes.ParamValue> existing = ov.values().get(set);
             if (existing != null) {
@@ -365,7 +366,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
     /** 打开护盾类型数值编辑器：preferredTypes 非空时优先作为 tab 来源（类型选择器进入时携带刚保存的本地选择） */
     private void openShieldValuesEditor(String itemId, List<String> preferredTypes) {
         List<String> types = (preferredTypes != null && !preferredTypes.isEmpty())
-                ? preferredTypes : DefsManager.clientItemShieldTypes(itemId);
+                ? preferredTypes : DefsClientView.clientItemShieldTypes(itemId);
         if (types.isEmpty()) {
             return;
         }
@@ -381,7 +382,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
     /** 数值编辑器 tab 类型来源：优先用本地选择列表，否则回退物品声明 */
     private List<String> shieldValuesTabTypes() {
         return !shieldValuesPreferredTypes.isEmpty()
-                ? shieldValuesPreferredTypes : DefsManager.clientItemShieldTypes(shieldValuesItemId);
+                ? shieldValuesPreferredTypes : DefsClientView.clientItemShieldTypes(shieldValuesItemId);
     }
 
     /** 切换/重建当前护盾类型的参数草稿：既有覆盖值填入草稿，未覆盖参数显示默认值 */
@@ -395,7 +396,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
         for (ShieldValueDefs.ParamDef def : ShieldValueDefs.getParams(type)) {
             shieldValuesParamKeys.add(def.key());
         }
-        DefsTypes.ShieldTypeOverride ov = DefsManager.getClientShieldTypeOverride(shieldValuesItemId);
+        DefsTypes.ShieldTypeOverride ov = DefsClientView.getClientShieldTypeOverride(shieldValuesItemId);
         if (ov != null && ov.values() != null) {
             Map<String, Double> existing = ov.values().get(type);
             if (existing != null) {
@@ -807,8 +808,8 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
 
     /** 状态行特殊机制文本（多个机制名排列；未声明时返回"未声明"文案） */
     private String buildStatusMechanicText(String itemId) {
-        List<String> mechanicNames = DefsManager.clientSpecialMechanicNames(itemId);
-        boolean isMechanic = DefsManager.clientIsSpecialMechanic(itemId);
+        List<String> mechanicNames = DefsClientView.clientSpecialMechanicNames(itemId);
+        boolean isMechanic = DefsClientView.clientIsSpecialMechanic(itemId);
         if (isMechanic && !mechanicNames.isEmpty()) {
             return String.join("  ", mechanicNames);
         } else if (isMechanic) {
@@ -821,7 +822,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
     /** 状态行护盾类型文本（"护盾类型:xxx,yyy"） */
     private String buildShieldTypeText(String itemId) {
         String text = Component.translatable("screen.gytrinket.shield_types").getString();
-        List<String> currentShieldTypes = DefsManager.clientItemShieldTypes(itemId);
+        List<String> currentShieldTypes = DefsClientView.clientItemShieldTypes(itemId);
         if (!currentShieldTypes.isEmpty()) {
             StringBuilder sb = new StringBuilder();
             for (String t : currentShieldTypes) {
@@ -1058,7 +1059,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
                 // 状态行：左侧特殊机制名称（多个排列），右侧护盾类型按钮（显示当前类型，可点击编辑）
                 // 超宽时自动换行：护盾类型按钮移到状态行下一行
                 String itemIdForStatus = itemTag.getString("itemId");
-                boolean isMechanic = DefsManager.clientIsSpecialMechanic(itemIdForStatus);
+                boolean isMechanic = DefsClientView.clientIsSpecialMechanic(itemIdForStatus);
                 String statusText = buildStatusMechanicText(itemIdForStatus);
                 int statusColor = isMechanic ? renderer.getValueColor() : renderer.getHintColor();
                 String shieldTypeText = buildShieldTypeText(itemIdForStatus);
@@ -1382,7 +1383,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
         guiGraphics.drawString(font, Component.translatable("screen.gytrinket.select_shield_types").getString(),
                 overlayX + 5, overlayY + 5, renderer.getAccentColor());
 
-        Map<String, Boolean> allTypes = DefsManager.clientShieldTypes();
+        Map<String, Boolean> allTypes = DefsClientView.clientShieldTypes();
         int listY = overlayY + 18;
         int listBottom = overlayY + overlayH - 26; // 底部给"编辑数值"/"保存"按钮留空间
         for (Map.Entry<String, Boolean> e : allTypes.entrySet()) {
@@ -1432,10 +1433,10 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
     /** 特殊机制数值编辑器 overlay：机制集合 tab 切换 + 参数行点击编辑 + 重置/保存 */
     /** 特殊机制数值编辑器 overlay 宽度：随机制 tab 总宽自适应（多个机制时加宽，避免 tab 超出边框） */
     private int mechanicValuesOverlayWidth() {
-        List<String> sets = DefsManager.clientSpecialMechanicSets(mechanicValuesItemId);
+        List<String> sets = DefsClientView.clientSpecialMechanicSets(mechanicValuesItemId);
         int tabsWidth = 10; // 左缘 5 + 留白
         for (String set : sets) {
-            String label = "[" + DefsManager.clientMechanicDisplayName(set) + "]";
+            String label = "[" + DefsClientView.clientMechanicDisplayName(set) + "]";
             tabsWidth += font.width(label) + 4;
         }
         // 至少保持基础宽，最多撑满可用屏幕宽（overlay 相对面板居中，超出面板宽度也可完整显示）
@@ -1456,10 +1457,10 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
                 overlayX + 5, overlayY + 5, renderer.getAccentColor());
 
         // 机制集合 tab 行：物品声明的多个机制，点击切换编辑目标（各机制的数值互相独立）
-        List<String> sets = DefsManager.clientSpecialMechanicSets(mechanicValuesItemId);
+        List<String> sets = DefsClientView.clientSpecialMechanicSets(mechanicValuesItemId);
         int tabX = overlayX + 5;
         for (String set : sets) {
-            String label = "[" + DefsManager.clientMechanicDisplayName(set) + "]";
+            String label = "[" + DefsClientView.clientMechanicDisplayName(set) + "]";
             boolean active = set.equals(mechanicValuesSet);
             boolean tabHovered = mouseX >= tabX && mouseX < tabX + font.width(label)
                     && mouseY >= overlayY + MECHANIC_VALUES_TAB_Y && mouseY < overlayY + MECHANIC_VALUES_TAB_Y + 11;
@@ -1546,7 +1547,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
 
     /** 参数显示默认值：基础四项优先取护盾类型定义（服务端同步的 shield_types 数据），未定义回退 ParamDef 硬编码 */
     private double shieldValueDefaultValue(ShieldValueDefs.ParamDef def) {
-        Double typeDefault = DefsManager.clientShieldTypeParamDefault(shieldValuesType, def.key());
+        Double typeDefault = DefsClientView.clientShieldTypeParamDefault(shieldValuesType, def.key());
         return typeDefault != null ? typeDefault : def.defaultValue();
     }
 
@@ -1842,7 +1843,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
             int overlayY = panelY + panelHeight / 2 - overlayH / 2;
             int listY = overlayY + 18;
             int listBottom = overlayY + overlayH - 26;
-            Map<String, Boolean> allTypes = DefsManager.clientShieldTypes();
+            Map<String, Boolean> allTypes = DefsClientView.clientShieldTypes();
             for (Map.Entry<String, Boolean> e : allTypes.entrySet()) {
                 if (listY + 10 > listBottom) break;
                 if (mouseX >= overlayX + 5 && mouseX < overlayX + overlayW - 5
@@ -1925,10 +1926,10 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
             }
 
             // 机制集合 tab 切换
-            List<String> sets = DefsManager.clientSpecialMechanicSets(mechanicValuesItemId);
+            List<String> sets = DefsClientView.clientSpecialMechanicSets(mechanicValuesItemId);
             int tabX = overlayX + 5;
             for (String set : sets) {
-                String label = "[" + DefsManager.clientMechanicDisplayName(set) + "]";
+                String label = "[" + DefsClientView.clientMechanicDisplayName(set) + "]";
                 if (mouseX >= tabX && mouseX < tabX + font.width(label)
                         && mouseY >= overlayY + MECHANIC_VALUES_TAB_Y && mouseY < overlayY + MECHANIC_VALUES_TAB_Y + 11) {
                     if (!set.equals(mechanicValuesSet)) {

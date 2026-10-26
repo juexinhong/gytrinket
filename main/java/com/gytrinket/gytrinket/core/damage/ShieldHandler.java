@@ -1,4 +1,5 @@
 package com.gytrinket.gytrinket.core.damage;
+import com.gytrinket.gytrinket.core.defs.DefsQueries;
 
 import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.defs.DefsManager;
@@ -29,7 +30,7 @@ public class ShieldHandler implements DamageHandler {
         if (typeName == null) {
             return false;
         }
-        return DefsManager.resolveShieldTypeValueForItem(server, instance.getItemId(),
+        return DefsQueries.resolveShieldTypeValueForItem(server, instance.getItemId(),
                 typeName, "pierce_through", 0.0) >= 0.5;
     }
 

@@ -1,4 +1,5 @@
 package com.gytrinket.gytrinket.core.shield.type;
+import com.gytrinket.gytrinket.core.defs.DefsQueries;
 
 import com.gytrinket.gytrinket.core.damage.DamageSourcesCompat;
 
@@ -166,7 +167,7 @@ public class WarpShieldType implements IShieldType {
         double shieldEffectRadius = AttributeManager.getGroupAttribute(player.getUUID(), "shield_effect_radius");
 
         // 计算实际传送距离 = 基础距离（按物品实例取值） × 护盾效果半径属性组
-        double baseWarpDistance = DefsManager.resolveShieldTypeValueForItem(player.getServer(), itemId,
+        double baseWarpDistance = DefsQueries.resolveShieldTypeValueForItem(player.getServer(), itemId,
                 "warp", "warp_distance", ShieldValueDefs.defaultValueOf("warp", "warp_distance", 5.0));
         double actualWarpDistance = baseWarpDistance * shieldEffectRadius;
 
@@ -305,7 +306,7 @@ public class WarpShieldType implements IShieldType {
         double shieldEffectRadius = AttributeManager.getGroupAttribute(player.getUUID(), "shield_effect_radius");
 
         // 计算实际爆炸半径 = 基础半径（按物品实例取值） × 护盾效果半径属性组
-        double baseExplosionRadius = DefsManager.resolveShieldTypeValueForItem(player.getServer(), itemId,
+        double baseExplosionRadius = DefsQueries.resolveShieldTypeValueForItem(player.getServer(), itemId,
                 "warp", "explosion_radius", ShieldValueDefs.defaultValueOf("warp", "explosion_radius", 3.3));
         double actualExplosionRadius = baseExplosionRadius * shieldEffectRadius;
 
@@ -313,7 +314,7 @@ public class WarpShieldType implements IShieldType {
         DamageSource damageSource = DamageSourcesCompat.explosion(player, player);
 
         // 计算实际爆炸伤害 = 基础伤害（按物品实例取值） × 护盾效果属性组
-        double baseExplosionDamage = DefsManager.resolveShieldTypeValueForItem(player.getServer(), itemId,
+        double baseExplosionDamage = DefsQueries.resolveShieldTypeValueForItem(player.getServer(), itemId,
                 "warp", "explosion_damage", ShieldValueDefs.defaultValueOf("warp", "explosion_damage", 7.5));
         float actualExplosionDamage = (float) (baseExplosionDamage * shieldEffect);
 
@@ -364,7 +365,7 @@ public class WarpShieldType implements IShieldType {
             shieldType.createExplosion(player, player.position(), itemId);
 
             // 设置玩家无敌状态（玩家会在无敌状态结束后自动传送）
-            int invincibleDuration = (int) DefsManager.resolveShieldTypeValueForItem(player.getServer(), itemId,
+            int invincibleDuration = (int) DefsQueries.resolveShieldTypeValueForItem(player.getServer(), itemId,
                     "warp", "invincible_duration", ShieldValueDefs.defaultValueOf("warp", "invincible_duration", 15.0));
             INVINCIBLE_PLAYERS.put(playerUUID, new InvincibleState(invincibleDuration, itemId));
             InvincibilityMarkerManager.addMarker(player, invincibleDuration);

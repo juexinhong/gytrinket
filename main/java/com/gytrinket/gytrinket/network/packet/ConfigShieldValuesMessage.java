@@ -1,4 +1,5 @@
 package com.gytrinket.gytrinket.network.packet;
+import com.gytrinket.gytrinket.core.defs.DefsItemOverrides;
 
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
 import com.gytrinket.gytrinket.core.defs.DefsManager;
@@ -75,7 +76,7 @@ public class ConfigShieldValuesMessage {
             if (itemId == null || ResourceLocation.tryParse(itemId) == null) return;
             if (shieldType == null || shieldType.isEmpty()) return;
 
-            DefsManager.updateShieldTypeValues(player.server, itemId, shieldType, values);
+            DefsItemOverrides.updateShieldTypeValues(player.server, itemId, shieldType, values);
 
             // 立即重算玩家属性并同步覆盖层到所有客户端（编辑即生效）
             for (var p : player.server.getPlayerList().getPlayers()) {

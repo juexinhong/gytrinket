@@ -1,4 +1,5 @@
 package com.gytrinket.gytrinket.core.special_effect.conversion;
+import com.gytrinket.gytrinket.core.defs.DefsQueries;
 
 import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.defs.MechanicValueDefs;
@@ -121,7 +122,7 @@ public class ConversionEffectManager {
             String itemId = Registry.ITEM.getKey(item).toString();
             if (!seen.add(itemId)) continue;
             if (Config.isConversionItem(item)
-                    || DefsManager.getEffectiveSpecialMechanicSets(itemId).contains(MECHANIC_SET)) {
+                    || DefsQueries.getEffectiveSpecialMechanicSets(itemId).contains(MECHANIC_SET)) {
                 result.add(stack);
             }
         }
@@ -152,9 +153,9 @@ public class ConversionEffectManager {
             String itemId = Registry.ITEM.getKey(stack.getItem()).toString();
             String namespace = DYNAMIC_ATTRIBUTE_KEY + ":" + itemId;
 
-            double ratio = DefsManager.resolveMechanicValueForItem(server, itemId, MECHANIC_SET,
+            double ratio = DefsQueries.resolveMechanicValueForItem(server, itemId, MECHANIC_SET,
                     KEY_CONVERSION_RATIO, MechanicValueDefs.defaultValueOf("conversion_items", "conversion_ratio", 0.3));
-            int direction = (int) Math.round(DefsManager.resolveMechanicValueForItem(server, itemId, MECHANIC_SET,
+            int direction = (int) Math.round(DefsQueries.resolveMechanicValueForItem(server, itemId, MECHANIC_SET,
                     KEY_CONVERSION_DIRECTION, DIRECTION_BOTH));
 
             double shieldFlat;   // 血转盾增益：平摊进所有实例上限

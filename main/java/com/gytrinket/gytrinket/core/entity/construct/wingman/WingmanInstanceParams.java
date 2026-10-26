@@ -1,4 +1,6 @@
 package com.gytrinket.gytrinket.core.entity.construct.wingman;
+import com.gytrinket.gytrinket.core.defs.DefsClientView;
+import com.gytrinket.gytrinket.core.defs.DefsQueries;
 
 import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.defs.MechanicValueDefs;
@@ -47,7 +49,7 @@ public final class WingmanInstanceParams {
      */
     public static double resolve(@Nullable MinecraftServer server, String itemId, String paramKey) {
         double fallback = fallbackFor(paramKey);
-        return DefsManager.resolveMechanicValueForItem(server, itemId, MECHANIC_SET, paramKey, fallback);
+        return DefsQueries.resolveMechanicValueForItem(server, itemId, MECHANIC_SET, paramKey, fallback);
     }
 
     /**
@@ -56,7 +58,7 @@ public final class WingmanInstanceParams {
      */
     public static double resolveClient(String itemId, String paramKey) {
         double fallback = fallbackFor(paramKey);
-        return DefsManager.clientResolveMechanicValueForItem(itemId, MECHANIC_SET, paramKey, fallback);
+        return DefsClientView.clientResolveMechanicValueForItem(itemId, MECHANIC_SET, paramKey, fallback);
     }
 
     /** 各参数未覆盖时的默认值（服务端/客户端共用） */

@@ -1,4 +1,5 @@
 package com.gytrinket.gytrinket.client;
+import com.gytrinket.gytrinket.core.defs.DefsClientView;
 
 import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.defs.MechanicValueDefs;
@@ -105,7 +106,7 @@ public class GhostFuselageClientTick {
         }
 
         // 物品级数值覆盖：客户端镜像解析（首个生效物品的覆盖值，未覆盖回退 Config 默认）
-        double threshold = DefsManager.clientResolveMechanicValue(player, "ghost_fuselage_items",
+        double threshold = DefsClientView.clientResolveMechanicValue(player, "ghost_fuselage_items",
                 "move_speed_threshold", MechanicValueDefs.defaultValueOf("ghost_fuselage_items", "move_speed_threshold", 0.25));
         if (movingFast) {
             // 高速移动中：平滑速度降至阈值以下才退出
@@ -125,7 +126,7 @@ public class GhostFuselageClientTick {
 
         // 消耗量按原始速度计算（更贴近真实移速），阈值以下时取最小消耗保持信号
         double excessSpeed = Math.max(moveSpeed - threshold, 0);
-        double reductionCoefficient = DefsManager.clientResolveMechanicValue(player, "ghost_fuselage_items",
+        double reductionCoefficient = DefsClientView.clientResolveMechanicValue(player, "ghost_fuselage_items",
                 "move_speed_reduction", MechanicValueDefs.defaultValueOf("ghost_fuselage_items", "move_speed_reduction", 0.2));
         double reduction = excessSpeed * reductionCoefficient;
         return (float) Math.max(reduction, MIN_MOVE_REDUCTION);

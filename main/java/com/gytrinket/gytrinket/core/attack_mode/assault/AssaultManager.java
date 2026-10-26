@@ -1,4 +1,5 @@
 package com.gytrinket.gytrinket.core.attack_mode.assault;
+import com.gytrinket.gytrinket.core.defs.DefsQueries;
 
 import com.gytrinket.gytrinket.core.attack_mode.PlayerAttackLockManager;
 import com.gytrinket.gytrinket.core.defs.MechanicValueDefs;
@@ -73,12 +74,12 @@ public class AssaultManager {
 
         data.stacks++;
 
-        double attackSpeedBonus = com.gytrinket.gytrinket.core.defs.DefsManager.resolveMechanicValue(player.getServer(), player.getUUID(),
+        double attackSpeedBonus = com.gytrinket.gytrinket.core.defs.DefsQueries.resolveMechanicValue(player.getServer(), player.getUUID(),
                 "assault_items", "attack_speed_per_stack",
                 MechanicValueDefs.defaultValueOf("assault_items", "attack_speed_per_stack", 0.1)) * data.stacks;
         AttributeManager.setDynamicAttribute(uuid, "assault", "attack_speed_independent", attackSpeedBonus);
 
-        float selfDamage = (float) (com.gytrinket.gytrinket.core.defs.DefsManager.resolveMechanicValue(player.getServer(), player.getUUID(),
+        float selfDamage = (float) (com.gytrinket.gytrinket.core.defs.DefsQueries.resolveMechanicValue(player.getServer(), player.getUUID(),
                 "assault_items", "self_damage_per_stack",
                 MechanicValueDefs.defaultValueOf("assault_items", "self_damage_per_stack", 0.05)) * data.stacks);
         if (selfDamage > 0) {
@@ -139,7 +140,7 @@ public class AssaultManager {
 
         // 按比例等价换算：溢出攻速相对上限的频率提升 = 溢出攻速 / 上限
         double damagePercent = (overflow / ATTACK_SPEED_CAP)
-                * com.gytrinket.gytrinket.core.defs.DefsManager.resolveMechanicValue(player.getServer(), uuid,
+                * com.gytrinket.gytrinket.core.defs.DefsQueries.resolveMechanicValue(player.getServer(), uuid,
                         "assault_items", "overflow_damage_efficiency",
                         MechanicValueDefs.defaultValueOf("assault_items", "overflow_damage_efficiency", 1));
         if (damagePercent > 0) {

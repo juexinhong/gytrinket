@@ -1,4 +1,5 @@
 package com.gytrinket.gytrinket.client;
+import com.gytrinket.gytrinket.core.defs.DefsClientView;
 
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
 import com.gytrinket.gytrinket.core.attribute.ItemAttributeConfig;
@@ -21,7 +22,7 @@ public final class ClientItemAttributes {
         if (cached != null && !cached.getAttributes().isEmpty()) {
             return cached;
         }
-        Map<String, Double> attrs = DefsManager.clientEffectiveItemAttributes(itemId);
+        Map<String, Double> attrs = DefsClientView.clientEffectiveItemAttributes(itemId);
         if (attrs.isEmpty()) {
             return cached;
         }

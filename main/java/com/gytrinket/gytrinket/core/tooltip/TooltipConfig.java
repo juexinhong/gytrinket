@@ -1,4 +1,5 @@
 package com.gytrinket.gytrinket.core.tooltip;
+import com.gytrinket.gytrinket.core.defs.DefsClientView;
 
 import com.gytrinket.gytrinket.core.defs.DefsTypes;
 
@@ -159,7 +160,7 @@ public class TooltipConfig {
      * 检查指定物品ID是否匹配此配置（从 DefsManager 静态缓存查询，首次访问时客户端惰性加载）
      */
     public boolean matchesItem(String itemId) {
-        return DefsManager.itemSetContains(itemSetName, itemId);
+        return DefsClientView.itemSetContains(itemSetName, itemId);
     }
 
     /**
@@ -204,7 +205,7 @@ public class TooltipConfig {
         if (mapping == null) {
             return fallback;
         }
-        DefsTypes.SpecialMechanicOverride override = DefsManager.getClientSpecialMechanicOverride(itemId);
+        DefsTypes.SpecialMechanicOverride override = DefsClientView.getClientSpecialMechanicOverride(itemId);
         if (override == null || override.removed() || override.values() == null) {
             return fallback;
         }

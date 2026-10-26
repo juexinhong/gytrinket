@@ -1,4 +1,5 @@
 package com.gytrinket.gytrinket.network.packet;
+import com.gytrinket.gytrinket.core.defs.DefsItemOverrides;
 
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
 import com.gytrinket.gytrinket.core.defs.DefsManager;
@@ -23,7 +24,7 @@ public class ConfigResetMessage {
             if (!player.hasPermissions(2)) return;
 
             // 重置运行时覆盖（特殊机制/护盾类型），恢复数据包默认定义
-            DefsManager.resetOverrides(player.server);
+            DefsItemOverrides.resetOverrides(player.server);
 
             AttributeManager.resetToDefaults();
 

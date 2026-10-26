@@ -1,4 +1,5 @@
 package com.gytrinket.gytrinket.core.shield.type;
+import com.gytrinket.gytrinket.core.defs.DefsQueries;
 
 import com.gytrinket.gytrinket.core.damage.DamageSourcesCompat;
 
@@ -200,9 +201,9 @@ public class ReflectShieldType implements IShieldType {
     private static void reflectProjectile(Projectile projectile, Player player, LivingEntity attackedEntity, ProjectileDamageInfo info) {
         double shieldEffect_radius = AttributeManager.getGroupAttribute(player.getUUID(), "shield_effect_radius") - 1;
         // 数值按提供该 reflect 实例的物品取（每实例独立）
-        double speedBaseModifier = DefsManager.resolveShieldTypeValueForItem(player.getServer(), info.getItemId(),
+        double speedBaseModifier = DefsQueries.resolveShieldTypeValueForItem(player.getServer(), info.getItemId(),
                 "reflect", "speed_base_modifier", ShieldValueDefs.defaultValueOf("reflect", "speed_base_modifier", 1.5));
-        double speedExtraModifier = DefsManager.resolveShieldTypeValueForItem(player.getServer(), info.getItemId(),
+        double speedExtraModifier = DefsQueries.resolveShieldTypeValueForItem(player.getServer(), info.getItemId(),
                 "reflect", "speed_extra_modifier", ShieldValueDefs.defaultValueOf("reflect", "speed_extra_modifier", 1.0));
         double speedModifier = speedBaseModifier * (1 + speedExtraModifier * shieldEffect_radius);
 
@@ -337,7 +338,7 @@ public class ReflectShieldType implements IShieldType {
         float originalDamage = event.getAmount();
         double shieldEffect = AttributeManager.getGroupAttribute(attacker.getUUID(), "shield_effect") - 1;
         // 数值按产生该反射弹射物的实例物品取
-        double damageEffectMultiplier = DefsManager.resolveShieldTypeValueForItem(attacker.getServer(),
+        double damageEffectMultiplier = DefsQueries.resolveShieldTypeValueForItem(attacker.getServer(),
                 reflectedInfo != null ? reflectedInfo.itemId : null,
                 "reflect", "damage_effect_multiplier", ShieldValueDefs.defaultValueOf("reflect", "damage_effect_multiplier", 1.0));
         float finalDamage = (float)(originalDamage * (1 + shieldEffect * damageEffectMultiplier));

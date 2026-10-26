@@ -1,4 +1,5 @@
 package com.gytrinket.gytrinket.core.entity.construct.drone;
+import com.gytrinket.gytrinket.core.defs.DefsQueries;
 
 import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.defs.DefsManager;
@@ -132,7 +133,7 @@ public class CommanderManager {
         if (server == null) {
             return false;
         }
-        return DefsManager.playerHasEquippedMechanic(server, player.getUUID(), "commander_required_items");
+        return DefsQueries.playerHasEquippedMechanic(server, player.getUUID(), "commander_required_items");
     }
 }
 

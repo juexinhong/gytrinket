@@ -1,4 +1,5 @@
 package com.gytrinket.gytrinket.network.packet;
+import com.gytrinket.gytrinket.core.defs.DefsClientView;
 
 import com.gytrinket.gytrinket.core.defs.DefsTypes;
 
@@ -324,7 +325,7 @@ public class ConfigDefsSyncMessage {
         NetworkEvent.Context context = contextSupplier.get();
         if (context.getSender() == null) {
             // 客户端接收
-            DefsManager.applyClientSync(shieldTypes, specialMechanicItems, itemToSets, tooltipRules, specialMechanicOverrides, shieldTypeOverrides, shieldTypeParamDefaults, revision);
+            DefsClientView.applyClientSync(shieldTypes, specialMechanicItems, itemToSets, tooltipRules, specialMechanicOverrides, shieldTypeOverrides, shieldTypeParamDefaults, revision);
             // 专用服联机时客户端不跑 datapack 重载，必须在这里重建 Config 的模块物品集合，
             // 否则 isAssaultItem/isChargedAttackItem 等客户端判定永远为 false（强袭/充能攻击失效）
             com.gytrinket.gytrinket.config.Config.applyClientDefs();

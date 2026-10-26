@@ -1,4 +1,5 @@
 package com.gytrinket.gytrinket.core.shield_transfer;
+import com.gytrinket.gytrinket.core.defs.DefsQueries;
 
 import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.defs.MechanicValueDefs;
@@ -753,7 +754,7 @@ public class ShieldTransferManager {
             return;
         }
 
-        double penaltyPerEntity = DefsManager.resolveMechanicValue(ServerLifecycleHooks.getCurrentServer(), playerUUID,
+        double penaltyPerEntity = DefsQueries.resolveMechanicValue(ServerLifecycleHooks.getCurrentServer(), playerUUID,
                 "shield_transfer_items", "penalty_per_entity", MechanicValueDefs.defaultValueOf("shield_transfer_items", "penalty_per_entity", 0.04));
         double multiplier = 1.0;
         for (int i = 0; i < entityCount; i++) {

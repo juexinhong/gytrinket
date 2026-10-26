@@ -1,4 +1,5 @@
 package com.gytrinket.gytrinket.core.damage;
+import com.gytrinket.gytrinket.core.defs.DefsQueries;
 
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
 import com.gytrinket.gytrinket.core.defs.DefsManager;
@@ -102,7 +103,7 @@ public class ReflectDamageHandler implements DamageHandler {
 
         // 枚举提供反射护盾机制的物品实例（每件物品都是独立实例，空则不触发）
         MinecraftServer server = shieldOwner.getServer();
-        List<ItemStack> stacks = DefsManager.getEquippedMechanicStacks(server, shieldOwnerUUID, MECHANIC_SET);
+        List<ItemStack> stacks = DefsQueries.getEquippedMechanicStacks(server, shieldOwnerUUID, MECHANIC_SET);
         if (stacks.isEmpty()) {
             return;
         }
@@ -214,7 +215,7 @@ public class ReflectDamageHandler implements DamageHandler {
 
     /** 按物品实例解析反射护盾机制参数（单物品直查，未覆盖时取默认值） */
     private static double param(MinecraftServer server, String itemId, String key, double fallback) {
-        return DefsManager.resolveMechanicValueForItem(server, itemId, MECHANIC_SET, key, fallback);
+        return DefsQueries.resolveMechanicValueForItem(server, itemId, MECHANIC_SET, key, fallback);
     }
 
     @Override

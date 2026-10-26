@@ -1,4 +1,5 @@
 package com.gytrinket.gytrinket.network.packet;
+import com.gytrinket.gytrinket.core.defs.DefsItemOverrides;
 
 import com.gytrinket.gytrinket.core.defs.DefsManager;
 import com.gytrinket.gytrinket.network.NetworkHandler;
@@ -55,7 +56,7 @@ public class ConfigShieldTypesMessage {
         }
         context.enqueueWork(() -> {
             MinecraftServer server = player.server;
-            DefsManager.updateShieldTypeOverride(server, itemId, types);
+            DefsItemOverrides.updateShieldTypeOverride(server, itemId, types);
 
             // 立即重算玩家属性并同步覆盖层到所有客户端（编辑即生效）
             for (var p : server.getPlayerList().getPlayers()) {

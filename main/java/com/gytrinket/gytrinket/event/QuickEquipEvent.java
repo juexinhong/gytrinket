@@ -1,4 +1,5 @@
 package com.gytrinket.gytrinket.event;
+import com.gytrinket.gytrinket.core.defs.DefsQueries;
 
 import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.defs.DefsManager;
@@ -193,7 +194,7 @@ public class QuickEquipEvent {
      * </ol>
      */
     public static boolean isQuickEquipItem(String itemId, Item item) {
-        if (DefsManager.getEffectiveItemAttributes(itemId) != null) {
+        if (DefsQueries.getEffectiveItemAttributes(itemId) != null) {
             return true;
         }
 

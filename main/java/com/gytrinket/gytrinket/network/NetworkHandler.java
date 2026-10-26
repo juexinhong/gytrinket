@@ -1,4 +1,6 @@
 package com.gytrinket.gytrinket.network;
+import com.gytrinket.gytrinket.core.defs.DefsItemOverrides;
+import com.gytrinket.gytrinket.core.defs.DefsQueries;
 
 import com.gytrinket.gytrinket.core.defs.DefsTypes;
 
@@ -183,16 +185,16 @@ public class NetworkHandler {
                 if (com.gytrinket.gytrinket.core.shield.type.AuraShieldType.isAuraDamagingForItem(uuid, itemId)) {
                     state.auraDamaging = true;
                 }
-                state.auraRadius = DefsManager.resolveShieldTypeValueForItem(player.getServer(), itemId,
+                state.auraRadius = DefsQueries.resolveShieldTypeValueForItem(player.getServer(), itemId,
                         "aura", "radius", ShieldValueDefs.defaultValueOf("aura", "radius", 3.5)) * shieldEffectRadius;
             } else if ("siphon".equals(typeName)) {
                 state.siphonStacks += com.gytrinket.gytrinket.core.shield.type.SiphonShieldType.getSiphonStacksForItem(uuid, itemId);
-                state.siphonRadius = DefsManager.resolveShieldTypeValueForItem(player.getServer(), itemId,
+                state.siphonRadius = DefsQueries.resolveShieldTypeValueForItem(player.getServer(), itemId,
                         "siphon", "radius", ShieldValueDefs.defaultValueOf("siphon", "radius", 4.0)) * shieldEffectRadius;
             } else if ("amplification".equals(typeName)) {
                 state.amplificationProgress = Math.max(state.amplificationProgress,
                     com.gytrinket.gytrinket.core.shield.type.AmplificationShieldType.getProgressForItem(uuid, itemId));
-                state.amplificationRadius = DefsManager.resolveShieldTypeValueForItem(player.getServer(), itemId,
+                state.amplificationRadius = DefsQueries.resolveShieldTypeValueForItem(player.getServer(), itemId,
                         "amplification", "check_radius", ShieldValueDefs.defaultValueOf("amplification", "check_radius", 5.0)) * shieldEffectRadius;
             }
         }
@@ -477,14 +479,14 @@ public class NetworkHandler {
 
     private static ConfigDefsSyncMessage buildDefsSyncMessage() {
         return new ConfigDefsSyncMessage(
-            DefsManager.getServerShieldTypes(),
-            DefsManager.getServerSpecialMechanicItems(),
-            DefsManager.getServerAllEffectiveSets(),
-            DefsManager.getServerTooltipRules(),
-            DefsManager.getServerSpecialMechanicOverrides(),
-            DefsManager.getServerShieldTypeOverrides(),
-            DefsManager.getServerShieldTypeParamDefaultDoubles(),
-            DefsManager.collectEffectiveItemAttributes(),
+            DefsQueries.getServerShieldTypes(),
+            DefsQueries.getServerSpecialMechanicItems(),
+            DefsQueries.getServerAllEffectiveSets(),
+            DefsQueries.getServerTooltipRules(),
+            DefsQueries.getServerSpecialMechanicOverrides(),
+            DefsQueries.getServerShieldTypeOverrides(),
+            DefsQueries.getServerShieldTypeParamDefaultDoubles(),
+            DefsQueries.collectEffectiveItemAttributes(),
             new java.util.ArrayList<>(DefsManager.getAttributeDefs()),
             DefsManager.snapshotRevision()
         );
@@ -510,19 +512,19 @@ public class NetworkHandler {
 
     private static ResponseConfigDataMessage buildConfigDataMessage(boolean openScreen) {
         // 物品列表 = 声明属性的物品（覆写层 + 权威定义） ∪ 注册了特殊机制的物品 ∪ 定义了护盾类型的物品 ∪ UI 禁用态物品（供再次删除回退）
-        java.util.LinkedHashSet<String> itemIds = new java.util.LinkedHashSet<>(DefsManager.getEffectiveItemAttributeItemIds());
+        java.util.LinkedHashSet<String> itemIds = new java.util.LinkedHashSet<>(DefsQueries.getEffectiveItemAttributeItemIds());
         itemIds.addAll(DefsManager.getSpecialMechanicItems());
         itemIds.addAll(DefsManager.getItemShieldTypes().keySet());
-        itemIds.addAll(DefsManager.getUiDisabledItemIds());
+        itemIds.addAll(DefsItemOverrides.getUiDisabledItemIds());
 
         ListTag itemConfigList = new ListTag();
         for (String itemId : itemIds) {
             CompoundTag itemTag = new CompoundTag();
             itemTag.putString("itemId", itemId);
-            itemTag.putBoolean("uiDisabled", DefsManager.isUiDisabledItem(itemId));
+            itemTag.putBoolean("uiDisabled", DefsItemOverrides.isUiDisabledItem(itemId));
             ListTag attrsTag = new ListTag();
             // 有效属性 = 权威定义 + 覆写层合并（服务端权威数据源，客户端 tooltip/UI 显示链）
-            Map<String, DefsTypes.ParamValue> effective = DefsManager.getEffectiveItemAttributes(itemId);
+            Map<String, DefsTypes.ParamValue> effective = DefsQueries.getEffectiveItemAttributes(itemId);
             if (effective != null) {
                 for (var entry : effective.entrySet()) {
                     CompoundTag attrTag = new CompoundTag();

@@ -1,4 +1,5 @@
 package com.gytrinket.gytrinket.core.entity.construct.drone.behavior;
+import com.gytrinket.gytrinket.core.defs.DefsQueries;
 
 import com.gytrinket.gytrinket.core.damage.DamageSourcesCompat;
 
@@ -99,9 +100,9 @@ public class SelfDestructBehavior implements IDroneSpecialBehavior {
         float maxHealth = construct.getMaxHealth();
         UUID ownerUUID = construct instanceof IConstructEntity cEntity ? cEntity.getOwnerUUID() : null;
         var server = construct.getLevel().getServer();
-        double baseDamage = DefsManager.resolveMechanicValue(server, ownerUUID,
+        double baseDamage = DefsQueries.resolveMechanicValue(server, ownerUUID,
                 "self_destruct_items", "base_damage", MechanicValueDefs.defaultValueOf("self_destruct_items", "base_damage", 1));
-        double baseRadius = DefsManager.resolveMechanicValue(server, ownerUUID,
+        double baseRadius = DefsQueries.resolveMechanicValue(server, ownerUUID,
                 "self_destruct_items", "base_radius", MechanicValueDefs.defaultValueOf("self_destruct_items", "base_radius", 1));
         double damagePerHealth = Config.SELF_DESTRUCT_DAMAGE_PER_MAX_HEALTH.get();
         double radiusPerHealth = Config.SELF_DESTRUCT_RADIUS_PER_MAX_HEALTH.get();
@@ -180,7 +181,7 @@ public class SelfDestructBehavior implements IDroneSpecialBehavior {
         if (server == null) {
             return false;
         }
-        return DefsManager.playerHasEquippedMechanic(server, ownerUUID, "self_destruct_items");
+        return DefsQueries.playerHasEquippedMechanic(server, ownerUUID, "self_destruct_items");
     }
 }
 

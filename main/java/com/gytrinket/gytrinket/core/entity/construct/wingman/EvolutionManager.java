@@ -1,4 +1,5 @@
 package com.gytrinket.gytrinket.core.entity.construct.wingman;
+import com.gytrinket.gytrinket.core.defs.DefsQueries;
 
 import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.defs.MechanicValueDefs;
@@ -61,7 +62,7 @@ public class EvolutionManager {
         }
 
         int modLevel = Math.max(0, ModLevelManager.getModLevel(playerUUID));
-        double bonusPerLevel = DefsManager.resolveMechanicValue(player.getServer(), playerUUID,
+        double bonusPerLevel = DefsQueries.resolveMechanicValue(player.getServer(), playerUUID,
                 "wingman_evolution_module_items", "bonus_per_level", MechanicValueDefs.defaultValueOf("wingman_evolution_module_items", "bonus_per_level", 0.00625));
         double bonus = modLevel * bonusPerLevel;
 

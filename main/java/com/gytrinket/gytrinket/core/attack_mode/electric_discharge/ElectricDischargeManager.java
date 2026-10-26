@@ -1,4 +1,5 @@
 package com.gytrinket.gytrinket.core.attack_mode.electric_discharge;
+import com.gytrinket.gytrinket.core.defs.DefsQueries;
 
 import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.defs.MechanicValueDefs;
@@ -153,7 +154,7 @@ public class ElectricDischargeManager {
 
         UUID lightningUuid = UUID.randomUUID();
         List<LightningBurnTarget> burnTargets = new ArrayList<>();
-        int burnDuration = (int) DefsManager.resolveMechanicValue(player.getServer(), player.getUUID(),
+        int burnDuration = (int) DefsQueries.resolveMechanicValue(player.getServer(), player.getUUID(),
                 "electric_discharge_items", "burn_duration", Config.getElectricDischargeBurnDuration());
 
         for (LivingEntity entity : hitEntities) {
@@ -194,7 +195,7 @@ public class ElectricDischargeManager {
                 }
 
                 // 计算灼烧充能
-                float baseBurnCharge = (float) DefsManager.resolveMechanicValue(target.attacker.getServer(), target.attacker.getUUID(),
+                float baseBurnCharge = (float) DefsQueries.resolveMechanicValue(target.attacker.getServer(), target.attacker.getUUID(),
                         "electric_discharge_items", "burn_charge", MechanicValueDefs.defaultValueOf("electric_discharge_items", "burn_charge", 0.5));
                 // 计算灼烧充能（使用不含模组修正的基础攻击速度）
                 double attackSpeedBase = AttackSpeedManager.getBaseAttackSpeed(target.attacker);

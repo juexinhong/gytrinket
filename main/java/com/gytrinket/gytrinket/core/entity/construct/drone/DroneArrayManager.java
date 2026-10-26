@@ -1,4 +1,5 @@
 package com.gytrinket.gytrinket.core.entity.construct.drone;
+import com.gytrinket.gytrinket.core.defs.DefsQueries;
 
 import com.gytrinket.gytrinket.core.defs.DefsManager;
 import com.gytrinket.gytrinket.gytrinket;
@@ -180,7 +181,7 @@ public class DroneArrayManager {
         }
         MinecraftServer server = player.getLevel().getServer();
         if (server == null) return true;
-        return DefsManager.playerHasEquippedMechanic(server, player.getUUID(), mechanicSet);
+        return DefsQueries.playerHasEquippedMechanic(server, player.getUUID(), mechanicSet);
     }
 
     public void syncToArrayEntities(Player player) {

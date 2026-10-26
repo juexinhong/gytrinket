@@ -1,4 +1,5 @@
 package com.gytrinket.gytrinket.core.explosion;
+import com.gytrinket.gytrinket.core.defs.DefsQueries;
 
 import com.gytrinket.gytrinket.core.damage.DamageSourcesCompat;
 
@@ -165,11 +166,11 @@ public class SecondaryExplosionHandler {
 
         // 基础爆炸参数（config secondary_explosion 节可配置）；之后由 SimulatedExplosion 应用属性组增幅
         var server = owner.getServer();
-        float explosionDamage = (float) (recordedDamage * DefsManager.resolveMechanicValue(server, owner.getUUID(),
+        float explosionDamage = (float) (recordedDamage * DefsQueries.resolveMechanicValue(server, owner.getUUID(),
                 "projectile_explosion_items", "damage_fraction", MechanicValueDefs.defaultValueOf("projectile_explosion_items", "damage_fraction", 0.15)));
-        double explosionRadius = DefsManager.resolveMechanicValue(server, owner.getUUID(),
+        double explosionRadius = DefsQueries.resolveMechanicValue(server, owner.getUUID(),
                 "projectile_explosion_items", "radius_base", MechanicValueDefs.defaultValueOf("projectile_explosion_items", "radius_base", 2))
-                + explosionDamage * DefsManager.resolveMechanicValue(server, owner.getUUID(),
+                + explosionDamage * DefsQueries.resolveMechanicValue(server, owner.getUUID(),
                 "projectile_explosion_items", "radius_per_damage", MechanicValueDefs.defaultValueOf("projectile_explosion_items", "radius_per_damage", 0.5));
 
         // 爆心 = 记录的命中点（最高伤害那次命中时受击者的位置），而非弹射物移除位置
@@ -199,6 +200,6 @@ public class SecondaryExplosionHandler {
      * 特殊机制集合的物品才生效（含运行时覆盖与物品禁用检查）
      */
     private static boolean hasRequiredItem(ServerPlayer owner) {
-        return DefsManager.playerHasEquippedMechanic(owner.getServer(), owner.getUUID(), "projectile_explosion_items");
+        return DefsQueries.playerHasEquippedMechanic(owner.getServer(), owner.getUUID(), "projectile_explosion_items");
     }
 }

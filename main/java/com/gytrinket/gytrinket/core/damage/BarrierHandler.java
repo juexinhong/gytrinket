@@ -1,4 +1,5 @@
 package com.gytrinket.gytrinket.core.damage;
+import com.gytrinket.gytrinket.core.defs.DefsQueries;
 
 import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.defs.MechanicValueDefs;
@@ -54,7 +55,7 @@ public class BarrierHandler implements DamageHandler {
         // 基于当前伤害（可能已被前序处理器如适应性装甲减伤）向下钳制，
         // 只在伤害仍高于上限时钳制，避免把已减免的伤害重新抬高覆盖掉
         float currentDamage = context.getCurrentDamage();
-        float maxDamage = (float) DefsManager.resolveMechanicValue(player.getServer(), playerUUID,
+        float maxDamage = (float) DefsQueries.resolveMechanicValue(player.getServer(), playerUUID,
                 "barrier_items", "barrier_max_damage", MechanicValueDefs.defaultValueOf("barrier_items", "barrier_max_damage", 5));
         if (currentDamage > maxDamage) {
             context.setCurrentDamage(maxDamage);

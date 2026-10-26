@@ -1,4 +1,5 @@
 package com.gytrinket.gytrinket.network.packet;
+import com.gytrinket.gytrinket.core.defs.DefsItemOverrides;
 
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
 import com.gytrinket.gytrinket.core.defs.DefsManager;
@@ -34,7 +35,7 @@ public class ConfigAddItemMessage {
 
             if (itemId != null && !itemId.isEmpty() && !itemId.equals("minecraft:air")) {
                 // 添加物品 = 确保覆写层条目存在（空属性接管；已有权威/覆写属性时幂等忽略）
-                DefsManager.ensureItemOverrideEntry(player.server, itemId);
+                DefsItemOverrides.ensureItemOverrideEntry(player.server, itemId);
 
                 for (var p : player.server.getPlayerList().getPlayers()) {
                     AttributeManager.recalculateAndCachePlayerAttributes(p);

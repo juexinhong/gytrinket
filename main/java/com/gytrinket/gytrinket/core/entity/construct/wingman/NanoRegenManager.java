@@ -1,4 +1,5 @@
 package com.gytrinket.gytrinket.core.entity.construct.wingman;
+import com.gytrinket.gytrinket.core.defs.DefsQueries;
 
 import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.defs.MechanicValueDefs;
@@ -55,7 +56,7 @@ public class NanoRegenManager {
             UUID playerUUID = player.getUUID();
             if (!hasNanoRegenModule(playerUUID)) continue;
 
-            double regenPercent = DefsManager.resolveMechanicValue(server, playerUUID,
+            double regenPercent = DefsQueries.resolveMechanicValue(server, playerUUID,
                     "wingman_nano_regen_module_items", "regen_percent", MechanicValueDefs.defaultValueOf("wingman_nano_regen_module_items", "regen_percent", 0.02));
 
             Map<UUID, Entity> wingmanEntities = ConstructManager.getInstance()

@@ -1,4 +1,5 @@
 package com.gytrinket.gytrinket.network.packet;
+import com.gytrinket.gytrinket.core.defs.DefsItemOverrides;
 
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
 import com.gytrinket.gytrinket.core.defs.DefsManager;
@@ -95,7 +96,7 @@ public class ConfigMechanicValuesMessage {
             if (itemId == null || ResourceLocation.tryParse(itemId) == null) return;
             if (mechanicSet == null || mechanicSet.isEmpty()) return;
 
-            DefsManager.updateSpecialMechanicValues(player.server, itemId, mechanicSet, values, stackables);
+            DefsItemOverrides.updateSpecialMechanicValues(player.server, itemId, mechanicSet, values, stackables);
 
             // 立即重算玩家属性并同步覆盖层到所有客户端（编辑即生效）
             for (var p : player.server.getPlayerList().getPlayers()) {

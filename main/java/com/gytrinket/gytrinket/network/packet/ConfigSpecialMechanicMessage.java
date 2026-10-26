@@ -1,4 +1,5 @@
 package com.gytrinket.gytrinket.network.packet;
+import com.gytrinket.gytrinket.core.defs.DefsItemOverrides;
 
 import com.gytrinket.gytrinket.core.defs.DefsManager;
 import com.gytrinket.gytrinket.network.NetworkHandler;
@@ -56,16 +57,16 @@ public class ConfigSpecialMechanicMessage {
             MinecraftServer server = player.server;
             switch (action) {
                 case "set":
-                    if (set != null) DefsManager.updateSpecialMechanicSet(server, itemId, set, false);
+                    if (set != null) DefsItemOverrides.updateSpecialMechanicSet(server, itemId, set, false);
                     break;
                 case "remove":
-                    if (set != null) DefsManager.updateSpecialMechanicSet(server, itemId, set, true);
+                    if (set != null) DefsItemOverrides.updateSpecialMechanicSet(server, itemId, set, true);
                     break;
                 case "reset_special":
-                    DefsManager.updateSpecialMechanicOverride(server, itemId, true);
+                    DefsItemOverrides.updateSpecialMechanicOverride(server, itemId, true);
                     break;
                 case "reset_all":
-                    DefsManager.resetOverrides(server);
+                    DefsItemOverrides.resetOverrides(server);
                     break;
             }
             NetworkHandler.sendDefsSyncToAllPlayers(server);

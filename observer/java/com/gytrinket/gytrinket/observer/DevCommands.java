@@ -1,4 +1,5 @@
 package com.gytrinket.gytrinket.observer;
+import com.gytrinket.gytrinket.core.defs.DefsQueries;
 
 import com.gytrinket.gytrinket.core.defs.DefsTypes;
 
@@ -1248,18 +1249,18 @@ public final class DevCommands {
         attributeDefs.sort(Comparator.comparing(DefsTypes.AttributeEntry::name));
         root.put("attributeDefs", attributeDefs);
 
-        root.put("shieldTypes", new TreeMap<>(DefsManager.getServerShieldTypes()));
+        root.put("shieldTypes", new TreeMap<>(DefsQueries.getServerShieldTypes()));
 
         Map<String, Map<String, Double>> shieldDefaults = new TreeMap<>();
-        for (Map.Entry<String, Map<String, Double>> entry : DefsManager.getServerShieldTypeParamDefaultDoubles().entrySet()) {
+        for (Map.Entry<String, Map<String, Double>> entry : DefsQueries.getServerShieldTypeParamDefaultDoubles().entrySet()) {
             shieldDefaults.put(entry.getKey(), new TreeMap<>(entry.getValue()));
         }
         root.put("shieldTypeParamDefaults", shieldDefaults);
 
-        root.put("specialMechanicItems", new TreeSet<>(DefsManager.getServerSpecialMechanicItems()));
+        root.put("specialMechanicItems", new TreeSet<>(DefsQueries.getServerSpecialMechanicItems()));
 
         Map<String, List<String>> effectiveSets = new TreeMap<>();
-        for (Map.Entry<String, List<String>> entry : DefsManager.getServerAllEffectiveSets().entrySet()) {
+        for (Map.Entry<String, List<String>> entry : DefsQueries.getServerAllEffectiveSets().entrySet()) {
             List<String> sets = new ArrayList<>(entry.getValue());
             sets.sort(Comparator.naturalOrder());
             effectiveSets.put(entry.getKey(), sets);
@@ -1281,14 +1282,14 @@ public final class DevCommands {
         root.put("moduleTrees", DefsManager.getModuleTrees());
         root.put("upgradePaths", DefsManager.getUpgradePaths());
 
-        List<DefsTypes.TooltipRuleDef> tooltips = new ArrayList<>(DefsManager.getServerTooltipRules());
+        List<DefsTypes.TooltipRuleDef> tooltips = new ArrayList<>(DefsQueries.getServerTooltipRules());
         tooltips.sort(Comparator.comparing(DefsTypes.TooltipRuleDef::titleKey)
                 .thenComparing(DefsTypes.TooltipRuleDef::itemSet));
         root.put("tooltipRules", tooltips);
 
         root.put("itemDefinitions", DefsManager.getItemDefinitions());
-        root.put("specialMechanicOverrides", DefsManager.getServerSpecialMechanicOverrides());
-        root.put("shieldTypeOverrides", DefsManager.getServerShieldTypeOverrides());
+        root.put("specialMechanicOverrides", DefsQueries.getServerSpecialMechanicOverrides());
+        root.put("shieldTypeOverrides", DefsQueries.getServerShieldTypeOverrides());
         root.put("configDerived", Config.dumpDerivedForDiagnostics());
 
         Map<String, Object> registeredAttributes = new TreeMap<>();

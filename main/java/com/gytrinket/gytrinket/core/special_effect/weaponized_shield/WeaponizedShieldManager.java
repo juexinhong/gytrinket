@@ -1,4 +1,5 @@
 package com.gytrinket.gytrinket.core.special_effect.weaponized_shield;
+import com.gytrinket.gytrinket.core.defs.DefsQueries;
 
 import com.gytrinket.gytrinket.bootstrap.GyBuses;
 
@@ -80,12 +81,12 @@ public class WeaponizedShieldManager {
         }
 
         double shieldEffectRadius = AttributeManager.getGroupAttribute(playerUUID, "shield_effect_radius");
-        double baseRadius = DefsManager.resolveMechanicValue(player.getServer(), playerUUID,
+        double baseRadius = DefsQueries.resolveMechanicValue(player.getServer(), playerUUID,
                 "weaponized_shield_items", "radius", MechanicValueDefs.defaultValueOf("weaponized_shield_items", "radius", 4));
         double radius = baseRadius * shieldEffectRadius;
 
         double shieldEffect = AttributeManager.getGroupAttribute(playerUUID, "shield_effect");
-        float baseVulnerability = (float) DefsManager.resolveMechanicValue(player.getServer(), playerUUID,
+        float baseVulnerability = (float) DefsQueries.resolveMechanicValue(player.getServer(), playerUUID,
                 "weaponized_shield_items", "vulnerability", MechanicValueDefs.defaultValueOf("weaponized_shield_items", "vulnerability", 0.2));
         float vulnerabilityValue = (float)(baseVulnerability * shieldEffect);
 

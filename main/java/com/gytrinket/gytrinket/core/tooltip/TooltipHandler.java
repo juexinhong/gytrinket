@@ -1,4 +1,5 @@
 package com.gytrinket.gytrinket.core.tooltip;
+import com.gytrinket.gytrinket.core.defs.DefsClientView;
 
 import com.gytrinket.gytrinket.core.defs.DefsTypes;
 
@@ -39,7 +40,7 @@ public class TooltipHandler {
     private static List<TooltipConfig> tooltipRules = null;
 
     private static void ensureTooltipRules() {
-        List<DefsTypes.TooltipRuleDef> rules = DefsManager.clientTooltipRules();
+        List<DefsTypes.TooltipRuleDef> rules = DefsClientView.clientTooltipRules();
         // 数据源数量变化时重建缓存（datapack 可能晚于首次查询加载完成或 /reload 刷新）
         if (tooltipRules != null && tooltipRules.size() == rules.size()) {
             return;
@@ -126,15 +127,15 @@ public class TooltipHandler {
         addTooltip(event, "orbit_array_required", ChatFormatting.GOLD);
         addFormattedTooltip(event, itemId, "orbit_array_effect", ChatFormatting.GRAY,
             (id) -> new Object[]{
-                DefsManager.clientResolveMechanicValueForItem(id, "orbit_array_required_items",
+                DefsClientView.clientResolveMechanicValueForItem(id, "orbit_array_required_items",
                     "attack_speed_multiplier", 1.0D),
-                DefsManager.clientResolveMechanicValueForItem(id, "orbit_array_required_items",
+                DefsClientView.clientResolveMechanicValueForItem(id, "orbit_array_required_items",
                     "orbit_speed_multiplier", 1.0D),
-                DefsManager.clientResolveMechanicValueForItem(id, "orbit_array_required_items",
+                DefsClientView.clientResolveMechanicValueForItem(id, "orbit_array_required_items",
                     "damage_multiplier", 1.0D),
-                DefsManager.clientResolveMechanicValueForItem(id, "orbit_array_required_items",
+                DefsClientView.clientResolveMechanicValueForItem(id, "orbit_array_required_items",
                     "attack_range_multiplier", 1.0D),
-                DefsManager.clientResolveMechanicValueForItem(id, "orbit_array_required_items",
+                DefsClientView.clientResolveMechanicValueForItem(id, "orbit_array_required_items",
                     "target_range_multiplier", 1.0D)
             }
         );
@@ -142,12 +143,12 @@ public class TooltipHandler {
 
     /** 判断物品是否声明了指定特殊机制集合（数据包声明或配置面板物品级覆盖均计入） */
     private static boolean hasSpecialMechanicSet(String itemId, String mechanicSet) {
-        List<String> sets = DefsManager.clientSpecialMechanicSets(itemId);
+        List<String> sets = DefsClientView.clientSpecialMechanicSets(itemId);
         if (sets.contains(mechanicSet)) {
             return true;
         }
         com.gytrinket.gytrinket.core.defs.DefsTypes.SpecialMechanicOverride ov =
-                DefsManager.getClientSpecialMechanicOverride(itemId);
+                DefsClientView.getClientSpecialMechanicOverride(itemId);
         return ov != null && !ov.removed() && ov.values() != null && ov.values().containsKey(mechanicSet);
     }
 
@@ -156,15 +157,15 @@ public class TooltipHandler {
      */
     private static int countModuleMechanicHits(String itemId) {
         int count = 0;
-        if (DefsManager.itemSetContains("drone_module_items", itemId)) count++;
-        if (DefsManager.itemSetContains("assault_drone_module_items", itemId)) count++;
-        if (DefsManager.itemSetContains("defense_drone_module_items", itemId)) count++;
-        if (DefsManager.itemSetContains("wingman_module_items", itemId)) count++;
-        if (DefsManager.itemSetContains("wingman_interceptor_module_items", itemId)) count++;
-        if (DefsManager.itemSetContains("wingman_nano_regen_module_items", itemId)) count++;
-        if (DefsManager.itemSetContains("swarm_module_items", itemId)) count++;
-        if (DefsManager.itemSetContains("barrier_items", itemId)) count++;
-        if (DefsManager.itemSetContains("journey_module_items", itemId)) count++;
+        if (DefsClientView.itemSetContains("drone_module_items", itemId)) count++;
+        if (DefsClientView.itemSetContains("assault_drone_module_items", itemId)) count++;
+        if (DefsClientView.itemSetContains("defense_drone_module_items", itemId)) count++;
+        if (DefsClientView.itemSetContains("wingman_module_items", itemId)) count++;
+        if (DefsClientView.itemSetContains("wingman_interceptor_module_items", itemId)) count++;
+        if (DefsClientView.itemSetContains("wingman_nano_regen_module_items", itemId)) count++;
+        if (DefsClientView.itemSetContains("swarm_module_items", itemId)) count++;
+        if (DefsClientView.itemSetContains("barrier_items", itemId)) count++;
+        if (DefsClientView.itemSetContains("journey_module_items", itemId)) count++;
         if (itemId.equals("gytrinket:quick_reconstruction_module")) count++;
         return count;
     }
@@ -266,7 +267,7 @@ public class TooltipHandler {
         if (def != null) {
             return def.getType();
         }
-        AttributeType clientType = DefsManager.clientAttributeType(attrName);
+        AttributeType clientType = DefsClientView.clientAttributeType(attrName);
         if (clientType != null) {
             return clientType;
         }
@@ -276,7 +277,7 @@ public class TooltipHandler {
     }
 
     private static void addShieldTypesTooltip(ItemTooltipEvent event, String itemId) {
-        List<String> shieldTypes = DefsManager.clientItemShieldTypes(itemId);
+        List<String> shieldTypes = DefsClientView.clientItemShieldTypes(itemId);
         if (shieldTypes.isEmpty()) {
             return;
         }
@@ -307,7 +308,7 @@ public class TooltipHandler {
 
     /** 护盾类型开启穿盾机制时，在描述下追加一行"护盾会被过穿" */
     private static void addShieldPierceThroughLine(ItemTooltipEvent event, String type, String itemId) {
-        if (DefsManager.clientShieldTypeValueForItem(itemId, type, "pierce_through", 0.0D) < 0.5D) {
+        if (DefsClientView.clientShieldTypeValueForItem(itemId, type, "pierce_through", 0.0D) < 0.5D) {
             return;
         }
         event.getToolTip().add(Component.literal("    ")
@@ -323,7 +324,7 @@ public class TooltipHandler {
      */
     private static void addShieldBaseParamsTooltip(ItemTooltipEvent event, String type, String itemId) {
         for (ShieldValueDefs.ParamDef def : ShieldValueDefs.getBaseParams()) {
-            double value = DefsManager.clientResolveShieldParam(itemId, type, def.key(), def.defaultValue());
+            double value = DefsClientView.clientResolveShieldParam(itemId, type, def.key(), def.defaultValue());
 
             MutableComponent nameTooltip = Component.translatable(def.nameKey());
             if (isDefaultTranslation(nameTooltip, def.nameKey())) {
@@ -348,43 +349,43 @@ public class TooltipHandler {
                 // 物品级覆盖值优先，未覆盖回退 Config 全局默认，保证描述与实际生效数值相同
                 if (type.equals("aura")) {
                     formattedDesc = String.format(descTooltip.getString(),
-                        (int) DefsManager.clientShieldTypeValueForItem(itemId, type, "trigger_frequency",
+                        (int) DefsClientView.clientShieldTypeValueForItem(itemId, type, "trigger_frequency",
                             ShieldValueDefs.defaultValueOf("aura", "trigger_frequency", 5.0)),
-                        DefsManager.clientShieldTypeValueForItem(itemId, type, "radius",
+                        DefsClientView.clientShieldTypeValueForItem(itemId, type, "radius",
                             ShieldValueDefs.defaultValueOf("aura", "radius", 3.5)),
-                        DefsManager.clientShieldTypeValueForItem(itemId, type, "damage",
+                        DefsClientView.clientShieldTypeValueForItem(itemId, type, "damage",
                             ShieldValueDefs.defaultValueOf("aura", "damage", 0.75)),
-                        DefsManager.clientShieldTypeValueForItem(itemId, type, "shield_cost",
+                        DefsClientView.clientShieldTypeValueForItem(itemId, type, "shield_cost",
                             ShieldValueDefs.defaultValueOf("aura", "shield_cost", 0.042)),
                         Config.getIgniteDefaultDamage(),
                         Config.getIgniteDefaultDuration());
                 } else if (type.equals("reflect")) {
                     formattedDesc = String.format(descTooltip.getString(),
-                        (int)(DefsManager.clientShieldTypeValueForItem(itemId, type, "speed_base_modifier",
+                        (int)(DefsClientView.clientShieldTypeValueForItem(itemId, type, "speed_base_modifier",
                             ShieldValueDefs.defaultValueOf("reflect", "speed_base_modifier", 1.5)) * 100),
-                        DefsManager.clientShieldTypeValueForItem(itemId, type, "damage_effect_multiplier",
+                        DefsClientView.clientShieldTypeValueForItem(itemId, type, "damage_effect_multiplier",
                             ShieldValueDefs.defaultValueOf("reflect", "damage_effect_multiplier", 1.0)));
                 } else if (type.equals("amplification")) {
                     formattedDesc = String.format(descTooltip.getString(),
-                        (int)(DefsManager.clientShieldTypeValueForItem(itemId, type, "base_amplification",
+                        (int)(DefsClientView.clientShieldTypeValueForItem(itemId, type, "base_amplification",
                             ShieldValueDefs.defaultValueOf("amplification", "base_amplification", 0.2)) * 100),
-                        (int)(DefsManager.clientShieldTypeValueForItem(itemId, type, "max_amplification",
+                        (int)(DefsClientView.clientShieldTypeValueForItem(itemId, type, "max_amplification",
                             ShieldValueDefs.defaultValueOf("amplification", "max_amplification", 1.0)) * 100),
-                        (int)(DefsManager.clientShieldTypeValueForItem(itemId, type, "movement_speed_bonus",
+                        (int)(DefsClientView.clientShieldTypeValueForItem(itemId, type, "movement_speed_bonus",
                             ShieldValueDefs.defaultValueOf("amplification", "movement_speed_bonus", 0.2)) * 100));
                 } else if (type.equals("warp")) {
                     formattedDesc = String.format(descTooltip.getString(),
-                        DefsManager.clientShieldTypeValueForItem(itemId, type, "explosion_damage",
+                        DefsClientView.clientShieldTypeValueForItem(itemId, type, "explosion_damage",
                             ShieldValueDefs.defaultValueOf("warp", "explosion_damage", 7.5)));
                 } else if (type.equals("siphon")) {
                     formattedDesc = String.format(descTooltip.getString(),
-                        DefsManager.clientShieldTypeValueForItem(itemId, type, "tick_interval",
+                        DefsClientView.clientShieldTypeValueForItem(itemId, type, "tick_interval",
                             ShieldValueDefs.defaultValueOf("siphon", "tick_interval", 5.0)),
-                        DefsManager.clientShieldTypeValueForItem(itemId, type, "damage",
+                        DefsClientView.clientShieldTypeValueForItem(itemId, type, "damage",
                             ShieldValueDefs.defaultValueOf("siphon", "damage", 0.3)),
-                        (int)(DefsManager.clientShieldTypeValueForItem(itemId, type, "heal_ratio",
+                        (int)(DefsClientView.clientShieldTypeValueForItem(itemId, type, "heal_ratio",
                             ShieldValueDefs.defaultValueOf("siphon", "heal_ratio", 0.3)) * 100),
-                        (int)(DefsManager.clientShieldTypeValueForItem(itemId, type, "max_effect",
+                        (int)(DefsClientView.clientShieldTypeValueForItem(itemId, type, "max_effect",
                             ShieldValueDefs.defaultValueOf("siphon", "max_effect", 0.4)) * 100));
                 }
                 event.getToolTip().add(Component.literal("    ").append(Component.literal(formattedDesc).withStyle(ChatFormatting.GRAY)));
@@ -396,17 +397,17 @@ public class TooltipHandler {
 
     /** 模块硬编码机制 tooltip：折叠时只显示机制标题（描述按 Shift 展开） */
     private static void addModuleTooltips(ItemTooltipEvent event, String itemId, boolean collapse) {
-        if (DefsManager.itemSetContains("drone_module_items", itemId)) {
+        if (DefsClientView.itemSetContains("drone_module_items", itemId)) {
             addTooltip(event, "drone_module", ChatFormatting.GRAY);
             if (!collapse) addDroneModuleDescTooltip(event, itemId);
         }
 
-        if (DefsManager.itemSetContains("assault_drone_module_items", itemId)) {
+        if (DefsClientView.itemSetContains("assault_drone_module_items", itemId)) {
             addTooltip(event, "assault_drone_module", ChatFormatting.GOLD);
             if (!collapse) addTooltip(event, "assault_drone_module_desc", ChatFormatting.RED);
         }
 
-        if (DefsManager.itemSetContains("defense_drone_module_items", itemId)) {
+        if (DefsClientView.itemSetContains("defense_drone_module_items", itemId)) {
             addTooltip(event, "defense_drone_module", ChatFormatting.BLUE);
             if (!collapse) addTooltip(event, "defense_drone_module_desc", ChatFormatting.RED);
         }
@@ -416,27 +417,27 @@ public class TooltipHandler {
             if (!collapse) addTooltip(event, "quick_reconstruction_module_desc", ChatFormatting.RED);
         }
 
-        if (DefsManager.itemSetContains("wingman_module_items", itemId)) {
+        if (DefsClientView.itemSetContains("wingman_module_items", itemId)) {
             addTooltip(event, "wingman_module", ChatFormatting.GRAY);
             if (!collapse) addWingmanModuleDescTooltip(event);
         }
 
-        if (DefsManager.itemSetContains("wingman_interceptor_module_items", itemId)) {
+        if (DefsClientView.itemSetContains("wingman_interceptor_module_items", itemId)) {
             addTooltip(event, "wingman_interceptor_module", ChatFormatting.GRAY);
             if (!collapse) addInterceptorModuleDescTooltip(event);
         }
 
-        if (DefsManager.itemSetContains("wingman_nano_regen_module_items", itemId)) {
+        if (DefsClientView.itemSetContains("wingman_nano_regen_module_items", itemId)) {
             addTooltip(event, "wingman_nano_regen_module", ChatFormatting.GREEN);
             if (!collapse) addNanoRegenModuleDescTooltip(event, itemId);
         }
 
-        if (DefsManager.itemSetContains("swarm_module_items", itemId)) {
+        if (DefsClientView.itemSetContains("swarm_module_items", itemId)) {
             addTooltip(event, "swarm_module", ChatFormatting.GRAY);
             if (!collapse) addMothershipBodyDescTooltip(event);
         }
 
-        if (DefsManager.itemSetContains("barrier_items", itemId)) {
+        if (DefsClientView.itemSetContains("barrier_items", itemId)) {
             addTooltip(event, "barrier", ChatFormatting.DARK_PURPLE);
             if (!collapse) addFormattedTooltip(event, itemId, "barrier_effect", ChatFormatting.DARK_PURPLE,
                 (id) -> {
@@ -445,7 +446,7 @@ public class TooltipHandler {
                 });
         }
 
-        if (DefsManager.itemSetContains("journey_module_items", itemId)) {
+        if (DefsClientView.itemSetContains("journey_module_items", itemId)) {
             addTooltip(event, "journey_module", ChatFormatting.GOLD);
             if (!collapse) addJourneyModuleDescTooltip(event, itemId);
         }
@@ -485,13 +486,13 @@ public class TooltipHandler {
                 double fallbackDamage = MechanicValueDefs.defaultValueOf("drone_module_items", "base_damage", 0.3);
                 double fallbackInterval = MechanicValueDefs.defaultValueOf("drone_module_items", "attack_interval", 0.5);
                 // 物品级覆盖值优先（client 覆盖层），未覆盖回退上述默认（与运行时实例参数解析一致）
-                double maxCount = DefsManager.clientResolveMechanicValueForItem(
+                double maxCount = DefsClientView.clientResolveMechanicValueForItem(
                         itemId, "drone_module_items", "base_count", fallbackCount);
-                double maxHealth = DefsManager.clientResolveMechanicValueForItem(
+                double maxHealth = DefsClientView.clientResolveMechanicValueForItem(
                         itemId, "drone_module_items", "base_health", fallbackHealth);
-                double damage = DefsManager.clientResolveMechanicValueForItem(
+                double damage = DefsClientView.clientResolveMechanicValueForItem(
                         itemId, "drone_module_items", "base_damage", fallbackDamage);
-                double interval = DefsManager.clientResolveMechanicValueForItem(
+                double interval = DefsClientView.clientResolveMechanicValueForItem(
                         itemId, "drone_module_items", "attack_interval", fallbackInterval);
                 if (interval <= 0.0D) interval = fallbackInterval;
                 double attackSpeed = 1.0 / interval;
@@ -574,8 +575,8 @@ public class TooltipHandler {
     }
 
     private static void addAdaptiveArmorTooltip(ItemTooltipEvent event, String itemId) {
-        boolean isAdaptiveArmorItem = DefsManager.itemSetContains("adaptive_armor_items", itemId);
-        boolean isBondItem = DefsManager.itemSetContains("adaptive_armor_shield_effect_items", itemId);
+        boolean isAdaptiveArmorItem = DefsClientView.itemSetContains("adaptive_armor_items", itemId);
+        boolean isBondItem = DefsClientView.itemSetContains("adaptive_armor_shield_effect_items", itemId);
 
         if (isAdaptiveArmorItem) {
             event.getToolTip().add(Component.literal("").withStyle(ChatFormatting.GRAY));

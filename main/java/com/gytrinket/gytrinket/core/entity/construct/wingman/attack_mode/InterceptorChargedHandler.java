@@ -1,4 +1,5 @@
 package com.gytrinket.gytrinket.core.entity.construct.wingman.attack_mode;
+import com.gytrinket.gytrinket.core.defs.DefsQueries;
 
 import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.defs.MechanicValueDefs;
@@ -253,7 +254,7 @@ public class InterceptorChargedHandler implements InterceptorAttackModeHandler {
         double grudgeRate = 0;
         if (totalLost > 0) {
             // 物品级数值覆盖：取首个生效物品的覆盖值，未覆盖回退 Config 默认
-            double conversionRatio = DefsManager.resolveMechanicValue(owner.getServer(), ownerUUID,
+            double conversionRatio = DefsQueries.resolveMechanicValue(owner.getServer(), ownerUUID,
                     "grudge_items", "conversion_ratio", MechanicValueDefs.defaultValueOf("grudge_items", "conversion_ratio", 0.2));
             grudgeRate = totalLost * conversionRatio;
         }

@@ -1,4 +1,5 @@
 package com.gytrinket.gytrinket.core.level;
+import com.gytrinket.gytrinket.core.defs.DefsItemOverrides;
 
 import com.gytrinket.gytrinket.core.defs.DefsManager;
 import com.gytrinket.gytrinket.gytrinket;
@@ -38,7 +39,7 @@ public class ModLevelEventHandler {
     @SubscribeEvent
     public static void onServerStarted(ServerStartedEvent event) {
         MinecraftServer server = event.getServer();
-        DefsManager.applyOverrides(server);
+        DefsItemOverrides.applyOverrides(server);
     }
 
     /** 玩家登录时同步光点等级数据与定义数据到客户端（HUD、面板、提示等需要初始值） */

@@ -1,4 +1,5 @@
 package com.gytrinket.gytrinket.core.entity.construct.wingman;
+import com.gytrinket.gytrinket.core.defs.DefsQueries;
 
 import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.defs.DefsManager;
@@ -132,7 +133,7 @@ public class WingmanManager {
             // 实例化机制：命中 Config 僚机模块物品、或声明 wingman_module_items 机制集的
             // 物品各成一个实例（并集）；实例键为物品 ID
             if (Config.isWingmanModuleItem(item)
-                    || (server != null && DefsManager.getEffectiveSpecialMechanicSets(itemId)
+                    || (server != null && DefsQueries.getEffectiveSpecialMechanicSets(itemId)
                             .contains(WingmanInstanceParams.MECHANIC_SET))) {
                 instanceItems.add(itemId);
             }

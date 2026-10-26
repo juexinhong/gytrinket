@@ -1,4 +1,5 @@
 package com.gytrinket.gytrinket.core.attack_mode;
+import com.gytrinket.gytrinket.core.defs.DefsQueries;
 
 import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.defs.MechanicValueDefs;
@@ -105,7 +106,7 @@ public class GrudgeManager {
 
             if (totalLost > 0) {
                 // 物品级数值覆盖：取首个生效物品的覆盖值，未覆盖回退 Config 默认
-                double conversionRatio = DefsManager.resolveMechanicValue(player.getServer(), uuid,
+                double conversionRatio = DefsQueries.resolveMechanicValue(player.getServer(), uuid,
                         "grudge_items", "conversion_ratio", MechanicValueDefs.defaultValueOf("grudge_items", "conversion_ratio", 0.2));
                 data.rateValue += totalLost * conversionRatio;
             }
@@ -115,9 +116,9 @@ public class GrudgeManager {
 
             // 快速消退：每tick消退 max(fadeBase, 当前值 * fadePercent)
             if (data.rateValue > 0) {
-                double fadeBase = DefsManager.resolveMechanicValue(player.getServer(), uuid,
+                double fadeBase = DefsQueries.resolveMechanicValue(player.getServer(), uuid,
                         "grudge_items", "fade_base", MechanicValueDefs.defaultValueOf("grudge_items", "fade_base", 0.00001));
-                double fadePercent = DefsManager.resolveMechanicValue(player.getServer(), uuid,
+                double fadePercent = DefsQueries.resolveMechanicValue(player.getServer(), uuid,
                         "grudge_items", "fade_percent", MechanicValueDefs.defaultValueOf("grudge_items", "fade_percent", 0.02));
                 double decay = Math.max(fadeBase, data.rateValue * fadePercent);
                 data.rateValue -= decay;

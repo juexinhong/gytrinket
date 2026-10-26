@@ -1,4 +1,5 @@
 package com.gytrinket.gytrinket.core.entity.construct.swarm;
+import com.gytrinket.gytrinket.core.defs.DefsQueries;
 
 import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.defs.DefsManager;
@@ -139,7 +140,7 @@ public class SwarmManager {
             // 实例化机制：命中 Config 蜂群模块物品、或声明 swarm_module_items 机制集的
             // 物品各成一个实例（并集）；实例键为物品 ID
             if (Config.isSwarmModuleItem(item)
-                    || (server != null && DefsManager.getEffectiveSpecialMechanicSets(itemId)
+                    || (server != null && DefsQueries.getEffectiveSpecialMechanicSets(itemId)
                             .contains(SwarmInstanceParams.MECHANIC_SET))) {
                 instanceItems.add(itemId);
             }

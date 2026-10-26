@@ -1,4 +1,5 @@
 package com.gytrinket.gytrinket.network.packet;
+import com.gytrinket.gytrinket.core.defs.DefsItemOverrides;
 
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
 import com.gytrinket.gytrinket.core.defs.DefsManager;
@@ -37,7 +38,7 @@ public class ConfigRemoveAttrMessage {
             if (!player.hasPermissions(2)) return;
 
             // 从覆写层移除单条属性（剩余集整体写回；显式空 = 覆盖为无属性）
-            DefsManager.removeItemAttribute(player.server, itemId, attributeName);
+            DefsItemOverrides.removeItemAttribute(player.server, itemId, attributeName);
 
             for (var p : player.server.getPlayerList().getPlayers()) {
                 AttributeManager.recalculateAndCachePlayerAttributes(p);

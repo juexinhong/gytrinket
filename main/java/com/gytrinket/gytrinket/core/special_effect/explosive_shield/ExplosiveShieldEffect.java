@@ -1,4 +1,5 @@
 package com.gytrinket.gytrinket.core.special_effect.explosive_shield;
+import com.gytrinket.gytrinket.core.defs.DefsQueries;
 
 import com.gytrinket.gytrinket.core.damage.DamageSourcesCompat;
 
@@ -44,12 +45,12 @@ public class ExplosiveShieldEffect {
         }
 
         double shieldEffectRadius = AttributeManager.getGroupAttribute(player.getUUID(), "shield_effect_radius");
-        double baseRadius = DefsManager.resolveMechanicValue(player.getServer(), player.getUUID(),
+        double baseRadius = DefsQueries.resolveMechanicValue(player.getServer(), player.getUUID(),
                 "explosive_shield_items", "radius", MechanicValueDefs.defaultValueOf("explosive_shield_items", "radius", 4));
         double radius = baseRadius * shieldEffectRadius;
 
         double shieldEffect = AttributeManager.getGroupAttribute(player.getUUID(), "shield_effect");
-        double baseDamage = DefsManager.resolveMechanicValue(player.getServer(), player.getUUID(),
+        double baseDamage = DefsQueries.resolveMechanicValue(player.getServer(), player.getUUID(),
                 "explosive_shield_items", "base_damage", MechanicValueDefs.defaultValueOf("explosive_shield_items", "base_damage", 10));
         float damage = (float)(baseDamage * shieldEffect);
 

@@ -1,4 +1,5 @@
 package com.gytrinket.gytrinket.core.shield.cooldown;
+import com.gytrinket.gytrinket.core.defs.DefsQueries;
 
 import com.gytrinket.gytrinket.bootstrap.GyBuses;
 
@@ -142,10 +143,10 @@ public class ShieldCooldownManager {
 
         for (ShieldInstance instance : coolingInstances) {
             String itemId = instance.getItemId();
-            double extend = DefsManager.resolveShieldParam(ServerLifecycleHooks.getCurrentServer(), itemId, instance.getShieldTypeName(),
+            double extend = DefsQueries.resolveShieldParam(ServerLifecycleHooks.getCurrentServer(), itemId, instance.getShieldTypeName(),
                     "shield_hit_cooldown_extend",
                     AttributeManager.getPlayerAttribute(playerUUID, "shield_hit_cooldown_extend")) * extendMultiplier;
-            double multiplier = DefsManager.resolveShieldParam(ServerLifecycleHooks.getCurrentServer(), itemId, instance.getShieldTypeName(),
+            double multiplier = DefsQueries.resolveShieldParam(ServerLifecycleHooks.getCurrentServer(), itemId, instance.getShieldTypeName(),
                     "shield_hit_cooldown_extend_multiplier",
                     AttributeManager.getPlayerAttribute(playerUUID, "shield_hit_cooldown_extend_multiplier")) * multMultiplier;
 

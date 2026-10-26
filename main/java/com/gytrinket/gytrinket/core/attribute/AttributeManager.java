@@ -1,4 +1,5 @@
 package com.gytrinket.gytrinket.core.attribute;
+import com.gytrinket.gytrinket.core.defs.DefsQueries;
 
 import com.gytrinket.gytrinket.core.defs.DefsTypes;
 
@@ -186,7 +187,7 @@ public class AttributeManager {
         // 已装备物品 = 光点核心存储 + Curios 饰品栏（光点核心内容扩展）
         // 属性数据源 = 统一物品定义（覆写层优先 → 权威 item_definitions），同 id 装备多件只生效一份
         for (String itemId : PlayerStoreUtils.getAllEquippedItemIds(playerUUID)) {
-            Map<String, DefsTypes.ParamValue> itemAttrs = DefsManager.getEffectiveItemAttributes(itemId);
+            Map<String, DefsTypes.ParamValue> itemAttrs = DefsQueries.getEffectiveItemAttributes(itemId);
             if (itemAttrs != null && !itemAttrs.isEmpty()) {
                 if (DisableSystem.isItemDisabled(playerUUID, itemId)) {
                 } else if (processedItems.contains(itemId)) {

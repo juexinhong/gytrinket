@@ -1,4 +1,5 @@
 package com.gytrinket.gytrinket.core.entity.construct.drone.behavior;
+import com.gytrinket.gytrinket.core.defs.DefsQueries;
 
 import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.shield.DisableSystem;
@@ -177,7 +178,7 @@ public class ReshapingBehavior implements IDroneSpecialBehavior {
         if (ownerUUID == null) return false;
         MinecraftServer server = drone.getLevel().getServer();
         if (server == null) return false;
-        return DefsManager.playerHasEquippedMechanic(server, ownerUUID, "reshaping_items");
+        return DefsQueries.playerHasEquippedMechanic(server, ownerUUID, "reshaping_items");
     }
 
     private static class PlayerDamageReductionInfo {

@@ -1,4 +1,5 @@
 package com.gytrinket.gytrinket.core.shield;
+import com.gytrinket.gytrinket.core.defs.DefsQueries;
 
 import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.defs.MechanicValueDefs;
@@ -107,9 +108,9 @@ public class ChargedShieldManager {
         if (isCharging) {
             // 充能中：线性过渡到目标值（物品级数值覆盖：取首个生效物品的覆盖值，未覆盖回退 Config 默认）
             double chargeValue = ChargedAttackManager.getChargeValue(player);
-            double chargeRatio = DefsManager.resolveMechanicValue(player.getServer(), uuid,
+            double chargeRatio = DefsQueries.resolveMechanicValue(player.getServer(), uuid,
                     "charged_shield_items", "charge_ratio", MechanicValueDefs.defaultValueOf("charged_shield_items", "charge_ratio", 0.1));
-            double maxBonus = DefsManager.resolveMechanicValue(player.getServer(), uuid,
+            double maxBonus = DefsQueries.resolveMechanicValue(player.getServer(), uuid,
                     "charged_shield_items", "max_bonus", MechanicValueDefs.defaultValueOf("charged_shield_items", "max_bonus", 0.8));
             double targetBonus = Math.min(chargeValue * chargeRatio, maxBonus);
 
@@ -120,7 +121,7 @@ public class ChargedShieldManager {
             }
 
             // 线性过渡
-            double transitionRate = DefsManager.resolveMechanicValue(player.getServer(), uuid,
+            double transitionRate = DefsQueries.resolveMechanicValue(player.getServer(), uuid,
                     "charged_shield_items", "decay_rate", MechanicValueDefs.defaultValueOf("charged_shield_items", "decay_rate", 0.08));
             if (currentBonus < targetBonus) {
                 currentBonus = Math.min(currentBonus + transitionRate, targetBonus);
@@ -137,7 +138,7 @@ public class ChargedShieldManager {
             }
         } else if (currentBonus > 0) {
             // 延迟结束后：线性过渡到0
-            double transitionRate = DefsManager.resolveMechanicValue(player.getServer(), uuid,
+            double transitionRate = DefsQueries.resolveMechanicValue(player.getServer(), uuid,
                     "charged_shield_items", "decay_rate", MechanicValueDefs.defaultValueOf("charged_shield_items", "decay_rate", 0.08));
             currentBonus = Math.max(0, currentBonus - transitionRate);
 

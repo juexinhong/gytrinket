@@ -1,4 +1,6 @@
 package com.gytrinket.gytrinket.core.entity.construct.drone;
+import com.gytrinket.gytrinket.core.defs.DefsClientView;
+import com.gytrinket.gytrinket.core.defs.DefsQueries;
 
 import com.gytrinket.gytrinket.core.defs.DefsManager;
 import net.minecraft.server.MinecraftServer;
@@ -117,7 +119,7 @@ public final class DroneArrayParams {
     private static double resolve(@Nullable MinecraftServer server, @Nullable UUID playerUUID,
                                   String arraySet, String paramKey, double fallback) {
         if (server == null || playerUUID == null) return fallback;
-        return DefsManager.resolveMechanicValue(server, playerUUID, arraySet, paramKey, fallback);
+        return DefsQueries.resolveMechanicValue(server, playerUUID, arraySet, paramKey, fallback);
     }
 
     /**
@@ -133,7 +135,7 @@ public final class DroneArrayParams {
             return resolve(server, owner.getUUID(), arraySet, paramKey, fallback);
         }
         if (owner.getLevel().isClientSide && owner instanceof net.minecraft.world.entity.player.Player p) {
-            return DefsManager.clientResolveMechanicValue(p, arraySet, paramKey, fallback);
+            return DefsClientView.clientResolveMechanicValue(p, arraySet, paramKey, fallback);
         }
         return fallback;
     }

@@ -1,4 +1,5 @@
 package com.gytrinket.gytrinket.core.entity.construct.drone.behavior;
+import com.gytrinket.gytrinket.core.defs.DefsQueries;
 
 import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.damage.InvincibilityMarkerManager;
@@ -210,7 +211,7 @@ public class NearDeathExplosionBehavior implements IDroneSpecialBehavior {
         if (server == null) {
             return false;
         }
-        return DefsManager.playerHasEquippedMechanic(server, ownerUUID, "near_death_explosion_items");
+        return DefsQueries.playerHasEquippedMechanic(server, ownerUUID, "near_death_explosion_items");
     }
 }
 

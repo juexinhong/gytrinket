@@ -1,4 +1,5 @@
 package com.gytrinket.gytrinket.network.packet;
+import com.gytrinket.gytrinket.core.defs.DefsItemOverrides;
 
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
 import com.gytrinket.gytrinket.core.defs.DefsManager;
@@ -33,7 +34,7 @@ public class ConfigDeleteItemMessage {
             if (!player.hasPermissions(2)) return;
 
             // UI 删除物品（三态）：无数据文件→真删除；有数据文件→写禁用态；已禁用→回退数据文件版本
-            DefsManager.deleteItemOverride(player.server, itemId);
+            DefsItemOverrides.deleteItemOverride(player.server, itemId);
 
             for (var p : player.server.getPlayerList().getPlayers()) {
                 AttributeManager.recalculateAndCachePlayerAttributes(p);

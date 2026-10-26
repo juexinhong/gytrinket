@@ -1,4 +1,5 @@
 package com.gytrinket.gytrinket.event;
+import com.gytrinket.gytrinket.core.defs.DefsQueries;
 
 import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.defs.MechanicValueDefs;
@@ -36,7 +37,7 @@ public class PrecisionConstructEventHandler {
 
         int level = Math.max(0, ModLevelManager.getModLevel(playerUUID));
         // 物品级数值覆盖：取首个生效物品的覆盖值，未覆盖回退 Config 默认
-        double bonusPerLevel = DefsManager.resolveMechanicValue(player.getServer(), playerUUID,
+        double bonusPerLevel = DefsQueries.resolveMechanicValue(player.getServer(), playerUUID,
                 "precision_construct_items", "bonus_per_level", MechanicValueDefs.defaultValueOf("precision_construct_items", "bonus_per_level", 0.0025));
         double bonus = level * bonusPerLevel;
 

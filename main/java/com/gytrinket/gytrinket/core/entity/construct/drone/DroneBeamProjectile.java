@@ -180,7 +180,7 @@ public class DroneBeamProjectile extends Entity {
             hitbox.hurt(fireDamageSource, fireDamage);
 
             if (realAttacker instanceof DroneConstructEntity droneShooter && droneShooter.isCommanderDrone()) {
-                net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(
+                com.gytrinket.gytrinket.bootstrap.GyBuses.INTERNAL.post(
                     new com.gytrinket.gytrinket.core.vulnerability.VulnerabilityApplyEvent(
                         "commander", com.gytrinket.gytrinket.config.Config.COMMANDER_VULNERABILITY.get().floatValue(), target, true
                     )

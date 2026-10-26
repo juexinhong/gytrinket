@@ -30,7 +30,6 @@ public class EngineeringFuselageItemChecker {
 
     private EngineeringFuselageItemChecker() {}
 
-    @SubscribeEvent(priority = EventPriority.LOW)
     public static void onAttributesCalculated(PlayerAttributesCalculatedEvent event) {
         UUID playerUUID = event.getPlayerUUID();
         Player player = event.getPlayer();
@@ -55,7 +54,6 @@ public class EngineeringFuselageItemChecker {
      * <p>
      * 当构造体被部署或移除时，未部署数量发生变化，需要重新计算构建速度加成。
      */
-    @SubscribeEvent
     public static void onConstructListChanged(PlayerConstructListChangedEvent event) {
         UUID playerUUID = event.getPlayerUUID();
         Player player = event.getPlayer();

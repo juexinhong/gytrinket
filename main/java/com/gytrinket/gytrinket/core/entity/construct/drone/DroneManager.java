@@ -181,7 +181,6 @@ public class DroneManager {
      *
      * @param event 属性计算完毕事件
      */
-    @SubscribeEvent
     public static void onAttributesCalculated(PlayerAttributesCalculatedEvent event) {
         UUID playerUUID = event.getPlayerUUID();
         net.minecraft.server.MinecraftServer server = ServerLifecycleHooks.getCurrentServer();

@@ -124,7 +124,6 @@ public class SwarmManager {
     /**
      * 监听属性计算完毕事件，检测玩家是否拥有蜂群构建物品
      */
-    @SubscribeEvent
     public static void onAttributesCalculated(PlayerAttributesCalculatedEvent event) {
         UUID playerUUID = event.getPlayerUUID();
         net.minecraft.server.MinecraftServer server = ServerLifecycleHooks.getCurrentServer();

@@ -32,7 +32,6 @@ public class PlayerHealthManager {
     /** 未加转化固定修正的乘后最大生命（转化机制的比较基准，避免从含修正的 maxHealth 反推失真） */
     private static final Map<UUID, Float> PLAYER_NO_FLAT_MAX_HEALTH_MAP = new ConcurrentHashMap<>();
 
-    @SubscribeEvent
     public static void onAttributesCalculated(PlayerAttributesCalculatedEvent event) {
         UUID playerUUID = event.getPlayerUUID();
 
@@ -51,7 +50,6 @@ public class PlayerHealthManager {
         applyHealthModifiers(playerUUID, player);
     }
 
-    @SubscribeEvent
     public static void onAttributeDynamicChange(AttributeDynamicChangeEvent event) {
         UUID playerUUID = event.getPlayerUUID();
         String attrName = event.getAttributeName();

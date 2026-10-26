@@ -35,7 +35,6 @@ public class AttackSpeedManager {
 
     private static final Map<UUID, Double> PLAYER_ATTACK_SPEED_MAP = new ConcurrentHashMap<>();
 
-    @SubscribeEvent
     public static void onAttributesCalculated(PlayerAttributesCalculatedEvent event) {
         UUID playerUUID = event.getPlayerUUID();
 
@@ -76,7 +75,6 @@ public class AttackSpeedManager {
         PLAYER_ATTACK_SPEED_MAP.put(playerUUID, player.getAttributeValue(Attributes.ATTACK_SPEED));
     }
 
-    @SubscribeEvent
     public static void onAttributeDynamicChange(AttributeDynamicChangeEvent event) {
         UUID playerUUID = event.getPlayerUUID();
         String attrName = event.getAttributeName();

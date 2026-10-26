@@ -1,7 +1,7 @@
 package com.gytrinket.gytrinket.event;
 
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.eventbus.api.Event;
+import com.gytrinket.gytrinket.engine.bus.GyEvent;
 
 import java.util.UUID;
 
@@ -12,7 +12,7 @@ import java.util.UUID;
  * <p>
  * 可用于触发粒子效果、音效或其他护盾破裂相关的逻辑。
  */
-public class ShieldBreakEvent extends Event {
+public class ShieldBreakEvent implements GyEvent {
 
     private final UUID playerUUID;
     private final Player player;

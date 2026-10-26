@@ -285,7 +285,7 @@ public class ChargedAttackManager {
         double chargeValue = releaseCharge(uuid, false);
         if (chargeValue > 0) {
             // 发布释放事件（供幽灵机身等系统使用）
-            net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(
+            com.gytrinket.gytrinket.bootstrap.GyBuses.INTERNAL.post(
                 new ChargedAttackEvent(ChargedAttackEvent.Type.RELEASED, player));
 
             // 同步释放后的充能值到客户端（HUD进入消退显示）
@@ -360,7 +360,7 @@ public class ChargedAttackManager {
                 updateCharging(uuid, player);
 
                 // 发布充能tick事件
-                net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(
+                com.gytrinket.gytrinket.bootstrap.GyBuses.INTERNAL.post(
                     new ChargedAttackEvent(ChargedAttackEvent.Type.CHARGING, player));
 
                 // 每3 tick同步充能值到客户端
@@ -375,7 +375,7 @@ public class ChargedAttackManager {
                 updateCharging(uuid, player);
 
                 // 发布充能tick事件
-                net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(
+                com.gytrinket.gytrinket.bootstrap.GyBuses.INTERNAL.post(
                     new ChargedAttackEvent(ChargedAttackEvent.Type.CHARGING, player));
 
                 // 每3 tick同步充能值到客户端
@@ -393,7 +393,7 @@ public class ChargedAttackManager {
                 double chargeValue = releaseCharge(uuid);
                 if (chargeValue > 0) {
                     // 发布释放事件
-                    net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(
+                    com.gytrinket.gytrinket.bootstrap.GyBuses.INTERNAL.post(
                         new ChargedAttackEvent(ChargedAttackEvent.Type.RELEASED, player));
 
                     // 通知客户端释放攻击

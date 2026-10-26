@@ -1,6 +1,6 @@
 package com.gytrinket.gytrinket.core.level;
 
-import net.minecraftforge.eventbus.api.Event;
+import com.gytrinket.gytrinket.engine.bus.GyEvent;
 
 import java.util.UUID;
 
@@ -8,7 +8,7 @@ import java.util.UUID;
  * 光点等级变动事件
  * 当玩家的光点等级发生变化时触发（升级或降级）
  */
-public class ModLevelChangeEvent extends Event {
+public class ModLevelChangeEvent implements GyEvent {
 
     private final UUID playerUUID;
     private final int oldLevel;

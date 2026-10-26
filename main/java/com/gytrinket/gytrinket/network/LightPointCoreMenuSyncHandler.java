@@ -17,7 +17,6 @@ public class LightPointCoreMenuSyncHandler {
 
     private LightPointCoreMenuSyncHandler() {}
 
-    @SubscribeEvent
     public static void onPlayerAttributesPost(PlayerAttributesUpdateEvent.Post event) {
         var server = ServerLifecycleHooks.getCurrentServer();
         if (server == null) return;

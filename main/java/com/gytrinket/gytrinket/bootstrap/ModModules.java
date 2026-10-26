@@ -6,6 +6,7 @@ import com.gytrinket.gytrinket.bootstrap.modules.CompatModule;
 import com.gytrinket.gytrinket.bootstrap.modules.ConfigModule;
 import com.gytrinket.gytrinket.bootstrap.modules.ConstructModule;
 import com.gytrinket.gytrinket.bootstrap.modules.DamageModule;
+import com.gytrinket.gytrinket.bootstrap.modules.EventWiringModule;
 import com.gytrinket.gytrinket.bootstrap.modules.NetworkModule;
 import com.gytrinket.gytrinket.bootstrap.modules.RegistryModule;
 import com.gytrinket.gytrinket.bootstrap.modules.ShieldModule;
@@ -42,6 +43,7 @@ public final class ModModules {
                 new StorageModule(),
                 new NetworkModule(),
                 new TickModule(),
+                new EventWiringModule(),
                 new CompatModule(),
                 placeholder("core.command", "core.registry"),
                 new ClientModule()

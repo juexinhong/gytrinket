@@ -23,7 +23,6 @@ public class AssaultItemChecker {
 
     private AssaultItemChecker() {}
 
-    @SubscribeEvent
     public static void onAttributesCalculated(PlayerAttributesCalculatedEvent event) {
         UUID playerUUID = event.getPlayerUUID();
         Player player = event.getPlayer();

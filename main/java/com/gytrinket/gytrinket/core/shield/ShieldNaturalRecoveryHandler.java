@@ -106,7 +106,6 @@ public class ShieldNaturalRecoveryHandler {
     /**
      * 监听属性计算完毕事件，检测玩家是否有护盾自然恢复物品
      */
-    @SubscribeEvent
     public static void onAttributesCalculated(PlayerAttributesCalculatedEvent event) {
         UUID playerUUID = event.getPlayerUUID();
 
@@ -138,7 +137,6 @@ public class ShieldNaturalRecoveryHandler {
      * 监听护盾破裂事件
      * 设置玩家生命恢复修正值为1，护盾自然恢复修正值为1
      */
-    @SubscribeEvent
     public static void onShieldBreak(ShieldBreakEvent event) {
         UUID playerUUID = event.getPlayerUUID();
 
@@ -151,7 +149,6 @@ public class ShieldNaturalRecoveryHandler {
      * 监听护盾冷却完成事件
      * 设置玩家生命恢复修正值为配置值，护盾自然恢复修正值为配置值
      */
-    @SubscribeEvent
     public static void onShieldCooldownComplete(ShieldCooldownCompleteEvent event) {
         UUID playerUUID = event.getPlayerUUID();
 

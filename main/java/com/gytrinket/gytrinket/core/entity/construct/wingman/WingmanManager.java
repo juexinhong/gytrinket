@@ -116,7 +116,6 @@ public class WingmanManager {
     /**
      * 监听属性计算完毕事件，检测玩家是否拥有僚机构建物品
      */
-    @SubscribeEvent
     public static void onAttributesCalculated(PlayerAttributesCalculatedEvent event) {
         UUID playerUUID = event.getPlayerUUID();
         net.minecraft.server.MinecraftServer server = ServerLifecycleHooks.getCurrentServer();

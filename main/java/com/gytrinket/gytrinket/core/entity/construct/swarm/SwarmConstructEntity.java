@@ -1,5 +1,7 @@
 package com.gytrinket.gytrinket.core.entity.construct.swarm;
 
+import com.gytrinket.gytrinket.bootstrap.GyBuses;
+
 import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.defs.MechanicValueDefs;
 import com.gytrinket.gytrinket.core.attack_mode.electric_discharge.ElectricDischargeManager;
@@ -586,7 +588,7 @@ public class SwarmConstructEntity extends AbstractConstructEntity {
 
                 // 施加可叠加易伤（与伤害同时刻结算，与无人机子弹模式一致）
                 if (vulnValue > 0.0f) {
-                    MinecraftForge.EVENT_BUS.post(
+                    GyBuses.INTERNAL.post(
                         new VulnerabilityApplyEvent("swarm_arc", vulnValue, t, true)
                     );
                 }

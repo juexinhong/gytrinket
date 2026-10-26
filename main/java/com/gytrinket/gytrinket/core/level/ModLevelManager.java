@@ -1,5 +1,7 @@
 package com.gytrinket.gytrinket.core.level;
 
+import com.gytrinket.gytrinket.bootstrap.GyBuses;
+
 import com.gytrinket.gytrinket.gytrinket;
 import com.gytrinket.gytrinket.storage.datacenter.PlayerDataCenter;
 import net.minecraftforge.common.MinecraftForge;
@@ -32,7 +34,7 @@ public class ModLevelManager {
 
         int newLevel = data.getModLevel();
         if (newLevel != oldLevel) {
-            MinecraftForge.EVENT_BUS.post(new ModLevelChangeEvent(playerUUID, oldLevel, newLevel));
+            GyBuses.INTERNAL.post(new ModLevelChangeEvent(playerUUID, oldLevel, newLevel));
             syncToClient(playerUUID);
         }
 
@@ -126,7 +128,7 @@ public class ModLevelManager {
         PlayerDataCenter.setData(playerUUID, SLOT_KEY, data);
 
         if (oldLevel != 0) {
-            MinecraftForge.EVENT_BUS.post(new ModLevelChangeEvent(playerUUID, oldLevel, 0));
+            GyBuses.INTERNAL.post(new ModLevelChangeEvent(playerUUID, oldLevel, 0));
         }
         syncToClient(playerUUID);
     }

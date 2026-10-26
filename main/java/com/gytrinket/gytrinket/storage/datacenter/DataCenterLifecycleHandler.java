@@ -92,7 +92,7 @@ public class DataCenterLifecycleHandler {
 
         // Phase 2: 触发光点核心内容变化 → 属性重算（此时物品已加载，属性会正确计算；
         // 护盾实例在这一步重建，并按 identityKey 从 Phase 1.5 暂存的快照迁移池量/破盾/冷却）
-        net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(
+        com.gytrinket.gytrinket.bootstrap.GyBuses.INTERNAL.post(
             new com.gytrinket.gytrinket.event.PlayerLightPointStoreChangedEvent(player.getUUID()));
 
         // Phase 3: 恢复当前血量（属性重算后 maxHealth 已恢复，此时可以安全设置）
@@ -418,7 +418,7 @@ public class DataCenterLifecycleHandler {
         CompoundTag transferTag = savedData.getCompound("shield_transfer");
         ShieldTransferManager.loadTransfersFromNBT(player, transferTag);
 
-        net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(
+        com.gytrinket.gytrinket.bootstrap.GyBuses.INTERNAL.post(
             new com.gytrinket.gytrinket.core.shield_transfer.event.ShieldTransferRebuiltEvent(player));
     }
 

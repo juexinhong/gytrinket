@@ -1,5 +1,7 @@
 package com.gytrinket.gytrinket.storage;
 
+import com.gytrinket.gytrinket.bootstrap.GyBuses;
+
 import com.gytrinket.gytrinket.event.PlayerLightPointStoreChangedEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.items.ItemStackHandler;
@@ -47,7 +49,7 @@ public class PlayerStore {
      */
     private void handleContentChange() {
         // 触发内容变化事件
-        MinecraftForge.EVENT_BUS.post(new PlayerLightPointStoreChangedEvent(playerUUID));
+        GyBuses.INTERNAL.post(new PlayerLightPointStoreChangedEvent(playerUUID));
     }
 
     /**

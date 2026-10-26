@@ -29,7 +29,6 @@ public class AttackDamageManager {
 
     private static final Map<UUID, Double> PLAYER_ATTACK_DAMAGE_MAP = new ConcurrentHashMap<>();
 
-    @SubscribeEvent
     public static void onAttributesCalculated(PlayerAttributesCalculatedEvent event) {
         UUID playerUUID = event.getPlayerUUID();
 
@@ -70,7 +69,6 @@ public class AttackDamageManager {
         PLAYER_ATTACK_DAMAGE_MAP.put(playerUUID, player.getAttributeValue(Attributes.ATTACK_DAMAGE));
     }
 
-    @SubscribeEvent
     public static void onAttributeDynamicChange(AttributeDynamicChangeEvent event) {
         UUID playerUUID = event.getPlayerUUID();
         String attrName = event.getAttributeName();

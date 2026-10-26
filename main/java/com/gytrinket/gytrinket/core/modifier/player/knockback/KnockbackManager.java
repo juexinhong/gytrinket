@@ -98,7 +98,6 @@ public class KnockbackManager {
      * 监听属性计算完毕事件
      * 缓存玩家的击退属性值（不再使用修饰符）
      */
-    @SubscribeEvent
     public static void onAttributesCalculated(PlayerAttributesCalculatedEvent event) {
         UUID playerUUID = event.getPlayerUUID();
 

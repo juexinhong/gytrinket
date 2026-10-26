@@ -75,7 +75,6 @@ public class ConversionEffectManager {
         double healthFlat;
     }
 
-    @SubscribeEvent
     public static void onAttributesCalculated(PlayerAttributesCalculatedEvent event) {
         UUID playerUUID = event.getPlayerUUID();
 

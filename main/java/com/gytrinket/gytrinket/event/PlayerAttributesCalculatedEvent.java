@@ -1,7 +1,7 @@
 package com.gytrinket.gytrinket.event;
 
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.event.entity.player.PlayerEvent;
+import com.gytrinket.gytrinket.engine.bus.GyEvent;
 
 import java.util.Collections;
 import java.util.Map;
@@ -12,7 +12,7 @@ import java.util.UUID;
  * 玩家属性计算完毕事件
  * 当玩家的属性计算完成后触发此事件
  */
-public class PlayerAttributesCalculatedEvent extends PlayerEvent {
+public class PlayerAttributesCalculatedEvent implements GyEvent {
     private final UUID playerUUID;
     private final Map<String, Double> attributes;
     private final ServerPlayer player;
@@ -20,7 +20,6 @@ public class PlayerAttributesCalculatedEvent extends PlayerEvent {
     private final boolean fullRecalculation;
 
     public PlayerAttributesCalculatedEvent(ServerPlayer player, Map<String, Double> attributes) {
-        super(player);
         this.playerUUID = player.getUUID();
         this.attributes = attributes;
         this.player = player;
@@ -29,7 +28,6 @@ public class PlayerAttributesCalculatedEvent extends PlayerEvent {
     }
 
     public PlayerAttributesCalculatedEvent(UUID playerUUID, Map<String, Double> attributes) {
-        super(null);
         this.playerUUID = playerUUID;
         this.attributes = attributes;
         this.player = null;
@@ -45,7 +43,6 @@ public class PlayerAttributesCalculatedEvent extends PlayerEvent {
      * @param dirtyAttributes 受影响的属性名集合
      */
     public PlayerAttributesCalculatedEvent(UUID playerUUID, Map<String, Double> attributes, ServerPlayer player, Set<String> dirtyAttributes) {
-        super(player);
         this.playerUUID = playerUUID;
         this.attributes = attributes;
         this.player = player;

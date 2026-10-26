@@ -1,6 +1,6 @@
 package com.gytrinket.gytrinket.event;
 
-import net.minecraftforge.event.entity.player.PlayerEvent;
+import com.gytrinket.gytrinket.engine.bus.GyEvent;
 
 import java.util.UUID;
 
@@ -8,7 +8,7 @@ import java.util.UUID;
  * 光点核心存储内容变化事件
  * 当玩家的光点核心存储内容发生变化时触发此事件
  */
-public class PlayerLightPointStoreChangedEvent extends PlayerEvent {
+public class PlayerLightPointStoreChangedEvent implements GyEvent {
     // 发生变化的玩家 UUID
     private final UUID playerUUID;
 
@@ -17,7 +17,6 @@ public class PlayerLightPointStoreChangedEvent extends PlayerEvent {
      * @param playerUUID 玩家 UUID
      */
     public PlayerLightPointStoreChangedEvent(UUID playerUUID) {
-        super(null);
         this.playerUUID = playerUUID;
     }
 

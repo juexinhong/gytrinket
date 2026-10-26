@@ -152,7 +152,6 @@ public class AssaultManager {
     /**
      * 攻击速度动态变化时重算强袭溢出伤害（外部攻速来源变化也能正确转化）。
      */
-    @SubscribeEvent
     public static void onAttackSpeedChanged(AttributeDynamicChangeEvent event) {
         String attrName = event.getAttributeName();
         if (!attrName.equals("attack_speed_percent") && !attrName.equals("attack_speed_independent")) {

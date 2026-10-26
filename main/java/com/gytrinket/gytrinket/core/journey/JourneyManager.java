@@ -57,7 +57,6 @@ public class JourneyManager {
 
     // ===== 模块检测 =====
 
-    @net.minecraftforge.eventbus.api.SubscribeEvent
     public static void onAttributesCalculated(PlayerAttributesCalculatedEvent event) {
         UUID uuid = event.getPlayerUUID();
         Player player = event.getPlayer();

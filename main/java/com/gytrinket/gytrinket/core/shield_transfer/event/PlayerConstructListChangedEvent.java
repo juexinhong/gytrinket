@@ -2,11 +2,11 @@ package com.gytrinket.gytrinket.core.shield_transfer.event;
 
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.eventbus.api.Event;
+import com.gytrinket.gytrinket.engine.bus.GyEvent;
 
 import java.util.UUID;
 
-public class PlayerConstructListChangedEvent extends Event {
+public class PlayerConstructListChangedEvent implements GyEvent {
 
     private final UUID playerUUID;
     private final Player player;

@@ -26,7 +26,6 @@ public class PlayerLevelDebouncer {
 
     private PlayerLevelDebouncer() {}
 
-    @SubscribeEvent
     public static void onModLevelChange(ModLevelChangeEvent event) {
         UUID uuid = event.getPlayerUUID();
         PENDING_CHANGES.put(uuid, TickScheduler.getCurrentTick() + DEBOUNCE_TICKS);

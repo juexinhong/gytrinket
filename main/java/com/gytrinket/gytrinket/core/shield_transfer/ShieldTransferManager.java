@@ -596,7 +596,6 @@ public class ShieldTransferManager {
         registerTransfer(ownerUUID, entity);
     }
 
-    @SubscribeEvent
     public static void onConstructListChanged(PlayerConstructListChangedEvent event) {
         UUID playerUUID = event.getPlayerUUID();
         
@@ -629,12 +628,10 @@ public class ShieldTransferManager {
         }
     }
 
-    @SubscribeEvent
     public static void onShieldTransferRebuilt(ShieldTransferRebuiltEvent event) {
         updateShieldTransferPenalty(event.getPlayerUUID());
     }
 
-    @SubscribeEvent
     public static void onAttributesCalculated(PlayerAttributesCalculatedEvent event) {
         UUID playerUUID = event.getPlayerUUID();
 

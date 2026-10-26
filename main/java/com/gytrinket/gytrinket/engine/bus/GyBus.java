@@ -3,6 +3,7 @@ package com.gytrinket.gytrinket.engine.bus;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Objects;
+import java.util.function.BiConsumer;
 
 /**
  * 引擎内部事件总线：按运行时精确事件类派发，无反射、无注解扫描。
@@ -34,6 +35,9 @@ public final class GyBus {
         }
     };
 
+    /** 可选 post 观察钩子（仅 observer 诊断使用；null 时只多一次 volatile 读）。 */
+    private volatile BiConsumer<Class<?>, Object> postHook;
+
     public <E extends GyEvent> Subscription on(Class<E> type, int priority, Listener<E> listener) {
         return on(type, priority, false, listener);
     }
@@ -55,7 +59,16 @@ public final class GyBus {
         @SuppressWarnings("unchecked")
         Class<E> type = (Class<E>) event.getClass();
         listFor(type).dispatch(event);
+        BiConsumer<Class<?>, Object> hook = postHook;
+        if (hook != null) {
+            hook.accept(type, event);
+        }
         return event;
+    }
+
+    /** 诊断用：观察每次 post 的事件类型与实例；传 null 关闭。 */
+    public void setPostHook(BiConsumer<Class<?>, Object> hook) {
+        this.postHook = hook;
     }
 
     /** 诊断/测试用：当前活跃监听器数量。 */

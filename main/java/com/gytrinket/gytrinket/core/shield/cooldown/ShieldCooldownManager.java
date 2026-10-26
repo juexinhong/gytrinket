@@ -1,5 +1,7 @@
 package com.gytrinket.gytrinket.core.shield.cooldown;
 
+import com.gytrinket.gytrinket.bootstrap.GyBuses;
+
 import com.gytrinket.gytrinket.core.attack_cooldown.AttackCooldownModifier;
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
 import com.gytrinket.gytrinket.core.defs.DefsManager;
@@ -107,7 +109,7 @@ public class ShieldCooldownManager {
         if (anyCompleted) {
             ShieldManager.afterInstanceMutation(playerUUID, null);
             if (!ShieldManager.hasCoolingInstances(playerUUID)) {
-                MinecraftForge.EVENT_BUS.post(new ShieldCooldownCompleteEvent(playerUUID));
+                GyBuses.INTERNAL.post(new ShieldCooldownCompleteEvent(playerUUID));
             }
         }
 
@@ -170,7 +172,6 @@ public class ShieldCooldownManager {
         }
     }
 
-    @SubscribeEvent
     public static void onAttributeDynamicChange(AttributeDynamicChangeEvent event) {
         UUID playerUUID = event.getPlayerUUID();
         String attrName = event.getAttributeName();

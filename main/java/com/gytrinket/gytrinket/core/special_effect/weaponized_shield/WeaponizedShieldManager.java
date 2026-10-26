@@ -1,5 +1,7 @@
 package com.gytrinket.gytrinket.core.special_effect.weaponized_shield;
 
+import com.gytrinket.gytrinket.bootstrap.GyBuses;
+
 import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.defs.MechanicValueDefs;
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
@@ -145,7 +147,7 @@ public class WeaponizedShieldManager {
             target,
             false
         );
-        MinecraftForge.EVENT_BUS.post(event);
+        GyBuses.INTERNAL.post(event);
     }
 
     private static void removeVulnerabilityForTarget(UUID playerUUID, UUID targetUUID) {
@@ -178,7 +180,6 @@ public class WeaponizedShieldManager {
         }
     }
 
-    @SubscribeEvent
     public static void onAttributesCalculated(PlayerAttributesCalculatedEvent event) {
         UUID playerUUID = event.getPlayerUUID();
 

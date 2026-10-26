@@ -1,5 +1,7 @@
 package com.gytrinket.gytrinket.core.entity.construct;
 
+import com.gytrinket.gytrinket.bootstrap.GyBuses;
+
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
@@ -101,7 +103,7 @@ public class ConstructManager {
             .put(entity.getUUID(), entity);
         cleanupDirtyPlayers.add(playerUUID);
         
-        MinecraftForge.EVENT_BUS.post(
+        GyBuses.INTERNAL.post(
             new com.gytrinket.gytrinket.core.shield_transfer.event.PlayerConstructListChangedEvent(playerUUID, entity, 
                 com.gytrinket.gytrinket.core.shield_transfer.event.PlayerConstructListChangedEvent.ChangeType.ADDED)
         );
@@ -120,7 +122,7 @@ public class ConstructManager {
                 entities.remove(entityUUID);
                 
                 if (removedEntity != null) {
-                    MinecraftForge.EVENT_BUS.post(
+                    GyBuses.INTERNAL.post(
                         new com.gytrinket.gytrinket.core.shield_transfer.event.PlayerConstructListChangedEvent(playerUUID, removedEntity, 
                             com.gytrinket.gytrinket.core.shield_transfer.event.PlayerConstructListChangedEvent.ChangeType.REMOVED)
                     );

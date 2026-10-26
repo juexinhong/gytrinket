@@ -1,6 +1,6 @@
 package com.gytrinket.gytrinket.event;
 
-import net.minecraftforge.eventbus.api.Event;
+import com.gytrinket.gytrinket.engine.bus.GyEvent;
 
 import java.util.UUID;
 
@@ -8,7 +8,7 @@ import java.util.UUID;
  * 属性动态变化事件
  * 当动态属性被添加、更新或移除时触发此事件
  */
-public class AttributeDynamicChangeEvent extends Event {
+public class AttributeDynamicChangeEvent implements GyEvent {
     private final UUID playerUUID;
     private final String namespace;
     private final String attributeName;

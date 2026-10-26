@@ -36,7 +36,6 @@ public class EvolutionManager {
     private static final String ATTR_HEALTH_PERCENT = "construct_wingman_evolution_health_percent";
     private static final String ATTR_ATTACK_SPEED_PERCENT = "construct_wingman_evolution_attack_speed_percent";
 
-    @SubscribeEvent
     public static void onAttributesCalculated(PlayerAttributesCalculatedEvent event) {
         ServerPlayer player = event.getPlayer();
         if (player != null) {

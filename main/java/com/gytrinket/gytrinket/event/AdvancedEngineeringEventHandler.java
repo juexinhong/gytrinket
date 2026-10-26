@@ -19,7 +19,6 @@ public class AdvancedEngineeringEventHandler {
 
     private static final String NAMESPACE = "advanced_engineering";
 
-    @SubscribeEvent
     public static void onAttributesCalculated(PlayerAttributesCalculatedEvent event) {
         ServerPlayer player = event.getPlayer();
         if (player != null) {

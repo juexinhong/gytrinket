@@ -34,6 +34,7 @@ public final class ObserverMod {
         MinecraftForge.EVENT_BUS.register(this);
         MinecraftForge.EVENT_BUS.register(ObserverCommands.class);
         MinecraftForge.EVENT_BUS.register(DevCommands.class);
+        EventProbe.register();
         LOGGER.info("[observer] common mod initialized");
     }
 

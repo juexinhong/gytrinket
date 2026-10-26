@@ -1,5 +1,7 @@
 package com.gytrinket.gytrinket.core.entity.construct.drone;
 
+import com.gytrinket.gytrinket.bootstrap.GyBuses;
+
 import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.defs.MechanicValueDefs;
 import com.gytrinket.gytrinket.core.damage.SecondaryDamageMerger;
@@ -202,7 +204,7 @@ public class DroneBullet extends ThrowableItemProjectile {
             // 避免阻挡紧随其后的下一发子弹或玩家攻击）
             t.invulnerableTime = 0;
             if (owner instanceof DroneConstructEntity droneShooter && droneShooter.isCommanderDrone()) {
-                MinecraftForge.EVENT_BUS.post(
+                GyBuses.INTERNAL.post(
                     new VulnerabilityApplyEvent(
                         "commander", Config.COMMANDER_VULNERABILITY.get().floatValue(), t, true
                     )

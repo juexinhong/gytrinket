@@ -19,7 +19,6 @@ import java.util.UUID;
 @Mod.EventBusSubscriber(modid = com.gytrinket.gytrinket.gytrinket.MODID)
 public class LightPointStoreSyncHandler {
 
-    @SubscribeEvent
     public static void onLightPointStoreChanged(PlayerLightPointStoreChangedEvent event) {
         ServerPlayer player = ServerLifecycleHooks.getCurrentServer().getPlayerList().getPlayer(event.getPlayerUUID());
         if (player == null) {

@@ -1,7 +1,7 @@
 package com.gytrinket.gytrinket.core.attack_mode.charged_attack;
 
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.eventbus.api.Event;
+import com.gytrinket.gytrinket.engine.bus.GyEvent;
 
 /**
  * 充能攻击事件
@@ -9,7 +9,7 @@ import net.minecraftforge.eventbus.api.Event;
  * 由 ChargedAttackManager 在充能/释放时发布，
  * 其他系统（如幽灵机身隐身）可订阅此事件而非直接调用 ChargedAttackManager。
  */
-public class ChargedAttackEvent extends Event {
+public class ChargedAttackEvent implements GyEvent {
 
     /** 事件类型 */
     public enum Type {

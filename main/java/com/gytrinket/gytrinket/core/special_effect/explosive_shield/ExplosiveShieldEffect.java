@@ -28,7 +28,6 @@ import java.util.List;
 @Mod.EventBusSubscriber(modid = gytrinket.MODID)
 public class ExplosiveShieldEffect {
 
-    @SubscribeEvent
     public static void onShieldBreak(ShieldBreakEvent event) {
         Player player = event.getPlayer();
 

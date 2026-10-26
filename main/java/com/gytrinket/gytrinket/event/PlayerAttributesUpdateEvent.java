@@ -1,9 +1,9 @@
 package com.gytrinket.gytrinket.event;
 
-import net.minecraftforge.eventbus.api.Event;
+import com.gytrinket.gytrinket.engine.bus.GyEvent;
 import java.util.UUID;
 
-public class PlayerAttributesUpdateEvent extends Event {
+public class PlayerAttributesUpdateEvent implements GyEvent {
     
     private final UUID playerUUID;
     

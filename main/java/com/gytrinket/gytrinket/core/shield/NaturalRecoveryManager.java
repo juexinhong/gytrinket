@@ -55,7 +55,6 @@ public class NaturalRecoveryManager {
      * 监听属性计算完毕事件
      * 初始化玩家的恢复数据缓存
      */
-    @SubscribeEvent
     public static void onAttributesCalculated(PlayerAttributesCalculatedEvent event) {
         UUID playerUUID = event.getPlayerUUID();
         PLAYER_RECOVERY_DATA.put(playerUUID, new RecoveryData());

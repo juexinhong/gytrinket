@@ -20,7 +20,6 @@ public class ChargedShieldItemChecker {
 
     private ChargedShieldItemChecker() {}
 
-    @SubscribeEvent
     public static void onAttributesCalculated(PlayerAttributesCalculatedEvent event) {
         UUID playerUUID = event.getPlayerUUID();
         Player player = event.getPlayer();

@@ -1,5 +1,7 @@
 package com.gytrinket.gytrinket.event;
 
+import com.gytrinket.gytrinket.bootstrap.GyBuses;
+
 import com.gytrinket.gytrinket.core.TickScheduler;
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
 import com.gytrinket.gytrinket.gytrinket;
@@ -28,14 +30,13 @@ public class PlayerUpdateManager {
     public static void triggerPlayerUpdate(ServerPlayer player) {
         UUID playerUUID = player.getUUID();
         
-        MinecraftForge.EVENT_BUS.post(new PlayerAttributesUpdateEvent.Pre(playerUUID));
+        GyBuses.INTERNAL.post(new PlayerAttributesUpdateEvent.Pre(playerUUID));
         
         AttributeManager.recalculateAndCachePlayerAttributes(player);
         
-        MinecraftForge.EVENT_BUS.post(new PlayerAttributesUpdateEvent.Post(playerUUID));
+        GyBuses.INTERNAL.post(new PlayerAttributesUpdateEvent.Post(playerUUID));
     }
     
-    @SubscribeEvent
     public static void onLightPointStoreChanged(PlayerLightPointStoreChangedEvent event) {
         MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
         if (server == null) {

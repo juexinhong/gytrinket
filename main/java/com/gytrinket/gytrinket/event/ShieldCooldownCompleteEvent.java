@@ -1,14 +1,13 @@
 package com.gytrinket.gytrinket.event;
 
-import net.minecraftforge.event.entity.player.PlayerEvent;
+import com.gytrinket.gytrinket.engine.bus.GyEvent;
 
 import java.util.UUID;
 
-public class ShieldCooldownCompleteEvent extends PlayerEvent {
+public class ShieldCooldownCompleteEvent implements GyEvent {
     private final UUID playerUUID;
 
     public ShieldCooldownCompleteEvent(UUID playerUUID) {
-        super(null);
         this.playerUUID = playerUUID;
     }
 

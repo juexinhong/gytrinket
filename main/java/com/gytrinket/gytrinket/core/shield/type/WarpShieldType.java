@@ -332,7 +332,6 @@ public class WarpShieldType implements IShieldType {
     /**
      * 护盾破裂事件处理
      */
-    @SubscribeEvent
     public static void onShieldBreak(ShieldBreakEvent event) {
         Player player = event.getPlayer();
         UUID playerUUID = event.getPlayerUUID();

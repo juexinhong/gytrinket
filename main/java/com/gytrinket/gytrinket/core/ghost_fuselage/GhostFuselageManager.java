@@ -300,7 +300,6 @@ public class GhostFuselageManager {
     /**
      * 充能攻击事件：充能与释放均触发破隐
      */
-    @SubscribeEvent
     public static void onChargedAttackEvent(ChargedAttackEvent event) {
         Player player = event.getPlayer();
         UUID uuid = player.getUUID();

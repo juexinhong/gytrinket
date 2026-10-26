@@ -43,7 +43,6 @@ public class MothershipManager {
     /** 溢出倍率存储：玩家UUID -> 溢出倍率（当蜂群数量超过极限值时，属性和易伤值的放大倍率） */
     private static final Map<UUID, Double> OVERFLOW_MULTIPLIERS = new ConcurrentHashMap<>();
 
-    @SubscribeEvent
     public static void onAttributesCalculated(PlayerAttributesCalculatedEvent event) {
         ServerPlayer player = event.getPlayer();
         if (player != null) {

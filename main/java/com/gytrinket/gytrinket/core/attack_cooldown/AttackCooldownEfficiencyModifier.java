@@ -35,7 +35,6 @@ public class AttackCooldownEfficiencyModifier {
 
     private static final Map<UUID, Boolean> PLAYER_ATTACK_COOLDOWN_STATE = new HashMap<>();
 
-    @SubscribeEvent
     public static void onAttributesCalculated(PlayerAttributesCalculatedEvent event) {
         UUID playerUUID = event.getPlayerUUID();
 

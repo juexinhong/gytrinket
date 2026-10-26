@@ -32,7 +32,6 @@ public class MovementSpeedManager {
     /** 上次施加的聚合乘数（用于短路无变化的重复施加，避免每 tick 属性同步包） */
     private static final Map<UUID, Double> LAST_APPLIED_MULTIPLIER = new ConcurrentHashMap<>();
 
-    @SubscribeEvent
     public static void onAttributesCalculated(PlayerAttributesCalculatedEvent event) {
         UUID playerUUID = event.getPlayerUUID();
 
@@ -50,7 +49,6 @@ public class MovementSpeedManager {
         applyMovementModifier(player, playerUUID);
     }
 
-    @SubscribeEvent
     public static void onAttributeDynamicChange(AttributeDynamicChangeEvent event) {
         UUID playerUUID = event.getPlayerUUID();
         String attrName = event.getAttributeName();

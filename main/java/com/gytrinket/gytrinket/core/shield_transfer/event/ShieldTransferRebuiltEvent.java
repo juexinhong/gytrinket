@@ -1,11 +1,11 @@
 package com.gytrinket.gytrinket.core.shield_transfer.event;
 
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.eventbus.api.Event;
+import com.gytrinket.gytrinket.engine.bus.GyEvent;
 
 import java.util.UUID;
 
-public class ShieldTransferRebuiltEvent extends Event {
+public class ShieldTransferRebuiltEvent implements GyEvent {
 
     private final UUID playerUUID;
     private final ServerPlayer player;

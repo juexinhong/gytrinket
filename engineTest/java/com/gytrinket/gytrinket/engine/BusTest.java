@@ -22,6 +22,7 @@ final class BusTest {
         unsubscribe(checker);
         registerDuringPost(checker);
         listenerCount(checker);
+        postHook(checker);
     }
 
     private static void priorityOrder(Checker checker) {
@@ -102,6 +103,16 @@ final class BusTest {
         bus.on(TestEvent.class, GyBus.NORMAL, event -> {
         });
         checker.check("bus listener count", bus.listenerCount(TestEvent.class) == 2);
+    }
+
+    private static void postHook(Checker checker) {
+        GyBus bus = new GyBus();
+        List<Class<?>> seen = new ArrayList<>();
+        bus.setPostHook((type, event) -> seen.add(type));
+        bus.post(new TestEvent());
+        bus.setPostHook(null);
+        bus.post(new TestEvent());
+        checker.check("bus post hook fires once and can be disabled", seen.equals(List.of(TestEvent.class)));
     }
 
     private static final class TestEvent implements GyEvent {

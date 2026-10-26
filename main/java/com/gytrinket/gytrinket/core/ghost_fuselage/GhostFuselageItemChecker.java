@@ -18,7 +18,6 @@ public class GhostFuselageItemChecker {
 
     private GhostFuselageItemChecker() {}
 
-    @SubscribeEvent
     public static void onAttributesCalculated(PlayerAttributesCalculatedEvent event) {
         ServerPlayer player = event.getPlayer();
         if (player == null) {

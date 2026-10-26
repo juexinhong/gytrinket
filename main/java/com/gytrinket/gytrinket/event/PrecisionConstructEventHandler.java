@@ -19,7 +19,6 @@ public class PrecisionConstructEventHandler {
 
     private static final String NAMESPACE = "precision_construct";
 
-    @SubscribeEvent
     public static void onAttributesCalculated(PlayerAttributesCalculatedEvent event) {
         ServerPlayer player = event.getPlayer();
         if (player != null) {

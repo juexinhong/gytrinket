@@ -1,5 +1,7 @@
 package com.gytrinket.gytrinket.core.attribute;
 
+import com.gytrinket.gytrinket.bootstrap.GyBuses;
+
 import com.gytrinket.gytrinket.engine.math.AttributeMath;
 import com.gytrinket.gytrinket.engine.math.AttributeType;
 
@@ -243,9 +245,9 @@ public class AttributeManager {
                 : null;
 
         if (player != null) {
-            MinecraftForge.EVENT_BUS.post(new PlayerAttributesCalculatedEvent(player, finalValues));
+            GyBuses.INTERNAL.post(new PlayerAttributesCalculatedEvent(player, finalValues));
         } else {
-            MinecraftForge.EVENT_BUS.post(new PlayerAttributesCalculatedEvent(playerUUID, finalValues));
+            GyBuses.INTERNAL.post(new PlayerAttributesCalculatedEvent(playerUUID, finalValues));
         }
     }
 
@@ -260,7 +262,7 @@ public class AttributeManager {
         PENDING_RECALC.remove(player.getUUID());
 
         if (player instanceof ServerPlayer serverPlayer) {
-            MinecraftForge.EVENT_BUS.post(new PlayerAttributesCalculatedEvent(serverPlayer, finalValues));
+            GyBuses.INTERNAL.post(new PlayerAttributesCalculatedEvent(serverPlayer, finalValues));
         }
     }
 
@@ -296,7 +298,7 @@ public class AttributeManager {
         if (server != null) {
             ServerPlayer player = server.getPlayerList().getPlayer(playerUUID);
             if (player != null) {
-                MinecraftForge.EVENT_BUS.post(new AttributeDynamicChangeEvent(
+                GyBuses.INTERNAL.post(new AttributeDynamicChangeEvent(
                         playerUUID, namespace, attributeName, value, AttributeDynamicChangeEvent.ChangeType.UPDATE));
             }
         }
@@ -338,7 +340,7 @@ public class AttributeManager {
             if (server != null) {
                 ServerPlayer player = server.getPlayerList().getPlayer(playerUUID);
                 if (player != null) {
-                    MinecraftForge.EVENT_BUS.post(new AttributeDynamicChangeEvent(
+                    GyBuses.INTERNAL.post(new AttributeDynamicChangeEvent(
                             playerUUID, namespace, attributeName, 0, AttributeDynamicChangeEvent.ChangeType.REMOVE));
                 }
             }
@@ -397,7 +399,7 @@ public class AttributeManager {
             Map<String, Double> allAttrs = getPlayerAttributes(playerUUID);
 
             // 发出局部重算事件，附带脏属性集合
-            MinecraftForge.EVENT_BUS.post(new PlayerAttributesCalculatedEvent(playerUUID, allAttrs, player, dirtyAttrs));
+            GyBuses.INTERNAL.post(new PlayerAttributesCalculatedEvent(playerUUID, allAttrs, player, dirtyAttrs));
         }
     }
 
@@ -570,7 +572,6 @@ public class AttributeManager {
         PLAYER_DYNAMIC_ATTRIBUTES.remove(playerUUID);
     }
 
-    @SubscribeEvent
     public static void onAttributeDynamicChange(AttributeDynamicChangeEvent event) {
         // 已废弃：动态属性变化现在通过 markDirtyAndScheduleRecalc 处理
     }

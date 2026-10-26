@@ -1,11 +1,23 @@
 package com.gytrinket.gytrinket.observer;
 
+import com.gytrinket.gytrinket.bootstrap.GyBuses;
 import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.attribute.AttributeDefinition;
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
+import com.gytrinket.gytrinket.core.attack_mode.charged_attack.ChargedAttackEvent;
 import com.gytrinket.gytrinket.core.defs.DefsManager;
+import com.gytrinket.gytrinket.core.level.ModLevelChangeEvent;
+import com.gytrinket.gytrinket.core.shield_transfer.event.PlayerConstructListChangedEvent;
+import com.gytrinket.gytrinket.core.shield_transfer.event.ShieldTransferRebuiltEvent;
+import com.gytrinket.gytrinket.core.vulnerability.VulnerabilityApplyEvent;
 import com.gytrinket.gytrinket.core.world.terrain.RuinedTowerBlueprint;
 import com.gytrinket.gytrinket.engine.perf.TickProfiler;
+import com.gytrinket.gytrinket.event.AttributeDynamicChangeEvent;
+import com.gytrinket.gytrinket.event.PlayerAttributesCalculatedEvent;
+import com.gytrinket.gytrinket.event.PlayerAttributesUpdateEvent;
+import com.gytrinket.gytrinket.event.PlayerLightPointStoreChangedEvent;
+import com.gytrinket.gytrinket.event.ShieldBreakEvent;
+import com.gytrinket.gytrinket.event.ShieldCooldownCompleteEvent;
 import com.gytrinket.gytrinket.gytrinket;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.DoubleArgumentType;
@@ -226,6 +238,11 @@ public final class DevCommands {
                                 .executes(ctx -> resetPerf(ctx.getSource())))
                         .then(Commands.literal("dump")
                                 .executes(ctx -> dumpPerf(ctx.getSource()))))
+                .then(Commands.literal("events")
+                        .requires(source -> source.hasPermission(2))
+                        .executes(ctx -> dumpEventListeners(ctx.getSource()))
+                        .then(Commands.literal("reset")
+                                .executes(ctx -> resetEventProbe(ctx.getSource()))))
         );
     }
 
@@ -1150,6 +1167,30 @@ public final class DevCommands {
 
     private static int dumpPerf(CommandSourceStack source) {
         source.sendSuccess(Component.literal(TickProfiler.dumpJson()), false);
+        return 1;
+    }
+
+    private static int dumpEventListeners(CommandSourceStack source) {
+        StringBuilder sb = new StringBuilder("internal listeners: ");
+        sb.append("modLevel=").append(GyBuses.INTERNAL.listenerCount(ModLevelChangeEvent.class))
+                .append(" shieldCooldown=").append(GyBuses.INTERNAL.listenerCount(ShieldCooldownCompleteEvent.class))
+                .append(" chargedAttack=").append(GyBuses.INTERNAL.listenerCount(ChargedAttackEvent.class))
+                .append(" vulnerability=").append(GyBuses.INTERNAL.listenerCount(VulnerabilityApplyEvent.class))
+                .append(" shieldTransfer=").append(GyBuses.INTERNAL.listenerCount(ShieldTransferRebuiltEvent.class))
+                .append(" constructList=").append(GyBuses.INTERNAL.listenerCount(PlayerConstructListChangedEvent.class))
+                .append(" lightPointStore=").append(GyBuses.INTERNAL.listenerCount(PlayerLightPointStoreChangedEvent.class))
+                .append(" shieldBreak=").append(GyBuses.INTERNAL.listenerCount(ShieldBreakEvent.class))
+                .append(" attrDynamic=").append(GyBuses.INTERNAL.listenerCount(AttributeDynamicChangeEvent.class))
+                .append(" attrUpdatePost=").append(GyBuses.INTERNAL.listenerCount(PlayerAttributesUpdateEvent.Post.class))
+                .append(" attrCalculated=").append(GyBuses.INTERNAL.listenerCount(PlayerAttributesCalculatedEvent.class))
+                .append(" | posts=").append(EventProbe.dump());
+        source.sendSuccess(Component.literal(sb.toString()), false);
+        return 1;
+    }
+
+    private static int resetEventProbe(CommandSourceStack source) {
+        EventProbe.reset();
+        source.sendSuccess(Component.literal("event post counters cleared"), false);
         return 1;
     }
 

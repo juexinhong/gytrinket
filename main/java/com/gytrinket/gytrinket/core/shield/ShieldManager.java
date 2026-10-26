@@ -1,5 +1,7 @@
 package com.gytrinket.gytrinket.core.shield;
 
+import com.gytrinket.gytrinket.bootstrap.GyBuses;
+
 import com.gytrinket.gytrinket.compat.CuriosCompat;
 import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
@@ -426,7 +428,7 @@ public class ShieldManager {
             if (server != null) {
                 ServerPlayer player = server.getPlayerList().getPlayer(playerUUID);
                 if (player != null) {
-                    MinecraftForge.EVENT_BUS.post(new ShieldBreakEvent(playerUUID, player, oldTotal));
+                    GyBuses.INTERNAL.post(new ShieldBreakEvent(playerUUID, player, oldTotal));
                 }
             }
         }
@@ -464,7 +466,6 @@ public class ShieldManager {
 
     // ==================== 事件 ====================
 
-    @SubscribeEvent
     public static void onAttributesCalculated(PlayerAttributesCalculatedEvent event) {
         UUID playerUUID = event.getPlayerUUID();
         rebuildInstances(playerUUID);
@@ -472,7 +473,6 @@ public class ShieldManager {
         syncShieldToClient(playerUUID);
     }
 
-    @SubscribeEvent
     public static void onAttributeDynamicChange(AttributeDynamicChangeEvent event) {
         UUID playerUUID = event.getPlayerUUID();
         String attrName = event.getAttributeName();

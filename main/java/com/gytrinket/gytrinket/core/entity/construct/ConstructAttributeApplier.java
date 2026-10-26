@@ -40,7 +40,6 @@ public class ConstructAttributeApplier {
 
     private static final Map<UUID, Map<String, Double>> PLAYER_CONSTRUCT_ATTR_CACHE = new ConcurrentHashMap<>();
 
-    @SubscribeEvent
     public static void onLightPointStoreChanged(PlayerLightPointStoreChangedEvent event) {
         UUID playerUUID = event.getPlayerUUID();
         ServerPlayer player = ServerLifecycleHooks.getCurrentServer() != null
@@ -55,7 +54,6 @@ public class ConstructAttributeApplier {
 
     // ===== 事件监听（LOW 优先级：确保动态属性提供者先执行） =====
 
-    @SubscribeEvent(priority = EventPriority.LOW)
     public static void onAttributesCalculated(PlayerAttributesCalculatedEvent event) {
         ServerPlayer player = event.getPlayer();
         if (player == null) return;

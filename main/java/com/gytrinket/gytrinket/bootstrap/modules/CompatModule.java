@@ -3,6 +3,7 @@ package com.gytrinket.gytrinket.bootstrap.modules;
 import com.gytrinket.gytrinket.bootstrap.GyModule;
 import com.gytrinket.gytrinket.bootstrap.ModuleContext;
 import com.gytrinket.gytrinket.compat.CuriosCompat;
+import com.gytrinket.gytrinket.compat.TaczCompat;
 
 import java.util.Set;
 
@@ -24,5 +25,6 @@ public final class CompatModule implements GyModule {
     @Override
     public void register(ModuleContext context) {
         CuriosCompat.init();
+        TaczCompat.init();
     }
 }

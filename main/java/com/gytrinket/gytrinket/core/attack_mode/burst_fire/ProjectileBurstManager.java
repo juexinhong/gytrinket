@@ -188,7 +188,14 @@ public class ProjectileBurstManager {
         // 其余物品 → 与近战点射同一逻辑：借用属性系统临时施加修正值后读取
         // （弹射物触发时主手为弹射物物品/空手，自动落到默认修正值，同时叠加玩家所有攻速修饰符）
         // 1.19.2：TACZ 为 1.20.1 独占联动，已裁掉；一律走属性系统攻速
-        double attackSpeed = BurstFireSupport.captureEffectiveAttackSpeed(player);
+        // 1.19.2：TACZ 枪械（若有）→ 枪械数据射速 × 玩家攻速倍率；否则走属性系统攻速
+        Double gunFireRate = com.gytrinket.gytrinket.compat.TaczCompat.getGunFireRate(player, player.getMainHandItem());
+        double attackSpeed;
+        if (gunFireRate != null) {
+            attackSpeed = gunFireRate * (player.getAttributeValue(Attributes.ATTACK_SPEED) / 4.0D);
+        } else {
+            attackSpeed = BurstFireSupport.captureEffectiveAttackSpeed(player);
+        }
         player.getCooldowns().addCooldown(cooldownItem, BurstFireSupport.calcBurstCooldownTicks(comboStacksBonus, attackSpeed));
         COOLDOWN_ITEMS.put(playerUUID, cooldownItem);
 

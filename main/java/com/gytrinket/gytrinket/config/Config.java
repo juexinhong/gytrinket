@@ -1017,57 +1017,10 @@ public class Config {
         });
 
         // 物品集合（模块名与 loadItemSetFromDefs 使用的 key 一致）
-        loadItemSetFromDefs("body", "body_items");
-        loadItemSetFromDefs("adaptive_armor", "adaptive_armor_items");
-        loadItemSetFromDefs("adaptive_armor_shield_effect", "adaptive_armor_shield_effect_items");
-        loadItemSetFromDefs("electric_discharge", "electric_discharge_items");
-        loadItemSetFromDefs("attack_cooldown_efficiency", "attack_cooldown_efficiency_items");
-        loadItemSetFromDefs("barrier", "barrier_items");
-        loadItemSetFromDefs("shield_natural_recovery", "shield_natural_recovery_items");
-        loadItemSetFromDefs("reflect_damage", "reflect_damage_items");
-        loadItemSetFromDefs("explosive_shield", "explosive_shield_items");
-        loadItemSetFromDefs("shield_transfer", "shield_transfer_items");
-        loadItemSetFromDefs("binary_protocol", "binary_protocol_items");
-        loadItemSetFromDefs("weaponized_shield", "weaponized_shield_items");
-        loadItemSetFromDefs("near_death_protection", "near_death_protection_items");
-        loadItemSetFromDefs("near_death_explosion", "near_death_explosion_items");
-        loadItemSetFromDefs("self_destruct", "self_destruct_items");
-        loadItemSetFromDefs("taskmaster", "taskmaster_items");
-        loadItemSetFromDefs("furnace_core", "furnace_core_items");
-        loadItemSetFromDefs("drone_module", "drone_module_items");
-        loadItemSetFromDefs("assault_drone_module", "assault_drone_module_items");
-        loadItemSetFromDefs("commander", "commander_required_items");
-        loadItemSetFromDefs("defense_drone_module", "defense_drone_module_items");
-        loadItemSetFromDefs("wingman_module", "wingman_module_items");
-        loadItemSetFromDefs("interceptor_module", "wingman_interceptor_module_items");
-        loadItemSetFromDefs("evolution_module", "wingman_evolution_module_items");
-        loadItemSetFromDefs("nano_regen_module", "wingman_nano_regen_module_items");
-        loadItemSetFromDefs("shockwave_module", "wingman_shockwave_module_items");
-        loadItemSetFromDefs("swarm_module", "swarm_module_items");
-        loadItemSetFromDefs("arc_barrier", "arc_barrier_items");
-        loadItemSetFromDefs("reshaping", "reshaping_items");
-        loadItemSetFromDefs("counter_pulse", "counter_pulse_items");
-        loadItemSetFromDefs("assault", "assault_items");
-        loadItemSetFromDefs("charged_attack", "charged_attack_items");
-        loadItemSetFromDefs("charged_shield", "charged_shield_items");
-        loadItemSetFromDefs("grudge", "grudge_items");
-        loadItemSetFromDefs("precision_construct", "precision_construct_items");
-        loadItemSetFromDefs("advanced_engineering", "advanced_engineering_items");
-        loadItemSetFromDefs("pursuit_array", "pursuit_array_required_items");
-        loadItemSetFromDefs("formation_array", "formation_array_required_items");
-        loadItemSetFromDefs("guard_array", "guard_array_required_items");
-        loadItemSetFromDefs("ghost_fuselage", "ghost_fuselage_items");
-        loadItemSetFromDefs("conversion", "conversion_items");
-        loadItemSetFromDefs("journey_module", "journey_module_items");
+        reloadItemSetBindings();
 
         // 特殊机制物品集合（数据驱动，配置系统对 special_mechanics 的增删会实时反映到快速装备/阵列判定）
-        SPECIAL_MECHANIC_ITEM_SET.clear();
-        for (String itemId : DefsManager.getSpecialMechanicItems()) {
-            Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(itemId));
-            if (item != null && item != Items.AIR) {
-                SPECIAL_MECHANIC_ITEM_SET.add(item);
-            }
-        }
+        reloadSpecialMechanicItems();
 
         // 危险实体
         DANGEROUS_ENTITY_SET.clear();
@@ -1078,6 +1031,82 @@ public class Config {
         UpgradeManager.loadConfig();
         ShieldTypeManager.init();
 
+    }
+
+    /**
+     * 客户端：应用 {@code ConfigDefsSyncMessage} 后重建「依赖数据包定义」的物品集合。
+     * <p>
+     * 专用服联机时 {@link #applyDefs()} 只在服务端跑，客户端的 {@code MODULE_ITEM_SETS} 会一直是空的，
+     * 导致强袭/充能等客户端判定（{@code isAssaultItem}/{@code isChargedAttackItem}）永远返回 false。
+     * 这里用 {@link DefsManager#applyClientSync} 已填充的定义数据重建同一批集合。
+     */
+    public static void applyClientDefs() {
+        reloadItemSetBindings();
+        reloadSpecialMechanicItems();
+    }
+
+    /** 模块名 -> datapack 物品集合名 的绑定表（服务端 applyDefs 与客户端 applyClientDefs 共用） */
+    private static final String[][] ITEM_SET_BINDINGS = {
+            {"body", "body_items"},
+            {"adaptive_armor", "adaptive_armor_items"},
+            {"adaptive_armor_shield_effect", "adaptive_armor_shield_effect_items"},
+            {"electric_discharge", "electric_discharge_items"},
+            {"attack_cooldown_efficiency", "attack_cooldown_efficiency_items"},
+            {"barrier", "barrier_items"},
+            {"shield_natural_recovery", "shield_natural_recovery_items"},
+            {"reflect_damage", "reflect_damage_items"},
+            {"explosive_shield", "explosive_shield_items"},
+            {"shield_transfer", "shield_transfer_items"},
+            {"binary_protocol", "binary_protocol_items"},
+            {"weaponized_shield", "weaponized_shield_items"},
+            {"near_death_protection", "near_death_protection_items"},
+            {"near_death_explosion", "near_death_explosion_items"},
+            {"self_destruct", "self_destruct_items"},
+            {"taskmaster", "taskmaster_items"},
+            {"furnace_core", "furnace_core_items"},
+            {"drone_module", "drone_module_items"},
+            {"assault_drone_module", "assault_drone_module_items"},
+            {"commander", "commander_required_items"},
+            {"defense_drone_module", "defense_drone_module_items"},
+            {"wingman_module", "wingman_module_items"},
+            {"interceptor_module", "wingman_interceptor_module_items"},
+            {"evolution_module", "wingman_evolution_module_items"},
+            {"nano_regen_module", "wingman_nano_regen_module_items"},
+            {"shockwave_module", "wingman_shockwave_module_items"},
+            {"swarm_module", "swarm_module_items"},
+            {"arc_barrier", "arc_barrier_items"},
+            {"reshaping", "reshaping_items"},
+            {"counter_pulse", "counter_pulse_items"},
+            {"assault", "assault_items"},
+            {"charged_attack", "charged_attack_items"},
+            {"charged_shield", "charged_shield_items"},
+            {"grudge", "grudge_items"},
+            {"precision_construct", "precision_construct_items"},
+            {"advanced_engineering", "advanced_engineering_items"},
+            {"pursuit_array", "pursuit_array_required_items"},
+            {"formation_array", "formation_array_required_items"},
+            {"guard_array", "guard_array_required_items"},
+            {"ghost_fuselage", "ghost_fuselage_items"},
+            {"conversion", "conversion_items"},
+            {"journey_module", "journey_module_items"},
+    };
+
+    /** 按绑定表重建全部模块物品集合 */
+    private static void reloadItemSetBindings() {
+        for (String[] binding : ITEM_SET_BINDINGS) {
+            loadItemSetFromDefs(binding[0], binding[1]);
+        }
+    }
+
+    /** 重建特殊机制物品集合（服务端 applyDefs / 客户端 applyClientDefs 共用） */
+    private static void reloadSpecialMechanicItems() {
+        SPECIAL_MECHANIC_ITEM_SET.clear();
+        for (String itemId : DefsManager.getSpecialMechanicItems()) {
+            Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(itemId));
+            if (item != null && item != Items.AIR) {
+                SPECIAL_MECHANIC_ITEM_SET.add(item);
+            }
+        }
     }
 
     /** 从 datapack 物品集合填充指定模块的物品集合（与 loadItemSetFromDefs 的模块名一致） */

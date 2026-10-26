@@ -34,6 +34,9 @@ public class AssaultInputHandler {
 
     private static boolean isInAssaultMode = false;
     private static int attackCooldown = 0;
+    /** P4 验收期诊断开关（定位完删） */
+    private static final boolean DEBUG = false;
+    private static String lastGate = "";
     // 进入强袭前的原版疾跑设置快照（退出强袭时恢复）
     private static boolean wasToggleSprint = false;
     private static boolean wasToggleActive = false;
@@ -52,6 +55,24 @@ public class AssaultInputHandler {
         Player player = minecraft.player;
 
         boolean isLeftClickDown = minecraft.options.keyAttack.isDown();
+
+        // 诊断日志（P4 验收期）：记录每个门控导致强袭不进入/退出的原因，定位后删除
+        if (DEBUG) {
+            boolean assaultItem = AttackModeClientUtil.hasAssaultItem();
+            boolean chargedItem = AttackModeClientUtil.hasChargedAttackItem();
+            boolean charging = ChargedAttackInputHandler.isCharging();
+            boolean burstDisabled = BurstFireClientHandler.isAssaultDisabled(player.getUUID());
+            String gate = charging ? "charging"
+                    : burstDisabled ? "burst"
+                    : chargedItem ? "chargedItem"
+                    : !isLeftClickDown ? "notHolding"
+                    : !assaultItem ? "noItem" : "ok";
+            if (!gate.equals(lastGate)) {
+                lastGate = gate;
+                gytrinket.LOGGER.info("[assaultdbg] gate={} left={} hasAssault={} hasCharged={} charging={} burstDisabled={} mode={}",
+                        gate, isLeftClickDown, assaultItem, chargedItem, charging, burstDisabled, isInAssaultMode);
+            }
+        }
 
         // 充能攻击兼容：充能期间强袭不执行客户端自动攻击
         if (ChargedAttackInputHandler.isCharging()) {

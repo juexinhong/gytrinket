@@ -99,16 +99,16 @@ public class LightPointCoreScreen extends AbstractContainerScreen<LightPointCore
 
     /**
      * 禁用物品遮罩：70% 灰色半透明 + 对角相交 × 线段。
-     * 使用 RenderType.guiOverlay()（与原版槽位高亮 renderSlotHighlight 相同）绘制，
-     * 该 RenderType 设计为渲染在所有 GUI 内容之上，不受物品批次顺序与深度测试影响，
-     * 确保遮罩一定覆盖在物品图标上方。
+     * 1.19.2 没有 1.20 的 {@code RenderType.guiOverlay()}，改用
+     * {@link GuiCanvas#fillGradientOverlay}（关深度测试 + z 提到物品之上），
+     * 保证遮罩/× 一定覆盖在物品图标和数量装饰上方。
      */
     private static void drawDisabledOverlay(GuiCanvas g, int x, int y, int size) {
-        g.fillGradient(x + 1, y + 1, x + size - 1, y + size - 1, 0xB0808080, 0xB0808080);
+        g.fillGradientOverlay(x + 1, y + 1, x + size - 1, y + size - 1, 0xB0808080, 0xB0808080);
         int x0 = x + 3, y0 = y + 3, x1 = x + size - 3, y1 = y + size - 3;
         for (int k = 0; k <= 9; k++) {
-            g.fillGradient(x0 + k, y0 + k, x0 + k + 3, y0 + k + 3, 0xFF000000, 0xFF000000);   // 左上→右下
-            g.fillGradient(x1 - k - 3, y0 + k, x1 - k, y0 + k + 3, 0xFF000000, 0xFF000000);   // 右上→左下
+            g.fillGradientOverlay(x0 + k, y0 + k, x0 + k + 3, y0 + k + 3, 0xFF000000, 0xFF000000);   // 左上→右下
+            g.fillGradientOverlay(x1 - k - 3, y0 + k, x1 - k, y0 + k + 3, 0xFF000000, 0xFF000000);   // 右上→左下
         }
     }
 

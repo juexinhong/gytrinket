@@ -307,10 +307,27 @@ public final class ClientConsole {
                                             "screen.gytrinket.interceptor_config")));
                         }
                         case "core" -> {
-                            // 光点核心方块界面：37 格容器（27 核心槽 + 玩家背包）
+                            // 光点核心方块界面：27 核心槽 + 玩家背包。
+                            // screen core demo = 填入演示物品 + 注入禁用原因，用于验收禁用遮罩层级
                             var inventory = mc.player.getInventory();
-                            var menu = new com.gytrinket.gytrinket.menu.LightPointCoreMenu(0, inventory,
-                                    new net.minecraft.world.SimpleContainer(27));
+                            var container = new net.minecraft.world.SimpleContainer(27);
+                            if (p.length > 2 && "demo".equals(p[2])) {
+                                String[] demoIds = {"gytrinket:shield_gy3", "gytrinket:assault_module",
+                                        "gytrinket:charged_attack_module", "gytrinket:burst_fire_module",
+                                        "gytrinket:journey_module", "gytrinket:attack_frame"};
+                                for (int i = 0; i < demoIds.length; i++) {
+                                    var rl = new net.minecraft.resources.ResourceLocation(demoIds[i]);
+                                    var item = net.minecraft.core.Registry.ITEM.get(rl);
+                                    container.setItem(i, new net.minecraft.world.item.ItemStack(item, i == 0 ? 16 : 1));
+                                }
+                                java.util.List<String> reasons = new java.util.ArrayList<>();
+                                for (int i = 0; i < 27; i++) {
+                                    reasons.add(i < 3 ? "演示禁用" : "");
+                                }
+                                com.gytrinket.gytrinket.client.datacenter.ClientDataCenter
+                                        .updateDisabledReasons(reasons);
+                            }
+                            var menu = new com.gytrinket.gytrinket.menu.LightPointCoreMenu(0, inventory, container);
                             mc.setScreen(new com.gytrinket.gytrinket.client.screen.LightPointCoreScreen(
                                     menu, inventory,
                                     net.minecraft.network.chat.Component.translatable(
@@ -432,6 +449,50 @@ public final class ClientConsole {
                         mapping.setDown(down);
                         gytrinket.LOGGER.info("[cmd] key {} down={}", name, down);
                     }
+                }
+                case "keyclick" -> {
+                    // 模拟一次真实点击（KeyMapping.click 累加 clickCount，下一 tick 原版 handleKeybinds 走 startAttack）
+                    String name = p.length > 1 ? p[1] : "attack";
+                    int times = p.length > 2 ? Math.max(1, Math.min(20, Integer.parseInt(p[2]))) : 1;
+                    com.mojang.blaze3d.platform.InputConstants.Key key = switch (name) {
+                        case "attack" -> com.mojang.blaze3d.platform.InputConstants.Type.MOUSE.getOrCreate(0);
+                        case "use" -> com.mojang.blaze3d.platform.InputConstants.Type.MOUSE.getOrCreate(1);
+                        default -> null;
+                    };
+                    if (key == null) {
+                        gytrinket.LOGGER.warn("[cmd] keyclick: unknown mapping {}", name);
+                    } else {
+                        for (int i = 0; i < times; i++) {
+                            net.minecraft.client.KeyMapping.click(key);
+                        }
+                        gytrinket.LOGGER.info("[cmd] keyclick {} x{}", name, times);
+                    }
+                }
+                case "attackinfo" -> {
+                    // 诊断：攻击模式客户端判定链路（快照物品 / 模块集合 / 充能/强袭状态）
+                    var snap = com.gytrinket.gytrinket.client.datacenter.ClientDataCenter.getSnapshot();
+                    gytrinket.LOGGER.info("[attackinfo] snapshotSlots={} curiosSlots={}",
+                            snap.getSlotCount(), snap.getCuriosSlotCount());
+                    for (int i = 0; i < snap.getSlotCount(); i++) {
+                        var st = snap.getItemInSlot(i);
+                        if (st.isEmpty()) continue;
+                        var item = st.getItem();
+                        gytrinket.LOGGER.info("[attackinfo] slot={} item={} assault={} charged={} electric={}",
+                                i, net.minecraft.core.Registry.ITEM.getKey(item),
+                                com.gytrinket.gytrinket.config.Config.isAssaultItem(item),
+                                com.gytrinket.gytrinket.config.Config.isChargedAttackItem(item),
+                                com.gytrinket.gytrinket.config.Config.isElectricDischargeItem(item));
+                    }
+                    gytrinket.LOGGER.info("[attackinfo] hasAssault={} hasCharged={} charging={} assaultMode={} comboCooldown={} burstFiring={} leftDown={}",
+                            com.gytrinket.gytrinket.client.attack_mode.AttackModeClientUtil.hasAssaultItem(),
+                            com.gytrinket.gytrinket.client.attack_mode.AttackModeClientUtil.hasChargedAttackItem(),
+                            com.gytrinket.gytrinket.client.attack_mode.charged_attack.ChargedAttackInputHandler.isCharging(),
+                            com.gytrinket.gytrinket.client.attack_mode.assault.AssaultInputHandler.isAssaultMode(),
+                            com.gytrinket.gytrinket.client.attack_mode.burst_fire.BurstFireClientHandler
+                                    .isInComboCooldown(mc.player.getUUID()),
+                            com.gytrinket.gytrinket.client.attack_mode.burst_fire.BurstFireClientHandler
+                                    .isBurstFiring(mc.player.getUUID()),
+                            mc.options.keyAttack.isDown());
                 }
                 case "persp" -> {
                     // 切换视角：0 = 第一人称，1 = 第三人称背后，2 = 第三人称正面（验收构造体/护盾用）

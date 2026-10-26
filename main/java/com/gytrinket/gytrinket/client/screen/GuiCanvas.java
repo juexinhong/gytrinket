@@ -70,6 +70,23 @@ public class GuiCanvas extends GuiComponent {
         this.fillGradient(pose, x1, y1, x2, y2, colorFrom, colorTo);
     }
 
+    /**
+     * 以「GUI 覆盖层」语义绘制渐变（对齐 1.20.1 的 {@code RenderType.guiOverlay()}）：
+     * 关闭深度测试并把 z 提到物品与物品装饰之上。
+     * <p>
+     * 1.19.2 的物品在 GUI 里渲染于 z=100+blitOffset（容器界面 blitOffset=100 → z=200，
+     * 数量/耐久装饰在 z=300），普通 fill 在 z=0 会被深度测试挡在物品下方。
+     * 容器界面的禁用遮罩必须用本方法而不是 {@link #fillGradient}。
+     */
+    public void fillGradientOverlay(int x1, int y1, int x2, int y2, int colorFrom, int colorTo) {
+        RenderSystem.disableDepthTest();
+        pose.pushPose();
+        pose.translate(0.0, 0.0, 400.0);
+        fillGradient(pose, x1, y1, x2, y2, colorFrom, colorTo);
+        pose.popPose();
+        RenderSystem.enableDepthTest();
+    }
+
     // ==================== 文本 ====================
 
     public int drawString(Font font, String text, int x, int y, int color, boolean shadow) {

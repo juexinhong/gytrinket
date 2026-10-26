@@ -297,6 +297,9 @@ public class ConfigDefsSyncMessage {
         if (context.getSender() == null) {
             // 客户端接收
             DefsManager.applyClientSync(shieldTypes, specialMechanicItems, itemToSets, tooltipRules, specialMechanicOverrides, shieldTypeOverrides, shieldTypeParamDefaults);
+            // 专用服联机时客户端不跑 datapack 重载，必须在这里重建 Config 的模块物品集合，
+            // 否则 isAssaultItem/isChargedAttackItem 等客户端判定永远为 false（强袭/充能攻击失效）
+            com.gytrinket.gytrinket.config.Config.applyClientDefs();
             if (attributes != null && !attributes.isEmpty()) {
                 // 属性静态表：仅在有数据时重建，避免空推送清空配置界面回包已填充的表
                 AttributeManager.clearAllItemAttributes();

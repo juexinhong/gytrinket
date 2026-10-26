@@ -2218,6 +2218,14 @@ public class DefsManager {
         for (var e : itemToSets.entrySet()) {
             CLIENT_EFFECTIVE_SETS.put(e.getKey(), new HashSet<>(e.getValue()));
         }
+        // 反推「集合名 -> 物品ID」：Config.applyClientDefs() 要按集合名重建模块物品集合。
+        // 专用服联机时客户端不跑 datapack 重载，ITEM_SETS 原本会一直是空的。
+        ITEM_SETS.clear();
+        for (var e : itemToSets.entrySet()) {
+            for (String setName : e.getValue()) {
+                ITEM_SETS.computeIfAbsent(setName, k -> new HashSet<>()).add(e.getKey());
+            }
+        }
         TOOLTIP_RULES.clear();
         TOOLTIP_RULES.addAll(tooltipRules);
         setClientOverrides(smOverrides, stOverrides);

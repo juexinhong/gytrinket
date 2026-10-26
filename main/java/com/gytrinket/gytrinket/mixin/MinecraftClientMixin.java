@@ -3,6 +3,7 @@ package com.gytrinket.gytrinket.mixin;
 import com.gytrinket.gytrinket.client.attack_mode.AttackModeClientUtil;
 import com.gytrinket.gytrinket.client.attack_mode.assault.AssaultInputHandler;
 import com.gytrinket.gytrinket.client.attack_mode.charged_attack.ChargedAttackInputHandler;
+import com.gytrinket.gytrinket.gytrinket;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.phys.HitResult;
@@ -26,6 +27,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  */
 @Mixin(value = Minecraft.class, priority = 999)
 public class MinecraftClientMixin {
+
+    /** P4 验收期诊断开关（定位完删） */
+    private static final boolean DEBUG = false;
 
     /**
      * 拦截 startAttack（单次点击攻击）
@@ -54,11 +58,17 @@ public class MinecraftClientMixin {
         }
 
         // 初始攻击拦截：拥有充能攻击物品且攻击强度满时，启动充能并取消本次攻击
-        if (AttackModeClientUtil.hasChargedAttackItem()) {
-            float attackStrength = player.getAttackStrengthScale(0.0F);
-            if (attackStrength >= 1.0F) {
-                if (!com.gytrinket.gytrinket.client.attack_mode.burst_fire.BurstFireClientHandler
-                        .isInComboCooldown(player.getUUID())) {
+        boolean hasCharged = AttackModeClientUtil.hasChargedAttackItem();
+        float strength = player.getAttackStrengthScale(0.0F);
+        boolean inComboCooldown = com.gytrinket.gytrinket.client.attack_mode.burst_fire.BurstFireClientHandler
+                .isInComboCooldown(player.getUUID());
+        if (DEBUG) {
+            gytrinket.LOGGER.info("[attackdbg] startAttack hasCharged={} strength={} comboCooldown={}",
+                    hasCharged, strength, inComboCooldown);
+        }
+        if (hasCharged) {
+            if (strength >= 1.0F) {
+                if (!inComboCooldown) {
                     ChargedAttackInputHandler.startCharging();
                     cir.setReturnValue(false);
                 }

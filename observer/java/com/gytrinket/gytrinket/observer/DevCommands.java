@@ -1135,7 +1135,13 @@ public final class DevCommands {
             Files.writeString(file, json, StandardCharsets.UTF_8);
             String rev = P5Dump.sha256(json);
             Files.writeString(dir.resolve("defs.rev"), rev, StandardCharsets.UTF_8);
-            source.sendSuccess(Component.literal("p5 defs dump: " + file.toAbsolutePath() + " rev=" + rev), false);
+            var snapshot = DefsManager.currentSnapshot();
+            String snapshotInfo = snapshot == null
+                    ? "snapshot=null"
+                    : "snapshotRev=" + snapshot.revisionHex() + " loadId=" + snapshot.loadId + " counts=" + snapshot.counts();
+            Files.writeString(dir.resolve("defs.snapshot.txt"), snapshotInfo, StandardCharsets.UTF_8);
+            source.sendSuccess(Component.literal("p5 defs dump: " + file.toAbsolutePath() + " rev=" + rev
+                    + " | " + snapshotInfo), false);
             return 1;
         } catch (Exception e) {
             source.sendFailure(Component.literal("p5 defs dump failed: " + e));
@@ -1146,7 +1152,9 @@ public final class DevCommands {
     private static int printDefsRev(CommandSourceStack source) {
         try {
             String rev = P5Dump.sha256(P5Dump.canonical(collectP5DefsState()));
-            source.sendSuccess(Component.literal("p5 defs rev=" + rev), false);
+            source.sendSuccess(Component.literal("p5 defs rev=" + rev
+                    + " snapshotRev=" + DefsManager.snapshotRevision()
+                    + " loadId=" + DefsManager.snapshotLoadId()), false);
             return 1;
         } catch (Exception e) {
             source.sendFailure(Component.literal("p5 defs rev failed: " + e));

@@ -27,6 +27,8 @@ public class ConfigDefsSyncMessage {
      * （专用服联机时客户端不会跑数据包重载，之前该表在客户端一直是空的。）
      */
     private final List<DefsManager.AttributeEntry> attributeDefs;
+    /** 服务端定义快照 revision（内容哈希）；客户端只保存用于诊断对齐。 */
+    private final long revision;
 
     public ConfigDefsSyncMessage(Map<String, Boolean> shieldTypes,
                                  List<String> specialMechanicItems,
@@ -36,7 +38,8 @@ public class ConfigDefsSyncMessage {
                                  Map<String, DefsManager.ShieldTypeOverride> shieldTypeOverrides,
                                  Map<String, Map<String, Double>> shieldTypeParamDefaults,
                                  Map<String, Map<String, Double>> attributes,
-                                 List<DefsManager.AttributeEntry> attributeDefs) {
+                                 List<DefsManager.AttributeEntry> attributeDefs,
+                                 long revision) {
         this.shieldTypes = shieldTypes;
         this.specialMechanicItems = specialMechanicItems;
         this.itemToSets = itemToSets;
@@ -46,6 +49,7 @@ public class ConfigDefsSyncMessage {
         this.shieldTypeParamDefaults = shieldTypeParamDefaults;
         this.attributes = attributes;
         this.attributeDefs = attributeDefs;
+        this.revision = revision;
     }
 
     public void toBytes(FriendlyByteBuf buf) {
@@ -183,6 +187,7 @@ public class ConfigDefsSyncMessage {
             buf.writeUtf(def.combine());
             buf.writeUtf(def.group());
         }
+        buf.writeLong(revision);
     }
 
     public ConfigDefsSyncMessage(FriendlyByteBuf buf) {
@@ -310,13 +315,14 @@ public class ConfigDefsSyncMessage {
         for (int i = 0; i < n; i++) {
             this.attributeDefs.add(new DefsManager.AttributeEntry(buf.readUtf(), buf.readUtf(), buf.readUtf()));
         }
+        this.revision = buf.readLong();
     }
 
     public void handle(Supplier<NetworkEvent.Context> contextSupplier) {
         NetworkEvent.Context context = contextSupplier.get();
         if (context.getSender() == null) {
             // 客户端接收
-            DefsManager.applyClientSync(shieldTypes, specialMechanicItems, itemToSets, tooltipRules, specialMechanicOverrides, shieldTypeOverrides, shieldTypeParamDefaults);
+            DefsManager.applyClientSync(shieldTypes, specialMechanicItems, itemToSets, tooltipRules, specialMechanicOverrides, shieldTypeOverrides, shieldTypeParamDefaults, revision);
             // 专用服联机时客户端不跑 datapack 重载，必须在这里重建 Config 的模块物品集合，
             // 否则 isAssaultItem/isChargedAttackItem 等客户端判定永远为 false（强袭/充能攻击失效）
             com.gytrinket.gytrinket.config.Config.applyClientDefs();

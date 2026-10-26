@@ -431,6 +431,15 @@ public class DefsManager {
     /** 本次定义加载的解析错误计数（0 = 全量成功，可发布） */
     private static int loadErrorCount = 0;
 
+    /** 成功发布的最新定义快照（解析失败不发布）。 */
+    private static volatile DefsSnapshot currentSnapshot;
+
+    /** 成功加载序号（诊断用）。 */
+    private static long loadSequence = 0;
+
+    /** 客户端最近一次同步收到的 revision（-1 = 尚未同步）。 */
+    private static volatile long clientRevision = -1L;
+
     private DefsManager() {}
 
     // ===== 服务端加载（forge 事件总线） =====
@@ -729,6 +738,11 @@ public class DefsManager {
         ITEM_DEFINITIONS = itemDefinitions;
         ITEM_DATA_PACK_IDS = itemDataPackIds;
         loadErrorCount = 0;
+        loadSequence++;
+        currentSnapshot = DefsSnapshot.capture(loadSequence, itemSets, entitySets, specialMechanicItems,
+                specialMechanicSets, shieldTypes, shieldTypeParamDefaults, itemShieldTypes, attributeDefs,
+                disableTargets, dependencies, disableCategories, dependenciesAll, moduleTrees, upgradePaths,
+                tooltipRules, itemDefinitions, itemDataPackIds);
         clientLoaded = !ITEM_SETS.isEmpty() || !SHIELD_TYPES.isEmpty() || !TOOLTIP_RULES.isEmpty() || !ATTRIBUTE_DEFS.isEmpty();
 
         // 填充 Config 集合并触发依赖定义数据的子系统重载
@@ -2254,7 +2268,9 @@ public class DefsManager {
                                        List<TooltipRuleDef> tooltipRules,
                                        Map<String, SpecialMechanicOverride> smOverrides,
                                        Map<String, ShieldTypeOverride> stOverrides,
-                                       Map<String, Map<String, Double>> typeParamDefaults) {
+                                       Map<String, Map<String, Double>> typeParamDefaults,
+                                       long revision) {
+        clientRevision = revision;
         SHIELD_TYPES.clear();
         SHIELD_TYPES.putAll(shieldTypes);
         SHIELD_TYPE_PARAM_DEFAULTS.clear();
@@ -2311,6 +2327,26 @@ public class DefsManager {
     }
 
     // ===== 服务端查询（供同步到客户端） =====
+
+    /** 最近一次成功发布的定义快照；null = 尚未成功加载过。 */
+    public static DefsSnapshot currentSnapshot() {
+        return currentSnapshot;
+    }
+
+    public static long snapshotRevision() {
+        DefsSnapshot snapshot = currentSnapshot;
+        return snapshot == null ? 0L : snapshot.revision;
+    }
+
+    public static long snapshotLoadId() {
+        DefsSnapshot snapshot = currentSnapshot;
+        return snapshot == null ? 0L : snapshot.loadId;
+    }
+
+    /** 客户端最近一次同步收到的 revision（-1 = 尚未同步）。 */
+    public static long clientRevision() {
+        return clientRevision;
+    }
 
     public static Map<String, Boolean> getServerShieldTypes() {
         return SHIELD_TYPES;

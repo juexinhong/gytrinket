@@ -485,7 +485,8 @@ public class NetworkHandler {
             DefsManager.getServerShieldTypeOverrides(),
             DefsManager.getServerShieldTypeParamDefaultDoubles(),
             DefsManager.collectEffectiveItemAttributes(),
-            new java.util.ArrayList<>(DefsManager.getAttributeDefs())
+            new java.util.ArrayList<>(DefsManager.getAttributeDefs()),
+            DefsManager.snapshotRevision()
         );
     }
 

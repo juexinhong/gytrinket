@@ -209,6 +209,8 @@ public final class ClientConsole {
                     mc.setScreen(new com.gytrinket.gytrinket.client.screen.ConfigEntriesScreen(null, clientTab));
                     gytrinket.LOGGER.info("[cmd] cfg clientTab={}", clientTab);
                 }
+                case "defsrev" -> gytrinket.LOGGER.info("[defs] client revision={}",
+                        com.gytrinket.gytrinket.core.defs.DefsManager.clientRevision());
                 case "tabs" -> {
                     // 调试用：列出创造标签页（序号 / 标题 / 物品数），验证注册顺序与语言键
                     int idx = 0;

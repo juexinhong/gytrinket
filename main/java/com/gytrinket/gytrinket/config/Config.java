@@ -24,12 +24,15 @@ import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.config.ModConfigEvent;
 import net.minecraftforge.registries.ForgeRegistries;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Collections;
 import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
 
 /**
  * 模组配置类
@@ -931,6 +934,74 @@ public class Config {
     private static final Set<EntityType<?>> PROJECTILE_BLACKLIST_CACHE = new HashSet<>();
     /** 弹射物来源追溯包名前缀缓存 */
     private static final Set<String> PROJECTILE_SOURCE_TRACE_CACHE = new HashSet<>();
+
+    /**
+     * P5 诊断：导出由数据包定义派生的运行时状态（稳定排序）。
+     * <p>
+     * 只供 P5-0 golden 快照与 P5-5 重构后的 diff=0 门禁使用，不参与游戏逻辑。
+     */
+    public static Map<String, Object> dumpDerivedForDiagnostics() {
+        Map<String, Object> out = new TreeMap<>();
+
+        Map<String, List<String>> moduleSets = new TreeMap<>();
+        for (Map.Entry<String, Set<Item>> entry : MODULE_ITEM_SETS.entrySet()) {
+            moduleSets.put(entry.getKey(), sortedItemIds(entry.getValue()));
+        }
+        out.put("moduleItemSets", moduleSets);
+        out.put("specialMechanicItems", sortedItemIds(SPECIAL_MECHANIC_ITEM_SET));
+
+        Map<String, List<String>> itemShieldTypes = new TreeMap<>();
+        for (Map.Entry<Item, List<String>> entry : ITEM_SHIELD_TYPES.entrySet()) {
+            String id = itemId(entry.getKey());
+            if (id == null) {
+                continue;
+            }
+            List<String> types = new ArrayList<>(entry.getValue());
+            Collections.sort(types);
+            itemShieldTypes.put(id, types);
+        }
+        out.put("itemShieldTypes", itemShieldTypes);
+        out.put("shieldTypeCompatibility", new TreeMap<>(SHIELD_TYPE_COMPATIBILITY));
+        out.put("dangerousEntities", new ArrayList<>(new TreeSet<>(DANGEROUS_ENTITY_SET)));
+
+        Map<String, Double> chargeWhitelist = new TreeMap<>();
+        for (Map.Entry<Item, Double> entry : ITEM_USE_CHARGE_WHITELIST.entrySet()) {
+            String id = itemId(entry.getKey());
+            if (id != null) {
+                chargeWhitelist.put(id, entry.getValue());
+            }
+        }
+        out.put("itemUseChargeWhitelist", chargeWhitelist);
+
+        List<String> projectileBlacklist = new ArrayList<>();
+        for (EntityType<?> type : PROJECTILE_BLACKLIST_CACHE) {
+            ResourceLocation key = ForgeRegistries.ENTITY_TYPES.getKey(type);
+            if (key != null) {
+                projectileBlacklist.add(key.toString());
+            }
+        }
+        Collections.sort(projectileBlacklist);
+        out.put("projectileBlacklist", projectileBlacklist);
+        out.put("projectileSourceTrace", new ArrayList<>(new TreeSet<>(PROJECTILE_SOURCE_TRACE_CACHE)));
+        return out;
+    }
+
+    private static List<String> sortedItemIds(Set<Item> items) {
+        List<String> ids = new ArrayList<>();
+        for (Item item : items) {
+            String id = itemId(item);
+            if (id != null) {
+                ids.add(id);
+            }
+        }
+        Collections.sort(ids);
+        return ids;
+    }
+
+    private static String itemId(Item item) {
+        ResourceLocation key = ForgeRegistries.ITEMS.getKey(item);
+        return key == null ? null : key.toString();
+    }
 
     public static List<String> getItemShieldTypes(ResourceLocation itemId) {
         Item item = ForgeRegistries.ITEMS.getValue(itemId);

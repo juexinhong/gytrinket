@@ -1,6 +1,7 @@
 package com.gytrinket.gytrinket.core;
 
 import com.gytrinket.gytrinket.core.attack_mode.electric_discharge.ElectricDischargeManager;
+import com.gytrinket.gytrinket.engine.perf.TickProfiler;
 import com.gytrinket.gytrinket.core.entity.construct.ConstructManager;
 import com.gytrinket.gytrinket.core.entity.construct.drone.DroneManager;
 import com.gytrinket.gytrinket.core.entity.construct.drone.CommanderManager;
@@ -48,6 +49,11 @@ public class TickScheduler {
 
     @SubscribeEvent
     public static void onServerTick(TickEvent.ServerTickEvent event) {
+        if (event.phase == TickEvent.Phase.START) {
+            TickProfiler.begin("server_tick");
+            return;
+        }
+        TickProfiler.end("server_tick");
         if (event.phase == TickEvent.Phase.END) {
             currentTick++;
 

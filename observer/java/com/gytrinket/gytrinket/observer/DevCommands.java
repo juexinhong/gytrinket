@@ -1,6 +1,11 @@
 package com.gytrinket.gytrinket.observer;
 
+import com.gytrinket.gytrinket.config.Config;
+import com.gytrinket.gytrinket.core.attribute.AttributeDefinition;
+import com.gytrinket.gytrinket.core.attribute.AttributeManager;
+import com.gytrinket.gytrinket.core.defs.DefsManager;
 import com.gytrinket.gytrinket.core.world.terrain.RuinedTowerBlueprint;
+import com.gytrinket.gytrinket.engine.perf.TickProfiler;
 import com.gytrinket.gytrinket.gytrinket;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.DoubleArgumentType;
@@ -35,6 +40,7 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -42,6 +48,8 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
@@ -202,6 +210,22 @@ public final class DevCommands {
                 .then(Commands.literal("storelist")
                         .requires(source -> source.hasPermission(2))
                         .executes(ctx -> listStore(ctx.getSource())))
+                .then(Commands.literal("defs")
+                        .requires(source -> source.hasPermission(2))
+                        .then(Commands.literal("dump")
+                                .executes(ctx -> dumpDefs(ctx.getSource())))
+                        .then(Commands.literal("rev")
+                                .executes(ctx -> printDefsRev(ctx.getSource()))))
+                .then(Commands.literal("perf")
+                        .requires(source -> source.hasPermission(2))
+                        .then(Commands.literal("start")
+                                .executes(ctx -> startPerf(ctx.getSource())))
+                        .then(Commands.literal("stop")
+                                .executes(ctx -> stopPerf(ctx.getSource())))
+                        .then(Commands.literal("reset")
+                                .executes(ctx -> resetPerf(ctx.getSource())))
+                        .then(Commands.literal("dump")
+                                .executes(ctx -> dumpPerf(ctx.getSource()))))
         );
     }
 
@@ -1071,6 +1095,127 @@ public final class DevCommands {
             case LANTERN -> Blocks.LANTERN.defaultBlockState();
             case AIR -> Blocks.AIR.defaultBlockState();
         };
+    }
+
+    // ------------------------------------------------------------------
+    // P5 诊断：定义状态 golden dump / rev，tick 采样
+    // ------------------------------------------------------------------
+    private static int dumpDefs(CommandSourceStack source) {
+        try {
+            Map<String, Object> state = collectP5DefsState();
+            String json = P5Dump.canonical(state);
+            Path dir = Path.of("p5dump");
+            Files.createDirectories(dir);
+            Path file = dir.resolve("defs.json");
+            Files.writeString(file, json, StandardCharsets.UTF_8);
+            String rev = P5Dump.sha256(json);
+            Files.writeString(dir.resolve("defs.rev"), rev, StandardCharsets.UTF_8);
+            source.sendSuccess(Component.literal("p5 defs dump: " + file.toAbsolutePath() + " rev=" + rev), false);
+            return 1;
+        } catch (Exception e) {
+            source.sendFailure(Component.literal("p5 defs dump failed: " + e));
+            return 0;
+        }
+    }
+
+    private static int printDefsRev(CommandSourceStack source) {
+        try {
+            String rev = P5Dump.sha256(P5Dump.canonical(collectP5DefsState()));
+            source.sendSuccess(Component.literal("p5 defs rev=" + rev), false);
+            return 1;
+        } catch (Exception e) {
+            source.sendFailure(Component.literal("p5 defs rev failed: " + e));
+            return 0;
+        }
+    }
+
+    private static int startPerf(CommandSourceStack source) {
+        TickProfiler.reset();
+        TickProfiler.setEnabled(true);
+        source.sendSuccess(Component.literal("tick profiler enabled (samples:" + TickProfiler.sampleCount("server_tick") + ")"), false);
+        return 1;
+    }
+
+    private static int stopPerf(CommandSourceStack source) {
+        TickProfiler.setEnabled(false);
+        source.sendSuccess(Component.literal("tick profiler disabled; use /gytrinket perf dump for samples"), false);
+        return 1;
+    }
+
+    private static int resetPerf(CommandSourceStack source) {
+        TickProfiler.reset();
+        source.sendSuccess(Component.literal("tick profiler samples cleared"), false);
+        return 1;
+    }
+
+    private static int dumpPerf(CommandSourceStack source) {
+        source.sendSuccess(Component.literal(TickProfiler.dumpJson()), false);
+        return 1;
+    }
+
+    private static Map<String, Object> collectP5DefsState() {
+        Map<String, Object> root = new TreeMap<>();
+
+        List<DefsManager.AttributeEntry> attributeDefs = new ArrayList<>(DefsManager.getAttributeDefs());
+        attributeDefs.sort(Comparator.comparing(DefsManager.AttributeEntry::name));
+        root.put("attributeDefs", attributeDefs);
+
+        root.put("shieldTypes", new TreeMap<>(DefsManager.getServerShieldTypes()));
+
+        Map<String, Map<String, Double>> shieldDefaults = new TreeMap<>();
+        for (Map.Entry<String, Map<String, Double>> entry : DefsManager.getServerShieldTypeParamDefaultDoubles().entrySet()) {
+            shieldDefaults.put(entry.getKey(), new TreeMap<>(entry.getValue()));
+        }
+        root.put("shieldTypeParamDefaults", shieldDefaults);
+
+        root.put("specialMechanicItems", new TreeSet<>(DefsManager.getServerSpecialMechanicItems()));
+
+        Map<String, List<String>> effectiveSets = new TreeMap<>();
+        for (Map.Entry<String, List<String>> entry : DefsManager.getServerAllEffectiveSets().entrySet()) {
+            List<String> sets = new ArrayList<>(entry.getValue());
+            sets.sort(Comparator.naturalOrder());
+            effectiveSets.put(entry.getKey(), sets);
+        }
+        root.put("effectiveSets", effectiveSets);
+
+        Map<String, List<String>> itemShieldTypes = new TreeMap<>();
+        for (Map.Entry<String, List<String>> entry : DefsManager.getItemShieldTypes().entrySet()) {
+            List<String> types = new ArrayList<>(entry.getValue());
+            types.sort(Comparator.naturalOrder());
+            itemShieldTypes.put(entry.getKey(), types);
+        }
+        root.put("itemShieldTypes", itemShieldTypes);
+
+        root.put("disableTargets", DefsManager.getDisableTargets());
+        root.put("dependencies", DefsManager.getDependencies());
+        root.put("disableCategories", DefsManager.getDisableCategories());
+        root.put("dependenciesAll", DefsManager.getDependenciesAll());
+        root.put("moduleTrees", DefsManager.getModuleTrees());
+        root.put("upgradePaths", DefsManager.getUpgradePaths());
+
+        List<DefsManager.TooltipRuleDef> tooltips = new ArrayList<>(DefsManager.getServerTooltipRules());
+        tooltips.sort(Comparator.comparing(DefsManager.TooltipRuleDef::titleKey)
+                .thenComparing(DefsManager.TooltipRuleDef::itemSet));
+        root.put("tooltipRules", tooltips);
+
+        root.put("itemDefinitions", DefsManager.getItemDefinitions());
+        root.put("specialMechanicOverrides", DefsManager.getServerSpecialMechanicOverrides());
+        root.put("shieldTypeOverrides", DefsManager.getServerShieldTypeOverrides());
+        root.put("configDerived", Config.dumpDerivedForDiagnostics());
+
+        Map<String, Object> registeredAttributes = new TreeMap<>();
+        for (String name : new TreeSet<>(AttributeManager.getAllRegisteredAttributes())) {
+            AttributeDefinition definition = AttributeManager.getAttributeDefinition(name);
+            if (definition != null) {
+                Map<String, Object> info = new TreeMap<>();
+                info.put("type", definition.getType().name());
+                info.put("group", definition.getGroup());
+                registeredAttributes.put(name, info);
+            }
+        }
+        root.put("registeredAttributes", registeredAttributes);
+        root.put("registeredItemAttributes", new TreeSet<>(AttributeManager.getAllRegisteredItemAttributes()));
+        return root;
     }
 
     private record Voxel(int x, int y, int z, Color color) {

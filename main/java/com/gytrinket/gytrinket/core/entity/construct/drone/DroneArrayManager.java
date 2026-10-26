@@ -1,6 +1,7 @@
 package com.gytrinket.gytrinket.core.entity.construct.drone;
 
 import com.gytrinket.gytrinket.core.defs.DefsManager;
+import com.gytrinket.gytrinket.gytrinket;
 import com.gytrinket.gytrinket.core.entity.construct.AbstractConstructEntity;
 import com.gytrinket.gytrinket.core.entity.construct.ConstructData;
 import com.gytrinket.gytrinket.core.entity.construct.ConstructManager;
@@ -146,11 +147,15 @@ public class DroneArrayManager {
         } while (nextIndex != startIndex);
 
         if (newArray == null) {
+            gytrinket.LOGGER.info("[array] switch blocked for {} (current={}, no usable next array)",
+                    player.getName().getString(), currentArray.getName());
             return;
         }
 
         setPlayerArrayType(player, newArray);
         updatePlayerDronesArray(player, newArray);
+        gytrinket.LOGGER.info("[array] {} switched {} -> {}", player.getName().getString(),
+                currentArray.getName(), newArray.getName());
 
         player.displayClientMessage(
                 Component.literal("阵列: " + newArray.getName()).withStyle(ChatFormatting.GRAY),

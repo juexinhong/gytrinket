@@ -457,6 +457,13 @@ public final class ClientConsole {
                     com.mojang.blaze3d.platform.InputConstants.Key key = switch (name) {
                         case "attack" -> com.mojang.blaze3d.platform.InputConstants.Type.MOUSE.getOrCreate(0);
                         case "use" -> com.mojang.blaze3d.platform.InputConstants.Type.MOUSE.getOrCreate(1);
+                        // 键盘键：tab（阵列切换）/ h（玩家面板）/ i（斩杀开关）
+                        case "tab" -> com.mojang.blaze3d.platform.InputConstants.Type.KEYSYM
+                                .getOrCreate(com.mojang.blaze3d.platform.InputConstants.KEY_TAB);
+                        case "h" -> com.mojang.blaze3d.platform.InputConstants.Type.KEYSYM
+                                .getOrCreate(com.mojang.blaze3d.platform.InputConstants.KEY_H);
+                        case "i" -> com.mojang.blaze3d.platform.InputConstants.Type.KEYSYM
+                                .getOrCreate(com.mojang.blaze3d.platform.InputConstants.KEY_I);
                         default -> null;
                     };
                     if (key == null) {

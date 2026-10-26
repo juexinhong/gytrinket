@@ -173,10 +173,14 @@ public final class DevCommands {
                                         DoubleArgumentType.getDouble(ctx, "radius")))))
                 .then(Commands.literal("wave")
                         .requires(source -> source.hasPermission(2))
-                        .executes(ctx -> sendEnergyWave(ctx.getSource(), 8.0D))
+                        .executes(ctx -> sendEnergyWave(ctx.getSource(), 8.0D, 1))
                         .then(Commands.argument("length", DoubleArgumentType.doubleArg(1.0D, 20.0D))
                                 .executes(ctx -> sendEnergyWave(ctx.getSource(),
-                                        DoubleArgumentType.getDouble(ctx, "length")))))
+                                        DoubleArgumentType.getDouble(ctx, "length"), 1))
+                                .then(Commands.argument("color", IntegerArgumentType.integer(0, 1))
+                                        .executes(ctx -> sendEnergyWave(ctx.getSource(),
+                                                DoubleArgumentType.getDouble(ctx, "length"),
+                                                IntegerArgumentType.getInteger(ctx, "color"))))))
                 .then(Commands.literal("construct")
                         .requires(source -> source.hasPermission(2))
                         .executes(ctx -> spawnConstruct(ctx.getSource(), null))
@@ -204,7 +208,7 @@ public final class DevCommands {
     // ------------------------------------------------------------------
     // 能量波特效验收：直接给所有玩家发 EnergyWaveExplosionPacket（不造成伤害）
     // ------------------------------------------------------------------
-    private static int sendEnergyWave(CommandSourceStack source, double length) {
+    private static int sendEnergyWave(CommandSourceStack source, double length, int colorType) {
         ServerPlayer player = source.getPlayer();
         if (player == null) {
             source.sendFailure(Component.literal("需要玩家执行"));
@@ -213,9 +217,10 @@ public final class DevCommands {
         Vec3 look = player.getLookAngle();
         Vec3 center = player.position().add(0, player.getEyeHeight() * 0.5, 0).add(look.scale(1.5));
         com.gytrinket.gytrinket.network.NetworkHandler.sendEnergyWaveExplosionToAll(
-                (ServerLevel) player.getLevel(), center, look, length, -1, 0, 0.0);
-        gytrinket.LOGGER.info("[wave] sent center={} dir={} length={}", center, look, length);
-        source.sendSuccess(Component.literal("已发送能量波特效（长度 " + length + "）"), false);
+                (ServerLevel) player.getLevel(), center, look, length, -1, colorType, 0.0);
+        gytrinket.LOGGER.info("[wave] sent center={} dir={} length={} color={}", center, look, length, colorType);
+        source.sendSuccess(Component.literal("已发送能量波特效（长度 " + length + "，颜色 "
+                + (colorType == 1 ? "蓝色系/反射护盾" : "黄橙系/蜂群") + "）"), false);
         return 1;
     }
 

@@ -54,11 +54,7 @@ public class FormationBehavior implements IDroneBehavior {
         if (!(drone instanceof DroneConstructEntity droneEntity)) return Vec3.ZERO;
         if (owner == null || !owner.isAlive()) return Vec3.ZERO;
 
-        // 客户端不做位置重算：ConstructManager 活跃实体表只在服务端维护，客户端会把所有无人机算到同一格
-        if (drone.getLevel().isClientSide) {
-            return drone.position();
-        }
-
+        // 阵列刚性跟随：客户端也自行算位置；服务端读活跃实体表、客户端扫描本地世界（见 ArrayGroupResolver）
         updateDroneIndices(droneEntity, owner);
 
         Vec3 targetPos = calculateTargetPosition(owner, droneEntity);
@@ -72,15 +68,8 @@ public class FormationBehavior implements IDroneBehavior {
     }
 
     private void updateDroneIndices(DroneConstructEntity drone, LivingEntity owner) {
-        // 使用 ConstructManager 直接获取玩家的无人机，避免世界范围内的实体搜索
-        Map<UUID, Entity> activeDrones = com.gytrinket.gytrinket.core.entity.construct.ConstructManager.getInstance()
-                .getActiveConstructEntities(owner.getUUID(), DroneConstructTypes.DRONE);
-
-        List<DroneConstructEntity> allDrones = activeDrones.values().stream()
-                .filter(e -> e instanceof DroneConstructEntity)
-                .map(e -> (DroneConstructEntity) e)
-                .filter(d -> d.isAlive() && d.isFormationArray())
-                .collect(Collectors.toList());
+        List<DroneConstructEntity> allDrones = ArrayGroupResolver.collect(
+                drone, owner, DroneConstructEntity::isFormationArray);
 
         List<DroneConstructEntity> commanders = new ArrayList<>();
         List<DroneConstructEntity> nonCommanders = new ArrayList<>();

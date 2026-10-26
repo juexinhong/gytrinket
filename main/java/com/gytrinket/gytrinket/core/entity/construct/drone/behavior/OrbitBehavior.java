@@ -50,27 +50,10 @@ public class OrbitBehavior implements IDroneBehavior {
 
     @Override
     public Vec3 updatePosition(Entity drone, LivingEntity owner, float orbitAngle, float deltaTime) {
-        // 客户端不做位置重算：ConstructManager 活跃实体表只在服务端维护，
-        // 客户端拿到空表会让每架无人机的 droneIndex 都变成 0，从而全部叠到同一角度
-        // （用户实测「无人机叠在一个位置」的根因）。客户端位置由服务端同步 + 原版插值驱动。
-        if (drone.getLevel().isClientSide) {
-            return drone.position();
-        }
-        // 直接从 ConstructManager 获取玩家的所有无人机
-        Map<UUID, net.minecraft.world.entity.Entity> entitiesMap =
-            ConstructManager.getInstance().getActiveConstructEntities(owner.getUUID(), DroneConstructTypes.DRONE);
-
-        List<DroneConstructEntity> allDrones = new ArrayList<>();
-        for (net.minecraft.world.entity.Entity entity : entitiesMap.values()) {
-            if (entity instanceof DroneConstructEntity droneEntity &&
-                droneEntity.isAlive() &&
-                droneEntity.isOrbitArray()) {
-                allDrones.add(droneEntity);
-            }
-        }
-
-        // 按ID排序（越老越先创建，索引越小），确保索引稳定
-        allDrones.sort(Comparator.comparingInt(Entity::getId));
+        // 阵列刚性跟随：客户端也要自行算位置（否则会吃服务端同步延迟）。
+        // 服务端读活跃实体表，客户端扫描本地世界（见 ArrayGroupResolver），两边 index/总数对齐。
+        List<DroneConstructEntity> allDrones = ArrayGroupResolver.collect(
+                drone, owner, DroneConstructEntity::isOrbitArray);
 
         int totalDrones = allDrones.size();
         int droneIndex = allDrones.indexOf(drone);

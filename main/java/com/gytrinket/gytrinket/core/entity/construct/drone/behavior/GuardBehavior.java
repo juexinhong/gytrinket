@@ -56,22 +56,9 @@ public class GuardBehavior implements IDroneBehavior {
         if (!(drone instanceof DroneConstructEntity droneEntity)) return Vec3.ZERO;
         if (owner == null || !owner.isAlive()) return Vec3.ZERO;
 
-        // 客户端不做位置重算：ConstructManager 活跃实体表只在服务端维护，客户端会把所有无人机算到 index 0
-        if (drone.getLevel().isClientSide) {
-            return drone.position();
-        }
-
-        Map<UUID, Entity> entitiesMap = ConstructManager.getInstance()
-                .getActiveConstructEntities(owner.getUUID(), DroneConstructTypes.DRONE);
-
-        List<DroneConstructEntity> allDrones = new ArrayList<>();
-        for (Entity entity : entitiesMap.values()) {
-            if (entity instanceof DroneConstructEntity d && d.isAlive() && d.isGuardArray()) {
-                allDrones.add(d);
-            }
-        }
-
-        allDrones.sort(Comparator.comparingInt(Entity::getId));
+        // 阵列刚性跟随：客户端也自行算位置；服务端读活跃实体表、客户端扫描本地世界（见 ArrayGroupResolver）
+        List<DroneConstructEntity> allDrones = ArrayGroupResolver.collect(
+                drone, owner, DroneConstructEntity::isGuardArray);
 
         int totalDrones = allDrones.size();
         int droneIndex = allDrones.indexOf(drone);

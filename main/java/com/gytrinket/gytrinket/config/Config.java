@@ -4,6 +4,7 @@ import com.gytrinket.gytrinket.gytrinket;
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
 import com.gytrinket.gytrinket.engine.math.AttributeType;
 import com.gytrinket.gytrinket.core.defs.DefsManager;
+import com.gytrinket.gytrinket.core.defs.DefsRuntimeIndex;
 import com.gytrinket.gytrinket.core.shield.DisableSystem;
 import com.gytrinket.gytrinket.core.shield.type.ShieldTypeManager;
 import com.gytrinket.gytrinket.core.upgrade.UpgradeManager;
@@ -924,10 +925,6 @@ public class Config {
         SPEC = BUILDER.build();
     }
 
-    private static final Map<String, Boolean> SHIELD_TYPE_COMPATIBILITY = new HashMap<>();
-    private static final Map<Item, List<String>> ITEM_SHIELD_TYPES = new HashMap<>();
-    private static final Map<String, Set<Item>> MODULE_ITEM_SETS = new HashMap<>();
-    private static final Set<String> DANGEROUS_ENTITY_SET = new HashSet<>();
     /** 充能物品白名单缓存（长按右键充能）：物品 -> 攻击速度修正值 */
     private static final Map<Item, Double> ITEM_USE_CHARGE_WHITELIST = new HashMap<>();
     /** 弹射物黑名单缓存：不参与充能攻击增幅与点射复制的实体类型 */
@@ -943,26 +940,8 @@ public class Config {
     public static Map<String, Object> dumpDerivedForDiagnostics() {
         Map<String, Object> out = new TreeMap<>();
 
-        Map<String, List<String>> moduleSets = new TreeMap<>();
-        for (Map.Entry<String, Set<Item>> entry : MODULE_ITEM_SETS.entrySet()) {
-            moduleSets.put(entry.getKey(), sortedItemIds(entry.getValue()));
-        }
-        out.put("moduleItemSets", moduleSets);
-        out.put("specialMechanicItems", sortedItemIds(SPECIAL_MECHANIC_ITEM_SET));
-
-        Map<String, List<String>> itemShieldTypes = new TreeMap<>();
-        for (Map.Entry<Item, List<String>> entry : ITEM_SHIELD_TYPES.entrySet()) {
-            String id = itemId(entry.getKey());
-            if (id == null) {
-                continue;
-            }
-            List<String> types = new ArrayList<>(entry.getValue());
-            Collections.sort(types);
-            itemShieldTypes.put(id, types);
-        }
-        out.put("itemShieldTypes", itemShieldTypes);
-        out.put("shieldTypeCompatibility", new TreeMap<>(SHIELD_TYPE_COMPATIBILITY));
-        out.put("dangerousEntities", new ArrayList<>(new TreeSet<>(DANGEROUS_ENTITY_SET)));
+        // 物品级派生表（P5-5c 已迁至 DefsRuntimeIndex）
+        DefsRuntimeIndex.current().dumpDerivedForDiagnostics(out);
 
         Map<String, Double> chargeWhitelist = new TreeMap<>();
         for (Map.Entry<Item, Double> entry : ITEM_USE_CHARGE_WHITELIST.entrySet()) {
@@ -986,18 +965,6 @@ public class Config {
         return out;
     }
 
-    private static List<String> sortedItemIds(Set<Item> items) {
-        List<String> ids = new ArrayList<>();
-        for (Item item : items) {
-            String id = itemId(item);
-            if (id != null) {
-                ids.add(id);
-            }
-        }
-        Collections.sort(ids);
-        return ids;
-    }
-
     private static String itemId(Item item) {
         ResourceLocation key = ForgeRegistries.ITEMS.getKey(item);
         return key == null ? null : key.toString();
@@ -1008,11 +975,11 @@ public class Config {
         if (item == null) {
             return Collections.emptyList();
         }
-        return ITEM_SHIELD_TYPES.getOrDefault(item, Collections.emptyList());
+        return DefsRuntimeIndex.current().itemShieldTypes(item);
     }
 
     public static boolean isShieldTypeCompatible(String typeName) {
-        return SHIELD_TYPE_COMPATIBILITY.getOrDefault(typeName, true);
+        return DefsRuntimeIndex.current().isShieldTypeCompatible(typeName);
     }
 
     /**
@@ -1074,28 +1041,8 @@ public class Config {
             }
         }
 
-        // 护盾类型兼容性
-        SHIELD_TYPE_COMPATIBILITY.clear();
-        SHIELD_TYPE_COMPATIBILITY.putAll(DefsManager.getShieldTypes());
-
-        // 物品->护盾类型
-        ITEM_SHIELD_TYPES.clear();
-        DefsManager.getItemShieldTypes().forEach((itemId, types) -> {
-            Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(itemId));
-            if (item != null && item != Items.AIR) {
-                ITEM_SHIELD_TYPES.put(item, types);
-            }
-        });
-
-        // 物品集合（模块名与 loadItemSetFromDefs 使用的 key 一致）
-        reloadItemSetBindings();
-
-        // 特殊机制物品集合（数据驱动，配置系统对 special_mechanics 的增删会实时反映到快速装备/阵列判定）
-        reloadSpecialMechanicItems();
-
-        // 危险实体
-        DANGEROUS_ENTITY_SET.clear();
-        DANGEROUS_ENTITY_SET.addAll(DefsManager.getEntitySet("dangerous_entities"));
+        // 物品级派生索引（模块物品集合 / 护盾类型 / 特殊机制 / 危险实体），P5-5c 从 Config 迁出
+        DefsRuntimeIndex.rebuild();
 
         // 依赖定义数据的子系统重载
         DisableSystem.loadConfig();
@@ -1107,89 +1054,12 @@ public class Config {
     /**
      * 客户端：应用 {@code ConfigDefsSyncMessage} 后重建「依赖数据包定义」的物品集合。
      * <p>
-     * 专用服联机时 {@link #applyDefs()} 只在服务端跑，客户端的 {@code MODULE_ITEM_SETS} 会一直是空的，
+     * 专用服联机时 {@link #applyDefs()} 只在服务端跑，客户端的模块物品集合会一直是空的，
      * 导致强袭/充能等客户端判定（{@code isAssaultItem}/{@code isChargedAttackItem}）永远返回 false。
      * 这里用 {@link DefsManager#applyClientSync} 已填充的定义数据重建同一批集合。
      */
     public static void applyClientDefs() {
-        reloadItemSetBindings();
-        reloadSpecialMechanicItems();
-    }
-
-    /** 模块名 -> datapack 物品集合名 的绑定表（服务端 applyDefs 与客户端 applyClientDefs 共用） */
-    private static final String[][] ITEM_SET_BINDINGS = {
-            {"body", "body_items"},
-            {"adaptive_armor", "adaptive_armor_items"},
-            {"adaptive_armor_shield_effect", "adaptive_armor_shield_effect_items"},
-            {"electric_discharge", "electric_discharge_items"},
-            {"attack_cooldown_efficiency", "attack_cooldown_efficiency_items"},
-            {"barrier", "barrier_items"},
-            {"shield_natural_recovery", "shield_natural_recovery_items"},
-            {"reflect_damage", "reflect_damage_items"},
-            {"explosive_shield", "explosive_shield_items"},
-            {"shield_transfer", "shield_transfer_items"},
-            {"binary_protocol", "binary_protocol_items"},
-            {"weaponized_shield", "weaponized_shield_items"},
-            {"near_death_protection", "near_death_protection_items"},
-            {"near_death_explosion", "near_death_explosion_items"},
-            {"self_destruct", "self_destruct_items"},
-            {"taskmaster", "taskmaster_items"},
-            {"furnace_core", "furnace_core_items"},
-            {"drone_module", "drone_module_items"},
-            {"assault_drone_module", "assault_drone_module_items"},
-            {"commander", "commander_required_items"},
-            {"defense_drone_module", "defense_drone_module_items"},
-            {"wingman_module", "wingman_module_items"},
-            {"interceptor_module", "wingman_interceptor_module_items"},
-            {"evolution_module", "wingman_evolution_module_items"},
-            {"nano_regen_module", "wingman_nano_regen_module_items"},
-            {"shockwave_module", "wingman_shockwave_module_items"},
-            {"swarm_module", "swarm_module_items"},
-            {"arc_barrier", "arc_barrier_items"},
-            {"reshaping", "reshaping_items"},
-            {"counter_pulse", "counter_pulse_items"},
-            {"assault", "assault_items"},
-            {"charged_attack", "charged_attack_items"},
-            {"charged_shield", "charged_shield_items"},
-            {"grudge", "grudge_items"},
-            {"precision_construct", "precision_construct_items"},
-            {"advanced_engineering", "advanced_engineering_items"},
-            {"pursuit_array", "pursuit_array_required_items"},
-            {"formation_array", "formation_array_required_items"},
-            {"guard_array", "guard_array_required_items"},
-            {"ghost_fuselage", "ghost_fuselage_items"},
-            {"conversion", "conversion_items"},
-            {"journey_module", "journey_module_items"},
-    };
-
-    /** 按绑定表重建全部模块物品集合 */
-    private static void reloadItemSetBindings() {
-        for (String[] binding : ITEM_SET_BINDINGS) {
-            loadItemSetFromDefs(binding[0], binding[1]);
-        }
-    }
-
-    /** 重建特殊机制物品集合（服务端 applyDefs / 客户端 applyClientDefs 共用） */
-    private static void reloadSpecialMechanicItems() {
-        SPECIAL_MECHANIC_ITEM_SET.clear();
-        for (String itemId : DefsManager.getSpecialMechanicItems()) {
-            Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(itemId));
-            if (item != null && item != Items.AIR) {
-                SPECIAL_MECHANIC_ITEM_SET.add(item);
-            }
-        }
-    }
-
-    /** 从 datapack 物品集合填充指定模块的物品集合（与 loadItemSetFromDefs 的模块名一致） */
-    private static void loadItemSetFromDefs(String moduleName, String setName) {
-        Set<Item> itemSet = MODULE_ITEM_SETS.computeIfAbsent(moduleName, k -> new HashSet<>());
-        itemSet.clear();
-        for (String itemId : DefsManager.getItemSet(setName)) {
-            Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(itemId));
-            if (item != null && item != Items.AIR) {
-                itemSet.add(item);
-            }
-        }
+        DefsRuntimeIndex.rebuildClientSync();
     }
 
     /**
@@ -1373,8 +1243,7 @@ public class Config {
     }
 
     public static boolean isModuleItem(String moduleName, Item item) {
-        Set<Item> itemSet = MODULE_ITEM_SETS.get(moduleName);
-        return itemSet != null && itemSet.contains(item);
+        return DefsRuntimeIndex.current().isModuleItem(moduleName, item);
     }
 
     @SubscribeEvent
@@ -1419,11 +1288,9 @@ public class Config {
         return COATING_REDUCTION_PER_LAYER.get();
     }
 
-    private static final Set<Item> SPECIAL_MECHANIC_ITEM_SET = new HashSet<>();
-
     /** 是否声明了特殊机制（special_mechanics 数据驱动，配置系统增删会实时反映）。 */
     public static boolean isSpecialMechanicItem(Item item) {
-        return SPECIAL_MECHANIC_ITEM_SET.contains(item);
+        return DefsRuntimeIndex.current().isSpecialMechanicItem(item);
     }
 
     public static boolean isDroneModuleItem(Item item) {
@@ -1670,7 +1537,7 @@ public class Config {
     }
 
     public static boolean isDangerousEntity(String entityId) {
-        return DANGEROUS_ENTITY_SET.contains(entityId);
+        return DefsRuntimeIndex.current().isDangerousEntity(entityId);
     }
 
 

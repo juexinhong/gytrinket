@@ -15,6 +15,8 @@ import com.gytrinket.gytrinket.event.QuickEquipEvent;
 import com.gytrinket.gytrinket.network.packet.*;
 import com.gytrinket.gytrinket.storage.PlayerStore;
 import com.gytrinket.gytrinket.storage.PlayerStoreManager;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraftforge.network.NetworkEvent;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.resources.ResourceLocation;
@@ -30,100 +32,96 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiConsumer;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 public class NetworkHandler {
-    private static final String PROTOCOL_VERSION = "1";
+    public static final SimpleChannel INSTANCE = NetChannel.INSTANCE;
 
-    public static final SimpleChannel INSTANCE = NetworkRegistry.newSimpleChannel(
-        new ResourceLocation("gytrinket", "main"),
-        () -> PROTOCOL_VERSION,
-        PROTOCOL_VERSION::equals,
-        PROTOCOL_VERSION::equals
-    );
-
-    private static int messageId = 0;
+    private static boolean messagesRegistered;
 
     public static void registerMessages() {
-        // ======================== C->S: empty packets ========================
-        INSTANCE.registerMessage(messageId++, ClientSyncRequestMessage.class, ClientSyncRequestMessage::toBytes, ClientSyncRequestMessage::new, ClientSyncRequestMessage::handle);
-        INSTANCE.registerMessage(messageId++, RequestAttributesMessage.class, RequestAttributesMessage::toBytes, RequestAttributesMessage::new, RequestAttributesMessage::handle);
-        INSTANCE.registerMessage(messageId++, RequestShieldCooldownMessage.class, RequestShieldCooldownMessage::toBytes, RequestShieldCooldownMessage::new, RequestShieldCooldownMessage::handle);
-        INSTANCE.registerMessage(messageId++, SwitchDroneArrayMessage.class, SwitchDroneArrayMessage::toBytes, SwitchDroneArrayMessage::new, SwitchDroneArrayMessage::handle);
-        INSTANCE.registerMessage(messageId++, ElectricDischargeMessage.class, ElectricDischargeMessage::toBytes, ElectricDischargeMessage::new, ElectricDischargeMessage::handle);
-        INSTANCE.registerMessage(messageId++, RequestPanelDataMessage.class, RequestPanelDataMessage::toBytes, RequestPanelDataMessage::new, RequestPanelDataMessage::handle);
-        INSTANCE.registerMessage(messageId++, RequestConfigDataMessage.class, RequestConfigDataMessage::toBytes, RequestConfigDataMessage::new, RequestConfigDataMessage::handle);
-        INSTANCE.registerMessage(messageId++, ConfigResetMessage.class, ConfigResetMessage::toBytes, ConfigResetMessage::new, ConfigResetMessage::handle);
-        INSTANCE.registerMessage(messageId++, ConfigSpecialMechanicMessage.class, ConfigSpecialMechanicMessage::toBytes, ConfigSpecialMechanicMessage::new, ConfigSpecialMechanicMessage::handle);
-        INSTANCE.registerMessage(messageId++, ConfigShieldTypesMessage.class, ConfigShieldTypesMessage::toBytes, ConfigShieldTypesMessage::new, ConfigShieldTypesMessage::handle);
-        INSTANCE.registerMessage(messageId++, AssaultAttackMessage.class, AssaultAttackMessage::toBytes, AssaultAttackMessage::new, AssaultAttackMessage::handle);
-        INSTANCE.registerMessage(messageId++, ToggleExecuteMessage.class, ToggleExecuteMessage::toBytes, ToggleExecuteMessage::new, ToggleExecuteMessage::handle);
+        if (messagesRegistered) {
+            return;
+        }
+        messagesRegistered = true;
+        List<MessageSpec<?>> specs = new ArrayList<>();
+        // ======================== C2S ========================
+        specs.add(spec(Direction.C2S, "client_sync_request", ClientSyncRequestMessage.class, ClientSyncRequestMessage::toBytes, ClientSyncRequestMessage::new, ClientSyncRequestMessage::handle));
+        specs.add(spec(Direction.C2S, "request_attributes", RequestAttributesMessage.class, RequestAttributesMessage::toBytes, RequestAttributesMessage::new, RequestAttributesMessage::handle));
+        specs.add(spec(Direction.C2S, "request_shield_cooldown", RequestShieldCooldownMessage.class, RequestShieldCooldownMessage::toBytes, RequestShieldCooldownMessage::new, RequestShieldCooldownMessage::handle));
+        specs.add(spec(Direction.C2S, "switch_drone_array", SwitchDroneArrayMessage.class, SwitchDroneArrayMessage::toBytes, SwitchDroneArrayMessage::new, SwitchDroneArrayMessage::handle));
+        specs.add(spec(Direction.C2S, "electric_discharge", ElectricDischargeMessage.class, ElectricDischargeMessage::toBytes, ElectricDischargeMessage::new, ElectricDischargeMessage::handle));
+        specs.add(spec(Direction.C2S, "request_panel_data", RequestPanelDataMessage.class, RequestPanelDataMessage::toBytes, RequestPanelDataMessage::new, RequestPanelDataMessage::handle));
+        specs.add(spec(Direction.C2S, "request_config_data", RequestConfigDataMessage.class, RequestConfigDataMessage::toBytes, RequestConfigDataMessage::new, RequestConfigDataMessage::handle));
+        specs.add(spec(Direction.C2S, "config_reset", ConfigResetMessage.class, ConfigResetMessage::toBytes, ConfigResetMessage::new, ConfigResetMessage::handle));
+        specs.add(spec(Direction.C2S, "config_special_mechanic", ConfigSpecialMechanicMessage.class, ConfigSpecialMechanicMessage::toBytes, ConfigSpecialMechanicMessage::new, ConfigSpecialMechanicMessage::handle));
+        specs.add(spec(Direction.C2S, "config_shield_types", ConfigShieldTypesMessage.class, ConfigShieldTypesMessage::toBytes, ConfigShieldTypesMessage::new, ConfigShieldTypesMessage::handle));
+        specs.add(spec(Direction.C2S, "assault_attack", AssaultAttackMessage.class, AssaultAttackMessage::toBytes, AssaultAttackMessage::new, AssaultAttackMessage::handle));
+        specs.add(spec(Direction.C2S, "toggle_execute", ToggleExecuteMessage.class, ToggleExecuteMessage::toBytes, ToggleExecuteMessage::new, ToggleExecuteMessage::handle));
+        specs.add(spec(Direction.C2S, "upgrade_consume", UpgradeConsumeMessage.class, UpgradeConsumeMessage::toBytes, UpgradeConsumeMessage::new, UpgradeConsumeMessage::handle));
+        specs.add(spec(Direction.C2S, "upgrade_return", UpgradeReturnMessage.class, UpgradeReturnMessage::toBytes, UpgradeReturnMessage::new, UpgradeReturnMessage::handle));
+        specs.add(spec(Direction.C2S, "config_update", ConfigUpdateMessage.class, ConfigUpdateMessage::toBytes, ConfigUpdateMessage::new, ConfigUpdateMessage::handle));
+        specs.add(spec(Direction.C2S, "config_delete_item", ConfigDeleteItemMessage.class, ConfigDeleteItemMessage::toBytes, ConfigDeleteItemMessage::new, ConfigDeleteItemMessage::handle));
+        specs.add(spec(Direction.C2S, "config_add_item", ConfigAddItemMessage.class, ConfigAddItemMessage::toBytes, ConfigAddItemMessage::new, ConfigAddItemMessage::handle));
+        specs.add(spec(Direction.C2S, "config_remove_attr", ConfigRemoveAttrMessage.class, ConfigRemoveAttrMessage::toBytes, ConfigRemoveAttrMessage::new, ConfigRemoveAttrMessage::handle));
+        specs.add(spec(Direction.C2S, "attack_state", AttackStateMessage.class, AttackStateMessage::toBytes, AttackStateMessage::new, AttackStateMessage::handle));
+        specs.add(spec(Direction.C2S, "charged_attack", ChargedAttackMessage.class, ChargedAttackMessage::toBytes, ChargedAttackMessage::new, ChargedAttackMessage::handle));
+        specs.add(spec(Direction.C2S, "item_use_charge", ItemUseChargeMessage.class, ItemUseChargeMessage::toBytes, ItemUseChargeMessage::new, ItemUseChargeMessage::handle));
+        specs.add(spec(Direction.C2S, "sync_movement_speed_multiplier", SyncMovementSpeedMultiplierMessage.class, SyncMovementSpeedMultiplierMessage::toBytes, SyncMovementSpeedMultiplierMessage::new, SyncMovementSpeedMultiplierMessage::handle));
+        // ======================== S2C ========================
+        specs.add(spec(Direction.S2C, "response_attributes", ResponseAttributesMessage.class, ResponseAttributesMessage::toBytes, ResponseAttributesMessage::new, ResponseAttributesMessage::handle));
+        specs.add(spec(Direction.S2C, "sync_shield", SyncShieldMessage.class, SyncShieldMessage::toBytes, SyncShieldMessage::new, SyncShieldMessage::handle));
+        specs.add(spec(Direction.S2C, "aura_particle", AuraParticlePacket.class, AuraParticlePacket::toBytes, AuraParticlePacket::new, AuraParticlePacket::handle));
+        specs.add(spec(Direction.S2C, "reflect_particle", ReflectParticlePacket.class, ReflectParticlePacket::toBytes, ReflectParticlePacket::new, ReflectParticlePacket::handle));
+        specs.add(spec(Direction.S2C, "lightning_render", LightningRenderMessage.class, LightningRenderMessage::toBytes, LightningRenderMessage::new, LightningRenderMessage::handle));
+        specs.add(spec(Direction.S2C, "sync_light_point_core", SyncLightPointCoreMessage.class, SyncLightPointCoreMessage::toBytes, SyncLightPointCoreMessage::new, SyncLightPointCoreMessage::handle));
+        specs.add(spec(Direction.S2C, "explosive_shield_flash", ExplosiveShieldFlashPacket.class, ExplosiveShieldFlashPacket::toBytes, ExplosiveShieldFlashPacket::new, ExplosiveShieldFlashPacket::handle));
+        specs.add(spec(Direction.S2C, "sync_combo_cooldown", SyncComboCooldownMessage.class, SyncComboCooldownMessage::toBytes, SyncComboCooldownMessage::new, SyncComboCooldownMessage::handle));
+        specs.add(spec(Direction.S2C, "sync_attack_strength", SyncAttackStrengthMessage.class, SyncAttackStrengthMessage::toBytes, SyncAttackStrengthMessage::new, SyncAttackStrengthMessage::handle));
+        specs.add(spec(Direction.S2C, "shield_particle", ShieldParticlePacket.class, ShieldParticlePacket::toBytes, ShieldParticlePacket::new, ShieldParticlePacket::handle));
+        specs.add(spec(Direction.S2C, "siphon_particle", SiphonParticlePacket.class, SiphonParticlePacket::toBytes, SiphonParticlePacket::new, SiphonParticlePacket::handle));
+        specs.add(spec(Direction.S2C, "sync_player_data_snapshot", SyncPlayerDataSnapshotMessage.class, SyncPlayerDataSnapshotMessage::toBytes, SyncPlayerDataSnapshotMessage::new, SyncPlayerDataSnapshotMessage::handle));
+        specs.add(spec(Direction.S2C, "response_panel_data", ResponsePanelDataMessage.class, ResponsePanelDataMessage::toBytes, ResponsePanelDataMessage::new, ResponsePanelDataMessage::handle));
+        specs.add(spec(Direction.S2C, "response_config_data", ResponseConfigDataMessage.class, ResponseConfigDataMessage::toBytes, ResponseConfigDataMessage::new, ResponseConfigDataMessage::handle));
+        specs.add(spec(Direction.S2C, "config_defs_sync", ConfigDefsSyncMessage.class, ConfigDefsSyncMessage::toBytes, ConfigDefsSyncMessage::new, ConfigDefsSyncMessage::handle));
+        specs.add(spec(Direction.S2C, "sync_charged_attack", SyncChargedAttackMessage.class, SyncChargedAttackMessage::toBytes, SyncChargedAttackMessage::new, SyncChargedAttackMessage::handle));
+        specs.add(spec(Direction.S2C, "sync_burst_firing", SyncBurstFiringMessage.class, SyncBurstFiringMessage::toBytes, SyncBurstFiringMessage::new, SyncBurstFiringMessage::handle));
+        specs.add(spec(Direction.S2C, "charged_sweep_particle", ChargedSweepParticleMessage.class, ChargedSweepParticleMessage::toBytes, ChargedSweepParticleMessage::new, ChargedSweepParticleMessage::handle));
+        specs.add(spec(Direction.S2C, "swarm_energy_wave", SwarmEnergyWavePacket.class, SwarmEnergyWavePacket::toBytes, SwarmEnergyWavePacket::new, SwarmEnergyWavePacket::handle));
+        specs.add(spec(Direction.S2C, "energy_wave_explosion", EnergyWaveExplosionPacket.class, EnergyWaveExplosionPacket::toBytes, EnergyWaveExplosionPacket::new, EnergyWaveExplosionPacket::handle));
+        specs.add(spec(Direction.S2C, "simulated_explosion_f_x", SimulatedExplosionFXPacket.class, SimulatedExplosionFXPacket::toBytes, SimulatedExplosionFXPacket::new, SimulatedExplosionFXPacket::handle));
+        specs.add(spec(Direction.S2C, "sync_ghost_stealth", SyncGhostStealthMessage.class, SyncGhostStealthMessage::toBytes, SyncGhostStealthMessage::new, SyncGhostStealthMessage::handle));
+        specs.add(spec(Direction.S2C, "response_random_build", ResponseRandomBuildMessage.class, ResponseRandomBuildMessage::toBytes, ResponseRandomBuildMessage::new, ResponseRandomBuildMessage::handle));
+        specs.add(spec(Direction.S2C, "sync_mod_level", SyncModLevelMessage.class, SyncModLevelMessage::toBytes, SyncModLevelMessage::new, SyncModLevelMessage::handle));
+        specs.add(spec(Direction.S2C, "sync_token_count", SyncTokenCountMessage.class, SyncTokenCountMessage::toBytes, SyncTokenCountMessage::new, SyncTokenCountMessage::handle));
+        specs.add(spec(Direction.S2C, "sync_disabled_reasons", SyncDisabledReasonsMessage.class, SyncDisabledReasonsMessage::toBytes, SyncDisabledReasonsMessage::new, SyncDisabledReasonsMessage::handle));
+        specs.add(spec(Direction.S2C, "sync_ghost_move_speed", SyncGhostMoveSpeedMessage.class, SyncGhostMoveSpeedMessage::toBytes, SyncGhostMoveSpeedMessage::new, SyncGhostMoveSpeedMessage::handle));
+        specs.add(spec(Direction.S2C, "set_interceptor_weapon", SetInterceptorWeaponMessage.class, SetInterceptorWeaponMessage::toBytes, SetInterceptorWeaponMessage::new, SetInterceptorWeaponMessage::handle));
+        specs.add(spec(Direction.S2C, "sync_interceptor_weapon", SyncInterceptorWeaponMessage.class, SyncInterceptorWeaponMessage::toBytes, SyncInterceptorWeaponMessage::new, SyncInterceptorWeaponMessage::handle));
+        specs.add(spec(Direction.S2C, "set_interceptor_attack_mode", SetInterceptorAttackModeMessage.class, SetInterceptorAttackModeMessage::toBytes, SetInterceptorAttackModeMessage::new, SetInterceptorAttackModeMessage::handle));
+        specs.add(spec(Direction.S2C, "sync_interceptor_attack_mode", SyncInterceptorAttackModeMessage.class, SyncInterceptorAttackModeMessage::toBytes, SyncInterceptorAttackModeMessage::new, SyncInterceptorAttackModeMessage::handle));
+        specs.add(spec(Direction.S2C, "set_interceptor_ammo", SetInterceptorAmmoMessage.class, SetInterceptorAmmoMessage::toBytes, SetInterceptorAmmoMessage::new, SetInterceptorAmmoMessage::handle));
+        specs.add(spec(Direction.S2C, "ghost_fuselage_attack", GhostFuselageAttackMessage.class, GhostFuselageAttackMessage::toBytes, GhostFuselageAttackMessage::new, GhostFuselageAttackMessage::handle));
+        specs.add(spec(Direction.S2C, "request_random_build", RequestRandomBuildMessage.class, RequestRandomBuildMessage::toBytes, RequestRandomBuildMessage::new, RequestRandomBuildMessage::handle));
+        specs.add(spec(Direction.S2C, "random_build_equip", RandomBuildEquipMessage.class, RandomBuildEquipMessage::toBytes, RandomBuildEquipMessage::new, RandomBuildEquipMessage::handle));
+        specs.add(spec(Direction.S2C, "request_refresh_random_pool", RequestRefreshRandomPoolMessage.class, RequestRefreshRandomPoolMessage::toBytes, RequestRefreshRandomPoolMessage::new, RequestRefreshRandomPoolMessage::handle));
+        specs.add(spec(Direction.S2C, "sort_light_point_core", SortLightPointCoreMessage.class, SortLightPointCoreMessage::toBytes, SortLightPointCoreMessage::new, SortLightPointCoreMessage::handle));
+        specs.add(spec(Direction.S2C, "projectile_scale", ProjectileScaleMessage.class, ProjectileScaleMessage::toBytes, ProjectileScaleMessage::new, ProjectileScaleMessage::handle));
+        specs.add(spec(Direction.S2C, "config_values_request", ConfigValuesRequestMessage.class, ConfigValuesRequestMessage::toBytes, ConfigValuesRequestMessage::new, ConfigValuesRequestMessage::handle));
+        specs.add(spec(Direction.S2C, "config_value_update", ConfigValueUpdateMessage.class, ConfigValueUpdateMessage::toBytes, ConfigValueUpdateMessage::new, ConfigValueUpdateMessage::handle));
+        specs.add(spec(Direction.S2C, "config_values_sync", ConfigValuesSyncMessage.class, ConfigValuesSyncMessage::toBytes, ConfigValuesSyncMessage::new, ConfigValuesSyncMessage::handle));
+        specs.add(spec(Direction.S2C, "config_mechanic_values", ConfigMechanicValuesMessage.class, ConfigMechanicValuesMessage::toBytes, ConfigMechanicValuesMessage::new, ConfigMechanicValuesMessage::handle));
+        specs.add(spec(Direction.S2C, "config_shield_values", ConfigShieldValuesMessage.class, ConfigShieldValuesMessage::toBytes, ConfigShieldValuesMessage::new, ConfigShieldValuesMessage::handle));
+        NetChannel.registerAll(specs);
+    }
 
-        // ======================== C->S: with data ========================
-        INSTANCE.registerMessage(messageId++, UpgradeConsumeMessage.class, UpgradeConsumeMessage::toBytes, UpgradeConsumeMessage::new, UpgradeConsumeMessage::handle);
-        INSTANCE.registerMessage(messageId++, UpgradeReturnMessage.class, UpgradeReturnMessage::toBytes, UpgradeReturnMessage::new, UpgradeReturnMessage::handle);
-        INSTANCE.registerMessage(messageId++, ConfigUpdateMessage.class, ConfigUpdateMessage::toBytes, ConfigUpdateMessage::new, ConfigUpdateMessage::handle);
-        INSTANCE.registerMessage(messageId++, ConfigDeleteItemMessage.class, ConfigDeleteItemMessage::toBytes, ConfigDeleteItemMessage::new, ConfigDeleteItemMessage::handle);
-        INSTANCE.registerMessage(messageId++, ConfigAddItemMessage.class, ConfigAddItemMessage::toBytes, ConfigAddItemMessage::new, ConfigAddItemMessage::handle);
-        INSTANCE.registerMessage(messageId++, ConfigRemoveAttrMessage.class, ConfigRemoveAttrMessage::toBytes, ConfigRemoveAttrMessage::new, ConfigRemoveAttrMessage::handle);
-        INSTANCE.registerMessage(messageId++, AttackStateMessage.class, AttackStateMessage::toBytes, AttackStateMessage::new, AttackStateMessage::handle);
-        INSTANCE.registerMessage(messageId++, ChargedAttackMessage.class, ChargedAttackMessage::toBytes, ChargedAttackMessage::new, ChargedAttackMessage::handle);
-        INSTANCE.registerMessage(messageId++, ItemUseChargeMessage.class, ItemUseChargeMessage::toBytes, ItemUseChargeMessage::new, ItemUseChargeMessage::handle);
-        INSTANCE.registerMessage(messageId++, SyncMovementSpeedMultiplierMessage.class, SyncMovementSpeedMultiplierMessage::toBytes, SyncMovementSpeedMultiplierMessage::new, SyncMovementSpeedMultiplierMessage::handle);
- 
-        // ======================== S->C ========================
-        INSTANCE.registerMessage(messageId++, ResponseAttributesMessage.class, ResponseAttributesMessage::toBytes, ResponseAttributesMessage::new, ResponseAttributesMessage::handle);
-        INSTANCE.registerMessage(messageId++, SyncShieldMessage.class, SyncShieldMessage::toBytes, SyncShieldMessage::new, SyncShieldMessage::handle);
-        INSTANCE.registerMessage(messageId++, AuraParticlePacket.class, AuraParticlePacket::toBytes, AuraParticlePacket::new, AuraParticlePacket::handle);
-        INSTANCE.registerMessage(messageId++, ReflectParticlePacket.class, ReflectParticlePacket::toBytes, ReflectParticlePacket::new, ReflectParticlePacket::handle);
-        INSTANCE.registerMessage(messageId++, LightningRenderMessage.class, LightningRenderMessage::toBytes, LightningRenderMessage::new, LightningRenderMessage::handle);
-        INSTANCE.registerMessage(messageId++, SyncLightPointCoreMessage.class, SyncLightPointCoreMessage::toBytes, SyncLightPointCoreMessage::new, SyncLightPointCoreMessage::handle);
-        INSTANCE.registerMessage(messageId++, ExplosiveShieldFlashPacket.class, ExplosiveShieldFlashPacket::toBytes, ExplosiveShieldFlashPacket::new, ExplosiveShieldFlashPacket::handle);
-        INSTANCE.registerMessage(messageId++, SyncComboCooldownMessage.class, SyncComboCooldownMessage::toBytes, SyncComboCooldownMessage::new, SyncComboCooldownMessage::handle);
-        INSTANCE.registerMessage(messageId++, SyncAttackStrengthMessage.class, SyncAttackStrengthMessage::toBytes, SyncAttackStrengthMessage::new, SyncAttackStrengthMessage::handle);
-        INSTANCE.registerMessage(messageId++, ShieldParticlePacket.class, ShieldParticlePacket::toBytes, ShieldParticlePacket::new, ShieldParticlePacket::handle);
-        INSTANCE.registerMessage(messageId++, SiphonParticlePacket.class, SiphonParticlePacket::toBytes, SiphonParticlePacket::new, SiphonParticlePacket::handle);
-        INSTANCE.registerMessage(messageId++, SyncPlayerDataSnapshotMessage.class, SyncPlayerDataSnapshotMessage::toBytes, SyncPlayerDataSnapshotMessage::new, SyncPlayerDataSnapshotMessage::handle);
-        INSTANCE.registerMessage(messageId++, ResponsePanelDataMessage.class, ResponsePanelDataMessage::toBytes, ResponsePanelDataMessage::new, ResponsePanelDataMessage::handle);
-        INSTANCE.registerMessage(messageId++, ResponseConfigDataMessage.class, ResponseConfigDataMessage::toBytes, ResponseConfigDataMessage::new, ResponseConfigDataMessage::handle);
-        INSTANCE.registerMessage(messageId++, ConfigDefsSyncMessage.class, ConfigDefsSyncMessage::toBytes, ConfigDefsSyncMessage::new, ConfigDefsSyncMessage::handle);
-        INSTANCE.registerMessage(messageId++, SyncChargedAttackMessage.class, SyncChargedAttackMessage::toBytes, SyncChargedAttackMessage::new, SyncChargedAttackMessage::handle);
-        INSTANCE.registerMessage(messageId++, SyncBurstFiringMessage.class, SyncBurstFiringMessage::toBytes, SyncBurstFiringMessage::new, SyncBurstFiringMessage::handle);
-        INSTANCE.registerMessage(messageId++, ChargedSweepParticleMessage.class, ChargedSweepParticleMessage::toBytes, ChargedSweepParticleMessage::new, ChargedSweepParticleMessage::handle);
-        INSTANCE.registerMessage(messageId++, SwarmEnergyWavePacket.class, SwarmEnergyWavePacket::toBytes, SwarmEnergyWavePacket::new, SwarmEnergyWavePacket::handle);
-        INSTANCE.registerMessage(messageId++, EnergyWaveExplosionPacket.class, EnergyWaveExplosionPacket::toBytes, EnergyWaveExplosionPacket::new, EnergyWaveExplosionPacket::handle);
-        // 模拟爆炸贴图特效
-        INSTANCE.registerMessage(messageId++, SimulatedExplosionFXPacket.class, SimulatedExplosionFXPacket::toBytes, SimulatedExplosionFXPacket::new, SimulatedExplosionFXPacket::handle);
-
-        // 幽灵机身
-        INSTANCE.registerMessage(messageId++, SyncGhostStealthMessage.class, SyncGhostStealthMessage::toBytes, SyncGhostStealthMessage::new, SyncGhostStealthMessage::handle);
-        INSTANCE.registerMessage(messageId++, ResponseRandomBuildMessage.class, ResponseRandomBuildMessage::toBytes, ResponseRandomBuildMessage::new, ResponseRandomBuildMessage::handle);
-        INSTANCE.registerMessage(messageId++, SyncModLevelMessage.class, SyncModLevelMessage::toBytes, SyncModLevelMessage::new, SyncModLevelMessage::handle);
-        INSTANCE.registerMessage(messageId++, SyncTokenCountMessage.class, SyncTokenCountMessage::toBytes, SyncTokenCountMessage::new, SyncTokenCountMessage::handle);
-        INSTANCE.registerMessage(messageId++, SyncDisabledReasonsMessage.class, SyncDisabledReasonsMessage::toBytes, SyncDisabledReasonsMessage::new, SyncDisabledReasonsMessage::handle);
-        INSTANCE.registerMessage(messageId++, SyncGhostMoveSpeedMessage.class, SyncGhostMoveSpeedMessage::toBytes, SyncGhostMoveSpeedMessage::new, SyncGhostMoveSpeedMessage::handle);
-
-        // 拦截机
-        INSTANCE.registerMessage(messageId++, SetInterceptorWeaponMessage.class, SetInterceptorWeaponMessage::toBytes, SetInterceptorWeaponMessage::new, SetInterceptorWeaponMessage::handle);
-        INSTANCE.registerMessage(messageId++, SyncInterceptorWeaponMessage.class, SyncInterceptorWeaponMessage::toBytes, SyncInterceptorWeaponMessage::new, SyncInterceptorWeaponMessage::handle);
-        INSTANCE.registerMessage(messageId++, SetInterceptorAttackModeMessage.class, SetInterceptorAttackModeMessage::toBytes, SetInterceptorAttackModeMessage::new, SetInterceptorAttackModeMessage::handle);
-        INSTANCE.registerMessage(messageId++, SyncInterceptorAttackModeMessage.class, SyncInterceptorAttackModeMessage::toBytes, SyncInterceptorAttackModeMessage::new, SyncInterceptorAttackModeMessage::handle);
-        INSTANCE.registerMessage(messageId++, SetInterceptorAmmoMessage.class, SetInterceptorAmmoMessage::toBytes, SetInterceptorAmmoMessage::new, SetInterceptorAmmoMessage::handle);
-        INSTANCE.registerMessage(messageId++, GhostFuselageAttackMessage.class, GhostFuselageAttackMessage::toBytes, GhostFuselageAttackMessage::new, GhostFuselageAttackMessage::handle);
-        INSTANCE.registerMessage(messageId++, RequestRandomBuildMessage.class, RequestRandomBuildMessage::toBytes, RequestRandomBuildMessage::new, RequestRandomBuildMessage::handle);
-        INSTANCE.registerMessage(messageId++, RandomBuildEquipMessage.class, RandomBuildEquipMessage::toBytes, RandomBuildEquipMessage::new, RandomBuildEquipMessage::handle);
-        INSTANCE.registerMessage(messageId++, RequestRefreshRandomPoolMessage.class, RequestRefreshRandomPoolMessage::toBytes, RequestRefreshRandomPoolMessage::new, RequestRefreshRandomPoolMessage::handle);
-        INSTANCE.registerMessage(messageId++, SortLightPointCoreMessage.class, SortLightPointCoreMessage::toBytes, SortLightPointCoreMessage::new, SortLightPointCoreMessage::handle);
-
-        // 弹射物大小同步
-        INSTANCE.registerMessage(messageId++, ProjectileScaleMessage.class, ProjectileScaleMessage::toBytes, ProjectileScaleMessage::new, ProjectileScaleMessage::handle);
-
-        // 配置项界面（特殊机制/自然恢复/客户端HUD）
-        INSTANCE.registerMessage(messageId++, ConfigValuesRequestMessage.class, ConfigValuesRequestMessage::toBytes, ConfigValuesRequestMessage::new, ConfigValuesRequestMessage::handle);
-        INSTANCE.registerMessage(messageId++, ConfigValueUpdateMessage.class, ConfigValueUpdateMessage::toBytes, ConfigValueUpdateMessage::new, ConfigValueUpdateMessage::handle);
-        INSTANCE.registerMessage(messageId++, ConfigValuesSyncMessage.class, ConfigValuesSyncMessage::toBytes, ConfigValuesSyncMessage::new, ConfigValuesSyncMessage::handle);
-        // 物品级特殊机制数值覆盖（机制数值编辑）
-        INSTANCE.registerMessage(messageId++, ConfigMechanicValuesMessage.class, ConfigMechanicValuesMessage::toBytes, ConfigMechanicValuesMessage::new, ConfigMechanicValuesMessage::handle);
-        INSTANCE.registerMessage(messageId++, ConfigShieldValuesMessage.class, ConfigShieldValuesMessage::toBytes, ConfigShieldValuesMessage::new, ConfigShieldValuesMessage::handle);
+    private static <T> MessageSpec<T> spec(Direction direction, String id, Class<T> type,
+                                           BiConsumer<T, FriendlyByteBuf> encoder,
+                                           Function<FriendlyByteBuf, T> decoder,
+                                           BiConsumer<T, Supplier<NetworkEvent.Context>> handler) {
+        return new MessageSpec<>(id, direction, type, encoder, decoder, handler);
     }
 
     // ======================== Helper send methods ========================

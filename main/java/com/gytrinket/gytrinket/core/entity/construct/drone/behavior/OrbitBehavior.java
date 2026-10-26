@@ -50,6 +50,12 @@ public class OrbitBehavior implements IDroneBehavior {
 
     @Override
     public Vec3 updatePosition(Entity drone, LivingEntity owner, float orbitAngle, float deltaTime) {
+        // 客户端不做位置重算：ConstructManager 活跃实体表只在服务端维护，
+        // 客户端拿到空表会让每架无人机的 droneIndex 都变成 0，从而全部叠到同一角度
+        // （用户实测「无人机叠在一个位置」的根因）。客户端位置由服务端同步 + 原版插值驱动。
+        if (drone.getLevel().isClientSide) {
+            return drone.position();
+        }
         // 直接从 ConstructManager 获取玩家的所有无人机
         Map<UUID, net.minecraft.world.entity.Entity> entitiesMap =
             ConstructManager.getInstance().getActiveConstructEntities(owner.getUUID(), DroneConstructTypes.DRONE);

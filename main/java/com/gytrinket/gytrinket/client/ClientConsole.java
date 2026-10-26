@@ -468,6 +468,12 @@ public final class ClientConsole {
                         gytrinket.LOGGER.info("[cmd] keyclick {} x{}", name, times);
                     }
                 }
+                case "panel" -> {
+                    // 打开真实玩家面板（等价于按 H）：向服务端请求面板数据
+                    com.gytrinket.gytrinket.network.NetworkHandler.INSTANCE.sendToServer(
+                            new com.gytrinket.gytrinket.network.packet.RequestPanelDataMessage());
+                    gytrinket.LOGGER.info("[cmd] panel request sent");
+                }
                 case "attackinfo" -> {
                     // 诊断：攻击模式客户端判定链路（快照物品 / 模块集合 / 充能/强袭状态）
                     var snap = com.gytrinket.gytrinket.client.datacenter.ClientDataCenter.getSnapshot();

@@ -21,6 +21,12 @@ public class ConfigDefsSyncMessage {
     private final Map<String, DefsManager.ShieldTypeOverride> shieldTypeOverrides;
     private final Map<String, Map<String, Double>> shieldTypeParamDefaults;
     private final Map<String, Map<String, Double>> attributes;
+    /**
+     * 属性定义（名称/计算方式/分组）。客户端注册后 `AttributeManager.getAttributeDefinition`
+     * 才能拿到类型默认值，玩家面板才能把 PERCENT/INDEPENDENT 的默认 1.0 正确过滤掉。
+     * （专用服联机时客户端不会跑数据包重载，之前该表在客户端一直是空的。）
+     */
+    private final List<DefsManager.AttributeEntry> attributeDefs;
 
     public ConfigDefsSyncMessage(Map<String, Boolean> shieldTypes,
                                  List<String> specialMechanicItems,
@@ -29,7 +35,8 @@ public class ConfigDefsSyncMessage {
                                  Map<String, DefsManager.SpecialMechanicOverride> specialMechanicOverrides,
                                  Map<String, DefsManager.ShieldTypeOverride> shieldTypeOverrides,
                                  Map<String, Map<String, Double>> shieldTypeParamDefaults,
-                                 Map<String, Map<String, Double>> attributes) {
+                                 Map<String, Map<String, Double>> attributes,
+                                 List<DefsManager.AttributeEntry> attributeDefs) {
         this.shieldTypes = shieldTypes;
         this.specialMechanicItems = specialMechanicItems;
         this.itemToSets = itemToSets;
@@ -38,6 +45,7 @@ public class ConfigDefsSyncMessage {
         this.shieldTypeOverrides = shieldTypeOverrides;
         this.shieldTypeParamDefaults = shieldTypeParamDefaults;
         this.attributes = attributes;
+        this.attributeDefs = attributeDefs;
     }
 
     public void toBytes(FriendlyByteBuf buf) {
@@ -168,6 +176,13 @@ public class ConfigDefsSyncMessage {
                 }
             }
         }
+        // attributeDefs：属性定义表（追加在末尾，保持与旧客户端的字段顺序兼容）
+        buf.writeVarInt(attributeDefs.size());
+        for (DefsManager.AttributeEntry def : attributeDefs) {
+            buf.writeUtf(def.name());
+            buf.writeUtf(def.combine());
+            buf.writeUtf(def.group());
+        }
     }
 
     public ConfigDefsSyncMessage(FriendlyByteBuf buf) {
@@ -290,6 +305,11 @@ public class ConfigDefsSyncMessage {
             }
             this.attributes.put(itemId, attrs);
         }
+        n = buf.readVarInt();
+        this.attributeDefs = new ArrayList<>();
+        for (int i = 0; i < n; i++) {
+            this.attributeDefs.add(new DefsManager.AttributeEntry(buf.readUtf(), buf.readUtf(), buf.readUtf()));
+        }
     }
 
     public void handle(Supplier<NetworkEvent.Context> contextSupplier) {
@@ -300,6 +320,20 @@ public class ConfigDefsSyncMessage {
             // 专用服联机时客户端不跑 datapack 重载，必须在这里重建 Config 的模块物品集合，
             // 否则 isAssaultItem/isChargedAttackItem 等客户端判定永远为 false（强袭/充能攻击失效）
             com.gytrinket.gytrinket.config.Config.applyClientDefs();
+            // 属性定义：注册后客户端 getAttributeDefinition 才拿得到类型默认值，
+            // 玩家面板才能过滤掉默认值（之前专用服联机时这表为空，PERCENT 默认 1.0 会全部显示出来）
+            if (attributeDefs != null) {
+                for (DefsManager.AttributeEntry def : attributeDefs) {
+                    try {
+                        com.gytrinket.gytrinket.core.attribute.AttributeType type =
+                                com.gytrinket.gytrinket.core.attribute.AttributeType.valueOf(def.combine());
+                        AttributeManager.registerAttribute(def.name(), type,
+                                def.group().isEmpty() ? null : def.group());
+                    } catch (IllegalArgumentException ignored) {
+                        // 非法组合方式忽略（与服务端 applyDefs 的行为一致）
+                    }
+                }
+            }
             if (attributes != null && !attributes.isEmpty()) {
                 // 属性静态表：仅在有数据时重建，避免空推送清空配置界面回包已填充的表
                 AttributeManager.clearAllItemAttributes();

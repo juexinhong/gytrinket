@@ -226,7 +226,9 @@ public class EnergyWaveVolumetricRenderer {
         // 关键：shader 中 viewPos = ModelViewMat × vertex，vertex = vertexMatrix × box = R × box（相机相对）。
         // 要让 worldPos = InvModelViewMat × viewPos 还原为相机相对坐标（与 WaveCenter 等 uniform 一致），
         // 必须 InvModelViewMat = vertexMatrix.invert()（= R^-1）
+        // 1.19.2 的 com.mojang.math.Matrix4f#invert() 是原地操作（返回 boolean），不能链式调用
         Matrix4f invModelView = vertexMatrix.copy();
+        invModelView.invert();
         if (shader.getUniform("InvModelViewMat") != null) {
             shader.getUniform("InvModelViewMat").set(invModelView);
         }
@@ -327,6 +329,7 @@ public class EnergyWaveVolumetricRenderer {
         // 使 fsh 中 worldPos = InvModelViewMat × viewPos 还原为相机相对坐标）
         Matrix4f poseStackMat = poseStack.last().pose();
         Matrix4f invModelView = poseStackMat.copy();
+        invModelView.invert();
         if (shader.getUniform("InvModelViewMat") != null) {
             shader.getUniform("InvModelViewMat").set(invModelView);
         }

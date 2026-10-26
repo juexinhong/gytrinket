@@ -171,6 +171,12 @@ public final class DevCommands {
                         .then(Commands.argument("radius", DoubleArgumentType.doubleArg(1.0D, 256.0D))
                                 .executes(ctx -> dumpParts(ctx.getSource(),
                                         DoubleArgumentType.getDouble(ctx, "radius")))))
+                .then(Commands.literal("wave")
+                        .requires(source -> source.hasPermission(2))
+                        .executes(ctx -> sendEnergyWave(ctx.getSource(), 8.0D))
+                        .then(Commands.argument("length", DoubleArgumentType.doubleArg(1.0D, 20.0D))
+                                .executes(ctx -> sendEnergyWave(ctx.getSource(),
+                                        DoubleArgumentType.getDouble(ctx, "length")))))
                 .then(Commands.literal("construct")
                         .requires(source -> source.hasPermission(2))
                         .executes(ctx -> spawnConstruct(ctx.getSource(), null))
@@ -193,6 +199,24 @@ public final class DevCommands {
                         .requires(source -> source.hasPermission(2))
                         .executes(ctx -> listStore(ctx.getSource())))
         );
+    }
+
+    // ------------------------------------------------------------------
+    // 能量波特效验收：直接给所有玩家发 EnergyWaveExplosionPacket（不造成伤害）
+    // ------------------------------------------------------------------
+    private static int sendEnergyWave(CommandSourceStack source, double length) {
+        ServerPlayer player = source.getPlayer();
+        if (player == null) {
+            source.sendFailure(Component.literal("需要玩家执行"));
+            return 0;
+        }
+        Vec3 look = player.getLookAngle();
+        Vec3 center = player.position().add(0, player.getEyeHeight() * 0.5, 0).add(look.scale(1.5));
+        com.gytrinket.gytrinket.network.NetworkHandler.sendEnergyWaveExplosionToAll(
+                (ServerLevel) player.getLevel(), center, look, length, -1, 0, 0.0);
+        gytrinket.LOGGER.info("[wave] sent center={} dir={} length={}", center, look, length);
+        source.sendSuccess(Component.literal("已发送能量波特效（长度 " + length + "）"), false);
+        return 1;
     }
 
     // ------------------------------------------------------------------

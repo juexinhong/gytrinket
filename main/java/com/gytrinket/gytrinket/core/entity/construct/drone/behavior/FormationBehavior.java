@@ -54,6 +54,11 @@ public class FormationBehavior implements IDroneBehavior {
         if (!(drone instanceof DroneConstructEntity droneEntity)) return Vec3.ZERO;
         if (owner == null || !owner.isAlive()) return Vec3.ZERO;
 
+        // 客户端不做位置重算：ConstructManager 活跃实体表只在服务端维护，客户端会把所有无人机算到同一格
+        if (drone.getLevel().isClientSide) {
+            return drone.position();
+        }
+
         updateDroneIndices(droneEntity, owner);
 
         Vec3 targetPos = calculateTargetPosition(owner, droneEntity);

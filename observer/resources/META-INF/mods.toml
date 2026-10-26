@@ -31,6 +31,8 @@ Observation and control tooling: server HTTP API (/status /block /region /comman
 [[dependencies.gytrinket_observer]]
     modId="gytrinket"
     mandatory=true
-    versionRange="[1.1.8,)"
+    # 最小主模组版本跟随 mod_version 自动注入：写死常量会在改版本号时让 observer 直接加载失败
+    # （例如 mod_version 改小后报 "requires gytrinket 1.1.8 or above, currently 1.0.0"）
+    versionRange="[${mod_version},)"
     ordering="AFTER"
     side="BOTH"

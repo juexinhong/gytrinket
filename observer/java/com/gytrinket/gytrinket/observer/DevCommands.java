@@ -1,5 +1,7 @@
 package com.gytrinket.gytrinket.observer;
 
+import com.gytrinket.gytrinket.core.defs.DefsTypes;
+
 import com.gytrinket.gytrinket.bootstrap.GyBuses;
 import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.attribute.AttributeDefinition;
@@ -1242,8 +1244,8 @@ public final class DevCommands {
     private static Map<String, Object> collectP5DefsState() {
         Map<String, Object> root = new TreeMap<>();
 
-        List<DefsManager.AttributeEntry> attributeDefs = new ArrayList<>(DefsManager.getAttributeDefs());
-        attributeDefs.sort(Comparator.comparing(DefsManager.AttributeEntry::name));
+        List<DefsTypes.AttributeEntry> attributeDefs = new ArrayList<>(DefsManager.getAttributeDefs());
+        attributeDefs.sort(Comparator.comparing(DefsTypes.AttributeEntry::name));
         root.put("attributeDefs", attributeDefs);
 
         root.put("shieldTypes", new TreeMap<>(DefsManager.getServerShieldTypes()));
@@ -1279,9 +1281,9 @@ public final class DevCommands {
         root.put("moduleTrees", DefsManager.getModuleTrees());
         root.put("upgradePaths", DefsManager.getUpgradePaths());
 
-        List<DefsManager.TooltipRuleDef> tooltips = new ArrayList<>(DefsManager.getServerTooltipRules());
-        tooltips.sort(Comparator.comparing(DefsManager.TooltipRuleDef::titleKey)
-                .thenComparing(DefsManager.TooltipRuleDef::itemSet));
+        List<DefsTypes.TooltipRuleDef> tooltips = new ArrayList<>(DefsManager.getServerTooltipRules());
+        tooltips.sort(Comparator.comparing(DefsTypes.TooltipRuleDef::titleKey)
+                .thenComparing(DefsTypes.TooltipRuleDef::itemSet));
         root.put("tooltipRules", tooltips);
 
         root.put("itemDefinitions", DefsManager.getItemDefinitions());

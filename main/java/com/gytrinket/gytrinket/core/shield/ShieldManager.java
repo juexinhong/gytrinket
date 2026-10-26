@@ -1,5 +1,7 @@
 package com.gytrinket.gytrinket.core.shield;
 
+import com.gytrinket.gytrinket.core.defs.DefsTypes;
+
 import com.gytrinket.gytrinket.bootstrap.GyBuses;
 
 import com.gytrinket.gytrinket.compat.CuriosCompat;
@@ -156,7 +158,7 @@ public class ShieldManager {
                 }
                 continue;
             }
-            Map<String, DefsManager.ParamValue> attrs = DefsManager.getEffectiveItemAttributes(itemId);
+            Map<String, DefsTypes.ParamValue> attrs = DefsManager.getEffectiveItemAttributes(itemId);
             if (attrs != null && attrs.containsKey("shield_base")) {
                 moduleBaseSum += attrs.get("shield_base").value();
             }
@@ -223,7 +225,7 @@ public class ShieldManager {
             if (!Config.getItemShieldTypes(new ResourceLocation(itemId)).isEmpty()) {
                 continue; // 护盾类型物品的底数来自实例参数，不参与分配
             }
-            Map<String, DefsManager.ParamValue> attrs = DefsManager.getEffectiveItemAttributes(itemId);
+            Map<String, DefsTypes.ParamValue> attrs = DefsManager.getEffectiveItemAttributes(itemId);
             if (attrs != null && attrs.containsKey("shield_base")) {
                 moduleBaseSum += attrs.get("shield_base").value();
             }

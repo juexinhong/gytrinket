@@ -26,17 +26,17 @@ public final class DefsSnapshot {
     public final Set<String> specialMechanicItems;
     public final Map<String, List<String>> specialMechanicSets;
     public final Map<String, Boolean> shieldTypes;
-    public final Map<String, Map<String, DefsManager.ParamValue>> shieldTypeParamDefaults;
+    public final Map<String, Map<String, DefsTypes.ParamValue>> shieldTypeParamDefaults;
     public final Map<String, List<String>> itemShieldTypes;
-    public final List<DefsManager.AttributeEntry> attributeDefs;
+    public final List<DefsTypes.AttributeEntry> attributeDefs;
     public final Map<String, Set<String>> disableTargets;
     public final Map<String, Set<String>> dependencies;
     public final Map<String, Set<String>> disableCategories;
     public final Map<String, List<List<String>>> dependenciesAll;
-    public final Map<String, DefsManager.ModuleTreeDef> moduleTrees;
+    public final Map<String, DefsTypes.ModuleTreeDef> moduleTrees;
     public final Map<String, List<String>> upgradePaths;
-    public final List<DefsManager.TooltipRuleDef> tooltipRules;
-    public final Map<String, DefsManager.ItemDefinition> itemDefinitions;
+    public final List<DefsTypes.TooltipRuleDef> tooltipRules;
+    public final Map<String, DefsTypes.ItemDefinition> itemDefinitions;
     public final Set<String> itemDataPackIds;
 
     private DefsSnapshot(long loadId,
@@ -45,17 +45,17 @@ public final class DefsSnapshot {
                          Set<String> specialMechanicItems,
                          Map<String, List<String>> specialMechanicSets,
                          Map<String, Boolean> shieldTypes,
-                         Map<String, Map<String, DefsManager.ParamValue>> shieldTypeParamDefaults,
+                         Map<String, Map<String, DefsTypes.ParamValue>> shieldTypeParamDefaults,
                          Map<String, List<String>> itemShieldTypes,
-                         List<DefsManager.AttributeEntry> attributeDefs,
+                         List<DefsTypes.AttributeEntry> attributeDefs,
                          Map<String, Set<String>> disableTargets,
                          Map<String, Set<String>> dependencies,
                          Map<String, Set<String>> disableCategories,
                          Map<String, List<List<String>>> dependenciesAll,
-                         Map<String, DefsManager.ModuleTreeDef> moduleTrees,
+                         Map<String, DefsTypes.ModuleTreeDef> moduleTrees,
                          Map<String, List<String>> upgradePaths,
-                         List<DefsManager.TooltipRuleDef> tooltipRules,
-                         Map<String, DefsManager.ItemDefinition> itemDefinitions,
+                         List<DefsTypes.TooltipRuleDef> tooltipRules,
+                         Map<String, DefsTypes.ItemDefinition> itemDefinitions,
                          Set<String> itemDataPackIds) {
         this.loadId = loadId;
         this.itemSets = copySetMap(itemSets);
@@ -90,17 +90,17 @@ public final class DefsSnapshot {
                                        Set<String> specialMechanicItems,
                                        Map<String, List<String>> specialMechanicSets,
                                        Map<String, Boolean> shieldTypes,
-                                       Map<String, Map<String, DefsManager.ParamValue>> shieldTypeParamDefaults,
+                                       Map<String, Map<String, DefsTypes.ParamValue>> shieldTypeParamDefaults,
                                        Map<String, List<String>> itemShieldTypes,
-                                       List<DefsManager.AttributeEntry> attributeDefs,
+                                       List<DefsTypes.AttributeEntry> attributeDefs,
                                        Map<String, Set<String>> disableTargets,
                                        Map<String, Set<String>> dependencies,
                                        Map<String, Set<String>> disableCategories,
                                        Map<String, List<List<String>>> dependenciesAll,
-                                       Map<String, DefsManager.ModuleTreeDef> moduleTrees,
+                                       Map<String, DefsTypes.ModuleTreeDef> moduleTrees,
                                        Map<String, List<String>> upgradePaths,
-                                       List<DefsManager.TooltipRuleDef> tooltipRules,
-                                       Map<String, DefsManager.ItemDefinition> itemDefinitions,
+                                       List<DefsTypes.TooltipRuleDef> tooltipRules,
+                                       Map<String, DefsTypes.ItemDefinition> itemDefinitions,
                                        Set<String> itemDataPackIds) {
         return new DefsSnapshot(loadId, itemSets, entitySets, specialMechanicItems, specialMechanicSets, shieldTypes,
                 shieldTypeParamDefaults, itemShieldTypes, attributeDefs, disableTargets, dependencies, disableCategories,
@@ -150,10 +150,10 @@ public final class DefsSnapshot {
         return Collections.unmodifiableMap(copy);
     }
 
-    private static Map<String, Map<String, DefsManager.ParamValue>> copyNestedMap(
-            Map<String, Map<String, DefsManager.ParamValue>> source) {
-        Map<String, Map<String, DefsManager.ParamValue>> copy = new LinkedHashMap<>();
-        for (Map.Entry<String, Map<String, DefsManager.ParamValue>> entry : source.entrySet()) {
+    private static Map<String, Map<String, DefsTypes.ParamValue>> copyNestedMap(
+            Map<String, Map<String, DefsTypes.ParamValue>> source) {
+        Map<String, Map<String, DefsTypes.ParamValue>> copy = new LinkedHashMap<>();
+        for (Map.Entry<String, Map<String, DefsTypes.ParamValue>> entry : source.entrySet()) {
             copy.put(entry.getKey(), Collections.unmodifiableMap(new LinkedHashMap<>(entry.getValue())));
         }
         return Collections.unmodifiableMap(copy);

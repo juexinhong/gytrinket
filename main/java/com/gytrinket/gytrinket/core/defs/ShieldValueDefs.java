@@ -14,7 +14,7 @@ import java.util.function.DoubleSupplier;
  * shield_hit_cooldown_extend / shield_hit_cooldown_extend_multiplier，翻译键共享 base 前缀），
  * 随后是该类型的行为参数。
  * <p>
- * 覆盖值由 UI 产生，存储在 {@link DefsManager.ShieldTypeOverride} 的 values 段；
+ * 覆盖值由 UI 产生，存储在 {@link DefsTypes.ShieldTypeOverride} 的 values 段；
  * 运行时读取走 {@link DefsManager#resolveShieldTypeValueForItem}（服务端，按物品实例取值，
  * 不跨物品合并）。该方法的取值顺序为：item_definitions 物品级 shieldValues（数据文件 /
  * UI 覆写）→ shield_types 类型级默认值 → 此处默认值。光环护盾的四项行为参数已完整迁移到

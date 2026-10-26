@@ -1,5 +1,7 @@
 package com.gytrinket.gytrinket.config;
 
+import com.gytrinket.gytrinket.core.defs.DefsTypes;
+
 import com.gytrinket.gytrinket.gytrinket;
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
 import com.gytrinket.gytrinket.engine.math.AttributeType;
@@ -1031,7 +1033,7 @@ public class Config {
      */
     public static void applyDefs() {
         // 属性定义
-        for (DefsManager.AttributeEntry entry : DefsManager.getAttributeDefs()) {
+        for (DefsTypes.AttributeEntry entry : DefsManager.getAttributeDefs()) {
             try {
                 AttributeType type = AttributeType.valueOf(entry.combine());
                 String group = entry.group().isEmpty() ? null : entry.group();

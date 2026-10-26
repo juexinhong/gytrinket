@@ -1,5 +1,7 @@
 package com.gytrinket.gytrinket.client.screen;
 
+import com.gytrinket.gytrinket.core.defs.DefsTypes;
+
 import com.mojang.blaze3d.vertex.PoseStack;
 
 import com.gytrinket.gytrinket.core.defs.DefsManager;
@@ -255,11 +257,11 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
         for (MechanicValueDefs.ParamDef def : MechanicValueDefs.getParams(set)) {
             mechanicValuesParamKeys.add(def.key());
         }
-        DefsManager.SpecialMechanicOverride ov = DefsManager.getClientSpecialMechanicOverride(mechanicValuesItemId);
+        DefsTypes.SpecialMechanicOverride ov = DefsManager.getClientSpecialMechanicOverride(mechanicValuesItemId);
         if (ov != null && !ov.removed() && ov.values() != null) {
-            Map<String, DefsManager.ParamValue> existing = ov.values().get(set);
+            Map<String, DefsTypes.ParamValue> existing = ov.values().get(set);
             if (existing != null) {
-                for (Map.Entry<String, DefsManager.ParamValue> e : existing.entrySet()) {
+                for (Map.Entry<String, DefsTypes.ParamValue> e : existing.entrySet()) {
                     if (mechanicValuesParamKeys.contains(e.getKey()) && e.getValue() != null) {
                         mechanicValuesDraft.put(e.getKey(), formatValue(e.getValue().value()));
                         mechanicValuesOverridden.add(e.getKey());
@@ -393,7 +395,7 @@ public class ConfigPanelScreen extends AbstractPanelScreen {
         for (ShieldValueDefs.ParamDef def : ShieldValueDefs.getParams(type)) {
             shieldValuesParamKeys.add(def.key());
         }
-        DefsManager.ShieldTypeOverride ov = DefsManager.getClientShieldTypeOverride(shieldValuesItemId);
+        DefsTypes.ShieldTypeOverride ov = DefsManager.getClientShieldTypeOverride(shieldValuesItemId);
         if (ov != null && ov.values() != null) {
             Map<String, Double> existing = ov.values().get(type);
             if (existing != null) {

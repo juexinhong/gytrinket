@@ -14,7 +14,7 @@ import java.util.function.DoubleSupplier;
  * 显示翻译键、静态默认值提供者。
  * 阵列类机制（orbit/pursuit/formation/guard）同样在此注册。
  * <p>
- * 覆盖值由 UI 产生，存储在 {@link DefsManager.SpecialMechanicOverride} 的 values 段；
+ * 覆盖值由 UI 产生，存储在 {@link DefsTypes.SpecialMechanicOverride} 的 values 段；
  * 运行时读取走 {@link DefsManager#resolveMechanicValue}（服务端）/
  * {@link DefsManager#clientResolveMechanicValue}（客户端），未覆盖回退此处默认值。
  */

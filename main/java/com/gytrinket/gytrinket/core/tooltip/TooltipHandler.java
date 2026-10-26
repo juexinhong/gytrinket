@@ -1,5 +1,7 @@
 package com.gytrinket.gytrinket.core.tooltip;
 
+import com.gytrinket.gytrinket.core.defs.DefsTypes;
+
 import com.gytrinket.gytrinket.client.ClientItemAttributes;
 import com.gytrinket.gytrinket.core.defs.MechanicValueDefs;
 import com.gytrinket.gytrinket.config.Config;
@@ -37,13 +39,13 @@ public class TooltipHandler {
     private static List<TooltipConfig> tooltipRules = null;
 
     private static void ensureTooltipRules() {
-        List<DefsManager.TooltipRuleDef> rules = DefsManager.clientTooltipRules();
+        List<DefsTypes.TooltipRuleDef> rules = DefsManager.clientTooltipRules();
         // 数据源数量变化时重建缓存（datapack 可能晚于首次查询加载完成或 /reload 刷新）
         if (tooltipRules != null && tooltipRules.size() == rules.size()) {
             return;
         }
         tooltipRules = new ArrayList<>();
-        for (DefsManager.TooltipRuleDef def : rules) {
+        for (DefsTypes.TooltipRuleDef def : rules) {
             tooltipRules.add(new TooltipConfig(def));
         }
     }
@@ -144,7 +146,7 @@ public class TooltipHandler {
         if (sets.contains(mechanicSet)) {
             return true;
         }
-        com.gytrinket.gytrinket.core.defs.DefsManager.SpecialMechanicOverride ov =
+        com.gytrinket.gytrinket.core.defs.DefsTypes.SpecialMechanicOverride ov =
                 DefsManager.getClientSpecialMechanicOverride(itemId);
         return ov != null && !ov.removed() && ov.values() != null && ov.values().containsKey(mechanicSet);
     }

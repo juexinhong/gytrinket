@@ -1,5 +1,7 @@
 package com.gytrinket.gytrinket.core.attribute;
 
+import com.gytrinket.gytrinket.core.defs.DefsTypes;
+
 import com.gytrinket.gytrinket.bootstrap.GyBuses;
 
 import com.gytrinket.gytrinket.engine.math.AttributeMath;
@@ -184,7 +186,7 @@ public class AttributeManager {
         // 已装备物品 = 光点核心存储 + Curios 饰品栏（光点核心内容扩展）
         // 属性数据源 = 统一物品定义（覆写层优先 → 权威 item_definitions），同 id 装备多件只生效一份
         for (String itemId : PlayerStoreUtils.getAllEquippedItemIds(playerUUID)) {
-            Map<String, DefsManager.ParamValue> itemAttrs = DefsManager.getEffectiveItemAttributes(itemId);
+            Map<String, DefsTypes.ParamValue> itemAttrs = DefsManager.getEffectiveItemAttributes(itemId);
             if (itemAttrs != null && !itemAttrs.isEmpty()) {
                 if (DisableSystem.isItemDisabled(playerUUID, itemId)) {
                 } else if (processedItems.contains(itemId)) {
@@ -211,8 +213,8 @@ public class AttributeManager {
     }
 
     /** 将物品属性贡献累加进玩家静态属性集（仅已注册属性生效） */
-    private static void applyItemAttributes(Map<String, DefsManager.ParamValue> attributes, Map<String, AttributeValueSet> staticAttrs) {
-        for (Map.Entry<String, DefsManager.ParamValue> entry : attributes.entrySet()) {
+    private static void applyItemAttributes(Map<String, DefsTypes.ParamValue> attributes, Map<String, AttributeValueSet> staticAttrs) {
+        for (Map.Entry<String, DefsTypes.ParamValue> entry : attributes.entrySet()) {
             String attrName = entry.getKey();
             double value = entry.getValue().value();
 

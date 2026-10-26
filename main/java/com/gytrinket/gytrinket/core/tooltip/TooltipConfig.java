@@ -1,5 +1,7 @@
 package com.gytrinket.gytrinket.core.tooltip;
 
+import com.gytrinket.gytrinket.core.defs.DefsTypes;
+
 import com.gytrinket.gytrinket.config.Config;
 import com.gytrinket.gytrinket.core.defs.DefsManager;
 import net.minecraft.ChatFormatting;
@@ -14,7 +16,7 @@ import java.util.Map;
  *
  * 定义类数据（物品集合、工具提示规则）现由 datapack 提供：
  * - 物品集合匹配：持有系统名，从客户端同步后的 registryAccess 实时查询
- * - 规则定义：从 {@link DefsManager.TooltipRuleDef} 构建，格式化参数按类型解析（引用 Config 配置值）
+ * - 规则定义：从 {@link DefsTypes.TooltipRuleDef} 构建，格式化参数按类型解析（引用 Config 配置值）
  */
 public class TooltipConfig {
 
@@ -76,13 +78,13 @@ public class TooltipConfig {
     /**
      * 从数据驱动的工具提示规则构建
      */
-    public TooltipConfig(DefsManager.TooltipRuleDef def) {
+    public TooltipConfig(DefsTypes.TooltipRuleDef def) {
         this(def.itemSet(), def.titleKey(), def.descriptionKey(),
                 ChatFormatting.getByName(def.color()),
                 def.params().isEmpty() ? null : (id) -> resolveParams(id, def.params()));
         if (!def.branches().isEmpty()) {
             List<DescriptionBranch> bs = new ArrayList<>();
-            for (DefsManager.TooltipBranch b : def.branches()) {
+            for (DefsTypes.TooltipBranch b : def.branches()) {
                 bs.add(new DescriptionBranch(b.paramName(), b.value(), b.descriptionKey()));
             }
             this.branches = List.copyOf(bs);
@@ -162,13 +164,13 @@ public class TooltipConfig {
 
     /**
      * 解析数据驱动的格式化参数
-     * 类型见 {@link DefsManager.TooltipParam} 注释
+     * 类型见 {@link DefsTypes.TooltipParam} 注释
      * 数值参数优先读取当前物品定义的机制数值覆盖，未覆盖时回退 Config 默认值
      */
-    private static Object[] resolveParams(String itemId, List<DefsManager.TooltipParam> params) {
+    private static Object[] resolveParams(String itemId, List<DefsTypes.TooltipParam> params) {
         Object[] result = new Object[params.size()];
         for (int i = 0; i < params.size(); i++) {
-            DefsManager.TooltipParam p = params.get(i);
+            DefsTypes.TooltipParam p = params.get(i);
             result[i] = switch (p.type()) {
                 case "value" -> rawValue(itemId, p.source());
                 case "percentInt" -> (int) (rawValue(itemId, p.source()) * 100);
@@ -202,15 +204,15 @@ public class TooltipConfig {
         if (mapping == null) {
             return fallback;
         }
-        DefsManager.SpecialMechanicOverride override = DefsManager.getClientSpecialMechanicOverride(itemId);
+        DefsTypes.SpecialMechanicOverride override = DefsManager.getClientSpecialMechanicOverride(itemId);
         if (override == null || override.removed() || override.values() == null) {
             return fallback;
         }
-        Map<String, DefsManager.ParamValue> params = override.values().get(mapping[0]);
+        Map<String, DefsTypes.ParamValue> params = override.values().get(mapping[0]);
         if (params == null) {
             return fallback;
         }
-        DefsManager.ParamValue pv = params.get(mapping[1]);
+        DefsTypes.ParamValue pv = params.get(mapping[1]);
         return pv != null ? pv.value() : fallback;
     }
 }

@@ -1,5 +1,7 @@
 package com.gytrinket.gytrinket.network.packet;
 
+import com.gytrinket.gytrinket.core.defs.DefsTypes;
+
 import com.gytrinket.gytrinket.core.attribute.AttributeManager;
 import com.gytrinket.gytrinket.core.defs.DefsManager;
 import net.minecraft.network.FriendlyByteBuf;
@@ -16,9 +18,9 @@ public class ConfigDefsSyncMessage {
     private final Map<String, Boolean> shieldTypes;
     private final List<String> specialMechanicItems;
     private final Map<String, List<String>> itemToSets;
-    private final List<DefsManager.TooltipRuleDef> tooltipRules;
-    private final Map<String, DefsManager.SpecialMechanicOverride> specialMechanicOverrides;
-    private final Map<String, DefsManager.ShieldTypeOverride> shieldTypeOverrides;
+    private final List<DefsTypes.TooltipRuleDef> tooltipRules;
+    private final Map<String, DefsTypes.SpecialMechanicOverride> specialMechanicOverrides;
+    private final Map<String, DefsTypes.ShieldTypeOverride> shieldTypeOverrides;
     private final Map<String, Map<String, Double>> shieldTypeParamDefaults;
     private final Map<String, Map<String, Double>> attributes;
     /**
@@ -26,19 +28,19 @@ public class ConfigDefsSyncMessage {
      * 才能拿到类型默认值，玩家面板才能把 PERCENT/INDEPENDENT 的默认 1.0 正确过滤掉。
      * （专用服联机时客户端不会跑数据包重载，之前该表在客户端一直是空的。）
      */
-    private final List<DefsManager.AttributeEntry> attributeDefs;
+    private final List<DefsTypes.AttributeEntry> attributeDefs;
     /** 服务端定义快照 revision（内容哈希）；客户端只保存用于诊断对齐。 */
     private final long revision;
 
     public ConfigDefsSyncMessage(Map<String, Boolean> shieldTypes,
                                  List<String> specialMechanicItems,
                                  Map<String, List<String>> itemToSets,
-                                 List<DefsManager.TooltipRuleDef> tooltipRules,
-                                 Map<String, DefsManager.SpecialMechanicOverride> specialMechanicOverrides,
-                                 Map<String, DefsManager.ShieldTypeOverride> shieldTypeOverrides,
+                                 List<DefsTypes.TooltipRuleDef> tooltipRules,
+                                 Map<String, DefsTypes.SpecialMechanicOverride> specialMechanicOverrides,
+                                 Map<String, DefsTypes.ShieldTypeOverride> shieldTypeOverrides,
                                  Map<String, Map<String, Double>> shieldTypeParamDefaults,
                                  Map<String, Map<String, Double>> attributes,
-                                 List<DefsManager.AttributeEntry> attributeDefs,
+                                 List<DefsTypes.AttributeEntry> attributeDefs,
                                  long revision) {
         this.shieldTypes = shieldTypes;
         this.specialMechanicItems = specialMechanicItems;
@@ -75,13 +77,13 @@ public class ConfigDefsSyncMessage {
         }
         // tooltipRules
         buf.writeVarInt(tooltipRules.size());
-        for (DefsManager.TooltipRuleDef rule : tooltipRules) {
+        for (DefsTypes.TooltipRuleDef rule : tooltipRules) {
             buf.writeUtf(rule.itemSet());
             buf.writeUtf(rule.titleKey());
             buf.writeUtf(rule.descriptionKey());
             buf.writeUtf(rule.color());
             buf.writeVarInt(rule.params().size());
-            for (DefsManager.TooltipParam p : rule.params()) {
+            for (DefsTypes.TooltipParam p : rule.params()) {
                 buf.writeUtf(p.type());
                 buf.writeUtf(p.source());
                 buf.writeUtf(p.text());
@@ -89,7 +91,7 @@ public class ConfigDefsSyncMessage {
                 buf.writeDouble(p.literal() == null ? 0.0 : p.literal());
             }
             buf.writeVarInt(rule.branches().size());
-            for (DefsManager.TooltipBranch b : rule.branches()) {
+            for (DefsTypes.TooltipBranch b : rule.branches()) {
                 buf.writeUtf(b.paramName());
                 buf.writeDouble(b.value());
                 buf.writeUtf(b.descriptionKey());
@@ -105,13 +107,13 @@ public class ConfigDefsSyncMessage {
                 buf.writeUtf(s);
             }
             // values 段：set 名 -> (paramKey -> 覆盖值 + 是否可叠加)
-            Map<String, Map<String, DefsManager.ParamValue>> values = e.getValue().values();
+            Map<String, Map<String, DefsTypes.ParamValue>> values = e.getValue().values();
             int vn = values == null ? 0 : values.size();
             buf.writeVarInt(vn);
             if (values != null) {
                 for (var ve : values.entrySet()) {
                     buf.writeUtf(ve.getKey());
-                    Map<String, DefsManager.ParamValue> params = ve.getValue();
+                    Map<String, DefsTypes.ParamValue> params = ve.getValue();
                     int pn = params == null ? 0 : params.size();
                     buf.writeVarInt(pn);
                     if (params != null) {
@@ -182,7 +184,7 @@ public class ConfigDefsSyncMessage {
         }
         // attributeDefs：属性定义表（追加在末尾，保持与旧客户端的字段顺序兼容）
         buf.writeVarInt(attributeDefs.size());
-        for (DefsManager.AttributeEntry def : attributeDefs) {
+        for (DefsTypes.AttributeEntry def : attributeDefs) {
             buf.writeUtf(def.name());
             buf.writeUtf(def.combine());
             buf.writeUtf(def.group());
@@ -220,23 +222,23 @@ public class ConfigDefsSyncMessage {
             String descKey = buf.readUtf();
             String color = buf.readUtf();
             int m = buf.readVarInt();
-            List<DefsManager.TooltipParam> params = new ArrayList<>();
+            List<DefsTypes.TooltipParam> params = new ArrayList<>();
             for (int j = 0; j < m; j++) {
                 String ptype = buf.readUtf();
                 String psource = buf.readUtf();
                 String ptext = buf.readUtf();
                 Double pliteral = buf.readBoolean() ? buf.readDouble() : null;
-                params.add(new DefsManager.TooltipParam(ptype, psource, ptext, pliteral));
+                params.add(new DefsTypes.TooltipParam(ptype, psource, ptext, pliteral));
             }
             int bn = buf.readVarInt();
-            List<DefsManager.TooltipBranch> branches = new ArrayList<>();
+            List<DefsTypes.TooltipBranch> branches = new ArrayList<>();
             for (int j = 0; j < bn; j++) {
                 String bparam = buf.readUtf();
                 double bvalue = buf.readDouble();
                 String bdesc = buf.readUtf();
-                branches.add(new DefsManager.TooltipBranch(bparam, bvalue, bdesc));
+                branches.add(new DefsTypes.TooltipBranch(bparam, bvalue, bdesc));
             }
-            this.tooltipRules.add(new DefsManager.TooltipRuleDef(itemSet, titleKey, descKey, color, params, branches));
+            this.tooltipRules.add(new DefsTypes.TooltipRuleDef(itemSet, titleKey, descKey, color, params, branches));
         }
         n = buf.readVarInt();
         this.specialMechanicOverrides = new HashMap<>();
@@ -249,21 +251,21 @@ public class ConfigDefsSyncMessage {
                 sets.add(buf.readUtf());
             }
             // values 段：set 名 -> (paramKey -> 覆盖值 + 是否可叠加)
-            Map<String, Map<String, DefsManager.ParamValue>> values = new HashMap<>();
+            Map<String, Map<String, DefsTypes.ParamValue>> values = new HashMap<>();
             int vn = buf.readVarInt();
             for (int j = 0; j < vn; j++) {
                 String setName = buf.readUtf();
                 int pn = buf.readVarInt();
-                Map<String, DefsManager.ParamValue> params = new HashMap<>();
+                Map<String, DefsTypes.ParamValue> params = new HashMap<>();
                 for (int x = 0; x < pn; x++) {
                     String paramKey = buf.readUtf();
-                    params.put(paramKey, new DefsManager.ParamValue(buf.readDouble(), buf.readBoolean()));
+                    params.put(paramKey, new DefsTypes.ParamValue(buf.readDouble(), buf.readBoolean()));
                 }
                 values.put(setName, params);
             }
             this.specialMechanicOverrides.put(k, removed
-                    ? DefsManager.SpecialMechanicOverride.removedState()
-                    : DefsManager.SpecialMechanicOverride.declared(sets, values));
+                    ? DefsTypes.SpecialMechanicOverride.removedState()
+                    : DefsTypes.SpecialMechanicOverride.declared(sets, values));
         }
         n = buf.readVarInt();
         this.shieldTypeOverrides = new HashMap<>();
@@ -286,7 +288,7 @@ public class ConfigDefsSyncMessage {
                 }
                 shieldValues.put(typeName, params);
             }
-            this.shieldTypeOverrides.put(k, new DefsManager.ShieldTypeOverride(types, shieldValues));
+            this.shieldTypeOverrides.put(k, new DefsTypes.ShieldTypeOverride(types, shieldValues));
         }
         n = buf.readVarInt();
         this.shieldTypeParamDefaults = new HashMap<>();
@@ -313,7 +315,7 @@ public class ConfigDefsSyncMessage {
         n = buf.readVarInt();
         this.attributeDefs = new ArrayList<>();
         for (int i = 0; i < n; i++) {
-            this.attributeDefs.add(new DefsManager.AttributeEntry(buf.readUtf(), buf.readUtf(), buf.readUtf()));
+            this.attributeDefs.add(new DefsTypes.AttributeEntry(buf.readUtf(), buf.readUtf(), buf.readUtf()));
         }
         this.revision = buf.readLong();
     }
@@ -329,7 +331,7 @@ public class ConfigDefsSyncMessage {
             // 属性定义：注册后客户端 getAttributeDefinition 才拿得到类型默认值，
             // 玩家面板才能过滤掉默认值（之前专用服联机时这表为空，PERCENT 默认 1.0 会全部显示出来）
             if (attributeDefs != null) {
-                for (DefsManager.AttributeEntry def : attributeDefs) {
+                for (DefsTypes.AttributeEntry def : attributeDefs) {
                     try {
                         com.gytrinket.gytrinket.engine.math.AttributeType type =
                                 com.gytrinket.gytrinket.engine.math.AttributeType.valueOf(def.combine());

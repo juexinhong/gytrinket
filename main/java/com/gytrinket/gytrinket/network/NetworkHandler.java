@@ -1,5 +1,7 @@
 package com.gytrinket.gytrinket.network;
 
+import com.gytrinket.gytrinket.core.defs.DefsTypes;
+
 import com.gytrinket.gytrinket.compat.CuriosCompat;
 import com.gytrinket.gytrinket.core.defs.ShieldValueDefs;
 import com.gytrinket.gytrinket.config.Config;
@@ -520,7 +522,7 @@ public class NetworkHandler {
             itemTag.putBoolean("uiDisabled", DefsManager.isUiDisabledItem(itemId));
             ListTag attrsTag = new ListTag();
             // 有效属性 = 权威定义 + 覆写层合并（服务端权威数据源，客户端 tooltip/UI 显示链）
-            Map<String, DefsManager.ParamValue> effective = DefsManager.getEffectiveItemAttributes(itemId);
+            Map<String, DefsTypes.ParamValue> effective = DefsManager.getEffectiveItemAttributes(itemId);
             if (effective != null) {
                 for (var entry : effective.entrySet()) {
                     CompoundTag attrTag = new CompoundTag();

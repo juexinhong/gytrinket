@@ -56,6 +56,14 @@ public class DamageManager {
         LivingEntity attackedEntity = event.getEntity();
         DamageSource source = event.getSource();
 
+        // 【仅服务端结算】客户端也会为摔落等本地预测伤害调用 hurt() 并 post 本事件；
+        // 若在客户端跑护盾链，会改写客户端侧护盾池/无敌标记（单人同 JVM 时与服务端共享静态），
+        // 客户端先加的“格挡无敌标记”还会把服务端随后真正的伤害事件在 HIGHEST 阶段取消，
+        // 表现为“摔落伤害护盾掉一半、玩家生命不掉”。
+        if (attackedEntity.getLevel().isClientSide) {
+            return;
+        }
+
         // 【免疫跳过】Forge 在 hurt() 最开头 post LivingAttackEvent（玩家由 Player.hurt 的
         // onPlayerAttack hook post，其余实体由 LivingEntity.hurt 的 onLivingAttack post），
         // 均早于原版全部免疫检查：玩家免疫该伤害时原版本会拒绝该伤害，但护盾在事件阶段

@@ -34,6 +34,10 @@ public class InvincibilityMarkerManager {
      */
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onLivingAttack(LivingAttackEvent event) {
+        // 仅服务端：标记由服务端护盾链写入；客户端预测伤害不需要走这套判定
+        if (event.getEntity().getLevel().isClientSide) {
+            return;
+        }
         if (hasMarker(event.getEntity())) {
             event.setCanceled(true);
         }

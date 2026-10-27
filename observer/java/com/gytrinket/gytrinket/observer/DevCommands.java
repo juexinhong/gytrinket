@@ -65,6 +65,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.UUID;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
@@ -254,6 +255,22 @@ public final class DevCommands {
                         .then(Commands.argument("amount", DoubleArgumentType.doubleArg(0.0D, 10000.0D))
                                 .executes(ctx -> hurtSelf(ctx.getSource(),
                                         (float) DoubleArgumentType.getDouble(ctx, "amount")))))
+                .then(Commands.literal("fallhurt")
+                        .requires(source -> source.hasPermission(2))
+                        .then(Commands.argument("amount", DoubleArgumentType.doubleArg(0.0D, 10000.0D))
+                                .executes(ctx -> fallHurt(ctx.getSource(),
+                                        (float) DoubleArgumentType.getDouble(ctx, "amount")))))
+                .then(Commands.literal("hurtx")
+                        .requires(source -> source.hasPermission(2))
+                        .then(Commands.argument("target",
+                                        net.minecraft.commands.arguments.EntityArgument.entity())
+                                .then(Commands.argument("amount", DoubleArgumentType.doubleArg(0.0D, 10000.0D))
+                                        .executes(ctx -> hurtEntity(ctx.getSource(),
+                                                net.minecraft.commands.arguments.EntityArgument.getEntity(ctx, "target"),
+                                                (float) DoubleArgumentType.getDouble(ctx, "amount"))))))
+                .then(Commands.literal("probe")
+                        .requires(source -> source.hasPermission(2))
+                        .executes(ctx -> probe(ctx.getSource())))
         );
     }
 
@@ -1242,8 +1259,98 @@ public final class DevCommands {
         return 1;
     }
 
-    private static Map<String, Object> collectP5DefsState() {
-        Map<String, Object> root = new TreeMap<>();
+    /** 模拟摔落伤害：直接用 DamageSource.FALL 调 player.hurt，便于精确测试二元协议。 */
+    private static int fallHurt(CommandSourceStack source, float amount) {
+        ServerPlayer player = source.getPlayer();
+        if (player == null) {
+            source.sendFailure(Component.literal("需要玩家执行"));
+            return 0;
+        }
+        double beforeShield = com.gytrinket.gytrinket.core.shield.ShieldManager.getCurrentShield(player.getUUID());
+        float beforeHealth = player.getHealth();
+        boolean result = player.hurt(net.minecraft.world.damagesource.DamageSource.FALL, amount);
+        double afterShield = com.gytrinket.gytrinket.core.shield.ShieldManager.getCurrentShield(player.getUUID());
+        float afterHealth = player.getHealth();
+        String text = "[fallhurt] amount=" + amount + " result=" + result
+                + " hp=" + beforeHealth + "->" + afterHealth
+                + " shield=" + beforeShield + "->" + afterShield;
+        gytrinket.LOGGER.info(text);
+        source.sendSuccess(Component.literal(text), false);
+        return 1;
+    }
+
+    /** 对任意生物模拟一次带攻击者的伤害（验证护盾移植时伤害归属）。 */
+    private static int hurtEntity(CommandSourceStack source,
+                                  net.minecraft.world.entity.Entity rawTarget, float amount) {
+        ServerPlayer player = source.getPlayer();
+        if (player == null) {
+            source.sendFailure(Component.literal("需要玩家执行"));
+            return 0;
+        }
+        if (!(rawTarget instanceof net.minecraft.world.entity.LivingEntity target)) {
+            source.sendFailure(Component.literal("目标不是生物: " + rawTarget));
+            return 0;
+        }
+        float targetBefore = target.getHealth();
+        float playerBefore = player.getHealth();
+        double shieldBefore = com.gytrinket.gytrinket.core.shield.ShieldManager.getCurrentShield(player.getUUID());
+        boolean result = target.hurt(net.minecraft.world.damagesource.DamageSource.MAGIC, amount);
+        float targetAfter = target.getHealth();
+        float playerAfter = player.getHealth();
+        double shieldAfter = com.gytrinket.gytrinket.core.shield.ShieldManager.getCurrentShield(player.getUUID());
+        String text = "[hurtx] target=" + target.getName().getString() + " amount=" + amount + " result=" + result
+                + " targetHp=" + targetBefore + "->" + targetAfter
+                + " playerHp=" + playerBefore + "->" + playerAfter
+                + " shield=" + shieldBefore + "->" + shieldAfter;
+        gytrinket.LOGGER.info(text);
+        source.sendSuccess(Component.literal(text), false);
+        return 1;
+    }
+
+    /** 打印二元协议/护盾移植相关的关键状态。 */
+    private static int probe(CommandSourceStack source) {
+        ServerPlayer player = source.getPlayer();
+        if (player == null) {
+            source.sendFailure(Component.literal("需要玩家执行"));
+            return 0;
+        }
+        UUID uuid = player.getUUID();
+        StringBuilder sb = new StringBuilder("[probe]");
+        sb.append(" hp=").append(player.getHealth()).append('/').append(player.getMaxHealth());
+        sb.append(" absorption=").append(player.getAbsorptionAmount());
+        sb.append(" invulTime=").append(player.invulnerableTime);
+        sb.append(" hurtTime=").append(player.hurtTime);
+        sb.append(" creative=").append(player.isCreative());
+        sb.append(" shield=").append(com.gytrinket.gytrinket.core.shield.ShieldManager.getCurrentShield(uuid));
+        sb.append(" transferItem=").append(com.gytrinket.gytrinket.core.shield_transfer.ShieldTransferManager.hasShieldTransferItem(uuid));
+        sb.append(" transferEnabled=").append(com.gytrinket.gytrinket.core.shield_transfer.ShieldTransferManager.isShieldTransferEnabled(uuid));
+        sb.append(" hasTransferred=").append(com.gytrinket.gytrinket.core.shield_transfer.ShieldTransferManager.hasTransferredShield(uuid));
+        sb.append(" binaryItem=").append(com.gytrinket.gytrinket.storage.PlayerStoreUtils.hasActiveItem(
+                player, Config::isBinaryProtocolItem));
+        sb.append(" marker=").append(com.gytrinket.gytrinket.core.damage.InvincibilityMarkerManager.hasMarker(player));
+        gytrinket.LOGGER.info(sb.toString());
+
+        for (var inst : com.gytrinket.gytrinket.core.shield.ShieldManager.getInstances(uuid)) {
+            gytrinket.LOGGER.info("[probe] shieldInst item={} type={} cur={} max={} broken={}",
+                    inst.getItemId(), inst.getShieldTypeName(), inst.getCurrentShield(), inst.getMaxShield(), inst.isBroken());
+        }
+
+        for (var entity : com.gytrinket.gytrinket.core.shield_transfer.ShieldTransferManager
+                .getProtectedEntities(uuid, player.getLevel())) {
+            gytrinket.LOGGER.info("[probe] protected entity={} id={} hp={}/{}",
+                    entity.getName().getString(), entity.getId(), entity.getHealth(), entity.getMaxHealth());
+        }
+
+        for (String attr : new String[]{"player_damage_reduction", "player_self_damage_reduction",
+                "shield_damage_reduction", "shield_self_damage_reduction"}) {
+            gytrinket.LOGGER.info("[probe] attr {}={}", attr, AttributeManager.getPlayerAttribute(uuid, attr));
+        }
+
+        source.sendSuccess(Component.literal(sb.toString()), false);
+        return 1;
+    }
+
+    private static Map<String, Object> collectP5DefsState() {        Map<String, Object> root = new TreeMap<>();
 
         List<DefsTypes.AttributeEntry> attributeDefs = new ArrayList<>(DefsManager.getAttributeDefs());
         attributeDefs.sort(Comparator.comparing(DefsTypes.AttributeEntry::name));

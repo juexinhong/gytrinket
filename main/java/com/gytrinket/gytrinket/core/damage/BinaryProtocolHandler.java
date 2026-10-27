@@ -5,8 +5,8 @@ import com.gytrinket.gytrinket.core.shield.ShieldManager;
 import com.gytrinket.gytrinket.core.shield_transfer.ShieldTransferManager;
 import com.gytrinket.gytrinket.core.damage.ModDamageTypes;
 import com.gytrinket.gytrinket.storage.PlayerStoreUtils;
-import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 
 public class BinaryProtocolHandler implements DamageHandler {
@@ -16,6 +16,7 @@ public class BinaryProtocolHandler implements DamageHandler {
     @Override
     public void handle(DamageContext context) {
         Player player = context.getPlayer();
+        LivingEntity attackedEntity = context.getAttackedEntity();
 
         if (!hasBinaryProtocolItem(player)) {
             return;
@@ -25,7 +26,7 @@ public class BinaryProtocolHandler implements DamageHandler {
             return;
         }
 
-        if (context.getAttackedEntity() instanceof Player attackedPlayer) {
+        if (attackedEntity instanceof Player attackedPlayer) {
             if (!ShieldTransferManager.shouldProtectPlayer(attackedPlayer)) {
                 return;
             }
@@ -43,6 +44,11 @@ public class BinaryProtocolHandler implements DamageHandler {
         }
         float splitDamage = currentDamage / 2.0f;
 
+        // 二元协议的另一半由"被保护的一方"承担：
+        // 未移植时 attackedEntity 就是玩家；护盾移植后是被保护实体，
+        // 不能让护盾主人在远处替它扣血。
+        LivingEntity damageTarget = attackedEntity;
+
         boolean isPlayerSelfDamage = (damageType == ModDamageTypes.PLAYER_SELF_DAMAGE);
 
         if (isPlayerSelfDamage) {
@@ -58,28 +64,28 @@ public class BinaryProtocolHandler implements DamageHandler {
                 player.hurt(ModDamageTypes.getProtocolShieldSelfDamageSource(player.getLevel()), actualShieldDamage);
             }
 
-            float playerDamage = splitDamage + shieldRemainingDamage;
-            if (playerDamage > 0) {
-                player.hurt(ModDamageTypes.getProtocolPlayerSelfDamageSource(player.getLevel()), playerDamage);
+            float victimDamage = splitDamage + shieldRemainingDamage;
+            if (victimDamage > 0) {
+                damageTarget.hurt(ModDamageTypes.getProtocolPlayerSelfDamageSource(damageTarget.getLevel()), victimDamage);
             }
 
             context.setCanceled(true);
             return;
         }
 
-        DamageSource protocolDamageSource = ModDamageTypes.getProtocolPlayerSelfDamageSource(player.getLevel());
+        DamageSource protocolDamageSource = ModDamageTypes.getProtocolPlayerSelfDamageSource(damageTarget.getLevel());
 
         float actualProtocolDamage = splitDamage;
         float remainingDamage = 0;
 
-        float currentHealth = player.getHealth();
+        float currentHealth = damageTarget.getHealth();
         if (splitDamage > currentHealth - 1) {
             actualProtocolDamage = currentHealth - 1;
             remainingDamage = splitDamage - actualProtocolDamage;
         }
 
         if (actualProtocolDamage > 0) {
-            player.hurt(protocolDamageSource, actualProtocolDamage);
+            damageTarget.hurt(protocolDamageSource, actualProtocolDamage);
         }
 
         context.setCurrentDamage(splitDamage + remainingDamage);
@@ -94,4 +100,3 @@ public class BinaryProtocolHandler implements DamageHandler {
         return PRIORITY;
     }
 }
-

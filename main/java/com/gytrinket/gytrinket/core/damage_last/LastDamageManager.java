@@ -27,6 +27,10 @@ public class LastDamageManager {
 
     @SubscribeEvent(priority = EventPriority.HIGH)
     public static void onLivingDamage(LivingDamageEvent event) {
+        // 仅服务端：客户端本地预测伤害也会触发本事件，最终伤害链会读写共享的属性/护盾状态
+        if (event.getEntity().getLevel().isClientSide) {
+            return;
+        }
         if (event.getAmount() <= 0) {
             return;
         }

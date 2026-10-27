@@ -2,7 +2,9 @@
     "blend": {
         "func": "add",
         "srcrgb": "srcalpha",
-        "dstrgb": "oneminussrcalpha"
+        "dstrgb": "oneminussrcalpha",
+        "srcalpha": "srcalpha",
+        "dstalpha": "oneminussrcalpha"
     },
     "vertex": "gytrinket:shield_glass",
     "fragment": "gytrinket:shield_glass",

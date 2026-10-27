@@ -353,6 +353,12 @@ public class ShieldParticleRenderer {
         // 1.20.1 的 ShaderInstance.apply() 会按 JSON 里的 blend 覆盖 RenderSystem 的混合状态，
         // 而自定义 uniform（PassMode / ViewRot）在这条管线里不可靠，所以三个 Pass 各用一个
         // ShaderInstance：同一套 vsh/fsh，只靠 JSON 里的 blend + PassMode 初值区分。
+        //
+        // ⚠ 本体（shield_glass.json）的 blend 必须写成 separateBlend（显式给 srcalpha/dstalpha，
+        // 因子与 alpha 混合等价）。原因：BlendMode 有全局 lastApplied 缓存，值相等时 apply()
+        // 直接 return 不下发 GL 状态；本体的 (srcalpha, 1-srcalpha) 与原生 shader 值相等，
+        // 会被跳过、实际沿用上一个 Pass（光晕）的加色混合 → 实机白天整簇发白、没有暗面。
+        // separate 模式不等于任何原生模式，每次都会重新下发。**不要"精简"回单项写法。**
         ShaderInstance bodyShader = ModShaders.getShieldGlassShader();
         ShaderInstance addShader = ModShaders.getShieldGlassAddShader();
         ShaderInstance hiShader = ModShaders.getShieldGlassHiShader();

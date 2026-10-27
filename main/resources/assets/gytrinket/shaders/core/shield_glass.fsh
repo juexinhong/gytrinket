@@ -31,16 +31,12 @@ in vec3 vSeed;
 in float vAlpha;
 
 uniform mat4 ViewRot;
-uniform mat4 ModelViewMat;
 uniform float GemTime;
 uniform float PassMode;
 /** 形象：0 = 三渲二水晶（默认），1 = 旧立体宝石 */
 uniform float StyleMode;
 
 out vec4 fragColor;
-
-/** 整体亮度系数：1.20.1 这条管线比 1.21.1 偏亮，先按 -30% 压一档（0.70） */
-const float BRIGHTNESS = 0.70;
 
 const float TAU = 6.28318530718;
 const float PI = 3.14159265359;
@@ -132,7 +128,7 @@ void main() {
         float pulse = 0.82 + 0.18 * sin(t * 2.1 + seedA * 31.0);
         vec3 tint = mix(C_CYAN, C_WHITE, 0.35);
         float amount = (core * 0.020 + ring * 0.028 + (rayH + rayV) * 0.008) * pulse;
-        fragColor = vec4(tint * amount * BRIGHTNESS, vAlpha);
+        fragColor = vec4(tint * amount, vAlpha);
         return;
     }
 
@@ -141,11 +137,11 @@ void main() {
     // =======================================================================
     float nl = length(vNormalWorld);
     vec3 Nw = vNormalWorld / max(nl, 1.0e-4);
-    vec3 N = normalize(mat3(ModelViewMat) * Nw);
+    vec3 N = normalize(mat3(ViewRot) * Nw);
     if (dot(N, V) < 0.0) {
         N = -N;
     }
-    vec3 Vw = normalize(transpose(mat3(ModelViewMat)) * V);
+    vec3 Vw = normalize(transpose(mat3(ViewRot)) * V);
 
     // 14 个面按法线长度分四类：外小面 / 外斜面 / 内斜面 / 内小面
     float capOut = step(0.93, nl);
@@ -205,38 +201,16 @@ void main() {
     //    台面（0.70/0.90 = 0.778）= 0.674 —— 改 ShieldShardMesh 的
     //    CAP_RADIUS / GIRDLE_RADIUS 时，这两个常数也要跟着改。
     // =======================================================================
-    float edgeGirdle;
-    float edgeCap;
-    float edgeRadial;
-    vec3  edgeTint;
+    float edgeGirdle = 1.0 - smoothstep(0.0, 0.030, abs(hd - 0.8660254));
+    float edgeCap    = 1.0 - smoothstep(0.0, 0.028, abs(hd - 0.6744));
     float ang = atan(vUv.y, vUv.x);
-    if (StyleMode > 0.5) {
-        // 旧立体宝石：网格外接圆 0.90、内切圆 0.779，环带在 RING_SCALE {1.00,0.90,0.79,0.54}。
-        // 按这几圈画边线，才不会像水晶阈值那样落在网格外/横穿面中间。
-        float rim = 0.7789;                 // 0.90 × cos30°
-        float w = 0.014;
-        edgeGirdle = 1.0 - smoothstep(0.0, w, abs(hd - rim));
-        edgeCap = 1.0 - smoothstep(0.0, w, abs(hd - rim * 0.90))
-                + 1.0 - smoothstep(0.0, w, abs(hd - rim * 0.79))
-                + 1.0 - smoothstep(0.0, w, abs(hd - rim * 0.54));
-        edgeCap = clamp(edgeCap, 0.0, 1.0);
-        // 12 段（每 30°）都有面边界，只在冠部（rho < rim）画
-        float sector = abs(fract(ang / (PI / 6.0)) - 0.5);
-        edgeRadial = (1.0 - smoothstep(0.0, 0.020, sector * rho))
-                   * smoothstep(rim * 0.42, rim * 0.50, rho)
-                   * (1.0 - smoothstep(rim * 0.92, rim * 1.00, rho));
-        edgeTint = mix(ramp * 1.5, C_WHITE, 0.30 + 0.40 * h);
-    } else {
-        edgeGirdle = 1.0 - smoothstep(0.0, 0.030, abs(hd - 0.8660254));
-        edgeCap    = 1.0 - smoothstep(0.0, 0.028, abs(hd - 0.6744));
-        float cornerPhase = abs(fract(ang / (PI / 3.0)) - 0.5);
-        // 冠部棱线只画在斜面上（法线长度 0.68..0.93），台面是一整片，不画星形线
-        float isBevel = step(0.68, nl) * (1.0 - step(0.93, nl));
-        edgeRadial = (1.0 - smoothstep(0.0, 0.024, cornerPhase * rho))
-                   * smoothstep(0.62, 0.70, rho) * isBevel;
-        edgeTint = mix(ramp * 1.5, C_WHITE, 0.30 + 0.40 * h);
-    }
+    float cornerPhase = abs(fract(ang / (PI / 3.0)) - 0.5);
+    // 冠部棱线只画在斜面上（法线长度 0.68..0.93），台面是一整片，不画星形线
+    float isBevel = step(0.68, nl) * (1.0 - step(0.93, nl));
+    float edgeRadial = (1.0 - smoothstep(0.0, 0.024, cornerPhase * rho))
+                     * smoothstep(0.62, 0.70, rho) * isBevel;
     float edgeMask = clamp(edgeGirdle + edgeCap * 0.80 + edgeRadial * 0.85, 0.0, 1.0);
+    vec3  edgeTint = mix(ramp * 1.5, C_WHITE, 0.30 + 0.40 * h);
 
     // =======================================================================
     // Pass 2：加色高光
@@ -266,7 +240,7 @@ void main() {
             hi += bandTint * (bigBand * 0.50 + smallBand * 1.05);
         }
 
-        fragColor = vec4(hi * BRIGHTNESS, vAlpha);
+        fragColor = vec4(hi, vAlpha);
         return;
     }
 
@@ -291,5 +265,5 @@ void main() {
     float alpha = 0.60 + 0.16 * fres + 0.10 * edgeMask + 0.06 * capOut;
     alpha = clamp(alpha, 0.0, 0.96);
 
-    fragColor = vec4(body * BRIGHTNESS, alpha * vAlpha);
+    fragColor = vec4(body, alpha * vAlpha);
 }

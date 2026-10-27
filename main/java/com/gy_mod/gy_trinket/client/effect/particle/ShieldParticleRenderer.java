@@ -21,6 +21,7 @@ import net.minecraft.client.renderer.ShaderInstance;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec3;
+import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
@@ -327,6 +328,12 @@ public class ShieldParticleRenderer {
         // 1.20.1 的 ShaderInstance.apply() 会按 JSON 里的 blend 覆盖 RenderSystem 的混合状态，
         // 而自定义 uniform（PassMode / ViewRot）在这条管线里不可靠，所以三个 Pass 各用一个
         // ShaderInstance：同一套 vsh/fsh，只靠 JSON 里的 blend + PassMode 初值区分。
+        //
+        // ⚠ 本体（shield_glass.json）的 blend 必须写成 separateBlend（显式给 srcalpha/dstalpha，
+        // 因子与 alpha 混合等价）。原因：BlendMode 有全局 lastApplied 缓存，值相等时 apply()
+        // 直接 return 不下发 GL 状态；本体的 (srcalpha, 1-srcalpha) 与原生 shader 值相等，
+        // 会被跳过、实际沿用上一个 Pass（光晕）的加色混合 → 实机白天整簇发白、没有暗面。
+        // separate 模式不等于任何原生模式，每次都会重新下发。**不要"精简"回单项写法。**
         ShaderInstance bodyShader = ModShaders.getShieldGlassShader();
         ShaderInstance addShader = ModShaders.getShieldGlassAddShader();
         ShaderInstance hiShader = ModShaders.getShieldGlassHiShader();
@@ -335,8 +342,7 @@ public class ShieldParticleRenderer {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null) return;
 
-        Quaternionf viewRotation = new Quaternionf(camera.rotation()).conjugate(new Quaternionf());
-        Matrix4f viewRotMatrix = new Matrix4f().rotation(viewRotation);
+        Matrix4f viewRotMatrix = computeViewRotation();
         float gemTime = animationTime(mc, partialTicks);
         float styleUniform = style >= 1 ? 1.0F : 0.0F;
         setCommonUniforms(bodyShader, viewRotMatrix, gemTime, styleUniform);
@@ -407,6 +413,29 @@ public class ShieldParticleRenderer {
         RenderSystem.enableCull();
         RenderSystem.disableBlend();
         RenderSystem.defaultBlendFunc();
+    }
+
+    /**
+     * 视图旋转矩阵（世界 → 视图）。
+     * <p>
+     * 1.20.1 的 {@code Camera.rotation()} 本地前向是 +Z（1.21.1 是 -Z），直接
+     * {@code new Matrix4f().rotation(rotation.conjugate())} 会差 180° 偏航；而着色器里
+     * {@code mat3(ViewRot) * N} 要求的是「和顶点实际经历的视图变换同源」的旋转。
+     * <p>
+     * 这里取 {@link RenderSystem#getInverseViewRotationMatrix()}（GameRenderer 每帧写进去的
+     * 「世界渲染视图 pose 的 3x3 逆」，含 roll）转置回来，与 1.19.2 的修法一致，不可能对不上。
+     */
+    private static final Matrix4f VIEW_ROT = new Matrix4f();
+
+    private static Matrix4f computeViewRotation() {
+        Matrix3f inv = RenderSystem.getInverseViewRotationMatrix();
+        // 转置：VIEW_ROT(r,c) = inv(c,r)。JOML 的 set(...) 参数是行主序。
+        VIEW_ROT.set(
+                inv.m00(), inv.m10(), inv.m20(), 0.0F,
+                inv.m01(), inv.m11(), inv.m21(), 0.0F,
+                inv.m02(), inv.m12(), inv.m22(), 0.0F,
+                0.0F, 0.0F, 0.0F, 1.0F);
+        return VIEW_ROT;
     }
 
     /** 三个 Pass 共用：视角旋转矩阵 / 动画时间 / 形象 */

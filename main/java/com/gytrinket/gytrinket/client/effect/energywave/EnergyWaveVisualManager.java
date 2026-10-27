@@ -8,6 +8,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.Vec3;
+import net.minecraftforge.client.event.RenderLevelLastEvent;
 import net.minecraftforge.client.event.RenderLevelStageEvent;
 import com.mojang.math.Matrix4f;
 
@@ -102,6 +103,8 @@ public class EnergyWaveVisualManager {
     private static Matrix4f savedProjectionMatrix = null;
     private static Matrix4f savedModelViewMatrix = null;
     private static Matrix4f savedPoseStackMatrix = null;
+    /** AFTER_PARTICLES 时保存的插值时间，composite 后补画时直接复用 */
+    private static float savedPartialTicks = 0.0F;
 
     /**
      * 添加蜂群能量波视觉（使用蜂群默认尺寸参数）
@@ -208,7 +211,8 @@ public class EnergyWaveVisualManager {
      * 渲染事件处理器：自动分发到体积或矢量渲染器。
      * 光影模式下使用保存矩阵机制兼容Iris composite pass：
      * - AFTER_PARTICLES：保存正确的矩阵（Iris composite之前）
-     * - AFTER_LEVEL：使用保存的矩阵渲染（Iris composite之后）
+     * - composite 之后：由 {@link #onRenderLevelLastEvent} 用保存的矩阵补画
+     *   （1.19.2 没有 AFTER_LEVEL，等价时机是 GameRenderer 派发的 RenderLevelLastEvent）
      */
     public static void onRenderLevelLast(RenderLevelStageEvent event) {
         Minecraft mc = Minecraft.getInstance();
@@ -224,17 +228,13 @@ public class EnergyWaveVisualManager {
         boolean shaderActive = ShaderModCompat.isShaderPackInUse();
 
         if (shaderActive) {
-            // 光影模式：保存矩阵 + 延迟到AFTER_LEVEL渲染
+            // 光影模式：composite 之前只保存矩阵，composite 之后补画
             if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_PARTICLES) {
                 // Iris composite之前：保存正确的矩阵状态
                 savedProjectionMatrix = new Matrix4f(RenderSystem.getProjectionMatrix());
                 savedModelViewMatrix = new Matrix4f(RenderSystem.getModelViewStack().last().pose());
                 savedPoseStackMatrix = new Matrix4f(event.getPoseStack().last().pose());
-            } else if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_WEATHER) {
-                // Iris composite之后：使用保存的矩阵渲染体积能量波
-                EnergyWaveVolumetricRenderer.renderWavesWithSavedMatrices(
-                    event, waves,
-                    savedProjectionMatrix, savedModelViewMatrix, savedPoseStackMatrix);
+                savedPartialTicks = event.getPartialTick();
             }
         } else {
             // 非光影模式：直接在AFTER_PARTICLES渲染
@@ -242,6 +242,29 @@ public class EnergyWaveVisualManager {
                 EnergyWaveVolumetricRenderer.renderWaves(event, waves);
             }
         }
+    }
+
+    /**
+     * 1.19.2 的"composite 之后"渲染入口（对应 1.20.1 的 AFTER_LEVEL）。
+     * <p>
+     * RenderLevelLastEvent 由 GameRenderer 在 LevelRenderer.renderLevel 返回后派发，
+     * Iris 已在 renderLevel 的 RETURN 处执行完 composite；此时 shouldOverrideShaders()=false，
+     * 自定义 ShaderInstance 可以正常写颜色。
+     */
+    public static void onRenderLevelLastEvent(RenderLevelLastEvent event) {
+        if (!ShaderModCompat.isShaderPackInUse()) return;
+        if (savedProjectionMatrix == null || savedModelViewMatrix == null || savedPoseStackMatrix == null) return;
+
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null) return;
+
+        long currentTime = mc.level.getGameTime();
+        waves.removeIf(w -> w.isExpired(currentTime));
+        if (waves.isEmpty()) return;
+
+        EnergyWaveVolumetricRenderer.renderWavesWithSavedMatrices(
+                savedPartialTicks, mc.gameRenderer.getMainCamera().getPosition(), waves,
+                savedProjectionMatrix, savedModelViewMatrix, savedPoseStackMatrix);
     }
 
     /**

@@ -31,6 +31,7 @@ import java.nio.file.Path;
  * shieldfreeze [0]          冻结/解冻粒子计时
  * shieldstyle 0|1|2         切换护盾粒子形象（水晶/旧立体/平面）
  * shieldclear               清掉护盾粒子与演示实体
+ * wavedemo [length] [color] 在视线前方生成一发爆炸能量波（光影兼容自检）
  * </pre>
  */
 @EventBusSubscriber(modid = gytrinket.MODID, value = Dist.CLIENT)
@@ -482,6 +483,17 @@ public final class ClientConsole {
                 case "shieldclear" -> {
                     ShieldDemoHarness.stop(mc);
                     gytrinket.LOGGER.info("[cmd] shieldclear");
+                }
+                case "wavedemo" -> {
+                    // 能量波视觉自检：在视线前方生成一发爆炸能量波（与反射护盾模块同一个
+                    // EnergyWaveVisualManager.addExplosionWave 渲染路径，不含伤害/网络）。
+                    double length = p.length > 1 ? Double.parseDouble(p[1]) : 8.0D;
+                    int color = p.length > 2 ? Integer.parseInt(p[2]) : 1;
+                    var look = mc.player.getLookAngle();
+                    var center = mc.player.getEyePosition().add(look.scale(1.5D));
+                    com.gytrinket.gytrinket.client.effect.energywave.EnergyWaveVisualManager.addExplosionWave(
+                            center.x, center.y, center.z, look.x, look.y, look.z, length, -1, color, 0.0D);
+                    gytrinket.LOGGER.info("[cmd] wavedemo length={} color={} center={}", length, color, center);
                 }
                 case "hud" -> {
                     // hud 0 隐藏 HUD（干净截图），hud 1 显示

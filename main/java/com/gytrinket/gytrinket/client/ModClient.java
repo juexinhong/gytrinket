@@ -63,7 +63,9 @@ public class ModClient {
         });
 
         MinecraftForge.EVENT_BUS.addListener(LightningRenderManager::onRenderLevelLast);
+        MinecraftForge.EVENT_BUS.addListener(LightningRenderManager::onRenderLevelLastEvent);
         MinecraftForge.EVENT_BUS.addListener(EnergyWaveVisualManager::onRenderLevelLast);
+        MinecraftForge.EVENT_BUS.addListener(EnergyWaveVisualManager::onRenderLevelLastEvent);
         MinecraftForge.EVENT_BUS.addListener(DroneBulletTrailManager::onRenderLevelLast);
         ShieldParticleRenderEvent.init();
         ShieldParticleTickEvent.init();

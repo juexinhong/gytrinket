@@ -73,10 +73,11 @@ public class EnergyWaveVolumetricRenderer {
 
     /**
      * 光影模式下使用保存的矩阵渲染能量波。
-     * 在AFTER_LEVEL（Iris composite之后）调用，使用AFTER_PARTICLES时保存的矩阵。
-     * 关键：AFTER_LEVEL时RenderSystem的矩阵已被Iris修改，必须恢复为composite之前的正确值。
+     * 在 Iris composite 之后（1.19.2 的 RenderLevelLastEvent）调用，使用 AFTER_PARTICLES 时保存的矩阵。
+     * 关键：composite 之后 RenderSystem 的矩阵已被 Iris 修改，必须恢复为 composite 之前的正确值。
      */
-    public static void renderWavesWithSavedMatrices(RenderLevelStageEvent event,
+    public static void renderWavesWithSavedMatrices(float partialTick,
+                                                     Vec3 camPos,
                                                      List<WaveVisualData> waveDataList,
                                                      Matrix4f savedProjection,
                                                      Matrix4f savedModelView,
@@ -94,8 +95,6 @@ public class EnergyWaveVolumetricRenderer {
         }
 
         long currentTime = mc.level.getGameTime();
-        float partialTick = event.getPartialTick();
-        Vec3 camPos = event.getCamera().getPosition();
 
         // 保存当前Iris composite后的矩阵
         Matrix4f irisProjection = new Matrix4f(RenderSystem.getProjectionMatrix());

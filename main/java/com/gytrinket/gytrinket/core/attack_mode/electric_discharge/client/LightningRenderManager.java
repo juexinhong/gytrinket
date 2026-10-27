@@ -93,12 +93,11 @@ public class LightningRenderManager {
         boolean shaderActive = ShaderModCompat.isShaderPackInUse();
 
         if (shaderActive) {
+            // 光影：composite 之前只保存矩阵，composite 之后由 onRenderLevelLastEvent 补画
             if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_PARTICLES) {
                 savedProjectionMatrix = new Matrix4f(RenderSystem.getProjectionMatrix());
                 savedModelViewMatrix = new Matrix4f(RenderSystem.getModelViewStack().last().pose());
                 savedPoseStackMatrix = new Matrix4f(event.getPoseStack().last().pose());
-            } else if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_WEATHER) {
-                renderWithSavedMatrices(event);
             }
         } else {
             // 非光影：AFTER_PARTICLES 渲染（与 1.20.1 旧版闪电/护盾粒子一致：顶点矩阵预变换 + 默认 modelview）
@@ -106,6 +105,21 @@ public class LightningRenderManager {
                 render(event);
             }
         }
+    }
+
+    /**
+     * 1.19.2 的"composite 之后"渲染入口（对应 1.20.1 的 AFTER_LEVEL）。
+     * RenderLevelLastEvent 由 GameRenderer 在 LevelRenderer.renderLevel 返回后派发，
+     * 晚于 Iris 的 finalizeLevelRendering；此时 shouldOverrideShaders()=false，自定义着色器可正常写颜色。
+     */
+    public static void onRenderLevelLastEvent(net.minecraftforge.client.event.RenderLevelLastEvent event) {
+        if (!ShaderModCompat.isShaderPackInUse()) return;
+        if (savedProjectionMatrix == null || savedModelViewMatrix == null || savedPoseStackMatrix == null) {
+            return;
+        }
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null) return;
+        renderWithSavedMatrices(mc.gameRenderer.getMainCamera().getPosition());
     }
 
     /**
@@ -148,8 +162,8 @@ public class LightningRenderManager {
         RenderSystem.disableBlend();
     }
 
-    /** 光影模式：在 AFTER_LEVEL 使用保存的矩阵渲染（与 1.21.1 一致）。 */
-    private static void renderWithSavedMatrices(RenderLevelStageEvent event) {
+    /** 光影模式：在 composite 之后使用保存的矩阵渲染（对应 1.20.1 的 AFTER_LEVEL）。 */
+    private static void renderWithSavedMatrices(Vec3 camPos) {
         if (savedProjectionMatrix == null || savedModelViewMatrix == null || savedPoseStackMatrix == null) {
             return;
         }
@@ -157,7 +171,6 @@ public class LightningRenderManager {
         ShaderInstance shader = ModShaders.getLightningVolShader();
         if (shader == null) return;
 
-        Vec3 camPos = event.getCamera().getPosition();
         long currentTime = mc.level.getGameTime();
 
         Matrix4f irisProjection = new Matrix4f(RenderSystem.getProjectionMatrix());

@@ -291,6 +291,14 @@ public class ShieldParticleRenderer {
 
     /**
      * 光影模式：使用保存的矩阵（Iris composite 之前捕获的）渲染。
+     * <p>
+     * 顶点矩阵必须用 <b>事件 PoseStack</b>（= 相机旋转 R），不能用
+     * {@code RenderSystem.getModelViewStack()}：
+     * 1.19.2 的 GameRenderer 为 renderLevel 单独 new 了一个 PoseStack，AFTER_PARTICLES
+     * 时 RenderSystem 的 modelview 栈基座是单位阵（ModelViewMat = I，CPU 已经乘过视图矩阵）；
+     * 只有事件 PoseStack 里才是相机旋转。照搬 1.20.1（那边的 modelview 栈就是事件栈）会
+     * 用单位阵当顶点矩阵，表现为整簇粒子不随镜头旋转、像贴在屏幕上。
+     * 顶点 = R × T(-camPos)，同时把 modelview 置单位阵，等价于非光影路径。
      */
     public static void renderWithSavedMatrices(PoseStack poseStack,
                                                MultiBufferSource bufferSource,
@@ -313,8 +321,12 @@ public class ShieldParticleRenderer {
         Camera cam = camera != null ? camera : mc.gameRenderer.getMainCamera();
         Vec3 cameraPos = cam.getPosition();
 
-        Matrix4f matrix = savedModelView.copy();
-        matrix.translate(new Vector3f((float) -cameraPos.x, (float) -cameraPos.y, (float) -cameraPos.z));
+        Matrix4f matrix = savedPoseStackMat.copy();
+        // 注意：1.19.2 的 com.mojang Matrix4f.translate(Vector3f) 只是把平移量直接加到
+        // m03/m13/m23（不平移旋转），与 PoseStack.translate 的 multiplyWithTranslation 不是
+        // 一回事。非光影路径走的是 PoseStack.translate，这里必须用同一个原语，否则顶点会被
+        // 放到离相机很远的位置（表现为整簇不可见）。
+        matrix.multiplyWithTranslation((float) -cameraPos.x, (float) -cameraPos.y, (float) -cameraPos.z);
         int style = ClientConfig.SHIELD_PARTICLE_STYLE.get();
         if (style == 1) {
             ShieldParticleTexturedRenderer.renderWithMatrix(matrix, cameraPos, partialTicks);

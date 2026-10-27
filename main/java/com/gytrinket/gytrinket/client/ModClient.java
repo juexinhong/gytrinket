@@ -6,6 +6,7 @@ import com.gytrinket.gytrinket.core.entity.construct.drone.client.renderer.Drone
 import com.gytrinket.gytrinket.client.effect.energywave.EnergyWaveVisualManager;
 import com.gytrinket.gytrinket.client.effect.particle.ShieldParticleRenderEvent;
 import com.gytrinket.gytrinket.client.effect.particle.ShieldParticleTickEvent;
+import com.gytrinket.gytrinket.client.world.IslandSky;
 import com.gytrinket.gytrinket.client.shader.ModShaders;
 import com.gytrinket.gytrinket.core.entity.construct.drone.ModEntities;
 import com.gytrinket.gytrinket.core.entity.meteor.MeteorEntities;
@@ -66,6 +67,9 @@ public class ModClient {
         MinecraftForge.EVENT_BUS.addListener(LightningRenderManager::onRenderLevelLastEvent);
         MinecraftForge.EVENT_BUS.addListener(EnergyWaveVisualManager::onRenderLevelLast);
         MinecraftForge.EVENT_BUS.addListener(EnergyWaveVisualManager::onRenderLevelLastEvent);
+        // 光影孤岛天空补画：必须在护盾粒子/能量波之前（HIGHEST），粒子才能叠在天空上
+        MinecraftForge.EVENT_BUS.addListener(net.minecraftforge.eventbus.api.EventPriority.HIGHEST,
+                IslandSky::onRenderLevelLast);
         MinecraftForge.EVENT_BUS.addListener(DroneBulletTrailManager::onRenderLevelLast);
         ShieldParticleRenderEvent.init();
         ShieldParticleTickEvent.init();

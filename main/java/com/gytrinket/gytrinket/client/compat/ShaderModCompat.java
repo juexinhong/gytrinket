@@ -4,6 +4,7 @@ import net.minecraftforge.fml.ModList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
 /**
@@ -26,6 +27,14 @@ public class ShaderModCompat {
     // ShadowRenderingState 反射 Method（备用阴影检测路径）
     private static Method shadowRenderingStateMethod = null;
 
+    // Iris 管道反射：用于取 gbuffer 场景深度纹理（光影下 RenderLevelLastEvent
+    // 之后主深度已不是场景深度，自定义全屏效果要靠它做逐像素遮挡）。
+    private static boolean irisPipelineResolved = false;
+    private static Object irisPipelineManager = null;
+    private static Method pipelineGetNullableMethod = null;
+    private static Field pipelineRenderTargetsField = null;
+    private static Method renderTargetsGetDepthTextureMethod = null;
+
     public static void init() {
         if (initialized) return;
 
@@ -34,8 +43,68 @@ public class ShaderModCompat {
 
         // 缓存 Iris API 反射 Method
         cacheIrisApiMethods();
+        resolveIrisPipelineApi();
 
         initialized = true;
+    }
+
+    /** 解析 Iris 管道，缓存 RenderTargets 与场景深度纹理访问入口。 */
+    private static void resolveIrisPipelineApi() {
+        if (irisPipelineResolved) return;
+        irisPipelineResolved = true;
+        if (!irisLoaded) return;
+        try {
+            Class<?> irisClass = Class.forName("net.coderbot.iris.Iris");
+            Method getPipelineManager = irisClass.getMethod("getPipelineManager");
+            irisPipelineManager = getPipelineManager.invoke(null);
+            if (irisPipelineManager == null) return;
+            pipelineGetNullableMethod = irisPipelineManager.getClass().getMethod("getPipelineNullable");
+            Object pipeline = pipelineGetNullableMethod.invoke(irisPipelineManager);
+            if (pipeline == null) return;
+            // Oculus 1.6.x：NewWorldRenderingPipeline / DeferredWorldRenderingPipeline 的私有字段
+            Field targetsField = null;
+            for (Class<?> c = pipeline.getClass(); c != null && targetsField == null; c = c.getSuperclass()) {
+                try {
+                    targetsField = c.getDeclaredField("renderTargets");
+                } catch (NoSuchFieldException ignored) {
+                    // 继续找父类
+                }
+            }
+            if (targetsField == null) return;
+            targetsField.setAccessible(true);
+            pipelineRenderTargetsField = targetsField;
+            Class<?> renderTargets = Class.forName("net.coderbot.iris.rendertarget.RenderTargets");
+            renderTargetsGetDepthTextureMethod = renderTargets.getMethod("getDepthTexture");
+        } catch (Exception ignored) {
+            irisPipelineManager = null;
+            pipelineGetNullableMethod = null;
+            pipelineRenderTargetsField = null;
+            renderTargetsGetDepthTextureMethod = null;
+        }
+    }
+
+    /**
+     * Iris 当前场景深度纹理（gbuffer depth）。renderLevel 末尾 composite 之后主深度已不是
+     * 场景深度，自定义天空/后期效果必须用它做逐像素遮挡判断。
+     *
+     * @return GL texture id；&lt;=0 表示不可用
+     */
+    public static int getIrisDepthTexture() {
+        init();
+        if (pipelineRenderTargetsField == null || renderTargetsGetDepthTextureMethod == null
+                || irisPipelineManager == null || pipelineGetNullableMethod == null) {
+            return -1;
+        }
+        try {
+            Object pipeline = pipelineGetNullableMethod.invoke(irisPipelineManager);
+            if (pipeline == null) return -1;
+            Object renderTargets = pipelineRenderTargetsField.get(pipeline);
+            if (renderTargets == null) return -1;
+            Object id = renderTargetsGetDepthTextureMethod.invoke(renderTargets);
+            return id instanceof Integer ? (Integer) id : -1;
+        } catch (Exception e) {
+            return -1;
+        }
     }
 
     private static boolean isOptifinePresent() {

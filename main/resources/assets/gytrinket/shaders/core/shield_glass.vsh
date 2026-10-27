@@ -24,7 +24,7 @@ void main() {
     vUv = UV0;
     vNormalWorld = Normal;
     // 顶点法线是世界空间，转到视觉空间做光照
-    vNormalView = mat3(ModelViewMat) * Normal;
+    vNormalView = mat3(ViewRot) * Normal;
 
     // RGB = 随机种子 A/B + 生命进度，A = 粒子透明度
     vSeed = Color.rgb;

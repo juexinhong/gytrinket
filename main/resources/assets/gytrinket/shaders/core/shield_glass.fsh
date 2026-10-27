@@ -39,8 +39,9 @@ uniform float StyleMode;
 
 out vec4 fragColor;
 
-/** 整体亮度系数：1.20.1 这条管线比 1.21.1 偏亮，先按 -30% 压一档（0.70） */
-const float BRIGHTNESS = 0.70;
+/** 整体亮度系数：与 1.21.1 对齐（1.00）。1.19.2/1.20.1 的"发白"主因不是总亮度，
+ *  而是光带在错误空间里铺满所有面 + 本体透明度偏低，见 Pass2 光带与本体 alpha。 */
+const float BRIGHTNESS = 1.00;
 
 const float TAU = 6.28318530718;
 const float PI = 3.14159265359;
@@ -141,11 +142,11 @@ void main() {
     // =======================================================================
     float nl = length(vNormalWorld);
     vec3 Nw = vNormalWorld / max(nl, 1.0e-4);
-    vec3 N = normalize(mat3(ModelViewMat) * Nw);
+    vec3 N = normalize(mat3(ViewRot) * Nw);
     if (dot(N, V) < 0.0) {
         N = -N;
     }
-    vec3 Vw = normalize(transpose(mat3(ModelViewMat)) * V);
+    vec3 Vw = normalize(transpose(mat3(ViewRot)) * V);
 
     // 14 个面按法线长度分四类：外小面 / 外斜面 / 内斜面 / 内小面
     float capOut = step(0.93, nl);
@@ -244,26 +245,28 @@ void main() {
     if (PassMode > 1.5) {
         vec3 hi = vec3(0.0);
 
-        hi += C_WHITE * fres * 0.22;
+        hi += C_WHITE * fres * 0.10;
         hi += edgeTint * edgeMask * 0.85;
 
         // 动态裂纹：逐格亮起，下半身更明显
-        hi += mix(C_CYAN, C_WHITE, 0.60) * crack * crackLit * 0.30 * (0.35 + 0.65 * (1.0 - h));
+        hi += mix(C_CYAN, C_WHITE, 0.60) * crack * crackLit * 0.22 * (0.35 + 0.65 * (1.0 - h));
 
         // 流动高光（让"流动"在加色层也看得见）
-        hi += mix(C_CYAN, C_WHITE, 0.55) * vein * 0.12;
+        hi += mix(C_CYAN, C_WHITE, 0.55) * vein * 0.08;
 
-        // ---- 受光高光：按「面」选面（回退到 19:21 那版）----
-        // 面法线是常量，所以一个面要么整面亮、要么整面不亮：
-        // 既不是后处理叠条，也不会横穿单个面；所有宝石共用同一个反射判据。
-        vec3 Rv = reflect(-V, N);
+        // ---- 受光高光：世界空间反射，按「面」选面 ----
+        // 旧版用 reflect(-V, N)（视空间），但 1.19.2 里 N 与 V 的矩阵来源不一致时，
+        // 判据会退化成"所有面都命中"，整簇被加色高光洗白。改用世界空间反射：
+        // 只由面法线（常量）决定，必然约束在少数几个面上，且不随相机漂移。
+        vec3 Rv = reflect(-Lw, Nw);
         float ry = clamp(Rv.y, -1.0, 1.0);
         float bigBand   = smoothstep(-0.02, 0.06, ry) * (1.0 - smoothstep(0.26, 0.36, ry));
         float smallBand = smoothstep(0.86, 0.91, ry) * (1.0 - smoothstep(0.97, 1.00, ry));
-        vec3 bandTint = mix(C_PALE, C_WHITE, 0.60);
+        vec3 bandTint = mix(C_PALE, C_WHITE, 0.35);
         if (StyleMode < 0.5) {
             // 水晶形象才有"按面选面"的光带；旧立体宝石只保留边缘光
-            hi += bandTint * (bigBand * 0.50 + smallBand * 1.05);
+            // 受光高光改成世界空间：只由面法线决定，不受 N/V 空间不一致影响，避免"所有面一起曝光"
+            hi += bandTint * (bigBand * 0.45 + smallBand * 0.90);
         }
 
         fragColor = vec4(hi * BRIGHTNESS, vAlpha);
@@ -274,6 +277,8 @@ void main() {
     // Pass 0：晶体本体
     // =======================================================================
     vec3 body = ramp * (0.60 + 0.32 * band);
+    // 1.19.2/1.20.1 的输出管线比 1.21.1 更"洗色"：本体提亮一档、透明度抬高，补回蓝色倾向
+    // body 保持原亮度：靠提高 alpha 与压低高光来增强"实体感"
 
     // 每个切面略微不同
     body *= 0.94 + 0.12 * hash21(floor(Nw.xz * 30.0 + 0.5) + seedA);
@@ -288,8 +293,8 @@ void main() {
     body += C_PALE * pow(bandFine, 3.0) * 0.12;
 
     // 通透度：内斜面上薄一点，外小面实
-    float alpha = 0.60 + 0.16 * fres + 0.10 * edgeMask + 0.06 * capOut;
-    alpha = clamp(alpha, 0.0, 0.96);
+    float alpha = 0.74 + 0.12 * fres + 0.08 * edgeMask + 0.04 * capOut;
+    alpha = clamp(alpha, 0.0, 0.97);
 
     fragColor = vec4(body * BRIGHTNESS, alpha * vAlpha);
 }

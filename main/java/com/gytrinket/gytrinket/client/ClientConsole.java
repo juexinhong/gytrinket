@@ -241,6 +241,20 @@ public final class ClientConsole {
                 }
                 case "defsrev" -> gytrinket.LOGGER.info("[defs] client revision={}",
                         com.gytrinket.gytrinket.core.defs.DefsManager.clientRevision());
+                case "langcheck" -> {
+                    // 诊断：确认运行时语言表里的原始字符串（MC 会把 %d/%.1f 转成 %s）
+                    String key = p.length > 1 ? p[1] : "tooltip.gytrinket.wingman_module_desc";
+                    String raw = net.minecraft.locale.Language.getInstance().getOrDefault(key);
+                    gytrinket.LOGGER.info("[langcheck] RAW {}", raw.replace("\n", "\\n"));
+                    try {
+                        String fmt = String.format(raw, "A1", "B2", "C3", "D4", "E5", "F6", "G7");
+                        gytrinket.LOGGER.info("[langcheck] FMT {}", fmt.replace("\n", "\\n"));
+                    } catch (Throwable t) {
+                        gytrinket.LOGGER.error("[langcheck] FORMAT FAILED", t);
+                    }
+                    String comp = net.minecraft.network.chat.Component.translatable(key).getString();
+                    gytrinket.LOGGER.info("[langcheck] COMPONENT {}", comp.replace("\n", "\\n"));
+                }
                 case "tooltip" -> {
                     // 诊断工具提示：打印指定物品的整段 tooltip（含数据驱动的动态数值行）
                     String id = p.length > 1 ? p[1] : "gytrinket:shield_gy1";

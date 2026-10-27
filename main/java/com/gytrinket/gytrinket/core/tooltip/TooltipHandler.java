@@ -340,59 +340,60 @@ public class TooltipHandler {
 
     private static void addShieldTypeDescriptionTooltip(ItemTooltipEvent event, String type, String itemId) {
         String descKey = TOOLTIP_PREFIX + "shield_type." + type + "_desc";
-        Component descTooltip = Component.translatable(descKey);
-
-        if (!isDefaultTranslation(descTooltip, descKey)) {
-            String formattedDesc = descTooltip.getString();
-            try {
-                // 数值来源与运行时 resolveShieldTypeValueForItem 一致：
-                // 物品级覆盖值优先，未覆盖回退 Config 全局默认，保证描述与实际生效数值相同
-                if (type.equals("aura")) {
-                    formattedDesc = String.format(descTooltip.getString(),
-                        (int) DefsClientView.clientShieldTypeValueForItem(itemId, type, "trigger_frequency",
-                            ShieldValueDefs.defaultValueOf("aura", "trigger_frequency", 5.0)),
-                        DefsClientView.clientShieldTypeValueForItem(itemId, type, "radius",
-                            ShieldValueDefs.defaultValueOf("aura", "radius", 3.5)),
-                        DefsClientView.clientShieldTypeValueForItem(itemId, type, "damage",
-                            ShieldValueDefs.defaultValueOf("aura", "damage", 0.75)),
-                        DefsClientView.clientShieldTypeValueForItem(itemId, type, "shield_cost",
-                            ShieldValueDefs.defaultValueOf("aura", "shield_cost", 0.042)),
-                        Config.getIgniteDefaultDamage(),
-                        Config.getIgniteDefaultDuration());
-                } else if (type.equals("reflect")) {
-                    formattedDesc = String.format(descTooltip.getString(),
-                        (int)(DefsClientView.clientShieldTypeValueForItem(itemId, type, "speed_base_modifier",
-                            ShieldValueDefs.defaultValueOf("reflect", "speed_base_modifier", 1.5)) * 100),
-                        DefsClientView.clientShieldTypeValueForItem(itemId, type, "damage_effect_multiplier",
-                            ShieldValueDefs.defaultValueOf("reflect", "damage_effect_multiplier", 1.0)));
-                } else if (type.equals("amplification")) {
-                    formattedDesc = String.format(descTooltip.getString(),
-                        (int)(DefsClientView.clientShieldTypeValueForItem(itemId, type, "base_amplification",
-                            ShieldValueDefs.defaultValueOf("amplification", "base_amplification", 0.2)) * 100),
-                        (int)(DefsClientView.clientShieldTypeValueForItem(itemId, type, "max_amplification",
-                            ShieldValueDefs.defaultValueOf("amplification", "max_amplification", 1.0)) * 100),
-                        (int)(DefsClientView.clientShieldTypeValueForItem(itemId, type, "movement_speed_bonus",
-                            ShieldValueDefs.defaultValueOf("amplification", "movement_speed_bonus", 0.2)) * 100));
-                } else if (type.equals("warp")) {
-                    formattedDesc = String.format(descTooltip.getString(),
-                        DefsClientView.clientShieldTypeValueForItem(itemId, type, "explosion_damage",
-                            ShieldValueDefs.defaultValueOf("warp", "explosion_damage", 7.5)));
-                } else if (type.equals("siphon")) {
-                    formattedDesc = String.format(descTooltip.getString(),
-                        DefsClientView.clientShieldTypeValueForItem(itemId, type, "tick_interval",
-                            ShieldValueDefs.defaultValueOf("siphon", "tick_interval", 5.0)),
-                        DefsClientView.clientShieldTypeValueForItem(itemId, type, "damage",
-                            ShieldValueDefs.defaultValueOf("siphon", "damage", 0.3)),
-                        (int)(DefsClientView.clientShieldTypeValueForItem(itemId, type, "heal_ratio",
-                            ShieldValueDefs.defaultValueOf("siphon", "heal_ratio", 0.3)) * 100),
-                        (int)(DefsClientView.clientShieldTypeValueForItem(itemId, type, "max_effect",
-                            ShieldValueDefs.defaultValueOf("siphon", "max_effect", 0.4)) * 100));
-                }
-                event.getToolTip().add(Component.literal("    ").append(Component.literal(formattedDesc).withStyle(ChatFormatting.GRAY)));
-            } catch (Exception e) {
-                event.getToolTip().add(Component.literal("    ").append(descTooltip.copy().withStyle(ChatFormatting.GRAY)));
-            }
+        // 必须取语言表原始模板：translatable().getString() 会把 %s 占位符吞掉（见 rawTranslation 注释）
+        String rawDesc = rawTranslation(descKey);
+        if (rawDesc.equals(descKey)) {
+            return;
         }
+        String formattedDesc = rawDesc;
+        try {
+            // 数值来源与运行时 resolveShieldTypeValueForItem 一致：
+            // 物品级覆盖值优先，未覆盖回退 Config 全局默认，保证描述与实际生效数值相同
+            if (type.equals("aura")) {
+                formattedDesc = String.format(rawDesc,
+                    (int) DefsClientView.clientShieldTypeValueForItem(itemId, type, "trigger_frequency",
+                        ShieldValueDefs.defaultValueOf("aura", "trigger_frequency", 5.0)),
+                    DefsClientView.clientShieldTypeValueForItem(itemId, type, "radius",
+                        ShieldValueDefs.defaultValueOf("aura", "radius", 3.5)),
+                    DefsClientView.clientShieldTypeValueForItem(itemId, type, "damage",
+                        ShieldValueDefs.defaultValueOf("aura", "damage", 0.75)),
+                    DefsClientView.clientShieldTypeValueForItem(itemId, type, "shield_cost",
+                        ShieldValueDefs.defaultValueOf("aura", "shield_cost", 0.042)),
+                    Config.getIgniteDefaultDamage(),
+                    Config.getIgniteDefaultDuration());
+            } else if (type.equals("reflect")) {
+                formattedDesc = String.format(rawDesc,
+                    (int)(DefsClientView.clientShieldTypeValueForItem(itemId, type, "speed_base_modifier",
+                        ShieldValueDefs.defaultValueOf("reflect", "speed_base_modifier", 1.5)) * 100),
+                    DefsClientView.clientShieldTypeValueForItem(itemId, type, "damage_effect_multiplier",
+                        ShieldValueDefs.defaultValueOf("reflect", "damage_effect_multiplier", 1.0)));
+            } else if (type.equals("amplification")) {
+                formattedDesc = String.format(rawDesc,
+                    (int)(DefsClientView.clientShieldTypeValueForItem(itemId, type, "base_amplification",
+                        ShieldValueDefs.defaultValueOf("amplification", "base_amplification", 0.2)) * 100),
+                    (int)(DefsClientView.clientShieldTypeValueForItem(itemId, type, "max_amplification",
+                        ShieldValueDefs.defaultValueOf("amplification", "max_amplification", 1.0)) * 100),
+                    (int)(DefsClientView.clientShieldTypeValueForItem(itemId, type, "movement_speed_bonus",
+                        ShieldValueDefs.defaultValueOf("amplification", "movement_speed_bonus", 0.2)) * 100));
+            } else if (type.equals("warp")) {
+                formattedDesc = String.format(rawDesc,
+                    DefsClientView.clientShieldTypeValueForItem(itemId, type, "explosion_damage",
+                        ShieldValueDefs.defaultValueOf("warp", "explosion_damage", 7.5)));
+            } else if (type.equals("siphon")) {
+                formattedDesc = String.format(rawDesc,
+                    DefsClientView.clientShieldTypeValueForItem(itemId, type, "tick_interval",
+                        ShieldValueDefs.defaultValueOf("siphon", "tick_interval", 5.0)),
+                    DefsClientView.clientShieldTypeValueForItem(itemId, type, "damage",
+                        ShieldValueDefs.defaultValueOf("siphon", "damage", 0.3)),
+                    (int)(DefsClientView.clientShieldTypeValueForItem(itemId, type, "heal_ratio",
+                        ShieldValueDefs.defaultValueOf("siphon", "heal_ratio", 0.3)) * 100),
+                    (int)(DefsClientView.clientShieldTypeValueForItem(itemId, type, "max_effect",
+                        ShieldValueDefs.defaultValueOf("siphon", "max_effect", 0.4)) * 100));
+            }
+        } catch (Exception e) {
+            formattedDesc = rawDesc;
+        }
+        event.getToolTip().add(Component.literal("    ").append(Component.literal(formattedDesc).withStyle(ChatFormatting.GRAY)));
     }
 
     /** 模块硬编码机制 tooltip：折叠时只显示机制标题（描述按 Shift 展开） */
@@ -475,10 +476,11 @@ public class TooltipHandler {
      */
     private static void addDroneModuleDescTooltip(ItemTooltipEvent event, String itemId) {
         String translationKey = TOOLTIP_PREFIX + "drone_module_desc";
-        MutableComponent tooltip = Component.translatable(translationKey);
+        // 原始模板（translatable().getString() 会吞掉 %s 占位符）
+        String raw = rawTranslation(translationKey);
 
-        if (!isDefaultTranslation(tooltip, translationKey)) {
-            String formattedText = tooltip.getString();
+        if (!raw.equals(translationKey)) {
+            String formattedText = raw;
             try {
                 // 未覆盖回退值需与运行时实例参数解析一致（DroneInstanceParams fallback）：均取 Config 默认
                 double fallbackCount = Config.getDroneMaxCount();
@@ -496,11 +498,11 @@ public class TooltipHandler {
                         itemId, "drone_module_items", "attack_interval", fallbackInterval);
                 if (interval <= 0.0D) interval = fallbackInterval;
                 double attackSpeed = 1.0 / interval;
-                formattedText = String.format(formattedText,
+                formattedText = String.format(raw,
                     (int) maxCount, (int) maxHealth, damage, formatDecimal(attackSpeed));
                 event.getToolTip().add(Component.literal(formattedText).withStyle(ChatFormatting.GRAY));
             } catch (Exception e) {
-                event.getToolTip().add(tooltip.withStyle(ChatFormatting.GRAY));
+                event.getToolTip().add(Component.literal(raw).withStyle(ChatFormatting.GRAY));
             }
         }
     }
@@ -510,10 +512,10 @@ public class TooltipHandler {
      */
     private static void addWingmanModuleDescTooltip(ItemTooltipEvent event) {
         String translationKey = TOOLTIP_PREFIX + "wingman_module_desc";
-        MutableComponent tooltip = Component.translatable(translationKey);
+        String raw = rawTranslation(translationKey);
 
-        if (!isDefaultTranslation(tooltip, translationKey)) {
-            String formattedText = tooltip.getString();
+        if (!raw.equals(translationKey)) {
+            String formattedText = raw;
             try {
                 ConstructType wingmanType = ConstructManager.getInstance().getConstructType(WingmanConstructTypes.WINGMAN);
                 int maxCount = wingmanType != null ? wingmanType.getMaxCount() : Config.getWingmanMaxCount();
@@ -523,12 +525,12 @@ public class TooltipHandler {
                 double explosionDamage = Config.getWingmanExplosionDamage();
                 double explosionRadius = Config.getWingmanExplosionRadius();
                 double attackSpeed = 1.0 / MechanicValueDefs.defaultValueOf("wingman_module_items", "attack_interval", 1);
-                formattedText = String.format(formattedText,
+                formattedText = String.format(raw,
                     maxCount, (int) maxHealth, explosiveCount, explosiveDamage,
                     explosionDamage, explosionRadius, formatDecimal(attackSpeed));
                 event.getToolTip().add(Component.literal(formattedText).withStyle(ChatFormatting.GRAY));
             } catch (Exception e) {
-                event.getToolTip().add(tooltip.withStyle(ChatFormatting.GRAY));
+                event.getToolTip().add(Component.literal(raw).withStyle(ChatFormatting.GRAY));
             }
         }
     }
@@ -554,10 +556,10 @@ public class TooltipHandler {
      */
     private static void addMothershipBodyDescTooltip(ItemTooltipEvent event) {
         String translationKey = TOOLTIP_PREFIX + "mothership_body_desc";
-        MutableComponent tooltip = Component.translatable(translationKey);
+        String raw = rawTranslation(translationKey);
 
-        if (!isDefaultTranslation(tooltip, translationKey)) {
-            String formattedText = tooltip.getString();
+        if (!raw.equals(translationKey)) {
+            String formattedText = raw;
             try {
                 ConstructType swarmType = ConstructManager.getInstance().getConstructType(SwarmConstructTypes.SWARM);
                 int maxCount = swarmType != null ? swarmType.getMaxCount() : Config.getSwarmMaxCount();
@@ -565,11 +567,11 @@ public class TooltipHandler {
                 double damage = MechanicValueDefs.defaultValueOf("swarm_module_items", "base_damage", 0.08);
                 double attackSpeed = 1.0 / MechanicValueDefs.defaultValueOf("swarm_module_items", "attack_interval", 1.5);
                 double attackRange = MechanicValueDefs.defaultValueOf("swarm_module_items", "attack_range", 4);
-                formattedText = String.format(formattedText,
+                formattedText = String.format(raw,
                     maxCount, maxHealth, damage, formatDecimal(attackSpeed), attackRange);
                 event.getToolTip().add(Component.literal(formattedText).withStyle(ChatFormatting.GRAY));
             } catch (Exception e) {
-                event.getToolTip().add(tooltip.withStyle(ChatFormatting.GRAY));
+                event.getToolTip().add(Component.literal(raw).withStyle(ChatFormatting.GRAY));
             }
         }
     }
@@ -611,6 +613,18 @@ public class TooltipHandler {
                 event.getToolTip().add(tooltip.withStyle(color));
             }
         }
+    }
+
+    /**
+     * 读取语言表中的原始模板（不做参数替换）。
+     * <p>
+     * 注意：不能写作 {@code Component.translatable(key).getString()}——Minecraft 载入语言文件时会把
+     * {@code %d}/{@code %.1f} 统一转换成 {@code %s}（Language.UNSUPPORTED_FORMAT_PATTERN），
+     * 而无参数的 TranslatableContents 会把 {@code %s} 当成参数占位符“吞掉”，得到丢失数值的文本。
+     * 需要自己 {@code String.format} 的模板一律从这里取。
+     */
+    private static String rawTranslation(String key) {
+        return net.minecraft.locale.Language.getInstance().getOrDefault(key);
     }
 
     private static void addTooltip(ItemTooltipEvent event, String key, ChatFormatting color) {

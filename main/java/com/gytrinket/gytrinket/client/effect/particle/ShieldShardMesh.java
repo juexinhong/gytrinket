@@ -246,18 +246,19 @@ final class ShieldShardMesh {
         float y3 = oy - camRight.y() * h + camUp.y() * h;
         float z3 = oz - camRight.z() * h + camUp.z() * h;
 
-        haloVertex(buf, matrix, x0, y0, z0, -1.0F, -1.0F, alpha);
-        haloVertex(buf, matrix, x1, y1, z1, 1.0F, -1.0F, alpha);
-        haloVertex(buf, matrix, x2, y2, z2, 1.0F, 1.0F, alpha);
+        haloVertex(buf, matrix, x0, y0, z0, -1.0F, -1.0F, seedA, alpha);
+        haloVertex(buf, matrix, x1, y1, z1, 1.0F, -1.0F, seedA, alpha);
+        haloVertex(buf, matrix, x2, y2, z2, 1.0F, 1.0F, seedA, alpha);
 
-        haloVertex(buf, matrix, x0, y0, z0, -1.0F, -1.0F, alpha);
-        haloVertex(buf, matrix, x2, y2, z2, 1.0F, 1.0F, alpha);
-        haloVertex(buf, matrix, x3, y3, z3, -1.0F, 1.0F, alpha);
+        haloVertex(buf, matrix, x0, y0, z0, -1.0F, -1.0F, seedA, alpha);
+        haloVertex(buf, matrix, x2, y2, z2, 1.0F, 1.0F, seedA, alpha);
+        haloVertex(buf, matrix, x3, y3, z3, -1.0F, 1.0F, seedA, alpha);
     }
 
+    /** 与 1.21.1 一致：RGB = (种子, 0.5, 0.5)，shader 的 Pass 1 只用 R 当脉冲相位。 */
     private static void haloVertex(BufferBuilder buf, Matrix4f matrix,
-                                   float x, float y, float z, float u, float v, float alpha) {
-        buf.vertex(matrix, x, y, z).uv(u, v).color(1.0F, 1.0F, 1.0F, alpha).normal(0.0F, 0.0F, 1.0F).endVertex();
+                                   float x, float y, float z, float u, float v, float seedA, float alpha) {
+        buf.vertex(matrix, x, y, z).uv(u, v).color(seedA, 0.5F, 0.5F, alpha).normal(0.0F, 0.0F, 1.0F).endVertex();
     }
 
     static int packColor(float r, float g, float b, float a) {

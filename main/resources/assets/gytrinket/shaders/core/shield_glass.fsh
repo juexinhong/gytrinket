@@ -31,17 +31,12 @@ in vec3 vSeed;
 in float vAlpha;
 
 uniform mat4 ViewRot;
-uniform mat4 ModelViewMat;
 uniform float GemTime;
 uniform float PassMode;
 /** 形象：0 = 三渲二水晶（默认），1 = 旧立体宝石 */
 uniform float StyleMode;
 
 out vec4 fragColor;
-
-/** 整体亮度系数：与 1.21.1 对齐（1.00）。1.19.2/1.20.1 的"发白"主因不是总亮度，
- *  而是光带在错误空间里铺满所有面 + 本体透明度偏低，见 Pass2 光带与本体 alpha。 */
-const float BRIGHTNESS = 1.00;
 
 const float TAU = 6.28318530718;
 const float PI = 3.14159265359;
@@ -133,7 +128,7 @@ void main() {
         float pulse = 0.82 + 0.18 * sin(t * 2.1 + seedA * 31.0);
         vec3 tint = mix(C_CYAN, C_WHITE, 0.35);
         float amount = (core * 0.020 + ring * 0.028 + (rayH + rayV) * 0.008) * pulse;
-        fragColor = vec4(tint * amount * BRIGHTNESS, vAlpha);
+        fragColor = vec4(tint * amount, vAlpha);
         return;
     }
 
@@ -206,38 +201,16 @@ void main() {
     //    台面（0.70/0.90 = 0.778）= 0.674 —— 改 ShieldShardMesh 的
     //    CAP_RADIUS / GIRDLE_RADIUS 时，这两个常数也要跟着改。
     // =======================================================================
-    float edgeGirdle;
-    float edgeCap;
-    float edgeRadial;
-    vec3  edgeTint;
+    float edgeGirdle = 1.0 - smoothstep(0.0, 0.030, abs(hd - 0.8660254));
+    float edgeCap    = 1.0 - smoothstep(0.0, 0.028, abs(hd - 0.6744));
     float ang = atan(vUv.y, vUv.x);
-    if (StyleMode > 0.5) {
-        // 旧立体宝石：网格外接圆 0.90、内切圆 0.779，环带在 RING_SCALE {1.00,0.90,0.79,0.54}。
-        // 按这几圈画边线，才不会像水晶阈值那样落在网格外/横穿面中间。
-        float rim = 0.7789;                 // 0.90 × cos30°
-        float w = 0.014;
-        edgeGirdle = 1.0 - smoothstep(0.0, w, abs(hd - rim));
-        edgeCap = 1.0 - smoothstep(0.0, w, abs(hd - rim * 0.90))
-                + 1.0 - smoothstep(0.0, w, abs(hd - rim * 0.79))
-                + 1.0 - smoothstep(0.0, w, abs(hd - rim * 0.54));
-        edgeCap = clamp(edgeCap, 0.0, 1.0);
-        // 12 段（每 30°）都有面边界，只在冠部（rho < rim）画
-        float sector = abs(fract(ang / (PI / 6.0)) - 0.5);
-        edgeRadial = (1.0 - smoothstep(0.0, 0.020, sector * rho))
-                   * smoothstep(rim * 0.42, rim * 0.50, rho)
-                   * (1.0 - smoothstep(rim * 0.92, rim * 1.00, rho));
-        edgeTint = mix(ramp * 1.5, C_WHITE, 0.30 + 0.40 * h);
-    } else {
-        edgeGirdle = 1.0 - smoothstep(0.0, 0.030, abs(hd - 0.8660254));
-        edgeCap    = 1.0 - smoothstep(0.0, 0.028, abs(hd - 0.6744));
-        float cornerPhase = abs(fract(ang / (PI / 3.0)) - 0.5);
-        // 冠部棱线只画在斜面上（法线长度 0.68..0.93），台面是一整片，不画星形线
-        float isBevel = step(0.68, nl) * (1.0 - step(0.93, nl));
-        edgeRadial = (1.0 - smoothstep(0.0, 0.024, cornerPhase * rho))
-                   * smoothstep(0.62, 0.70, rho) * isBevel;
-        edgeTint = mix(ramp * 1.5, C_WHITE, 0.30 + 0.40 * h);
-    }
+    float cornerPhase = abs(fract(ang / (PI / 3.0)) - 0.5);
+    // 冠部棱线只画在斜面上（法线长度 0.68..0.93），台面是一整片，不画星形线
+    float isBevel = step(0.68, nl) * (1.0 - step(0.93, nl));
+    float edgeRadial = (1.0 - smoothstep(0.0, 0.024, cornerPhase * rho))
+                     * smoothstep(0.62, 0.70, rho) * isBevel;
     float edgeMask = clamp(edgeGirdle + edgeCap * 0.80 + edgeRadial * 0.85, 0.0, 1.0);
+    vec3  edgeTint = mix(ramp * 1.5, C_WHITE, 0.30 + 0.40 * h);
 
     // =======================================================================
     // Pass 2：加色高光
@@ -245,31 +218,29 @@ void main() {
     if (PassMode > 1.5) {
         vec3 hi = vec3(0.0);
 
-        hi += C_WHITE * fres * 0.10;
+        hi += C_WHITE * fres * 0.22;
         hi += edgeTint * edgeMask * 0.85;
 
         // 动态裂纹：逐格亮起，下半身更明显
-        hi += mix(C_CYAN, C_WHITE, 0.60) * crack * crackLit * 0.22 * (0.35 + 0.65 * (1.0 - h));
+        hi += mix(C_CYAN, C_WHITE, 0.60) * crack * crackLit * 0.30 * (0.35 + 0.65 * (1.0 - h));
 
         // 流动高光（让"流动"在加色层也看得见）
-        hi += mix(C_CYAN, C_WHITE, 0.55) * vein * 0.08;
+        hi += mix(C_CYAN, C_WHITE, 0.55) * vein * 0.12;
 
-        // ---- 受光高光：世界空间反射，按「面」选面 ----
-        // 旧版用 reflect(-V, N)（视空间），但 1.19.2 里 N 与 V 的矩阵来源不一致时，
-        // 判据会退化成"所有面都命中"，整簇被加色高光洗白。改用世界空间反射：
-        // 只由面法线（常量）决定，必然约束在少数几个面上，且不随相机漂移。
-        vec3 Rv = reflect(-Lw, Nw);
+        // ---- 受光高光：按「面」选面（回退到 19:21 那版）----
+        // 面法线是常量，所以一个面要么整面亮、要么整面不亮：
+        // 既不是后处理叠条，也不会横穿单个面；所有宝石共用同一个反射判据。
+        vec3 Rv = reflect(-V, N);
         float ry = clamp(Rv.y, -1.0, 1.0);
         float bigBand   = smoothstep(-0.02, 0.06, ry) * (1.0 - smoothstep(0.26, 0.36, ry));
         float smallBand = smoothstep(0.86, 0.91, ry) * (1.0 - smoothstep(0.97, 1.00, ry));
-        vec3 bandTint = mix(C_PALE, C_WHITE, 0.35);
+        vec3 bandTint = mix(C_PALE, C_WHITE, 0.60);
         if (StyleMode < 0.5) {
             // 水晶形象才有"按面选面"的光带；旧立体宝石只保留边缘光
-            // 受光高光改成世界空间：只由面法线决定，不受 N/V 空间不一致影响，避免"所有面一起曝光"
-            hi += bandTint * (bigBand * 0.45 + smallBand * 0.90);
+            hi += bandTint * (bigBand * 0.50 + smallBand * 1.05);
         }
 
-        fragColor = vec4(hi * BRIGHTNESS, vAlpha);
+        fragColor = vec4(hi, vAlpha);
         return;
     }
 
@@ -277,8 +248,6 @@ void main() {
     // Pass 0：晶体本体
     // =======================================================================
     vec3 body = ramp * (0.60 + 0.32 * band);
-    // 1.19.2/1.20.1 的输出管线比 1.21.1 更"洗色"：本体提亮一档、透明度抬高，补回蓝色倾向
-    // body 保持原亮度：靠提高 alpha 与压低高光来增强"实体感"
 
     // 每个切面略微不同
     body *= 0.94 + 0.12 * hash21(floor(Nw.xz * 30.0 + 0.5) + seedA);
@@ -293,8 +262,8 @@ void main() {
     body += C_PALE * pow(bandFine, 3.0) * 0.12;
 
     // 通透度：内斜面上薄一点，外小面实
-    float alpha = 0.74 + 0.12 * fres + 0.08 * edgeMask + 0.04 * capOut;
-    alpha = clamp(alpha, 0.0, 0.97);
+    float alpha = 0.60 + 0.16 * fres + 0.10 * edgeMask + 0.06 * capOut;
+    alpha = clamp(alpha, 0.0, 0.96);
 
-    fragColor = vec4(body * BRIGHTNESS, alpha * vAlpha);
+    fragColor = vec4(body, alpha * vAlpha);
 }

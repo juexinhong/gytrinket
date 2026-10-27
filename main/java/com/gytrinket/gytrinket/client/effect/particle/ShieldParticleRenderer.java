@@ -12,6 +12,11 @@ import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.Tesselator;
 import com.mojang.blaze3d.vertex.VertexFormat;
+import com.mojang.math.Matrix3f;
+import com.mojang.math.Matrix4f;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.FloatBuffer;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.GameRenderer;
@@ -20,7 +25,6 @@ import net.minecraft.client.renderer.ShaderInstance;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec3;
-import com.mojang.math.Matrix4f;
 import com.mojang.math.Quaternion;
 import com.mojang.math.Vector3f;
 
@@ -55,6 +59,29 @@ public class ShieldParticleRenderer {
     private static final float SHARD_MAX_SIZE = 0.16F;
     /** 出现时的过冲量 */
     private static final float POP_OVERSHOOT = 1.15F;
+
+    /**
+     * ViewRot 上传用的复用缓冲（避免每帧分配）。
+     * <p>
+     * 1.21.1 里 {@code new Matrix4f().rotation(conj(camera.rotation()))} 直接得到视图旋转；
+     * 1.19.2 有两个坑：{@code new Matrix4f()} 是<b>零矩阵</b>（不是单位阵），而且
+     * {@code Camera.rotation()} 的本地前向是 +Z（1.21.1 是 -Z，四元数差 180° 偏航）。
+     * 直接照抄 1.21.1 的写法会上传一个全零矩阵，着色器里 {@code normalize(mat3(ViewRot) * N)}
+     * 得到 NaN，菲涅尔/光带全崩——上一轮"整簇发白"就是这么来的。
+     * <p>
+     * 这里改从 {@link RenderSystem#getInverseViewRotationMatrix()} 取：GameRenderer 每帧把
+     * 「世界渲染用视图 pose 的 3x3 逆」写进去，转置回来就是顶点实际用的视图旋转，
+     * 天然包含 yaw/pitch/roll，与 1.21.1 的 ViewRot 同义且不可能对不上。
+     */
+    private static final FloatBuffer VIEW_ROT_SRC = ByteBuffer.allocateDirect(9 * 4)
+            .order(ByteOrder.nativeOrder()).asFloatBuffer();
+    private static final FloatBuffer VIEW_ROT_DST = ByteBuffer.allocateDirect(16 * 4)
+            .order(ByteOrder.nativeOrder()).asFloatBuffer();
+    private static final Matrix4f VIEW_ROT = new Matrix4f();
+
+    static {
+        VIEW_ROT.setIdentity();
+    }
 
     /**
      * 极点带阈值：sinTheta 小于它（≈ 离极点 8.6° 以内）就直接用固定朝向。
@@ -334,10 +361,7 @@ public class ShieldParticleRenderer {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null) return;
 
-        Quaternion viewRotation = new Quaternion(camera.rotation());
-        viewRotation.conj();
-        Matrix4f viewRotMatrix = new Matrix4f();
-        viewRotMatrix.multiply(viewRotation);
+        Matrix4f viewRotMatrix = computeViewRotation();
         float gemTime = animationTime(mc, partialTicks);
         float styleUniform = style >= 1 ? 1.0F : 0.0F;
         setCommonUniforms(bodyShader, viewRotMatrix, gemTime, styleUniform);
@@ -411,6 +435,33 @@ public class ShieldParticleRenderer {
         RenderSystem.enableCull();
         RenderSystem.disableBlend();
         RenderSystem.defaultBlendFunc();
+    }
+
+    /**
+     * 视图旋转矩阵（世界 → 视图），等价于 1.21.1 的
+     * {@code new Matrix4f().rotation(camera.rotation().conjugate(new Quaternionf()))}。
+     * <p>
+     * 取 {@code RenderSystem.getInverseViewRotationMatrix()} 的转置：GameRenderer 用它做
+     * 3D 顶点着色（求逆后给 shader 的 IViewRotMat），所以它和顶点实际经历的旋转完全一致，
+     * 也包含 Forge 相机角度事件改过的 roll。
+     */
+    private static Matrix4f computeViewRotation() {
+        Matrix3f inverseViewRotation = RenderSystem.getInverseViewRotationMatrix();
+        inverseViewRotation.store(VIEW_ROT_SRC);
+        for (int col = 0; col < 4; col++) {
+            for (int row = 0; row < 4; row++) {
+                float value;
+                if (col == 3 || row == 3) {
+                    value = (col == row) ? 1.0F : 0.0F;
+                } else {
+                    // SRC 是列主序的 inv；转置后 view(row,col) = inv(col,row)
+                    value = VIEW_ROT_SRC.get(row * 3 + col);
+                }
+                VIEW_ROT_DST.put(col * 4 + row, value);
+            }
+        }
+        VIEW_ROT.load(VIEW_ROT_DST);
+        return VIEW_ROT;
     }
 
     /** 三个 Pass 共用：视角旋转矩阵 / 动画时间 / 形象 */

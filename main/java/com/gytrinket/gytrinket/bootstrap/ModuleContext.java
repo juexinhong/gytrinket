@@ -33,6 +33,10 @@ public final class ModuleContext {
     }
 
     public void registerConfig(ModConfig.Type type, ForgeConfigSpec spec, String fileName) {
-        loadingContext.registerConfig(type, spec, fileName);
+        // 必须走 ModLoadingContext 而不是 FMLJavaModLoadingContext：1.19.2 的整合包绝大多数停在
+        // Forge 43.1~43.3（ATM8 用 43.2.14、FTB Skies 43.3.9、FTB Genesis 43.2.21），
+        // 43.2.x 的 FMLJavaModLoadingContext 并不继承 ModLoadingContext，上面没有 registerConfig；
+        // 43.5.x 才改成继承。用父类静态入口两边都能编译/运行。
+        net.minecraftforge.fml.ModLoadingContext.get().registerConfig(type, spec, fileName);
     }
 }

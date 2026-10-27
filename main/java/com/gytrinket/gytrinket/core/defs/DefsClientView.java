@@ -202,11 +202,22 @@ public final class DefsClientView {
     public static double clientResolveMechanicValueForItem(String itemId, String mechanicSet,
                                                            String paramKey, double fallback) {
         if (itemId == null) return fallback;
+        // 客户端同步的 UI 覆盖优先
         SpecialMechanicOverride ov = getClientSpecialMechanicOverride(itemId);
-        if (ov == null || ov.removed()) return fallback;
-        Map<String, ParamValue> params = ov.values().get(mechanicSet);
-        ParamValue pv = params == null ? null : params.get(paramKey);
-        return pv != null ? pv.value() : fallback;
+        if (ov != null && !ov.removed()) {
+            Map<String, ParamValue> params = ov.values().get(mechanicSet);
+            ParamValue pv = params == null ? null : params.get(paramKey);
+            if (pv != null) return pv.value();
+        }
+        // 权威 item_definitions（客户端本地数据包缓存；UI 未覆盖时用它显示"实际数值"）
+        DefsLoader.ensureClientLoaded();
+        ItemDefinition def = DefsManager.ITEM_DEFINITIONS.get(itemId);
+        if (def != null && !def.removed() && def.values() != null) {
+            Map<String, ParamValue> params = def.values().get(mechanicSet);
+            ParamValue pv = params == null ? null : params.get(paramKey);
+            if (pv != null) return pv.value();
+        }
+        return fallback;
     }
 
     /** 查询属性的组合方式（客户端 tooltip 格式化使用），未找到返回 null */

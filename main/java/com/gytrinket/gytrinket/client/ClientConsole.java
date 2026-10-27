@@ -241,6 +241,23 @@ public final class ClientConsole {
                 }
                 case "defsrev" -> gytrinket.LOGGER.info("[defs] client revision={}",
                         com.gytrinket.gytrinket.core.defs.DefsManager.clientRevision());
+                case "tooltip" -> {
+                    // 诊断工具提示：打印指定物品的整段 tooltip（含数据驱动的动态数值行）
+                    String id = p.length > 1 ? p[1] : "gytrinket:shield_gy1";
+                    String fullId = id.contains(":") ? id : "gytrinket:" + id;
+                    var rl = net.minecraft.resources.ResourceLocation.tryParse(fullId);
+                    var item = net.minecraft.core.Registry.ITEM.get(rl);
+                    if (item == null || item == net.minecraft.world.item.Items.AIR) {
+                        gytrinket.LOGGER.info("[tooltip] unknown item {}", fullId);
+                        break;
+                    }
+                    var stack = new net.minecraft.world.item.ItemStack(item);
+                    var lines = stack.getTooltipLines(mc.player, net.minecraft.world.item.TooltipFlag.Default.NORMAL);
+                    gytrinket.LOGGER.info("[tooltip] {} -> {} lines", fullId, lines.size());
+                    for (int i = 0; i < lines.size(); i++) {
+                        gytrinket.LOGGER.info("[tooltip]   {}: {}", i, lines.get(i).getString());
+                    }
+                }
                 case "tabs" -> {
                     // 调试用：列出创造标签页（序号 / 标题 / 物品数），验证注册顺序与语言键
                     int idx = 0;

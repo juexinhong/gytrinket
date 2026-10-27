@@ -174,6 +174,7 @@ public class TooltipConfig {
             DefsTypes.TooltipParam p = params.get(i);
             result[i] = switch (p.type()) {
                 case "value" -> rawValue(itemId, p.source());
+                case "int" -> (int) Math.round(rawValue(itemId, p.source()));
                 case "percentInt" -> (int) (rawValue(itemId, p.source()) * 100);
                 case "percent" -> rawValue(itemId, p.source()) * 100;
                 case "seconds" -> rawValue(itemId, p.source()) / 20.0;
@@ -205,16 +206,8 @@ public class TooltipConfig {
         if (mapping == null) {
             return fallback;
         }
-        DefsTypes.SpecialMechanicOverride override = DefsClientView.getClientSpecialMechanicOverride(itemId);
-        if (override == null || override.removed() || override.values() == null) {
-            return fallback;
-        }
-        Map<String, DefsTypes.ParamValue> params = override.values().get(mapping[0]);
-        if (params == null) {
-            return fallback;
-        }
-        DefsTypes.ParamValue pv = params.get(mapping[1]);
-        return pv != null ? pv.value() : fallback;
+        // 与运行时同源：UI 覆盖 → 权威 item_definitions.values → fallback（保证描述显示的是实际生效数值）
+        return DefsClientView.clientResolveMechanicValueForItem(itemId, mapping[0], mapping[1], fallback);
     }
 }
 

@@ -73,6 +73,18 @@ public class ReflectDamageHandler implements DamageHandler {
     /** 速度倍率上限 */
     public static final double MAX_SPEED_MULTIPLIER = 3.0;
 
+    /**
+     * 效果缩放使用的伤害上限：/kill 之类极端伤害（Float.MAX_VALUE）不应线性放大特效参数，
+     * 否则粒子数会饱和到 Integer.MAX_VALUE 把客户端直接卡死。
+     */
+    private static final float MAX_EFFECT_DAMAGE = 1000.0f;
+    /** 单次反射粒子数量硬上限（防御客户端循环生成海量粒子） */
+    private static final int MAX_PARTICLE_COUNT = 256;
+    /** 反射爆炸伤害硬上限（防浮点溢出与无意义的超大伤害） */
+    private static final float MAX_EXPLOSION_DAMAGE = 4096.0f;
+    /** 溅射长度硬上限（与能量波判定的 20 格上限一致） */
+    private static final double MAX_SPUTTER_LENGTH = 20.0;
+
     @Override
     public void handle(DamageContext context) {
         if (context.isAnySelfDamage()) {
@@ -154,17 +166,21 @@ public class ReflectDamageHandler implements DamageHandler {
                                         LivingEntity attackedEntity, float originalDamage,
                                         double shieldEffect, double shieldEffectRadius,
                                         Vec3 center, Vec3 direction) {
+        // 极端伤害先钳制，避免特效参数（尤其粒子数）被放大到不可执行的数量级
+        double effectiveDamage = Math.min(originalDamage, MAX_EFFECT_DAMAGE);
         // 计算超出伤害（超过阈值的伤害量）
-        double excessDamage = Math.max(0, originalDamage - param(server, itemId, "damage_threshold", DAMAGE_THRESHOLD));
+        double excessDamage = Math.max(0, effectiveDamage - param(server, itemId, "damage_threshold", DAMAGE_THRESHOLD));
 
         // 计算爆炸伤害和溅射长度（每点超出伤害按实例参数提升）
-        float explosionDamage = (float)(param(server, itemId, "base_explosion_damage", BASE_EXPLOSION_DAMAGE)
-                + excessDamage * param(server, itemId, "damage_bonus_per_excess", DAMAGE_BONUS_PER_EXCESS));
-        explosionDamage *= shieldEffect;
+        float explosionDamage = (float) Math.min(MAX_EXPLOSION_DAMAGE,
+                (param(server, itemId, "base_explosion_damage", BASE_EXPLOSION_DAMAGE)
+                        + excessDamage * param(server, itemId, "damage_bonus_per_excess", DAMAGE_BONUS_PER_EXCESS))
+                        * shieldEffect);
 
-        double sputterLength = param(server, itemId, "base_sputter_length", BASE_SPUTTER_LENGTH)
-                + excessDamage * param(server, itemId, "length_bonus_per_excess", LENGTH_BONUS_PER_EXCESS);
-        sputterLength *= shieldEffectRadius;
+        double sputterLength = Math.min(MAX_SPUTTER_LENGTH,
+                (param(server, itemId, "base_sputter_length", BASE_SPUTTER_LENGTH)
+                        + excessDamage * param(server, itemId, "length_bonus_per_excess", LENGTH_BONUS_PER_EXCESS))
+                        * shieldEffectRadius);
 
         // 执行能量波爆炸（不显示默认特效，使用位置同步特效，身后判定1格）
         EnergyWaveExplosion.execute(
@@ -193,9 +209,10 @@ public class ReflectDamageHandler implements DamageHandler {
                     sputterLength * explosionRadiusMultiplier, positionSyncId, 1, 1.0);
         }
 
-        // 计算粒子参数（实例独立）
-        int particleCount = (int)(param(server, itemId, "base_particle_count", BASE_PARTICLE_COUNT)
-                + excessDamage * param(server, itemId, "particle_count_per_excess", PARTICLE_COUNT_PER_EXCESS));
+        // 计算粒子参数（实例独立；数量有硬上限，防止极端伤害把客户端循环卡死）
+        int particleCount = (int) Math.max(0, Math.min(MAX_PARTICLE_COUNT,
+                param(server, itemId, "base_particle_count", BASE_PARTICLE_COUNT)
+                        + excessDamage * param(server, itemId, "particle_count_per_excess", PARTICLE_COUNT_PER_EXCESS)));
         double maxAngleDegrees = Math.min(
                 param(server, itemId, "max_angle_cap", MAX_ANGLE_CAP),
                 param(server, itemId, "base_angle", BASE_ANGLE)

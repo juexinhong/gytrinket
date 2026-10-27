@@ -88,11 +88,16 @@ public final class DefsQueries {
                 DefsQueries::effectiveMechanicValuesOf, mechanicSet, paramKey, fallback);
     }
 
-    /** 物品级机制数值覆盖查询（统一 items 覆写优先，旧段覆盖回退；供多物品合并管线取值） */
+    /** 物品级机制数值查询（统一 items 覆写 → 权威 item_definitions.values → 旧段覆盖；供多物品合并管线取值） */
     static Map<String, Map<String, ParamValue>> effectiveMechanicValuesOf(String itemId) {
         ItemDefinition item = DefsManager.SERVER_ITEM_OVERRIDES.get(itemId);
         if (item != null && !item.removed() && item.values() != null) {
             return item.values();
+        }
+        // 权威 item_definitions（数据文件定义的每件物品默认数值）：以前只做展示，运行时与 tooltip 都没读，导致"实际数值"丢失
+        ItemDefinition def = DefsManager.ITEM_DEFINITIONS.get(itemId);
+        if (def != null && !def.removed() && def.values() != null) {
+            return def.values();
         }
         SpecialMechanicOverride ov = DefsManager.SERVER_SPECIAL_MECHANIC_OVERRIDES.get(itemId);
         return ov != null && !ov.removed() ? ov.values() : null;
@@ -128,17 +133,25 @@ public final class DefsQueries {
      */
     public static double resolveMechanicValueForItem(MinecraftServer server, String itemId, String mechanicSet, String paramKey, double fallback) {
         if (server == null || itemId == null) return fallback;
-        // 统一 items 覆写优先（条目存在即短路，不再回退旧段）
+        Map<String, ParamValue> params = null;
+        // 统一 items 覆写优先
         ItemDefinition item = DefsManager.SERVER_ITEM_OVERRIDES.get(itemId);
         if (item != null && !item.removed() && item.values() != null) {
-            Map<String, ParamValue> params = item.values().get(mechanicSet);
+            params = item.values().get(mechanicSet);
             ParamValue pv = params == null ? null : params.get(paramKey);
             if (pv != null) return pv.value();
-            return fallback;
         }
+        // 权威 item_definitions（数据文件里每件物品声明的机制数值）：UI 未覆盖时必须读它，才能反映"实际数值"
+        ItemDefinition defined = DefsManager.ITEM_DEFINITIONS.get(itemId);
+        if (defined != null && !defined.removed() && defined.values() != null) {
+            params = defined.values().get(mechanicSet);
+            ParamValue pv = params == null ? null : params.get(paramKey);
+            if (pv != null) return pv.value();
+        }
+        // 旧段覆盖兜底
         SpecialMechanicOverride ov = DefsManager.SERVER_SPECIAL_MECHANIC_OVERRIDES.get(itemId);
         if (ov == null || ov.removed()) return fallback;
-        Map<String, ParamValue> params = ov.values().get(mechanicSet);
+        params = ov.values().get(mechanicSet);
         ParamValue pv = params == null ? null : params.get(paramKey);
         return pv != null ? pv.value() : fallback;
     }

@@ -120,6 +120,9 @@ public class ClientNetworkHandler {
                                                   int particleCount, double maxAngleDegrees, double speedMultiplier) {
         var particleType = ModParticles.REFLECT_SHIELD_PARTICLE.get();
 
+        // 防御性上限：即使服务端送来超大数量（旧版本/异常参数），也不能在渲染线程死循环
+        particleCount = Math.min(Math.max(particleCount, 0), 512);
+
         // 归一化方向向量
         double dirLen = Math.sqrt(dirX * dirX + dirY * dirY + dirZ * dirZ);
         if (dirLen < 1e-6) return;

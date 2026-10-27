@@ -136,6 +136,7 @@ public final class DefsTypes {
      * 工具提示参数条目：
      * type 取值：
      *   value        -- 直接使用配置值（保留 int/double 类型）
+     *   int          -- 配置值四舍五入取整（对应语言文件的 %d）
      *   percentInt   -- 配置值×100 取整（%d 或 %s 显示）
      *   percent      -- 配置值×100（double）
      *   seconds      -- 配置值÷20（double）

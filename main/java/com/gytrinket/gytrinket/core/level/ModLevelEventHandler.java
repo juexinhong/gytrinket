@@ -4,9 +4,11 @@ import com.gytrinket.gytrinket.core.defs.DefsItemOverrides;
 import com.gytrinket.gytrinket.core.defs.DefsManager;
 import com.gytrinket.gytrinket.gytrinket;
 import com.gytrinket.gytrinket.network.NetworkHandler;
+import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.ParseResults;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.context.CommandContext;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.server.MinecraftServer;
@@ -91,6 +93,11 @@ public class ModLevelEventHandler {
      * 后门：指令给予的经验也计入光点经验。
      * 匹配 /experience add 与 /xp add 指令（含数据包函数内调用）：
      * points 给予按点数直接入账；levels 给予按每级升级所需经验逐级换算后入账。
+     * <p>
+     * 注意：1.19.2/1.20.1/1.21.1 的 `/xp` 都是 Brigadier 的 {@code redirect} 到
+     * `experience`，原始 ParseResults 只会记录 redirect 节点（nodes=[xp]），
+     * 不包含 add/targets/amount；直接读 ctx 会静默失败。因此当节点不完整时，
+     * 把首词换成规范名 `experience` 重新解析一次，两个别名共用同一套参数读取。
      */
     @SubscribeEvent
     public static void onCommand(CommandEvent event) {
@@ -99,27 +106,59 @@ public class ModLevelEventHandler {
         }
         try {
             ParseResults<CommandSourceStack> parse = event.getParseResults();
-            CommandContext<CommandSourceStack> ctx = parse.getContext().build(parse.getReader().getString());
-            // 通过已解析的指令节点判断：根为 experience/xp 且子命令为 add
-            List<String> literals = ctx.getNodes().stream()
-                    .map(node -> node.getNode().getName())
-                    .toList();
-            if (!literals.contains("add") || !(literals.contains("experience") || literals.contains("xp"))) {
+            CommandSourceStack source = parse.getContext().getSource();
+            String raw = parse.getReader().getString().trim();
+            if (raw.startsWith("/")) {
+                raw = raw.substring(1);
+            }
+
+            // 1) 常规路径：/experience add ...（以及 /execute run experience add ... 这类嵌套）
+            CommandContext<CommandSourceStack> ctx = parse.getContext().build(raw);
+            List<String> literals = nodeNames(ctx);
+            if (literals.contains("add")
+                    && (literals.contains("experience") || literals.contains("xp"))) {
+                applyAddCommand(ctx, literals);
                 return;
             }
-            boolean levels = literals.contains("levels");
-            int amount = IntegerArgumentType.getInteger(ctx, "amount");
-            if (amount <= 0) {
+
+            // 2) 别名路径：/xp 是 redirect，parse 只记录到 [xp]，需要换成 experience 再解析
+            int space = raw.indexOf(' ');
+            String head = space < 0 ? raw : raw.substring(0, space);
+            if (!"xp".equals(head) && !"experience".equals(head)) {
                 return;
             }
-            for (ServerPlayer player : EntityArgument.getPlayers(ctx, "targets")) {
-                int points = levels ? levelsToPoints(player, amount) : amount;
-                if (points > 0) {
-                    ModLevelManager.addUpgradeExp(player.getUUID(), points);
-                }
+            String canonical = "experience" + (space < 0 ? "" : raw.substring(space));
+            CommandDispatcher<CommandSourceStack> dispatcher = source.getServer().getCommands().getDispatcher();
+            ParseResults<CommandSourceStack> resolved = dispatcher.parse(canonical, source);
+            CommandContext<CommandSourceStack> resolvedCtx = resolved.getContext().build(canonical);
+            List<String> resolvedNames = nodeNames(resolvedCtx);
+            if (!resolvedNames.contains("add")) {
+                return;
             }
+            applyAddCommand(resolvedCtx, resolvedNames);
         } catch (Exception ignored) {
             // 参数缺失或类型不符时静默忽略，不影响指令本身执行
+        }
+    }
+
+    private static List<String> nodeNames(CommandContext<CommandSourceStack> ctx) {
+        return ctx.getNodes().stream()
+                .map(node -> node.getNode().getName())
+                .toList();
+    }
+
+    private static void applyAddCommand(CommandContext<CommandSourceStack> ctx, List<String> literals)
+            throws CommandSyntaxException {
+        boolean levels = literals.contains("levels");
+        int amount = IntegerArgumentType.getInteger(ctx, "amount");
+        if (amount <= 0) {
+            return;
+        }
+        for (ServerPlayer player : EntityArgument.getPlayers(ctx, "targets")) {
+            int points = levels ? levelsToPoints(player, amount) : amount;
+            if (points > 0) {
+                ModLevelManager.addUpgradeExp(player.getUUID(), points);
+            }
         }
     }
 

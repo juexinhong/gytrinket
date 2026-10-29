@@ -1,7 +1,6 @@
 package com.gy_mod.gy_trinket.client.effect.particle;
 
 import com.gy_mod.gy_trinket.client.compat.ShaderModCompat;
-import com.gy_mod.gy_trinket.config.ClientConfig;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.client.event.RenderLevelStageEvent;
@@ -35,10 +34,11 @@ public class ShieldParticleRenderEvent {
         if (ShaderModCompat.isRenderingShadows()) return;
 
         boolean shaderActive = ShaderModCompat.isShaderPackInUse();
-        boolean volumetricEnabled = ClientConfig.SHIELD_PARTICLE_VOLUMETRIC_RENDERING.get();
 
-        if (shaderActive && volumetricEnabled) {
-            // 光影 + 体积渲染：两阶段矩阵保存/恢复
+        if (shaderActive) {
+            // 光影：composite 之前只保存矩阵，等 AFTER_LEVEL（composite 之后）再画。
+            // 不能只看“体积渲染开关”：平面四边形回退（style 2）用的也是原版 ShaderInstance，
+            // 同样会在 Iris 的 depth/color lock 下不可见。
             if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_PARTICLES) {
                 // Iris composite之前：保存正确的矩阵状态
                 savedProjectionMatrix = new Matrix4f(RenderSystem.getProjectionMatrix());

@@ -112,7 +112,7 @@
     "tooltip.gytrinket.efficiency_effect":  "Wenn der Spieler nicht im Angriffs-Cooldown ist, gewährt %s%% unabhängiger Multiplikator Schild-Abklingzeitreduktion und Erholungseffizienz",
     "tooltip.gytrinket.barrier_effect":  "Wenn das Schild Schaden über %d Punkte nimmt, wird der Schaden auf %d begrenzt",
     "tooltip.gytrinket.regen_shield":  "Regenerierendes Schild",
-    "tooltip.gytrinket.regen_shield_effect":  "Aktiviert natürliche Schilderholung. Wenn das Schild einen Wert hat, beträgt die Gesundheitsregeneration des Spielers %d%%, die Schildregeneration %d%%. Wenn das Schild keinen Wert hat, beträgt die Regeneration 100%%",
+    "tooltip.gytrinket.regen_shield_effect":  "Aktiviert die natürliche Schilderholung: Jede Schildinstanz regeneriert %d%% ihres Maximalwerts pro Sekunde (Instanzen mit 0 regenerieren nicht). Mit Schildwert: Gesundheitsregeneration des Spielers %d%%, Schildregeneration %d%%. Ohne Schildwert: Gesundheitsregeneration des Spielers %d%%",
     "tooltip.gytrinket.reflect_damage":  "Reflexions-Schild",
     "tooltip.gytrinket.reflect_damage_effect":  "Wenn das Schild Schaden nimmt, werden brennende Partikel auf den Angreifer abgefeuert. Verbrennt und zündet Feinde an",
     "tooltip.gytrinket.explosive_shield":  "Explosiv-Schild",

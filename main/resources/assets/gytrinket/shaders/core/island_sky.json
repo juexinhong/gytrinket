@@ -15,6 +15,10 @@
         { "name": "SkyTime", "type": "float", "count": 1, "values": [ 0.0 ] },
         { "name": "PixelAngle", "type": "float", "count": 1, "values": [ 0.001 ] },
         { "name": "SkyDepthEnabled", "type": "float", "count": 1, "values": [ 0.0 ] },
+        { "name": "SkyScreenW", "type": "float", "count": 1, "values": [ 1.0 ] },
+        { "name": "SkyScreenH", "type": "float", "count": 1, "values": [ 1.0 ] },
+        { "name": "SkyDepthScaleX", "type": "float", "count": 1, "values": [ 1.0 ] },
+        { "name": "SkyDepthScaleY", "type": "float", "count": 1, "values": [ 1.0 ] },
         { "name": "SkyFogColor", "type": "float", "count": 3, "values": [ 0.048, 0.075, 0.115 ] }
     ]
 }

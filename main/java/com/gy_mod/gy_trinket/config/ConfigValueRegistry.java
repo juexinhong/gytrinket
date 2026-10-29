@@ -275,9 +275,7 @@ public final class ConfigValueRegistry {
         // 二次爆炸
 
         // ==================== 自然恢复 ====================
-        d("shield_natural_recovery.naturalRecoveryShieldRecoveryPerTick", GROUP_RECOVERY, () -> Config.NATURAL_RECOVERY_SHIELD_RECOVERY_PER_TICK.get(), v -> Config.NATURAL_RECOVERY_SHIELD_RECOVERY_PER_TICK.set(v), 0.0, 0.1);
-        d("shield_natural_recovery.naturalRecoveryShieldPresentHealthModifier", GROUP_RECOVERY, () -> Config.NATURAL_RECOVERY_SHIELD_PRESENT_HEALTH_MODIFIER.get(), v -> Config.NATURAL_RECOVERY_SHIELD_PRESENT_HEALTH_MODIFIER.set(v), 0.0, 1.0);
-        d("shield_natural_recovery.naturalRecoveryShieldPresentShieldModifier", GROUP_RECOVERY, () -> Config.NATURAL_RECOVERY_SHIELD_PRESENT_SHIELD_MODIFIER.get(), v -> Config.NATURAL_RECOVERY_SHIELD_PRESENT_SHIELD_MODIFIER.set(v), 0.0, 2.0);
+        // 再生护盾的再生速度与有无护盾值时的效率已迁移到物品定义（values.shield_natural_recovery_items）
 
         b("natural_recovery.playerHealthEnabled", GROUP_RECOVERY, () -> Config.NATURAL_RECOVERY_PLAYER_HEALTH_ENABLED.get() ? 1.0 : 0.0, v -> Config.NATURAL_RECOVERY_PLAYER_HEALTH_ENABLED.set(v != 0.0));
         d("natural_recovery.naturalRecoveryPlayerHealth", GROUP_RECOVERY, () -> Config.NATURAL_RECOVERY_PLAYER_HEALTH.get(), v -> Config.NATURAL_RECOVERY_PLAYER_HEALTH.set(v), 0.0, 10.0);

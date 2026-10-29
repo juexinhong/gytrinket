@@ -33,6 +33,12 @@ uniform mat4 ModelViewMat;  // camera rotation only
 uniform mat4 SkyInvProj;    // inverse of the current projection (FOV included)
 uniform sampler2D SkyDepth; // Iris scene depth (late pass only)
 uniform float SkyDepthEnabled;
+/** 当前 framebuffer 尺寸（用于把 gl_FragCoord 归一化到深度纹理坐标） */
+uniform float SkyScreenW;
+uniform float SkyScreenH;
+/** 深度采样压缩比 = gbuffer 尺寸 / framebuffer 尺寸（Iris render target 未跟随窗口 resize 时 <1） */
+uniform float SkyDepthScaleX;
+uniform float SkyDepthScaleY;
 
 out vec4 fragColor;
 
@@ -168,8 +174,12 @@ vec3 starLayer(vec3 d, float scale, float density, float size, float seed,
 
 void main() {
     if (SkyDepthEnabled > 0.5) {
-        vec2 duv = gl_FragCoord.xy / vec2(textureSize(SkyDepth, 0));
-        if (texture(SkyDepth, duv).r < 0.999999) {
+        // 深度纹理的尺寸不一定等于当前 framebuffer（Iris 可能按旧窗口尺寸分配/缩放）。
+        // 用 framebuffer 尺寸归一化屏幕坐标，再采样深度纹理；直接除 textureSize
+        // 在尺寸不一致时会让右上角落到纹理外/未写入区域，表现为“右上角漏出天空”。
+        vec2 duv = gl_FragCoord.xy / vec2(max(1.0, SkyScreenW), max(1.0, SkyScreenH));
+        duv *= vec2(SkyDepthScaleX, SkyDepthScaleY);
+        if (texture(SkyDepth, clamp(duv, 0.0, 1.0)).r < 0.999999) {
             discard;
         }
     }

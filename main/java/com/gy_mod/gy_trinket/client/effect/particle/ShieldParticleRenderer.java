@@ -266,6 +266,13 @@ public class ShieldParticleRenderer {
 
     /**
      * 光影模式：使用保存的矩阵（Iris composite 之前捕获的）渲染。
+     * <p>
+     * <b>顶点矩阵必须用事件 PoseStack（相机旋转 R），不能用 savedModelView。</b>
+     * 1.20.1 的 {@code LevelRenderer.renderLevel} 只把相机旋转放在传入的 PoseStack 里，
+     * {@code RenderSystem.getModelViewStack()} 在 AFTER_PARTICLES 仍是单位阵（直到画云时才
+     * {@code push} 相机旋转）。照搬 1.21.1（那边的 modelview 栈就是相机旋转）会让顶点矩阵
+     * 变成 I：粒子簇不随镜头旋转、像贴在屏幕上——这就是“光影下旋转错误”。
+     * 顶点 = {@code R × T(-camPos)}，与 1.19.2 的 renderWithSavedMatrices 同一套修法。
      */
     public static void renderWithSavedMatrices(PoseStack poseStack,
                                                MultiBufferSource bufferSource,
@@ -288,14 +295,16 @@ public class ShieldParticleRenderer {
         Camera cam = camera != null ? camera : mc.gameRenderer.getMainCamera();
         Vec3 cameraPos = cam.getPosition();
 
-        Matrix4f matrix = new Matrix4f(savedModelView);
+        // JOML 的 Matrix4f.translate 是后乘（M×T），等价于 1.19.2 的 multiplyWithTranslation。
+        Matrix4f matrix = new Matrix4f(savedPoseStackMat);
         matrix.translate((float) -cameraPos.x, (float) -cameraPos.y, (float) -cameraPos.z);
+        boolean volumetric = ClientConfig.SHIELD_PARTICLE_VOLUMETRIC_RENDERING.get();
         int style = ClientConfig.SHIELD_PARTICLE_STYLE.get();
-        if (style == 1) {
-            ShieldParticleTexturedRenderer.renderWithMatrix(matrix, cameraPos, partialTicks);
-        } else if (style == 2) {
-            // 平面四边形：用同一份矩阵直接画四边形，保证和另外两套形象同位置、同动画
+        if (!volumetric || style == 2) {
+            // 平面四边形：与无光影路径的 render() 分流一致，用同一份矩阵保证位置/动画相同
             renderVanillaQuads(matrix, partialTicks);
+        } else if (style == 1) {
+            ShieldParticleTexturedRenderer.renderWithMatrix(matrix, cameraPos, partialTicks);
         } else {
             drawParticles(matrix, cam, partialTicks, 0);
         }
@@ -380,6 +389,12 @@ public class ShieldParticleRenderer {
         // ---- Pass 1: 加色光晕 ----
         setPassMode(addShader, 1.0F);
         RenderSystem.setShader(() -> addShader);
+        // 1.20.1 的 BlendMode 有全局 lastApplied 缓存，且只有 opaque 属性变化时才更新缓存；
+        // 光晕/高光 JSON 的 blend 值相同，第二份 apply() 会被跳过、实际沿用上一个 Pass 的混合。
+        // 三个 Pass 的顺序是 光晕(加色)→本体(alpha)→高光(加色)，下一帧光晕第一个 apply 若被跳过，
+        // 就会继承上一帧本体留下的 alpha 混合 → 光晕被画成黑斑（亮背景下尤其明显）。
+        // 与 1.21.1 一样在每个 Pass 前显式设置，保证 GL 状态与 JSON 一致。
+        RenderSystem.blendFunc(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE);
         BufferBuilder haloBuffer = Tesselator.getInstance().getBuilder();
         haloBuffer.begin(VertexFormat.Mode.TRIANGLES, DefaultVertexFormat.POSITION_TEX_COLOR_NORMAL);
         for (Pose pose : poses) {
@@ -392,6 +407,10 @@ public class ShieldParticleRenderer {
         // ---- Pass 2: 晶体本体（半透明，由远到近叠加）----
         setPassMode(bodyShader, 0.0F);
         RenderSystem.setShader(() -> bodyShader);
+        RenderSystem.blendFuncSeparate(GlStateManager.SourceFactor.SRC_ALPHA,
+                GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA,
+                GlStateManager.SourceFactor.SRC_ALPHA,
+                GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA);
         BufferBuilder bodyBuffer = Tesselator.getInstance().getBuilder();
         bodyBuffer.begin(VertexFormat.Mode.TRIANGLES, DefaultVertexFormat.POSITION_TEX_COLOR_NORMAL);
         for (Pose pose : poses) {
@@ -402,6 +421,7 @@ public class ShieldParticleRenderer {
         // ---- Pass 3: 加色高光（切面反射 / 倒角棱线 / 虹彩）----
         setPassMode(hiShader, 2.0F);
         RenderSystem.setShader(() -> hiShader);
+        RenderSystem.blendFunc(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE);
         BufferBuilder highlightBuffer = Tesselator.getInstance().getBuilder();
         highlightBuffer.begin(VertexFormat.Mode.TRIANGLES, DefaultVertexFormat.POSITION_TEX_COLOR_NORMAL);
         for (Pose pose : poses) {

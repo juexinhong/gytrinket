@@ -7,6 +7,7 @@ import com.gy_mod.gy_trinket.client.effect.energywave.EnergyWaveVisualManager;
 import com.gy_mod.gy_trinket.client.effect.particle.ShieldParticleRenderEvent;
 import com.gy_mod.gy_trinket.client.effect.particle.ShieldParticleTickEvent;
 import com.gy_mod.gy_trinket.client.shader.ModShaders;
+import com.gy_mod.gy_trinket.client.world.IslandSky;
 import com.gy_mod.gy_trinket.core.entity.construct.drone.ModEntities;
 import com.gy_mod.gy_trinket.core.entity.meteor.MeteorEntities;
 import com.gy_mod.gy_trinket.core.entity.meteor.client.MeteorRenderer;
@@ -40,6 +41,7 @@ import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
 import net.minecraftforge.client.event.RegisterShadersEvent;
 import net.minecraftforge.client.extensions.common.IClientItemExtensions;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
@@ -65,6 +67,9 @@ public class ModClient {
         MinecraftForge.EVENT_BUS.addListener(LightningRenderManager::onRenderLevelLast);
         MinecraftForge.EVENT_BUS.addListener(EnergyWaveVisualManager::onRenderLevelLast);
         MinecraftForge.EVENT_BUS.addListener(DroneBulletTrailManager::onRenderLevelLast);
+        // 孤岛天空补画必须在 AFTER_LEVEL 的护盾粒子/能量波/闪电之前（HIGHEST），
+        // 否则全屏天空会盖住天空像素里的粒子。
+        MinecraftForge.EVENT_BUS.addListener(EventPriority.HIGHEST, IslandSky::paintWithShaders);
         ShieldParticleRenderEvent.init();
         ShieldParticleTickEvent.init();
         com.gy_mod.gy_trinket.client.attack_mode.burst_fire.BurstFireClientHandler.init();

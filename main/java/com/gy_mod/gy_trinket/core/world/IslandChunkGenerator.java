@@ -51,7 +51,7 @@ import java.util.stream.Collectors;
  * <ul>
  *   <li>整列石头填充 + 基岩托底；</li>
  *   <li>按弹坑程度分层铺地表（坑底黑石/凝灰岩、坑坡生土、坑缘碎石、远处焦土）；</li>
- *   <li>放置残塔等结构（原版 {@code applyBiomeDecoration} 会顺带铺植被/矿物，这里只要结构）。</li>
+ *   <li>只放置城镇 1（原版 {@code applyBiomeDecoration} 会顺带铺植被/矿物，这里只要城镇）。</li>
  * </ul>
  */
 public class IslandChunkGenerator extends ChunkGenerator {
@@ -287,6 +287,11 @@ public class IslandChunkGenerator extends ChunkGenerator {
         for (int step = 0; step < steps; step++) {
             int index = 0;
             for (Structure structure : byStep.getOrDefault(step, Collections.emptyList())) {
+                // 孤岛维度只允许城镇 1；残塔/高塔等程序化建筑不生成。
+                if (!(structure instanceof Town1Structure)) {
+                    index++;
+                    continue;
+                }
                 if (structureManager.shouldGenerateStructures()) {
                     worldgenRandom.setFeatureSeed(decorationSeed, index, step);
                     for (StructureStart start : structureManager.startsForStructure(sectionPos, structure)) {

@@ -33,7 +33,8 @@ import java.util.UUID;
  * <p>
  * 恢复计算公式（每秒）：
  * - 玩家生命恢复 = 恢复基数 × 配置基础恢复 × 恢复效率 × 攻击冷却惩罚
- * - 护盾恢复 = 最大护盾值 × 配置基础恢复 × 恢复效率 × 攻击冷却惩罚
+ * - 护盾恢复 =（全局基础恢复 + 模块 regen_per_second）× 恢复效率 × 攻击冷却惩罚 × 护盾再生效率，
+ *   按各实例自身最大护盾值分配（池量为 0 的实例不恢复）
  * <p>
  * 攻击冷却检测：使用 getAttackStrengthScale(0.0f)，值>0.5时认为冷却未结束
  */
@@ -92,14 +93,22 @@ public class NaturalRecoveryManager {
         float attackStrengthScale = player.getAttackStrengthScale(0.0f);
         double recoveryMultiplier = (attackStrengthScale > 0.5f) ? Config.getNaturalRecoveryAttackCooldownPenalty() : 1.0;
 
+        // 有护盾值 = 任一护盾实例池量 > 0；全部实例为 0 视为无护盾值（决定生命/护盾再生效率取哪一组物品级参数）
+        boolean shieldPresent = ShieldManager.hasAnyShieldValue(playerUUID);
+        boolean hasModule = ShieldNaturalRecoveryHandler.hasShieldNaturalRecovery(playerUUID);
+
         double healthModifier = 1.0;
         double shieldModifier = 1.0;
-        double additionalShieldRecovery = 0.0;
+        double moduleRegenPerSecond = 0.0;
 
-        if (ShieldNaturalRecoveryHandler.hasShieldNaturalRecovery(playerUUID)) {
-            healthModifier = ShieldNaturalRecoveryHandler.getPlayerHealthRecoveryModifier(playerUUID);
-            shieldModifier = ShieldNaturalRecoveryHandler.getShieldRecoveryModifier(playerUUID);
-            additionalShieldRecovery = ShieldNaturalRecoveryHandler.getShieldRecoveryBase();
+        if (hasModule) {
+            moduleRegenPerSecond = ShieldNaturalRecoveryHandler.getShieldRegenPerSecond(playerUUID);
+            healthModifier = shieldPresent
+                    ? ShieldNaturalRecoveryHandler.getShieldPresentHealthModifier(playerUUID)
+                    : ShieldNaturalRecoveryHandler.getNoShieldHealthModifier(playerUUID);
+            if (shieldPresent) {
+                shieldModifier = ShieldNaturalRecoveryHandler.getShieldPresentShieldModifier(playerUUID);
+            }
         }
 
         double playerHealthRecovery;
@@ -108,10 +117,14 @@ public class NaturalRecoveryManager {
         } else {
             playerHealthRecovery = 0.0;
         }
-        double shieldRecovery = Config.getNaturalRecoveryShield() * recoveryEfficiency * recoveryMultiplier / 5.0;
+
+        // 护盾再生速率（每秒）：（全局基础值（默认 0）+ 模块物品级 regen_per_second）
+        // × 恢复效率属性 × 攻击冷却惩罚，再乘“有护盾值时护盾再生效率”
+        double shieldRegenPerSecond = (Config.getNaturalRecoveryShield() + moduleRegenPerSecond)
+                * recoveryEfficiency * recoveryMultiplier;
+        double shieldRecovery = shieldRegenPerSecond * shieldModifier / 5.0;
 
         playerHealthRecovery *= healthModifier;
-        shieldRecovery = (shieldRecovery + additionalShieldRecovery) * shieldModifier;
 
         data.lastPlayerHealthRecovery = playerHealthRecovery;
         data.lastShieldRecovery = shieldRecovery;
@@ -124,13 +137,8 @@ public class NaturalRecoveryManager {
         }
 
         if (shieldRecovery > 0) {
-            double currentShield = ShieldManager.getCurrentShield(playerUUID);
-            double maxShield = ShieldManager.getMaxShield(playerUUID);
-            if (currentShield > 0 && currentShield < maxShield) {
-                // 有限资源制：以最大护盾值为基数按比例恢复
-                double shieldHealAmount = maxShield * shieldRecovery;
-                ShieldManager.addShield(playerUUID, shieldHealAmount);
-            }
+            // 逐实例恢复：每个实例按自身最大护盾值 × 本次比例；池量为 0 的实例不恢复
+            ShieldManager.regenDamagedInstances(playerUUID, shieldRecovery);
         }
     }
 

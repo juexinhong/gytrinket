@@ -1,111 +1,92 @@
 package com.gytrinket.gytrinket.core.shield;
 
 import com.gytrinket.gytrinket.config.Config;
-import com.gytrinket.gytrinket.core.shield.DisableSystem;
-import com.gytrinket.gytrinket.core.shield.ShieldManager;
+import com.gytrinket.gytrinket.core.defs.DefsManager;
 import com.gytrinket.gytrinket.event.PlayerAttributesCalculatedEvent;
-import com.gytrinket.gytrinket.event.ShieldBreakEvent;
-import com.gytrinket.gytrinket.event.ShieldCooldownCompleteEvent;
+import com.gytrinket.gytrinket.gytrinket;
 import com.gytrinket.gytrinket.storage.PlayerStoreUtils;
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.neoforge.server.ServerLifecycleHooks;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
 /**
- * 护盾自然恢复处理器
+ * 护盾自然恢复（特殊机制「再生护盾」）
  * <p>
- * 当玩家光点核心中存在指定物品时启用：
- * - 将护盾自然恢复值设为配置值（默认0.1%/刻）
- * - 提供额外的恢复修正值
- * <p>
- * 恢复修正值：
- * - 玩家生命恢复修正值（默认1）
- * - 护盾自然恢复修正值（默认1）
- * <p>
- * 当护盾冷却完成后：
- * - 玩家生命恢复修正值 = 配置值（默认0.5）
- * - 护盾自然恢复修正值 = 配置值（默认0.75）
+ * 物品级定义（{@code item_definitions} 的 {@code values.shield_natural_recovery_items}）：
+ * <ul>
+ *   <li>{@code regen_per_second}：护盾再生速度（%/秒，按每个实例自身的最大护盾值计算）</li>
+ *   <li>{@code shield_present_health_modifier}：有护盾值时的玩家生命再生效率</li>
+ *   <li>{@code shield_present_shield_modifier}：有护盾值时的护盾再生效率</li>
+ *   <li>{@code no_shield_health_modifier}：无护盾值时的玩家生命再生效率</li>
+ * </ul>
+ * 有护盾值 = 至少一个护盾实例池量 &gt; 0；全部实例池量为 0 视为无护盾值。
+ * 所有数值走默认单/叠机制（stackable 求和、非叠加取最大），未声明时回退 {@code MechanicValueDefs} 默认值。
  */
-@EventBusSubscriber(modid = com.gytrinket.gytrinket.gytrinket.MODID)
+@EventBusSubscriber(modid = gytrinket.MODID)
 public class ShieldNaturalRecoveryHandler {
 
-    /** 玩家是否启用护盾自然恢复的缓存 */
+    /** 机制集合名 */
+    public static final String MECHANIC_SET = "shield_natural_recovery_items";
+
+    /** 参数键：护盾再生速度（%/秒） */
+    public static final String PARAM_REGEN_PER_SECOND = "regen_per_second";
+    /** 参数键：有护盾值时的玩家生命再生效率 */
+    public static final String PARAM_PRESENT_HEALTH = "shield_present_health_modifier";
+    /** 参数键：有护盾值时的护盾再生效率 */
+    public static final String PARAM_PRESENT_SHIELD = "shield_present_shield_modifier";
+    /** 参数键：无护盾值时的玩家生命再生效率 */
+    public static final String PARAM_NO_SHIELD_HEALTH = "no_shield_health_modifier";
+
+    /** 参数回退值（与 MechanicValueDefs 中注册的默认值保持一致） */
+    public static final double DEFAULT_REGEN_PER_SECOND = 0.02;
+    public static final double DEFAULT_PRESENT_HEALTH = 0.5;
+    public static final double DEFAULT_PRESENT_SHIELD = 0.75;
+    public static final double DEFAULT_NO_SHIELD_HEALTH = 1.0;
+
+    /** 玩家是否装备了再生护盾机制物品的缓存（属性重算时刷新，避免每刻扫描背包） */
     private static final Set<UUID> PLAYER_HAS_SHIELD_RECOVERY_ITEM = new HashSet<>();
 
-    /** 玩家生命恢复修正值：玩家UUID -> 修正值 */
-    private static final Map<UUID, Double> PLAYER_HEALTH_RECOVERY_MODIFIER = new HashMap<>();
+    private ShieldNaturalRecoveryHandler() {}
 
-    /** 护盾自然恢复修正值：玩家UUID -> 修正值 */
-    private static final Map<UUID, Double> SHIELD_RECOVERY_MODIFIER = new HashMap<>();
-
-    /** 默认玩家生命恢复修正值 */
-    private static final double DEFAULT_HEALTH_RECOVERY_MODIFIER = 1.0;
-
-    /** 默认护盾自然恢复修正值 */
-    private static final double DEFAULT_SHIELD_RECOVERY_MODIFIER = 1.0;
-
-    /**
-     * 检查玩家是否启用了护盾自然恢复
-     */
+    /** 玩家是否启用了护盾自然恢复（装备了声明该机制的物品且未被禁用） */
     public static boolean hasShieldNaturalRecovery(UUID playerUUID) {
         return PLAYER_HAS_SHIELD_RECOVERY_ITEM.contains(playerUUID);
     }
 
-    /**
-     * 获取玩家生命恢复修正值
-     */
-    public static double getPlayerHealthRecoveryModifier(UUID playerUUID) {
-        return PLAYER_HEALTH_RECOVERY_MODIFIER.getOrDefault(playerUUID, DEFAULT_HEALTH_RECOVERY_MODIFIER);
+    /** 护盾再生速度（%/秒）：每个受损实例按其自身最大护盾值 × 该比例 / 秒恢复 */
+    public static double getShieldRegenPerSecond(UUID playerUUID) {
+        return resolve(playerUUID, PARAM_REGEN_PER_SECOND, DEFAULT_REGEN_PER_SECOND);
+    }
+
+    /** 有护盾值时的玩家生命再生效率 */
+    public static double getShieldPresentHealthModifier(UUID playerUUID) {
+        return resolve(playerUUID, PARAM_PRESENT_HEALTH, DEFAULT_PRESENT_HEALTH);
+    }
+
+    /** 有护盾值时的护盾再生效率 */
+    public static double getShieldPresentShieldModifier(UUID playerUUID) {
+        return resolve(playerUUID, PARAM_PRESENT_SHIELD, DEFAULT_PRESENT_SHIELD);
+    }
+
+    /** 无护盾值时的玩家生命再生效率 */
+    public static double getNoShieldHealthModifier(UUID playerUUID) {
+        return resolve(playerUUID, PARAM_NO_SHIELD_HEALTH, DEFAULT_NO_SHIELD_HEALTH);
+    }
+
+    /** 按玩家已装备物品解析机制参数（未装备声明物品时回退默认值） */
+    private static double resolve(UUID playerUUID, String paramKey, double fallback) {
+        return DefsManager.resolveMechanicValue(ServerLifecycleHooks.getCurrentServer(), playerUUID,
+                MECHANIC_SET, paramKey, fallback);
     }
 
     /**
-     * 获取护盾自然恢复修正值
-     */
-    public static double getShieldRecoveryModifier(UUID playerUUID) {
-        return SHIELD_RECOVERY_MODIFIER.getOrDefault(playerUUID, DEFAULT_SHIELD_RECOVERY_MODIFIER);
-    }
-
-    /**
-     * 获取护盾自然恢复基础值（从配置读取）
-     */
-    public static double getShieldRecoveryBase() {
-        return Config.getNaturalRecoveryShieldRecoveryPerTick();
-    }
-
-    /**
-     * 设置恢复修正值
-     */
-    private static void setRecoveryModifiers(UUID playerUUID, double healthModifier, double shieldModifier) {
-        PLAYER_HEALTH_RECOVERY_MODIFIER.put(playerUUID, healthModifier);
-        SHIELD_RECOVERY_MODIFIER.put(playerUUID, shieldModifier);
-    }
-
-    /**
-     * 设置为默认恢复修正值
-     */
-    private static void setDefaultModifiers(UUID playerUUID) {
-        setRecoveryModifiers(playerUUID, DEFAULT_HEALTH_RECOVERY_MODIFIER, DEFAULT_SHIELD_RECOVERY_MODIFIER);
-    }
-
-    /**
-     * 设置为护盾存在时的恢复修正值（从配置读取）
-     */
-    private static void setShieldPresentModifiers(UUID playerUUID) {
-        double healthModifier = Config.getNaturalRecoveryShieldPresentHealthModifier();
-        double shieldModifier = Config.getNaturalRecoveryShieldPresentShieldModifier();
-        setRecoveryModifiers(playerUUID, healthModifier, shieldModifier);
-    }
-
-    /**
-     * 监听属性计算完毕事件，检测玩家是否有护盾自然恢复物品
+     * 监听属性计算完毕事件，刷新“是否装备再生护盾机制物品”的缓存
      */
     @SubscribeEvent
     public static void onAttributesCalculated(PlayerAttributesCalculatedEvent event) {
@@ -124,67 +105,14 @@ public class ShieldNaturalRecoveryHandler {
             PLAYER_HAS_SHIELD_RECOVERY_ITEM.add(playerUUID);
         } else {
             PLAYER_HAS_SHIELD_RECOVERY_ITEM.remove(playerUUID);
-            PLAYER_HEALTH_RECOVERY_MODIFIER.remove(playerUUID);
-            SHIELD_RECOVERY_MODIFIER.remove(playerUUID);
         }
     }
 
     /**
-     * 监听护盾破裂事件
-     * 设置玩家生命恢复修正值为1，护盾自然恢复修正值为1
-     */
-    @SubscribeEvent
-    public static void onShieldBreak(ShieldBreakEvent event) {
-        UUID playerUUID = event.getPlayerUUID();
-
-        if (PLAYER_HAS_SHIELD_RECOVERY_ITEM.contains(playerUUID)) {
-            setDefaultModifiers(playerUUID);
-        }
-    }
-
-    /**
-     * 监听护盾冷却完成事件
-     * 设置玩家生命恢复修正值为配置值，护盾自然恢复修正值为配置值
-     */
-    @SubscribeEvent
-    public static void onShieldCooldownComplete(ShieldCooldownCompleteEvent event) {
-        UUID playerUUID = event.getPlayerUUID();
-
-        if (PLAYER_HAS_SHIELD_RECOVERY_ITEM.contains(playerUUID)) {
-            setShieldPresentModifiers(playerUUID);
-        }
-    }
-
-    /**
-     * 监听玩家登录事件
-     * 检测玩家的当前护盾值是否为0
-     * - 为0：设置玩家生命恢复修正值为1，护盾自然恢复修正值为1
-     * - 不为0：设置玩家生命恢复修正值为配置值，护盾自然恢复修正值为配置值
-     */
-    @SubscribeEvent
-    public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
-        Player player = event.getEntity();
-        UUID playerUUID = player.getUUID();
-
-        if (!PLAYER_HAS_SHIELD_RECOVERY_ITEM.contains(playerUUID)) {
-            return;
-        }
-
-        double currentShield = ShieldManager.getCurrentShield(playerUUID);
-        if (currentShield <= 0) {
-            setDefaultModifiers(playerUUID);
-        } else {
-            setShieldPresentModifiers(playerUUID);
-        }
-    }
-
-    /**
-     * 监听玩家退出事件，清理数据
+     * 监听玩家退出事件，清理缓存
      */
     @SubscribeEvent
     public static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
-        UUID playerUUID = event.getEntity().getUUID();
-        PLAYER_HEALTH_RECOVERY_MODIFIER.remove(playerUUID);
-        SHIELD_RECOVERY_MODIFIER.remove(playerUUID);
+        PLAYER_HAS_SHIELD_RECOVERY_ITEM.remove(event.getEntity().getUUID());
     }
 }

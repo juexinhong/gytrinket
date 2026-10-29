@@ -7,6 +7,26 @@
       ],
       "attributes": {
         "recovery_efficiency_percent": 0.1
+      },
+      "values": {
+        "shield_natural_recovery_items": {
+          "regen_per_second": {
+            "value": 0.02,
+            "stackable": false
+          },
+          "shield_present_health_modifier": {
+            "value": 0.5,
+            "stackable": false
+          },
+          "shield_present_shield_modifier": {
+            "value": 0.75,
+            "stackable": false
+          },
+          "no_shield_health_modifier": {
+            "value": 1.0,
+            "stackable": false
+          }
+        }
       }
     }
   }

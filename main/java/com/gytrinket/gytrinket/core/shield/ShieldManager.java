@@ -384,6 +384,48 @@ public class ShieldManager {
         afterInstanceMutation(playerUUID, oldTotal);
     }
 
+    /**
+     * 护盾自然恢复：只对“有护盾值”的受损实例恢复，每个实例按其自身最大护盾值 × 比例恢复。
+     * <p>
+     * 池量为 0（破盾/待冷却）的实例不恢复——这部分交由冷却回满处理；已满的实例跳过。
+     *
+     * @param ratePerCall 每次恢复调用占该实例最大护盾值的比例
+     * @return 本次实际恢复的护盾总量
+     */
+    public static double regenDamagedInstances(UUID playerUUID, double ratePerCall) {
+        if (ratePerCall <= 0) {
+            return 0;
+        }
+        double oldTotal = getCurrentShield(playerUUID);
+        double added = 0;
+        for (ShieldInstance instance : getInstances(playerUUID)) {
+            double current = instance.getCurrentShield();
+            if (current <= 0) {
+                continue; // 护盾值为 0 的实例不恢复
+            }
+            double max = instance.getMaxShield();
+            if (current >= max) {
+                continue;
+            }
+            instance.setCurrentShield(current + max * ratePerCall);
+            added += instance.getCurrentShield() - current;
+        }
+        if (added > 0) {
+            afterInstanceMutation(playerUUID, oldTotal);
+        }
+        return added;
+    }
+
+    /** 是否存在护盾值 &gt; 0 的实例（任一实例有值即视为“有护盾值”） */
+    public static boolean hasAnyShieldValue(UUID playerUUID) {
+        for (ShieldInstance instance : getInstances(playerUUID)) {
+            if (instance.getCurrentShield() > 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static void setAggregateInternal(UUID playerUUID, double value) {
         List<ShieldInstance> instances = INSTANCES.get(playerUUID);
         if (instances == null || instances.isEmpty()) {

@@ -91,9 +91,8 @@ public class Config {
     public static final ForgeConfigSpec.DoubleValue ADAPTIVE_ARMOR_LAYERS_PER_DAMAGE;
 
     // ===== 13. 再生护盾 (shield_natural_recovery) =====
-    public static final ForgeConfigSpec.DoubleValue NATURAL_RECOVERY_SHIELD_RECOVERY_PER_TICK;
-    public static final ForgeConfigSpec.DoubleValue NATURAL_RECOVERY_SHIELD_PRESENT_HEALTH_MODIFIER;
-    public static final ForgeConfigSpec.DoubleValue NATURAL_RECOVERY_SHIELD_PRESENT_SHIELD_MODIFIER;
+    // 护盾再生速度 / 有无护盾值时的生命与护盾再生效率已迁移到物品定义：
+    // item_definitions 的 values.shield_natural_recovery_items（机制参数，支持单/叠）。
     
     // ===== 15. 转化 (conversion) =====
 
@@ -346,30 +345,8 @@ public class Config {
         BUILDER.pop();
 
         // ===== 13. 再生护盾 =====
-        BUILDER.comment("护盾自然恢复系统配置").push("shield_natural_recovery");
-
-        NATURAL_RECOVERY_SHIELD_RECOVERY_PER_TICK = BUILDER.comment(
-            "再生护盾基础恢复值（每次恢复的比例，不是每刻）",
-            "装备再生护盾模块后，每次自然恢复额外增加的最大护盾比例",
-            "恢复频率：每4刻执行一次（每秒5次），每次恢复量 = naturalRecoveryShield/5 + 该值",
-            "实际恢复还会乘恢复效率属性和护盾存在修正系数，以最大护盾值为基数（有限资源制）",
-            "默认 0.0 注意永远是0的默认值！",
-            "范围：0.0 ~ 0.1"
-        ).defineInRange("naturalRecoveryShieldRecoveryPerTick", 0.0, 0.0, 0.1);
-
-        NATURAL_RECOVERY_SHIELD_PRESENT_HEALTH_MODIFIER = BUILDER.comment(
-            "护盾存在时的玩家生命恢复修正值",
-            "当护盾冷却完成后，玩家生命恢复会乘以此系数",
-            "例如：0.5 表示生命恢复降低到50%"
-        ).defineInRange("naturalRecoveryShieldPresentHealthModifier", 0.5, 0.0, 1.0);
-
-        NATURAL_RECOVERY_SHIELD_PRESENT_SHIELD_MODIFIER = BUILDER.comment(
-            "护盾存在时的护盾自然恢复修正值",
-            "当护盾冷却完成后，护盾恢复会乘以此系数",
-            "例如：0.75 表示护盾恢复为75%"
-        ).defineInRange("naturalRecoveryShieldPresentShieldModifier", 0.75, 0.0, 2.0);
-
-        BUILDER.pop();
+        // 护盾再生速度、有无护盾值时的玩家生命/护盾再生效率已迁移到物品定义
+        // （item_definitions 的 values.shield_natural_recovery_items，走默认单/叠机制）。
 
         // ===== 15. 转化 =====
 
@@ -893,9 +870,9 @@ public class Config {
             "范围：0.0 ~ 10.0"
         ).defineInRange("naturalRecoveryPlayerHealth", 0.02, 0.0, 10.0);
         NATURAL_RECOVERY_SHIELD = BUILDER.comment(
-            "护盾基础恢复速度（%/秒，0为禁用）",
-            "恢复频率：每4刻执行一次（每秒5次），每次实际恢复量 = 最大护盾值 ×（该值 ÷ 5）（有限资源制）",
-            "实际恢复量还会乘恢复效率属性与攻击冷却惩罚系数；装备再生护盾模块时与 naturalRecoveryShieldRecoveryPerTick 叠加",
+            "护盾基础恢复速度（%/秒，0为禁用；默认 0 = 初始无再生能力）",
+            "每个实例按自身最大护盾值 ×（该值 ÷ 5）恢复；池量为 0 的实例不恢复",
+            "实际恢复量还会乘恢复效率属性、攻击冷却惩罚与护盾再生效率；装备再生护盾模块时与其物品级 regen_per_second 叠加",
             "默认 0.0 = 每秒恢复最大护盾的 0%",
             "范围：0.0 ~ 10.0"
         ).defineInRange("naturalRecoveryShield", 0.0, 0.0, 10.0);
@@ -1070,8 +1047,6 @@ public class Config {
      */
     public static Object getValue(String name) {
         return switch (name) {
-            case "shieldNaturalRecoveryPresentHealthModifier" -> getNaturalRecoveryShieldPresentHealthModifier();
-            case "shieldNaturalRecoveryPresentShieldModifier" -> getNaturalRecoveryShieldPresentShieldModifier();
             case "nearDeathExplosionInvincibleDuration" -> NEAR_DEATH_EXPLOSION_INVINCIBLE_DURATION.get();
             case "nearDeathExplosionCoefficient" -> NEAR_DEATH_EXPLOSION_COEFFICIENT.get();
             case "nearDeathExplosionRadius" -> NEAR_DEATH_EXPLOSION_RADIUS.get();
@@ -1512,18 +1487,6 @@ public class Config {
 
     public static boolean isShieldNaturalRecoveryItem(Item item) {
         return isModuleItem("shield_natural_recovery", item);
-    }
-
-    public static double getNaturalRecoveryShieldRecoveryPerTick() {
-        return NATURAL_RECOVERY_SHIELD_RECOVERY_PER_TICK.get();
-    }
-
-    public static double getNaturalRecoveryShieldPresentHealthModifier() {
-        return NATURAL_RECOVERY_SHIELD_PRESENT_HEALTH_MODIFIER.get();
-    }
-
-    public static double getNaturalRecoveryShieldPresentShieldModifier() {
-        return NATURAL_RECOVERY_SHIELD_PRESENT_SHIELD_MODIFIER.get();
     }
 
     public static boolean isBinaryProtocolItem(Item item) {

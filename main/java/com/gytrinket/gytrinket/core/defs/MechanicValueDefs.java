@@ -65,6 +65,14 @@ public final class MechanicValueDefs {
     private static final double CHARGED_SHIELD_MAX_BONUS = 0.8;
     private static final double CHARGED_SHIELD_DECAY_RATE = 0.08;
     private static final double CHARGED_SHIELD_MOVE_SPEED_PENALTY = -0.15;
+    /** 再生护盾：模块自带的护盾再生速度（%/秒，按各实例自身上限计算） */
+    private static final double SHIELD_REGEN_PER_SECOND = 0.02;
+    /** 再生护盾：有护盾值时的玩家生命再生效率 */
+    private static final double SHIELD_PRESENT_HEALTH_MODIFIER = 0.5;
+    /** 再生护盾：有护盾值时的护盾再生效率 */
+    private static final double SHIELD_PRESENT_SHIELD_MODIFIER = 0.75;
+    /** 再生护盾：无护盾值时的玩家生命再生效率 */
+    private static final double NO_SHIELD_HEALTH_MODIFIER = 1.0;
     private static final double GRUDGE_CONVERSION_RATIO = 0.2;
     private static final double GRUDGE_FADE_BASE = 0.00001;
     private static final double GRUDGE_FADE_PERCENT = 0.02;
@@ -118,6 +126,20 @@ public final class MechanicValueDefs {
     }
 
     static {
+        // ===== 再生护盾 (shield_natural_recovery) =====
+        // 装备后启用护盾自然恢复：每秒按各护盾实例自身上限的 regen_per_second 回复（不回复已归零的实例）；
+        // 是否“有护盾值”决定生命/护盾再生效率取哪一组。
+        register("shield_natural_recovery_items",
+                new ParamDef("regen_per_second", nameKey("shield_natural_recovery_items", "regen_per_second"),
+                        () -> SHIELD_REGEN_PER_SECOND),
+                new ParamDef("shield_present_health_modifier", nameKey("shield_natural_recovery_items", "shield_present_health_modifier"),
+                        () -> SHIELD_PRESENT_HEALTH_MODIFIER),
+                new ParamDef("shield_present_shield_modifier", nameKey("shield_natural_recovery_items", "shield_present_shield_modifier"),
+                        () -> SHIELD_PRESENT_SHIELD_MODIFIER),
+                new ParamDef("no_shield_health_modifier", nameKey("shield_natural_recovery_items", "no_shield_health_modifier"),
+                        () -> NO_SHIELD_HEALTH_MODIFIER)
+        );
+
         // ===== 充能护盾 (charged_shield) =====
         register("charged_shield_items",
                 new ParamDef("charge_ratio", nameKey("charged_shield_items", "charge_ratio"),

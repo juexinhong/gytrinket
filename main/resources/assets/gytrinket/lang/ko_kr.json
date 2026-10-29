@@ -113,7 +113,7 @@
     "tooltip.gytrinket.efficiency_effect":  "플레이어가 공격 대기시간이 아닐 때, %s%% 독립 배율 실드 재사용 대기시간 감소 및 회복 효율 속성을 제공합니다",
     "tooltip.gytrinket.barrier_effect":  "실드가 %d 이상의 피해를 받으면 피해를 %d로 제한합니다",
     "tooltip.gytrinket.regen_shield":  "재생 실드",
-    "tooltip.gytrinket.regen_shield_effect":  "실드 자연 회복을 활성화합니다. 실드에 수치가 있을 때 플레이어 체력 재생 효율 %d%%, 실드 재생 효율 %d%%. 실드에 수치가 없을 때 재생 효율 100%%",
+    "tooltip.gytrinket.regen_shield_effect":  "실드 자연 회복을 활성화합니다: 각 실드 인스턴스는 초당 최대치의 %d%%를 회복합니다 (값이 0인 인스턴스는 회복하지 않습니다). 실드에 수치가 있을 때 플레이어 체력 재생 효율 %d%%, 실드 재생 효율 %d%%. 실드에 수치가 없을 때 플레이어 체력 재생 효율 %d%%",
     "tooltip.gytrinket.reflect_damage":  "반사 실드",
     "tooltip.gytrinket.reflect_damage_effect":  "실드가 피해를 받으면 공격자를 향해 타오르는 입자를 발사합니다. 적을 태우고 점화합니다",
     "tooltip.gytrinket.explosive_shield":  "폭발 실드",

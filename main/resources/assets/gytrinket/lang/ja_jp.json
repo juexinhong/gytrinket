@@ -113,7 +113,7 @@
     "tooltip.gytrinket.efficiency_effect":  "プレイヤーが攻撃クールダウン中でない場合、%s%%の独立乗算シールドクールダウン短縮と回復効率の属性を提供します",
     "tooltip.gytrinket.barrier_effect":  "シールドが%dを超えるダメージを受けた場合、ダメージを%dに制限します",
     "tooltip.gytrinket.regen_shield":  "リジェネシールド",
-    "tooltip.gytrinket.regen_shield_effect":  "シールドの自然回復を有効にします。シールドに値がある場合、プレイヤーの体力再生効率は%d%%、シールド再生効率は%d%%です。シールドの値がない場合、再生効率は100%%です",
+    "tooltip.gytrinket.regen_shield_effect":  "シールドの自然回復を有効にします：各シールドインスタンスは毎秒最大値の%d%%を回復します（値が0のインスタンスは回復しません）。シールドに値がある場合、プレイヤーの体力再生効率は%d%%、シールド再生効率は%d%%です。シールドの値がない場合、プレイヤーの体力再生効率は%d%%です",
     "tooltip.gytrinket.reflect_damage":  "リフレクトシールド",
     "tooltip.gytrinket.reflect_damage_effect":  "シールドがダメージを受けた時、攻撃者に向かって燃焼パーティクルを発射します。敵を燃やし、着火します",
     "tooltip.gytrinket.explosive_shield":  "エクスプローシブシールド",

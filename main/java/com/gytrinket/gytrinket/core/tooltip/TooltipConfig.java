@@ -61,7 +61,11 @@ public class TooltipConfig {
             Map.entry("grudgeMovementSpeedPenalty", new String[]{"grudge_items", "move_speed_penalty"}),
             Map.entry("assaultAttackSpeedPerStack", new String[]{"assault_items", "attack_speed_per_stack"}),
             Map.entry("assaultSelfDamagePerStack", new String[]{"assault_items", "self_damage_per_stack"}),
-            Map.entry("assaultMovementSpeedPenalty", new String[]{"assault_items", "move_speed_penalty"})
+            Map.entry("assaultMovementSpeedPenalty", new String[]{"assault_items", "move_speed_penalty"}),
+            Map.entry("shieldNaturalRecoveryRegenPerSecond", new String[]{"shield_natural_recovery_items", "regen_per_second"}),
+            Map.entry("shieldNaturalRecoveryPresentHealthModifier", new String[]{"shield_natural_recovery_items", "shield_present_health_modifier"}),
+            Map.entry("shieldNaturalRecoveryPresentShieldModifier", new String[]{"shield_natural_recovery_items", "shield_present_shield_modifier"}),
+            Map.entry("shieldNaturalRecoveryNoShieldHealthModifier", new String[]{"shield_natural_recovery_items", "no_shield_health_modifier"})
     );
 
     private final String itemSetName;

@@ -30,8 +30,6 @@ public final class EventWiring {
         // 等级 / 护盾冷却 / 充能 / 易伤 / 护盾转移
         bus.on(ModLevelChangeEvent.class, GyBus.NORMAL,
                 com.gytrinket.gytrinket.event.PlayerLevelDebouncer::onModLevelChange);
-        bus.on(ShieldCooldownCompleteEvent.class, GyBus.NORMAL,
-                com.gytrinket.gytrinket.core.shield.ShieldNaturalRecoveryHandler::onShieldCooldownComplete);
         bus.on(ChargedAttackEvent.class, GyBus.NORMAL,
                 com.gytrinket.gytrinket.core.ghost_fuselage.GhostFuselageManager::onChargedAttackEvent);
         bus.on(VulnerabilityApplyEvent.class, GyBus.NORMAL,
@@ -54,8 +52,6 @@ public final class EventWiring {
                 com.gytrinket.gytrinket.core.entity.construct.ConstructAttributeApplier::onLightPointStoreChanged);
 
         // 护盾破裂
-        bus.on(ShieldBreakEvent.class, GyBus.NORMAL,
-                com.gytrinket.gytrinket.core.shield.ShieldNaturalRecoveryHandler::onShieldBreak);
         bus.on(ShieldBreakEvent.class, GyBus.NORMAL,
                 com.gytrinket.gytrinket.core.shield.type.WarpShieldType::onShieldBreak);
         bus.on(ShieldBreakEvent.class, GyBus.NORMAL,
